@@ -104,3 +104,4 @@ Xem thêm:
 - [01 Product Brief](docs/01-product-brief.md)
 - [02 Product Notes](docs/02-product-notes.md)
 - [03 Information Architecture](docs/03-information-architecture.md)
+- [04 User Flows](docs/04-user-flows.md)

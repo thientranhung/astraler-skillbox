@@ -23,6 +23,14 @@ model, và các decision quan trọng.
 Đọc để hiểu các core concepts, màn hình chính trong app, flow add skill, update,
 sync, và settings.
 
+## 4. User Flows
+
+[04-user-flows.md](04-user-flows.md)
+
+Đọc để hiểu các luồng thao tác chính của user: setup lần đầu, add project, scan,
+install skill, fetch update, sync, switch mode, remove skill, và đổi Skill Host
+Folder.
+
 ## Suggested Reading Flow
 
 ```text
@@ -31,10 +39,12 @@ README.md
   -> docs/01-product-brief.md
   -> docs/02-product-notes.md
   -> docs/03-information-architecture.md
+  -> docs/04-user-flows.md
 ```
 
 ## Current Source Of Truth
 
 - Product direction: [01-product-brief.md](01-product-brief.md)
 - Decisions and tradeoffs: [02-product-notes.md](02-product-notes.md)
-- App structure and user flows: [03-information-architecture.md](03-information-architecture.md)
+- App structure and core concepts: [03-information-architecture.md](03-information-architecture.md)
+- Detailed user flows: [04-user-flows.md](04-user-flows.md)
