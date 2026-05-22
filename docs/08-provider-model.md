@@ -55,6 +55,7 @@ provider_type
 icon_key
 status
 can_create_structure
+has_global_level
 ```
 
 Status:
@@ -76,6 +77,10 @@ disabled
 
 `can_create_structure` cho biết provider có thể được core Skillbox logic
 scaffold folder/path cần thiết hay chỉ được dùng khi structure đã tồn tại.
+
+`has_global_level` cho biết provider có global/user-level location mà Skillbox
+có thể scan hoặc cấu hình. Global scan chỉ load provider có
+`has_global_level = 1` hoặc đã có configured global location.
 
 `key` là stable identifier để lưu config, seed data, và external references.
 `provider_type` là enum/category để app dispatch adapter implementation. Hai giá
@@ -226,7 +231,7 @@ Flow:
 
 ```text
 Global scan bắt đầu
-  -> Load provider_definitions có global support hoặc configured global paths
+  -> Load provider_definitions có has_global_level = 1 hoặc configured global paths
   -> Resolve global provider locations
   -> Scan global skills_path nếu có
   -> Tạo/cập nhật global_provider_locations
@@ -236,6 +241,16 @@ Global scan bắt đầu
 
 Global scan phải giữ scope riêng với project scan. Một global entry không được
 tự động coi là project install.
+
+Global provider paths không dùng `provider_path_candidates.relative_path` vì
+field đó là project-root relative path. Global paths được resolve bởi adapter từ
+user/machine conventions hoặc từ `global_provider_locations.path` đã được user
+cấu hình trong Settings.
+
+Global scan dùng cùng rule với project rsync/copy detection: nếu entry là folder
+thường và có `global_installs` DB record cho path đó với
+`install_mode = rsync_copy`, mode là `rsync_copy`; nếu không có record thì mode
+là `direct`.
 
 ## Install Target Resolution
 
@@ -473,6 +488,27 @@ warnings: list of {
 entries: list of {
   name: text
   path: absolute path to the skill entry within the provider skills_path
+  entry_type: symlink | directory | unknown
+  symlink_target: path | null
+}
+```
+
+Global adapter output contract:
+
+```text
+provider_key: text
+global_path: absolute path | null
+global_skills_path: absolute path | null
+global_status: active | not_configured | missing | unreadable | invalid_structure | empty | disabled
+warnings: list of {
+  code: text
+  severity: info | warning | error | blocking
+  message: text
+  action_key: text | null
+}
+entries: list of {
+  name: text
+  path: absolute path to the global skill entry within global_skills_path
   entry_type: symlink | directory | unknown
   symlink_target: path | null
 }

@@ -97,6 +97,12 @@ Kết quả:
 - App phân biệt global skill với project-level skill.
 - Warning được tạo nếu global entry missing, broken, external, hoặc unmanaged.
 
+Phase 1:
+
+- Global Skills là scan/visibility/remediation surface.
+- Chưa có flow `Install Skill To Global Location`.
+- Add Skill flow chỉ target project providers.
+
 ## 5. Install Skill To Project
 
 Mục tiêu: cài một skill từ Skill Host Folder vào project.

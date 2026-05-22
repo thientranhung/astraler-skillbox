@@ -306,6 +306,7 @@ provider_type
 icon_key
 status
 can_create_structure
+has_global_level
 created_at
 updated_at
 ```
@@ -336,6 +337,8 @@ Notes:
 - Provider adapter implementation sẽ dùng bảng này như metadata UI/config.
 - `can_create_structure` cho biết core Skillbox logic có thể scaffold provider
   folder cho provider này hay chỉ được scan/install vào structure đã tồn tại.
+- `has_global_level` cho biết provider có global/user-level location mà
+  Skillbox có thể scan hoặc cấu hình.
 
 ## 8. provider_path_candidates
 

@@ -206,6 +206,8 @@ Rules:
 - Removing a global entry never removes the Skill Host Folder source.
 - Global/project overlap is informational unless provider behavior makes it
   blocking later.
+- Phase 1 does not include an Add Skill to Global Location flow. Global Skills
+  focuses on scan, visibility, and remediation actions.
 
 ## Projects
 
@@ -339,6 +341,11 @@ Affected Projects: adr-helper
   project-b     Generic Agents    rsync/copy  needs sync
   project-c     Claude            direct      unaffected
 
+Affected Global Installs
+  Location              Provider          Mode        Result after host update
+  User Global           Generic Agents    symlink     updates immediately
+  Claude Global         Claude            rsync/copy  needs sync
+
 Actions
   [Update Host Copy] [Sync rsync/copy Projects]
 ```
@@ -445,6 +452,7 @@ No provider detected in this project.
 Loading states:
 
 - Scanning Skill Host Folder.
+- Scanning global locations.
 - Scanning project.
 - Fetching updates.
 - Updating host skill.

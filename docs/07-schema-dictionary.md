@@ -139,6 +139,7 @@ Purpose: lưu danh sách provider/convention mà Skillbox biết.
 | `icon_key` | text | yes | Key để UI chọn icon phù hợp. |
 | `status` | text | no | Adapter support state. Allowed: `supported`, `experimental`, `unsupported`, `disabled`. |
 | `can_create_structure` | integer | no | Boolean `0/1`. Cho biết core Skillbox logic có thể scaffold provider folder structure cho provider này hay không. |
+| `has_global_level` | integer | no | Boolean `0/1`. Cho biết provider có global/user-level location mà Skillbox có thể scan hoặc cấu hình. |
 | `created_at` | datetime | no | Thời điểm tạo row. |
 | `updated_at` | datetime | no | Thời điểm cập nhật row gần nhất. |
 
@@ -152,7 +153,7 @@ Purpose: lưu các candidate path mà provider adapter dùng để detect/config
 | `provider_definition_id` | integer | no | FK tới `provider_definitions.id`. |
 | `relative_path` | text | no | Path tương đối từ project root. |
 | `purpose` | text | no | Candidate purpose. Allowed: `detect`, `skills`, `commands`, `config`. |
-| `priority` | integer | no | Priority thấp/cao theo convention implementation chọn. Dùng để resolve candidate chính khi nhiều path tồn tại. |
+| `priority` | integer | no | Lower value wins. Priority `1` is checked before priority `10`. Dùng để resolve candidate chính khi nhiều path tồn tại. |
 | `description` | text | yes | Mô tả vì sao path này tồn tại hoặc provider dùng nó cho việc gì. |
 | `created_at` | datetime | no | Thời điểm tạo row. |
 | `updated_at` | datetime | no | Thời điểm cập nhật row gần nhất. |
@@ -276,7 +277,7 @@ Purpose: lưu kết quả scan gần nhất hoặc lịch sử scan nhẹ cho ho
 | Field | Type | Nullable | Description |
 |---|---|---:|---|
 | `id` | integer | no | Primary key. |
-| `target_type` | text | no | Scan target. Allowed: `skill_host_folder`, `project`, `project_provider`. |
+| `target_type` | text | no | Scan target. Allowed: `skill_host_folder`, `project`, `project_provider`, `global_provider_location`. |
 | `target_id` | integer | no | ID của target tương ứng. Polymorphic FK, validate ở app layer. |
 | `status` | text | no | Scan result. Allowed: `success`, `partial`, `failed`, `cancelled`. |
 | `started_at` | datetime | no | Thời điểm scan bắt đầu. |
@@ -311,7 +312,7 @@ Purpose: lưu operation dài hoặc quan trọng để UI có loading/progress/d
 | Field | Type | Nullable | Description |
 |---|---|---:|---|
 | `id` | integer | no | Primary key. |
-| `operation_type` | text | no | Operation kind. Allowed: `scan`, `fetch`, `update_host_skill`, `sync_install`, `install_skill`, `remove_install`, `switch_install_mode`, `change_skill_host_folder`. |
+| `operation_type` | text | no | Operation kind. Allowed: `scan`, `fetch`, `update_host_skill`, `sync_install`, `install_skill`, `remove_install`, `switch_install_mode`, `change_skill_host_folder`, `scan_global_skills`. |
 | `target_type` | text | no | Target object type của operation, ví dụ `project`, `skill`, `install`, `skill_host_folder`. |
 | `target_id` | integer | yes | ID của target. Polymorphic FK, validate ở app layer. |
 | `status` | text | no | Operation status. Allowed: `queued`, `running`, `success`, `failed`, `cancelled`, `partial`. |
