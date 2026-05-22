@@ -107,4 +107,5 @@ Xem thêm:
 - [04 User Flows](docs/04-user-flows.md)
 - [05 Edge Cases And UX States](docs/05-edge-cases-and-ux-states.md)
 - [06 Data Model](docs/06-data-model.md)
+- [07 Schema Dictionary](docs/07-schema-dictionary.md)
 - [Data Model Review Prompt](docs/review-prompts/data-model-review.md)

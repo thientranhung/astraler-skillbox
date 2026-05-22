@@ -45,6 +45,13 @@ failure, provider mismatch, và cách UI nên phản hồi.
 Đọc để hiểu các entity SQLite cấp cao, relationship, status enum, và mapping từ
 user flows/edge cases sang metadata mà app cần lưu.
 
+## 7. Schema Dictionary
+
+[07-schema-dictionary.md](07-schema-dictionary.md)
+
+Đọc để hiểu chi tiết từng table/field: type dự kiến, nullable, enum, và ý nghĩa
+nghiệp vụ của từng cột.
+
 ## Review Prompts
 
 [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
@@ -63,6 +70,7 @@ README.md
   -> docs/04-user-flows.md
   -> docs/05-edge-cases-and-ux-states.md
   -> docs/06-data-model.md
+  -> docs/07-schema-dictionary.md
 ```
 
 ## Current Source Of Truth
@@ -73,4 +81,5 @@ README.md
 - Detailed user flows: [04-user-flows.md](04-user-flows.md)
 - Edge cases and UX states: [05-edge-cases-and-ux-states.md](05-edge-cases-and-ux-states.md)
 - SQLite metadata model: [06-data-model.md](06-data-model.md)
+- Schema dictionary: [07-schema-dictionary.md](07-schema-dictionary.md)
 - Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
