@@ -109,5 +109,6 @@ Xem thêm:
 - [06 Data Model](docs/06-data-model.md)
 - [07 Schema Dictionary](docs/07-schema-dictionary.md)
 - [08 Provider Model](docs/08-provider-model.md)
+- [09 UI Wireframes](docs/09-ui-wireframes.md)
 - [Data Model Review Prompt](docs/review-prompts/data-model-review.md)
 - [Provider Model Review Prompt](docs/review-prompts/provider-model-review.md)

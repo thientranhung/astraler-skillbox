@@ -59,6 +59,14 @@ nghiệp vụ của từng cột.
 Đọc để hiểu provider adapter, path candidates, provider detection, install target
 resolution, provider UI state, và hướng Phase 2 conversion.
 
+## 9. UI Wireframes
+
+[09-ui-wireframes.md](09-ui-wireframes.md)
+
+Đọc để hiểu text wireframes cho Dashboard, Skills Library, Projects, Project
+Detail, Add Skill flow, Updates, Settings, empty states, warnings, confirmations,
+và impact previews.
+
 ## Review Prompts
 
 [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
@@ -84,6 +92,7 @@ README.md
   -> docs/06-data-model.md
   -> docs/07-schema-dictionary.md
   -> docs/08-provider-model.md
+  -> docs/09-ui-wireframes.md
 ```
 
 ## Current Source Of Truth
@@ -96,5 +105,6 @@ README.md
 - SQLite metadata model: [06-data-model.md](06-data-model.md)
 - Schema dictionary: [07-schema-dictionary.md](07-schema-dictionary.md)
 - Provider model: [08-provider-model.md](08-provider-model.md)
+- UI wireframes: [09-ui-wireframes.md](09-ui-wireframes.md)
 - Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
 - Provider model review prompt: [review-prompts/provider-model-review.md](review-prompts/provider-model-review.md)
