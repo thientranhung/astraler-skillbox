@@ -32,9 +32,10 @@ Responsibilities:
 - Resolve skill install path.
 - Scan installed skills trong provider scope.
 - Classify install state.
-- Tạo provider folder structure nếu adapter được phép.
+- Báo provider folder structure có thể tạo được không.
 - Báo unsupported/invalid/missing state.
 - Cung cấp metadata cho UI như display name, icon, support status.
+- Detect skill format trong provider scope khi Phase 2 conversion bắt đầu.
 
 Adapter không nên tự quyết định product policy như update/sync strategy. Những
 policy đó thuộc core Skillbox logic.
@@ -71,8 +72,13 @@ disabled
   an toàn.
 - `disabled`: provider bị tắt trong config hoặc chưa bật cho user.
 
-`can_create_structure` cho biết adapter có thể scaffold folder/path cần thiết
-hay chỉ được dùng khi structure đã tồn tại.
+`can_create_structure` cho biết provider có thể được core Skillbox logic
+scaffold folder/path cần thiết hay chỉ được dùng khi structure đã tồn tại.
+
+`key` là stable identifier để lưu config, seed data, và external references.
+`provider_type` là enum/category để app dispatch adapter implementation. Hai giá
+trị này có thể giống nhau ở provider built-in, nhưng không bắt buộc giống nhau
+với custom provider sau này.
 
 ## Provider Path Candidates
 
@@ -107,13 +113,17 @@ config
 Resolution rules:
 
 - Adapter resolve candidate path từ project root.
-- Candidate có priority cao hơn được xét trước.
+- Priority thấp hơn thắng. Adapter kiểm tra `priority = 1` trước `priority = 10`.
 - `project_providers.detected_path` nên lấy từ candidate `purpose = detect` phù
   hợp nhất và tồn tại trên disk.
 - `project_providers.skills_path` nên lấy từ candidate `purpose = skills` đã
   resolve cho provider đó.
-- Nếu provider có nhiều skills path hợp lệ, adapter phải chọn một path chính
-  hoặc báo state cần user chọn, tùy product decision sau này.
+- Nếu nhiều candidate cùng purpose cùng tồn tại, adapter chọn candidate có
+  priority thấp nhất.
+- Nếu nhiều candidate cùng purpose có cùng priority, adapter chọn theo thứ tự
+  path alphabet để Phase 1 không cần thêm UI chọn path.
+- `commands` và `config` được giữ để chuẩn bị cho future phases. Phase 1 adapter
+  chỉ bắt buộc cần `detect` và `skills`.
 
 ## Project Provider
 
@@ -154,13 +164,17 @@ format_unknown
 - `invalid_structure`: path tồn tại nhưng cấu trúc không đúng expectation.
 - `format_unknown`: structure tồn tại nhưng format bên trong chưa đọc được.
 
+`configured` là future/manual setup state. Phase 1 chưa cần flow riêng để user
+manually configure provider target; nếu chưa làm UI này thì adapter không nên tự
+set `configured` tùy tiện.
+
 ## Detection Flow
 
 Flow:
 
 ```text
 Project scan bắt đầu
-  -> Load provider_definitions đang enabled/supported/experimental
+  -> Load provider_definitions có status khác disabled
   -> Với mỗi provider, load provider_path_candidates
   -> Resolve candidate paths từ project root
   -> Kiểm tra candidate detect paths
@@ -181,6 +195,13 @@ warnings.code = no_provider_detected
 Provider absence không phải lỗi blocking. User có thể chọn setup provider nếu
 adapter hỗ trợ `can_create_structure`.
 
+Detection được phép nhận diện `unsupported` providers để UI báo rõ cho user.
+Install target resolution mới là nơi chặn write vào provider chưa support.
+
+Khi rescan thấy provider path cũ đã missing, `project_providers.detection_status`
+nên chuyển thành `missing`, và các installs thuộc provider đó nên được đánh dấu
+`install_status = missing` cho tới khi user relink/rescan được path mới.
+
 ## Install Target Resolution
 
 Khi user cài skill vào project:
@@ -200,6 +221,7 @@ Provider target hợp lệ khi:
 - `project_providers.detection_status` là `detected` hoặc `configured`.
 - `provider_definitions.status` là `supported` hoặc `experimental`.
 - `skills_path` resolve được.
+- `skills_path` nằm trong project root sau khi canonicalize/normalize path.
 - Nếu skills path chưa tồn tại, adapter phải có `can_create_structure = 1` mới
   được scaffold.
 
@@ -239,9 +261,15 @@ Rule:
 - Nếu symlink trỏ vào Skill Host Folder cũ, status là `old_host`.
 - Nếu symlink trỏ ngoài Skill Host Folder, status là `external_symlink`.
 - Nếu symlink target không tồn tại, status là `broken_symlink`.
-- Nếu entry là folder thường có Skillbox metadata, mode là `rsync_copy`.
+- Nếu entry là folder thường và có `installs` DB record cho path đó với
+  `install_mode = rsync_copy`, mode là `rsync_copy`.
 - Nếu entry là folder thường không có Skillbox metadata, mode là `direct`.
 - Nếu entry không phân loại an toàn được, status là `error`.
+
+Phase 1 chọn DB record làm Skillbox metadata cho rsync/copy detection, không
+ghi marker file vào project folder. Nếu database bị mất và app scan lại từ đầu,
+các rsync/copy installs cũ có thể bị phân loại thành `direct`; user cần sync lại
+bằng Skillbox nếu muốn đưa chúng về managed state.
 
 ## Initial Provider Assumptions
 
@@ -286,6 +314,8 @@ can_create_structure = false
 ```
 
 Path candidates should be finalized after provider convention research.
+Không implement Claude scan/install cho tới khi convention này được xác minh từ
+documentation hoặc local provider behavior.
 
 ### Codex
 
@@ -343,6 +373,10 @@ Provider UI nên hiển thị:
 Trong Project Detail, installed skills nên được group hoặc filter theo provider.
 Không nên gộp các skill trùng tên ở nhiều provider thành một row mơ hồ.
 
+Provider `experimental` nên hiển thị badge/tooltip nhẹ để user biết adapter có
+thể thay đổi. Provider `disabled` nên ẩn khỏi install target list, nhưng có thể
+hiện trong Settings để user bật lại nếu app support provider toggles.
+
 ## Unsupported Provider Policy
 
 Nếu scan phát hiện dấu hiệu provider chưa support:
@@ -365,6 +399,11 @@ UI nên:
 Provider adapter nên trả về structured result, không tự mutate database trực
 tiếp.
 
+Adapter cũng không tự thực hiện filesystem writes. Các thao tác như `mkdir`,
+symlink creation, rsync/copy, delete, relink đều do core Skillbox logic thực
+hiện sau khi adapter trả về path và capability metadata. Điều này giúp adapter
+dễ test và giảm rủi ro ghi nhầm vào project.
+
 Ví dụ adapter output:
 
 ```text
@@ -376,12 +415,34 @@ warnings
 entries
 ```
 
+Minimum output contract:
+
+```text
+provider_key: text
+detected_path: absolute path | null
+skills_path: absolute path | null
+detection_status: detected | configured | missing | unsupported | invalid_structure | format_unknown
+warnings: list of {
+  code: text
+  severity: info | warning | error | blocking
+  message: text
+  action_key: text | null
+}
+entries: list of {
+  name: text
+  path: absolute path
+  entry_type: symlink | directory | unknown
+  symlink_target: path | null
+}
+```
+
 Core Skillbox logic chịu trách nhiệm:
 
 - Ghi `project_providers`.
 - Ghi `installs`.
 - Ghi `warnings`.
 - Chạy install/sync/remove.
+- Thực hiện filesystem writes sau khi validate output của adapter.
 
 Boundary này giúp adapter testable và tránh database logic bị phân tán.
 
