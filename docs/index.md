@@ -67,6 +67,14 @@ resolution, provider UI state, và hướng Phase 2 conversion.
 Detail, Add Skill flow, Updates, Settings, empty states, warnings, confirmations,
 và impact previews.
 
+## 10. Technical Architecture
+
+[10-technical-architecture.md](10-technical-architecture.md)
+
+Đọc để hiểu architecture boundary giữa UI, application services, domain logic,
+SQLite repositories, filesystem gateway, provider adapters, source integrations,
+operation runner, và testing strategy.
+
 ## Review Prompts
 
 [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
@@ -101,6 +109,7 @@ README.md
   -> docs/07-schema-dictionary.md
   -> docs/08-provider-model.md
   -> docs/09-ui-wireframes.md
+  -> docs/10-technical-architecture.md
 ```
 
 ## Current Source Of Truth
@@ -114,6 +123,7 @@ README.md
 - Schema dictionary: [07-schema-dictionary.md](07-schema-dictionary.md)
 - Provider model: [08-provider-model.md](08-provider-model.md)
 - UI wireframes: [09-ui-wireframes.md](09-ui-wireframes.md)
+- Technical architecture: [10-technical-architecture.md](10-technical-architecture.md)
 - Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
 - Provider model review prompt: [review-prompts/provider-model-review.md](review-prompts/provider-model-review.md)
 - Global Skills layer review prompt: [review-prompts/global-skills-layer-review.md](review-prompts/global-skills-layer-review.md)

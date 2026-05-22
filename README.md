@@ -115,6 +115,7 @@ Xem thêm:
 - [07 Schema Dictionary](docs/07-schema-dictionary.md)
 - [08 Provider Model](docs/08-provider-model.md)
 - [09 UI Wireframes](docs/09-ui-wireframes.md)
+- [10 Technical Architecture](docs/10-technical-architecture.md)
 - [Data Model Review Prompt](docs/review-prompts/data-model-review.md)
 - [Provider Model Review Prompt](docs/review-prompts/provider-model-review.md)
 - [Global Skills Layer Review Prompt](docs/review-prompts/global-skills-layer-review.md)
