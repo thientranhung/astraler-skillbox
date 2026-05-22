@@ -110,3 +110,4 @@ Xem thêm:
 - [07 Schema Dictionary](docs/07-schema-dictionary.md)
 - [08 Provider Model](docs/08-provider-model.md)
 - [Data Model Review Prompt](docs/review-prompts/data-model-review.md)
+- [Provider Model Review Prompt](docs/review-prompts/provider-model-review.md)

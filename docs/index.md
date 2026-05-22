@@ -66,6 +66,11 @@ resolution, provider UI state, và hướng Phase 2 conversion.
 Prompt dùng để nhờ agent/chuyên gia khác review chéo data model. Kết quả review
 nên được ghi vào `docs/review-results/data-model-review.md`.
 
+[review-prompts/provider-model-review.md](review-prompts/provider-model-review.md)
+
+Prompt dùng để nhờ agent/chuyên gia khác review chéo provider model. Kết quả
+review nên được ghi vào `docs/review-results/provider-model-review.md`.
+
 ## Suggested Reading Flow
 
 ```text
@@ -92,3 +97,4 @@ README.md
 - Schema dictionary: [07-schema-dictionary.md](07-schema-dictionary.md)
 - Provider model: [08-provider-model.md](08-provider-model.md)
 - Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
+- Provider model review prompt: [review-prompts/provider-model-review.md](review-prompts/provider-model-review.md)
