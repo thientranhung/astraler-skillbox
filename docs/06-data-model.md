@@ -402,6 +402,10 @@ Notes:
 - Một project có thể có nhiều provider.
 - Add Skill flow dùng bảng này để chọn provider target.
 - `skills_path` là nơi install skill vào provider đó.
+- Khi scan provider, `detected_path` nên lấy từ candidate `purpose = detect`
+  có priority cao nhất và tồn tại trên disk.
+- `skills_path` nên lấy từ candidate `purpose = skills` đã resolve cho provider
+  đó.
 
 ## 10. installs
 
@@ -463,12 +467,17 @@ Notes:
 - `source_skill_path` là path trong Skill Host Folder nếu managed.
 - `install_mode` chỉ lưu cơ chế quản lý/install intent, không lưu detected
   filesystem anomaly.
+- Khi scan thấy một symlink trên disk, `install_mode = symlink` bất kể symlink
+  đó do Skillbox tạo hay do user tạo thủ công. `install_status` phân biệt trạng
+  thái managed/current, old host, broken, hoặc external symlink.
 - `symlink_target_path` giúp phân biệt valid symlink, old host,
   external_symlink, và broken_symlink trong `install_status`.
 - `installed_checksum` hữu ích cho rsync/copy outdated detection.
 - Phase 1 dùng hard delete cho install khi user remove skill bằng Skillbox.
 - `missing` đại diện cho install record còn trong database nhưng filesystem đã
   bị sửa/xóa ngoài app.
+- `error` là catch-all cho filesystem entry không thể phân loại an toàn trong
+  quá trình scan.
 
 ## 11. fetch_results
 
@@ -511,6 +520,8 @@ Notes:
   denormalized `skill_id`, nhưng không nên coi nó là FK độc lập.
 - `raw_metadata_json` giúp debug mà không cần schema hóa mọi field provider
   ngay từ đầu.
+- Phase 1 nên giới hạn retention, ví dụ chỉ giữ N fetch results gần nhất theo
+  `source_id`, để tránh bảng này tăng không giới hạn.
 
 ## 12. scan_results
 
@@ -695,6 +706,9 @@ app_settings.active_skill_host_folder_id
 
 skill_host_folders.id
   -> skills.skill_host_folder_id
+
+skill_host_folders.id
+  -> installs.installed_from_host_folder_id
 
 skill_sources.id
   -> skills.source_id
@@ -993,6 +1007,7 @@ Represented by:
 ```text
 fetch_results.status = failed | auth_required | not_found | network_error
 warnings.code = fetch_failed
+warnings.scope_type = source
 ```
 
 ### Unsupported Provider
