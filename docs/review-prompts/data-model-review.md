@@ -29,6 +29,7 @@ Focus on whether the data model supports:
 
 - GUI-first product behavior.
 - A user-configured Skill Host Folder.
+- Provider global-level skills/config separate from project-level installs.
 - Skill sources from GitHub, Vercel skills, local, and manual sources.
 - Multiple projects.
 - Multiple provider conventions per project.
@@ -109,21 +110,23 @@ For each user flow, say whether the data model supports it:
 1. First-Time Setup
 2. Add Project
 3. Scan Project
-4. Install Skill To Project
-5. Fetch Skill Updates
-6. Update Skill Host Folder
-7. Sync Rsync / Copy Project
-8. Switch Install Mode
-9. Remove Skill From Project
-10. Add Skill To Skill Host Folder
-11. Change Skill Host Folder
-12. App Startup
+4. Scan Global Skills
+5. Install Skill To Project
+6. Fetch Skill Updates
+7. Update Skill Host Folder
+8. Sync Rsync / Copy Project
+9. Switch Install Mode
+10. Remove Skill From Project
+11. Add Skill To Skill Host Folder
+12. Change Skill Host Folder
+13. App Startup
 
 ## Edge Case Coverage
 
 Summarize whether the model covers:
 
 - Skill Host Folder states
+- Global Skill states
 - Project states
 - Install states
 - Fetch and update states

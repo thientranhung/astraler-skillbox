@@ -75,7 +75,29 @@ Kết quả:
 - Project Detail phản ánh trạng thái hiện tại trên filesystem.
 - Các thay đổi ngoài app được đưa vào database.
 
-## 4. Install Skill To Project
+## 4. Scan Global Skills
+
+Mục tiêu: biết provider global level trên máy đang có skill/config nào.
+
+Flow:
+
+```text
+User mở Global Skills
+  -> User chọn Scan Global
+  -> Skillbox đọc global provider locations đã biết/cấu hình
+  -> Skillbox phát hiện global skills/entries
+  -> Skillbox phân loại mode/status
+  -> Skillbox cập nhật database
+  -> UI hiển thị global skill state theo provider
+```
+
+Kết quả:
+
+- User biết provider global level đang có skill nào.
+- App phân biệt global skill với project-level skill.
+- Warning được tạo nếu global entry missing, broken, external, hoặc unmanaged.
+
+## 5. Install Skill To Project
 
 Mục tiêu: cài một skill từ Skill Host Folder vào project.
 
@@ -98,7 +120,7 @@ Kết quả:
 - Skill xuất hiện trong project provider folder.
 - Database ghi nhận project, provider, skill, install mode, và source path.
 
-## 5. Fetch Skill Updates
+## 6. Fetch Skill Updates
 
 Mục tiêu: kiểm tra upstream để biết skill nào có bản mới.
 
@@ -118,7 +140,7 @@ Kết quả:
 - User biết skill nào có bản mới.
 - UI có thể hiển thị affected projects cho từng skill.
 
-## 6. Update Skill Host Folder
+## 7. Update Skill Host Folder
 
 Mục tiêu: cập nhật bản skill trong Skill Host Folder từ upstream.
 
@@ -140,7 +162,7 @@ Kết quả:
 - Project dùng `symlink` nhận thay đổi ngay.
 - Project dùng `rsync/copy` được đánh dấu cần sync nếu có khác biệt.
 
-## 7. Sync Rsync / Copy Project
+## 8. Sync Rsync / Copy Project
 
 Mục tiêu: cập nhật project đang dùng snapshot copy từ Skill Host Folder.
 
@@ -159,7 +181,7 @@ Kết quả:
 - Project dùng bản copy mới nhất từ Skill Host Folder.
 - Install mode vẫn là `rsync/copy`.
 
-## 8. Switch Install Mode
+## 9. Switch Install Mode
 
 Mục tiêu: đổi cơ chế cài skill trong project.
 
@@ -180,7 +202,7 @@ Kết quả:
 - Skill trong project chuyển sang install mode mới.
 - Database phản ánh mode mới.
 
-## 9. Remove Skill From Project
+## 10. Remove Skill From Project
 
 Mục tiêu: gỡ skill khỏi một project/provider.
 
@@ -201,7 +223,7 @@ Kết quả:
 - Skill không còn được cài trong project/provider đó.
 - Skill gốc trong Skill Host Folder không bị ảnh hưởng.
 
-## 10. Add Skill To Skill Host Folder
+## 11. Add Skill To Skill Host Folder
 
 Mục tiêu: đưa một skill mới vào source of truth.
 
@@ -221,7 +243,7 @@ Kết quả:
 - Skill mới xuất hiện trong Skills Library.
 - Skill có thể được cài sang project bằng symlink hoặc rsync/copy.
 
-## 11. Change Skill Host Folder
+## 12. Change Skill Host Folder
 
 Mục tiêu: đổi source of truth sang folder khác.
 
@@ -242,7 +264,7 @@ Kết quả:
 - Skillbox dùng Skill Host Folder mới làm source of truth.
 - Project đang symlink tới folder cũ có thể cần được relink nếu user muốn.
 
-## 12. App Startup
+## 13. App Startup
 
 Mục tiêu: khi mở app, Skillbox phản ánh trạng thái hệ thống đủ tin cậy.
 
@@ -252,6 +274,7 @@ Flow:
 User mở Skillbox
   -> Skillbox load database
   -> Skillbox kiểm tra Skill Host Folder còn tồn tại không
+  -> Skillbox kiểm tra global provider locations nếu đã cấu hình
   -> Skillbox kiểm tra các project path còn tồn tại không
   -> Skillbox hiển thị Dashboard
   -> Nếu có missing path, UI hiển thị warning
@@ -260,4 +283,5 @@ User mở Skillbox
 Kết quả:
 
 - User thấy trạng thái tổng quan ngay khi mở app.
-- Missing Skill Host Folder hoặc project path được báo rõ trong UI.
+- Missing Skill Host Folder, global provider location, hoặc project path được
+  báo rõ trong UI.

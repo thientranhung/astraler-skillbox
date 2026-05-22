@@ -28,7 +28,9 @@ Provider adapter là lớp biết cách làm việc với một provider cụ th
 Responsibilities:
 
 - Detect provider trong project.
+- Detect provider global location nếu provider có global level.
 - Resolve provider paths từ project root.
+- Resolve provider global paths từ user/machine conventions nếu có.
 - Resolve skill install path.
 - Scan installed skills trong provider scope.
 - Classify install state.
@@ -168,6 +170,22 @@ format_unknown
 manually configure provider target; nếu chưa làm UI này thì adapter không nên tự
 set `configured` tùy tiện.
 
+## Global Provider Location
+
+Global provider location là provider scope ở cấp user/máy, không thuộc một
+project cụ thể.
+
+Provider adapter có thể hỗ trợ global scan nếu provider có global convention.
+Kết quả scan được ghi vào `global_provider_locations` và `global_installs`.
+
+Global detection không được gộp với project detection:
+
+- Project provider scope ghi vào `project_providers`.
+- Global provider scope ghi vào `global_provider_locations`.
+
+UI phải hiển thị global entries riêng trong Global Skills để user biết global
+skill nào có thể ảnh hưởng nhiều project.
+
 ## Detection Flow
 
 Flow:
@@ -201,6 +219,23 @@ Install target resolution mới là nơi chặn write vào provider chưa suppor
 Khi rescan thấy provider path cũ đã missing, `project_providers.detection_status`
 nên chuyển thành `missing`, và các installs thuộc provider đó nên được đánh dấu
 `install_status = missing` cho tới khi user relink/rescan được path mới.
+
+## Global Detection Flow
+
+Flow:
+
+```text
+Global scan bắt đầu
+  -> Load provider_definitions có global support hoặc configured global paths
+  -> Resolve global provider locations
+  -> Scan global skills_path nếu có
+  -> Tạo/cập nhật global_provider_locations
+  -> Tạo/cập nhật global_installs
+  -> Ghi warnings nếu missing/unreadable/unmanaged/overlap
+```
+
+Global scan phải giữ scope riêng với project scan. Một global entry không được
+tự động coi là project install.
 
 ## Install Target Resolution
 

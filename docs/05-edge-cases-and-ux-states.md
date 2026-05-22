@@ -146,7 +146,76 @@ UI nên:
 - Hiển thị theo provider scope, không gộp mù.
 - Trong Project Detail, skill row nên thể hiện provider rõ ràng.
 
-## 3. Install States
+## 3. Global Skill States
+
+### Chưa cấu hình global provider location
+
+Tình huống:
+
+- Provider có global level nhưng Skillbox chưa biết path global của provider đó.
+
+UI nên:
+
+- Hiển thị provider global state là `not configured`.
+- Cho user configure path nếu provider adapter support global location.
+
+### Global provider location không tồn tại
+
+Tình huống:
+
+- Global path từng tồn tại nhưng bị move, unmount, hoặc xóa.
+
+UI nên:
+
+- Hiển thị warning trong Dashboard và Global Skills.
+- Cho user update path, rescan, hoặc disable location.
+
+### Global provider location tồn tại nhưng rỗng
+
+Tình huống:
+
+- Provider global folder tồn tại nhưng không có skill/global entries.
+
+UI nên:
+
+- Hiển thị empty state theo provider.
+- Không coi đây là lỗi.
+
+### Global skill unmanaged/direct
+
+Tình huống:
+
+- Global entry tồn tại nhưng không do Skillbox quản lý.
+
+UI nên:
+
+- Phân loại là `direct`.
+- Hiển thị rõ đây là global-level entry.
+- Không tự remove hoặc relink.
+
+### Global skill trùng với project-level skill
+
+Tình huống:
+
+- Cùng skill name tồn tại ở global level và project-level.
+
+UI nên:
+
+- Hiển thị warning/informational state để user biết có thể có chồng chéo.
+- Không tự quyết định precedence vì provider behavior có thể khác nhau.
+
+### Global symlink bị broken hoặc external
+
+Tình huống:
+
+- Global entry là symlink hỏng hoặc trỏ ngoài Skill Host Folder.
+
+UI nên:
+
+- Phân loại tương tự project install: `broken_symlink` hoặc `external_symlink`.
+- Cho user relink, remove, hoặc leave as-is.
+
+## 4. Install States
 
 ### Symlink hợp lệ
 
@@ -251,7 +320,7 @@ UI nên:
 - Không partial-update metadata nếu filesystem operation fail.
 - Hiển thị lỗi và giữ trạng thái cũ.
 
-## 4. Fetch And Update States
+## 5. Fetch And Update States
 
 ### Skill không có source metadata
 
@@ -355,7 +424,7 @@ UI nên:
 - Hiển thị các project cần sync.
 - Cho sync từng project hoặc sync batch.
 
-## 5. Provider States
+## 6. Provider States
 
 ### Provider được nhận diện rõ
 
@@ -401,7 +470,7 @@ UI nên:
 - Tách provider scope rõ.
 - Add Skill flow phải chọn provider target.
 
-## 6. Database And App State
+## 7. Database And App State
 
 ### Database chưa tồn tại
 
@@ -460,7 +529,7 @@ UI nên:
 - Chạy migration trước khi mở app chính.
 - Nếu migration fail, hiển thị lỗi rõ và không ghi tiếp dữ liệu mới.
 
-## 7. UI/UX States
+## 8. UI/UX States
 
 ### Empty state
 
@@ -469,6 +538,7 @@ UI nên:
 - Chưa có Skill Host Folder.
 - Skill Host Folder rỗng.
 - Chưa có project.
+- Chưa có global skills.
 - Project chưa có skill.
 
 UI nên:

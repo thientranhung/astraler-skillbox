@@ -23,6 +23,7 @@ Layout đề xuất:
 ├───────────────┬─────────────────────────────────────────────┤
 │ Dashboard     │                                             │
 │ Skills        │ Main content                                │
+│ Global Skills │                                             │
 │ Projects      │                                             │
 │ Updates       │                                             │
 │ Settings      │                                             │
@@ -33,6 +34,7 @@ Sidebar items:
 
 - Dashboard
 - Skills Library
+- Global Skills
 - Projects
 - Updates
 - Settings
@@ -59,6 +61,7 @@ Skill Host Folder
 
 Summary
   Skills: 42
+  Global skills: 6
   Projects: 12
   Updates available: 3
   Warnings: 2
@@ -86,6 +89,7 @@ Primary actions:
 - Scan Skill Host Folder.
 - Add Project.
 - Fetch All.
+- Scan Global.
 
 ## Skills Library
 
@@ -151,6 +155,11 @@ Projects Using This Skill
   project-a            Generic Agents    symlink     current
   project-b            Claude            rsync/copy  needs sync
   project-c            Generic Agents    direct      current
+
+Global Usage
+  Provider          Location               Mode        Status
+  Generic Agents    User Global            direct      current
+  Claude            Claude Global          symlink     external symlink
 ```
 
 Warnings:
@@ -158,6 +167,45 @@ Warnings:
 - Source not fetchable.
 - Local modifications need review.
 - Host path missing/unreadable.
+
+## Global Skills
+
+Purpose: xem skill/config ở provider global level trên máy.
+
+Wireframe:
+
+```text
+Global Skills
+
+[Scan Global] [Open Selected Folder]
+
+Global Locations
+  Provider          Path                         Status          Entries
+  Generic Agents    ~/.agents/skills             active          4
+  Claude            ~/.claude/...                not configured  0
+
+Global Entries
+  Provider          Skill/Entry             Mode        Status             Actions
+  Generic Agents    research-writer         direct      current            [Open]
+  Generic Agents    adr-helper              symlink     current            [Relink] [Remove]
+  Claude            old-command             symlink     broken symlink     [Relink] [Remove]
+```
+
+Warnings:
+
+```text
+[info] Global skill also exists in 3 projects.
+[warning] Broken global symlink. [Relink] [Remove]
+[warning] Global provider location missing. [Update Path] [Disable]
+```
+
+Rules:
+
+- Global entries are never merged with project installs.
+- Global direct entries are shown as unmanaged/direct.
+- Removing a global entry never removes the Skill Host Folder source.
+- Global/project overlap is informational unless provider behavior makes it
+  blocking later.
 
 ## Projects
 
@@ -331,6 +379,11 @@ Providers
   opencode          experimental    yes                opencode
   Antigravity CLI   experimental    yes                antigravity
 
+Global Provider Locations
+  Provider          Path                         Status          Actions
+  Generic Agents    ~/.agents/skills             active          [Change] [Scan]
+  Claude            -                            not configured  [Configure]
+
 Credentials
   GitHub            active          [Validate] [Change]
   Vercel            missing         [Configure]
@@ -368,6 +421,13 @@ No skills found in this Skill Host Folder.
 ```text
 No projects added yet.
 [Add Project]
+```
+
+### No Global Skills
+
+```text
+No global skills found.
+[Scan Global] [Configure Global Location]
 ```
 
 ### No Provider Detected
@@ -471,6 +531,7 @@ Direct installs unaffected:
 - Dashboard should be driven by aggregate queries over `skills`, `projects`,
   `installs`, `warnings`, and `fetch_results`.
 - Project Detail should be scoped by `project_providers`.
+- Global Skills should be scoped by `global_provider_locations`.
 - Updates view should use latest `fetch_results` per `source_id`.
 - Warnings should use `action_key` for quick actions.
 - Operations should drive loading/progress state.

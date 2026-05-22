@@ -17,6 +17,7 @@ Skillbox = local-first control center cho agent skills
 Skillbox giúp người dùng:
 
 - Quản lý một Skill Host Folder làm source of truth cho skill trên máy.
+- Xem provider global skills/config để phân biệt global level và project level.
 - Add project vào app và scan skill/provider trong project đó.
 - Cài skill từ Skill Host Folder vào project bằng symlink hoặc rsync/copy.
 - Xem project nào đang dùng skill nào và theo cơ chế nào.
@@ -35,6 +36,9 @@ Skill Host Folder
 
 Projects
   Các project được add vào Skillbox
+
+Global Skills
+  Provider global-level skills/config đang tồn tại trên máy
 
 Provider Adapters
   Mapping provider -> folder/path/convention

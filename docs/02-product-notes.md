@@ -23,13 +23,15 @@ Skill Host Folder
   Folder do user chọn trong GUI để làm source of truth chứa skill trên máy.
 
 Skillbox GUI
-  Giao diện chính để quản trị skill, project, provider, install, update.
+  Giao diện chính để quản trị skill, global skills, project, provider, install,
+  update.
 
 Provider Adapters
   Mapping provider sang folder/path/convention tương ứng.
 
 SQLite Database
-  Lưu metadata quản trị như projects, skills, installs, sources, fetch results.
+  Lưu metadata quản trị như projects, skills, global installs, project installs,
+  sources, fetch results.
 
 CLI
   Interface phụ, phát triển sau.

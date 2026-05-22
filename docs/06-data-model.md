@@ -10,8 +10,9 @@ cho metadata quản trị.
 ## Design Principles
 
 - Skill content nằm trong Skill Host Folder, không nằm trong database.
-- Database lưu metadata để UI biết skill, source, project, provider, install,
-  scan, fetch, update, sync, và warning state.
+- Database lưu metadata để UI biết skill, source, global provider location,
+  project, provider, global install, project install, scan, fetch, update, sync,
+  và warning state.
 - Filesystem là trạng thái thật khi scan project hoặc Skill Host Folder.
 - Scan có quyền reconcile database với filesystem.
 - Mọi path lưu trong database nên là absolute path để UI/scan ổn định.
@@ -30,7 +31,9 @@ projects
 provider_definitions
 provider_path_candidates
 project_providers
+global_provider_locations
 installs
+global_installs
 fetch_results
 scan_results
 warnings
@@ -403,11 +406,51 @@ Notes:
 - Add Skill flow dùng bảng này để chọn provider target.
 - `skills_path` là nơi install skill vào provider đó.
 - Khi scan provider, `detected_path` nên lấy từ candidate `purpose = detect`
-  có priority cao nhất và tồn tại trên disk.
+  có priority thấp nhất và tồn tại trên disk.
 - `skills_path` nên lấy từ candidate `purpose = skills` đã resolve cho provider
   đó.
 
-## 10. installs
+## 10. global_provider_locations
+
+Lưu provider global locations ở cấp user/máy.
+
+Fields đề xuất:
+
+```text
+id
+provider_definition_id
+name
+path
+skills_path
+status
+last_scanned_at
+created_at
+updated_at
+```
+
+Status:
+
+```text
+active
+not_configured
+missing
+unreadable
+invalid_structure
+empty
+disabled
+```
+
+Notes:
+
+- `path` là absolute path tới global provider root hoặc global convention path.
+  Nullable khi `status = not_configured`.
+- `skills_path` là absolute path nơi provider global level nhận skill/global
+  entries nếu có.
+- Global locations không thuộc project nào.
+- Provider adapter chịu trách nhiệm resolve/cấu hình candidate global paths,
+  core Skillbox logic chịu trách nhiệm scan/write nếu được phép.
+
+## 11. installs
 
 Lưu việc một skill được cài vào một project/provider.
 
@@ -479,7 +522,63 @@ Notes:
 - `error` là catch-all cho filesystem entry không thể phân loại an toàn trong
   quá trình scan.
 
-## 11. fetch_results
+## 12. global_installs
+
+Lưu skill/global entry tồn tại trong provider global location.
+
+Fields đề xuất:
+
+```text
+id
+global_provider_location_id
+skill_id
+skill_name
+install_mode
+install_status
+global_skill_path
+source_skill_path
+symlink_target_path
+installed_from_host_folder_id
+installed_version
+installed_commit
+installed_checksum
+last_synced_at
+last_scanned_at
+created_at
+updated_at
+```
+
+Install mode:
+
+```text
+symlink
+rsync_copy
+direct
+```
+
+Install status:
+
+```text
+current
+outdated
+missing
+broken_symlink
+old_host
+external_symlink
+conflict
+needs_sync
+error
+```
+
+Notes:
+
+- Global installs dùng cùng semantics với project installs, nhưng scope là
+  provider global level.
+- `skill_id` nullable cho direct/unmanaged global entries.
+- Global install cần UI phân biệt rõ với project-level install để tránh nhầm
+  lẫn global contamination với project-specific behavior.
+
+## 13. fetch_results
 
 Lưu kết quả fetch upstream cho skill/source.
 
@@ -523,7 +622,7 @@ Notes:
 - Phase 1 nên giới hạn retention, ví dụ chỉ giữ N fetch results gần nhất theo
   `source_id`, để tránh bảng này tăng không giới hạn.
 
-## 12. scan_results
+## 14. scan_results
 
 Lưu kết quả scan gần nhất cho Skill Host Folder hoặc project.
 
@@ -547,6 +646,7 @@ Target type:
 skill_host_folder
 project
 project_provider
+global_provider_location
 ```
 
 Status:
@@ -567,7 +667,7 @@ Notes:
   vào `operations.metadata_json`. Tài liệu giữ entity này để làm rõ dữ liệu scan
   cần có.
 
-## 13. warnings
+## 15. warnings
 
 Lưu warning/recoverable error để Dashboard, Projects, và Project Detail hiển thị
 nhất quán.
@@ -598,6 +698,8 @@ skill
 project
 project_provider
 install
+global_provider_location
+global_install
 source
 database
 ```
@@ -648,7 +750,7 @@ Notes:
 - Phase 1 nên ưu tiên regenerate active warnings sau scan thay vì giữ warning
   history dài hạn.
 
-## 14. operations
+## 16. operations
 
 Lưu các operation dài hoặc quan trọng như scan, fetch, update, sync, install,
 remove, switch mode.
@@ -680,6 +782,7 @@ install_skill
 remove_install
 switch_install_mode
 change_skill_host_folder
+scan_global_skills
 ```
 
 Status:
@@ -722,11 +825,23 @@ provider_definitions.id
 provider_definitions.id
   -> provider_path_candidates.provider_definition_id
 
+provider_definitions.id
+  -> global_provider_locations.provider_definition_id
+
 project_providers.id
   -> installs.project_provider_id
 
 skills.id
   -> installs.skill_id
+
+global_provider_locations.id
+  -> global_installs.global_provider_location_id
+
+skills.id
+  -> global_installs.skill_id
+
+skill_host_folders.id
+  -> global_installs.installed_from_host_folder_id
 
 skill_sources.id
   -> fetch_results.source_id
@@ -743,6 +858,7 @@ Needs:
 
 - Active Skill Host Folder status.
 - Count skills.
+- Count global installs.
 - Count projects.
 - Count installs by mode.
 - Count warnings by severity.
@@ -756,6 +872,8 @@ skill_host_folders
 skills
 projects
 installs
+global_provider_locations
+global_installs
 fetch_results
 warnings
 ```
@@ -797,6 +915,25 @@ installs
 warnings
 ```
 
+### Global Skills
+
+Needs:
+
+- Global provider locations.
+- Global entries grouped by provider.
+- Mode/status/source path per global install.
+- Warning status.
+
+Tables:
+
+```text
+global_provider_locations
+global_installs
+provider_definitions
+skills
+warnings
+```
+
 ### Project Detail
 
 Needs:
@@ -825,6 +962,7 @@ Needs:
 - Skills with update available.
 - Host/upstream version or commit from latest fetch result.
 - Affected projects and install modes.
+- Affected global installs and install modes.
 - Rsync/copy installs needing sync.
 
 Tables:
@@ -836,6 +974,8 @@ fetch_results
 installs
 projects
 project_providers
+global_installs
+global_provider_locations
 ```
 
 ### Settings
@@ -856,6 +996,7 @@ api_credentials
 skill_host_folders
 provider_definitions
 provider_path_candidates
+global_provider_locations
 ```
 
 ## Mapping From User Flows
@@ -877,6 +1018,15 @@ Writes:
 - `project_providers`
 - `installs` discovered during scan
 - `warnings` if provider/path issues exist
+
+### Scan Global Skills
+
+Writes:
+
+- `global_provider_locations`
+- `global_installs` discovered during scan
+- `warnings` if global path/provider issues exist
+- `scan_results`
 
 ### Install Skill To Project
 
@@ -943,6 +1093,16 @@ projects.status = missing
 warnings.code = project_missing
 ```
 
+### Missing Global Provider Location
+
+Represented by:
+
+```text
+global_provider_locations.status = missing
+warnings.code = global_provider_location_missing
+warnings.scope_type = global_provider_location
+```
+
 ### No Provider Detected
 
 Represented by:
@@ -960,6 +1120,27 @@ Represented by:
 installs.install_mode = symlink
 installs.install_status = broken_symlink
 warnings.code = broken_symlink
+```
+
+### Global Direct Install
+
+Represented by:
+
+```text
+global_installs.install_mode = direct
+global_installs.install_status = current
+global_installs.skill_id = null
+```
+
+### Global Skill Overlap
+
+Represented by:
+
+```text
+global_installs.skill_name
+installs.skill_name
+warnings.code = global_project_skill_overlap
+warnings.scope_type = global_install | project | install
 ```
 
 ### Old Host Symlink

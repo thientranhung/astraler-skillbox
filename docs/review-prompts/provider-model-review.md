@@ -30,6 +30,7 @@ adapters in Skillbox.
 Focus on whether the Provider Model supports:
 
 - Multiple agent providers in one project.
+- Provider global locations and global skills/config.
 - Provider detection from project filesystem conventions.
 - Multiple provider path candidates with different purposes.
 - Safe install target resolution.

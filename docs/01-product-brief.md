@@ -31,6 +31,7 @@ Skillbox quản lý:
 - Skills: các skill có trong host.
 - Sources: GitHub, Vercel skills, local/manual.
 - Projects: các project được add vào app.
+- Global Skills: skill/config ở provider global level trên máy.
 - Providers: Claude, Codex, opencode, Antigravity CLI, và provider khác.
 - Installs: skill nào được cài vào project/provider nào, bằng mode nào.
 - Updates: Fetch upstream để biết skill nào có bản mới.
@@ -58,6 +59,7 @@ Nhóm người dùng có thể gồm:
 - Mỗi project cần một bộ skill riêng.
 - Global skill và project-level skill dễ bị lẫn, gây nhiễu context và chồng
   chéo behavior.
+- Người dùng khó nhìn thấy provider global level đang có skill/config nào.
 - Nhiều provider agent có convention khác nhau về folder, path, naming.
 - Không chỉ developer dùng skill, nên CLI-only là chưa đủ.
 - Update skill bất tiện khi nhiều project dùng chung một skill.
@@ -71,6 +73,8 @@ Nhóm người dùng có thể gồm:
 - CLI để sau, không phải trọng tâm ban đầu.
 - Skill Host Folder là folder do user chọn và cấu hình trong GUI.
 - Skill content source of truth nằm trong Skill Host Folder.
+- Global Skills là khu vực riêng để quan sát provider global level, không trộn
+  với Skill Host Folder hoặc project-level installs.
 - App dùng SQLite ngay từ đầu để lưu metadata quản trị.
 - Skill source ưu tiên GitHub và Vercel skills.
 - Có nút Fetch để kiểm tra upstream update.

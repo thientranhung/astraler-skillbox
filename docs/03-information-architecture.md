@@ -39,6 +39,14 @@ Một project được user add vào Skillbox.
 Skillbox scan project để biết provider nào có trong project và skill nào đang
 được cài.
 
+### Global Provider Location
+
+Provider-level/global location là nơi một provider lưu skill, command, hoặc
+config ở cấp user/máy, không thuộc riêng project nào.
+
+Skillbox scan global locations để user biết global skill nào đang tồn tại và có
+thể ảnh hưởng nhiều project.
+
 ### Provider
 
 Agent provider hoặc convention mà project đang dùng.
@@ -61,6 +69,13 @@ Install mode:
 - `rsync/copy`
 - `direct`
 
+### Global Install
+
+Skill/config tồn tại ở global provider location.
+
+Global install có thể là managed hoặc direct, tương tự project install, nhưng
+scope là provider global level thay vì project/provider.
+
 ### Fetch
 
 Kiểm tra upstream để biết skill có bản mới không.
@@ -78,6 +93,7 @@ Kiểm tra upstream để biết skill có bản mới không.
 ```text
 Dashboard
 Skills Library
+Global Skills
 Projects
 Project Detail
 Skill Detail
@@ -90,6 +106,7 @@ Settings
 Dashboard hiển thị tổng quan:
 
 - Tổng số skill trong Skill Host Folder.
+- Tổng số global skills được phát hiện.
 - Tổng số project đã add.
 - Skill có update sau lần Fetch gần nhất.
 - Project đang dùng symlink.
@@ -115,6 +132,28 @@ Action:
 - Fetch update.
 - Open skill folder.
 - View skill detail.
+
+## Global Skills
+
+Global Skills là nơi xem skill/config ở provider global level trên máy.
+
+Hiển thị:
+
+- Provider.
+- Global location path.
+- Skill/global entry name.
+- Mode: symlink, rsync/copy, direct.
+- Status: current, missing, external symlink, broken symlink, unmanaged.
+- Skill Host Folder source nếu map được.
+- Warning nếu global skill có thể gây nhiễu project-level behavior.
+
+Action:
+
+- Scan global locations.
+- Open global provider folder.
+- Remove global entry nếu user xác nhận.
+- Relink hoặc sync nếu entry được Skillbox quản lý.
+- Adopt/import sau này nếu feature này được support.
 
 ## Projects
 
