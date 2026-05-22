@@ -22,11 +22,13 @@ cho metadata quản trị.
 
 ```text
 app_settings
+api_credentials
 skill_host_folders
 skills
 skill_sources
 projects
 provider_definitions
+provider_path_candidates
 project_providers
 installs
 fetch_results
@@ -53,10 +55,71 @@ updated_at
 Notes:
 
 - `active_skill_host_folder_id` trỏ tới Skill Host Folder hiện tại.
+- `active_skill_host_folder_id` nullable để support first-time setup trước khi
+  user chọn Skill Host Folder.
 - Phase đầu chỉ cần một active host, nhưng model không chặn multi-host sau này.
 - `default_install_mode` có thể là `symlink` hoặc `rsync_copy`.
 
-## 2. skill_host_folders
+## 2. api_credentials
+
+Lưu metadata về credentials dùng cho GitHub/Vercel fetch. Giá trị secret thực tế
+nên ưu tiên nằm trong OS keychain. Nếu implementation chọn lưu trong SQLite thì
+phải lưu dạng encrypted value.
+
+Fields đề xuất:
+
+```text
+id
+provider_key
+credential_type
+storage_type
+credential_ref
+value_encrypted
+status
+last_validated_at
+created_at
+updated_at
+```
+
+Provider key:
+
+```text
+github
+vercel
+```
+
+Credential type:
+
+```text
+token
+oauth
+ssh_key
+```
+
+Storage type:
+
+```text
+os_keychain
+encrypted_sqlite
+environment
+```
+
+Status:
+
+```text
+active
+missing
+invalid
+expired
+```
+
+Notes:
+
+- `credential_ref` trỏ tới keychain item hoặc environment variable name.
+- `value_encrypted` chỉ dùng nếu `storage_type = encrypted_sqlite`.
+- Không lưu plaintext token trong SQLite.
+
+## 3. skill_host_folders
 
 Lưu các folder từng được user chọn làm Skill Host Folder.
 
@@ -92,7 +155,7 @@ Notes:
 - `status` giúp Dashboard và Settings hiển thị warning nhanh.
 - Khi đổi Skill Host Folder, host cũ không nhất thiết bị xóa khỏi database.
 
-## 3. skills
+## 4. skills
 
 Đại diện cho một skill trong Skill Host Folder.
 
@@ -109,6 +172,7 @@ status
 source_id
 current_version
 current_commit
+current_checksum
 last_scanned_at
 created_at
 updated_at
@@ -131,8 +195,10 @@ Notes:
 - `absolute_path` là path thật trong Skill Host Folder.
 - `source_id` nullable để support local/manual skill.
 - `current_version` hoặc `current_commit` dùng cho Fetch/Update nếu có.
+- `current_checksum` dùng để phát hiện local modification và rsync/copy drift
+  với các source không có git commit rõ ràng.
 
-## 4. skill_sources
+## 5. skill_sources
 
 Lưu upstream/source metadata cho skill.
 
@@ -151,6 +217,7 @@ local_source_path
 resolved_version
 resolved_commit
 last_fetched_at
+last_successful_fetch_at
 last_fetch_status
 last_fetch_error
 created_at
@@ -177,6 +244,7 @@ auth_required
 not_found
 network_error
 needs_review
+not_fetchable
 ```
 
 Notes:
@@ -184,9 +252,11 @@ Notes:
 - GitHub source có thể là repo root hoặc subfolder.
 - `github_ref` có thể là branch, tag, hoặc commit.
 - Vercel skills dùng `vercel_skill_id` hoặc metadata tương đương.
-- Local/manual source có thể không fetch được.
+- `last_fetched_at` là lần fetch attempt gần nhất, kể cả failed attempt.
+- `last_successful_fetch_at` là lần fetch thành công gần nhất.
+- Local/manual source có thể dùng `not_fetchable`.
 
-## 5. projects
+## 6. projects
 
 Lưu các project được user add vào Skillbox.
 
@@ -208,18 +278,18 @@ Status:
 active
 missing
 unreadable
-no_provider_detected
-has_warnings
 removed
 ```
 
 Notes:
 
 - `path` là project root absolute path.
+- Warning presence và `no_provider_detected` là derived state từ bảng
+  `warnings`, không nằm trong `projects.status`.
 - Project bị remove khỏi database nên có thể hard delete hoặc soft delete bằng
   `removed`, tùy implementation.
 
-## 6. provider_definitions
+## 7. provider_definitions
 
 Lưu danh sách provider/convention mà Skillbox biết.
 
@@ -230,9 +300,9 @@ id
 key
 display_name
 provider_type
-default_relative_skills_path
 icon_key
 status
+can_create_structure
 created_at
 updated_at
 ```
@@ -261,10 +331,44 @@ disabled
 Notes:
 
 - Provider adapter implementation sẽ dùng bảng này như metadata UI/config.
-- Path convention cụ thể có thể cần table phụ sau này nếu provider có nhiều
-  candidate paths.
+- `can_create_structure` cho biết adapter có thể scaffold provider folder hay
+  chỉ được scan/install vào structure đã tồn tại.
 
-## 7. project_providers
+## 8. provider_path_candidates
+
+Lưu các path candidate mà một provider adapter dùng để detect hoặc install skill.
+Một provider có thể có nhiều candidate path.
+
+Fields đề xuất:
+
+```text
+id
+provider_definition_id
+relative_path
+purpose
+priority
+description
+created_at
+updated_at
+```
+
+Purpose:
+
+```text
+detect
+skills
+commands
+config
+```
+
+Notes:
+
+- `relative_path` là path tương đối từ project root.
+- `priority` giúp adapter chọn candidate chính khi có nhiều path hợp lệ.
+- Bảng này tránh khóa provider vào một `default_relative_skills_path` duy nhất.
+- Với provider đơn giản, chỉ cần một row `purpose = skills`.
+
+## 9. project_providers
 
 Lưu provider được phát hiện hoặc cấu hình trong từng project.
 
@@ -299,7 +403,7 @@ Notes:
 - Add Skill flow dùng bảng này để chọn provider target.
 - `skills_path` là nơi install skill vào provider đó.
 
-## 8. installs
+## 10. installs
 
 Lưu việc một skill được cài vào một project/provider.
 
@@ -307,7 +411,6 @@ Fields đề xuất:
 
 ```text
 id
-project_id
 project_provider_id
 skill_id
 skill_name
@@ -332,8 +435,6 @@ Install mode:
 symlink
 rsync_copy
 direct
-external_symlink
-unknown
 ```
 
 Install status:
@@ -344,24 +445,32 @@ outdated
 missing
 broken_symlink
 old_host
-external
+external_symlink
 conflict
 needs_sync
-unmanaged
 error
 ```
 
 Notes:
 
+- `project_id` không được lưu trực tiếp vì `project_provider_id` đã suy ra
+  project qua `project_providers.project_id`.
 - `skill_id` nullable cho `direct` hoặc unknown skill.
 - `skill_name` vẫn cần lưu để hiển thị khi không map được `skill_id`.
+- `skill_name` được ghi tại thời điểm scan/install và không tự động sync ngược
+  từ `skills.name`.
 - `project_skill_path` là entry trong provider folder.
 - `source_skill_path` là path trong Skill Host Folder nếu managed.
-- `symlink_target_path` giúp phân biệt valid symlink, old host, external
-  symlink, và broken symlink.
+- `install_mode` chỉ lưu cơ chế quản lý/install intent, không lưu detected
+  filesystem anomaly.
+- `symlink_target_path` giúp phân biệt valid symlink, old host,
+  external_symlink, và broken_symlink trong `install_status`.
 - `installed_checksum` hữu ích cho rsync/copy outdated detection.
+- Phase 1 dùng hard delete cho install khi user remove skill bằng Skillbox.
+- `missing` đại diện cho install record còn trong database nhưng filesystem đã
+  bị sửa/xóa ngoài app.
 
-## 9. fetch_results
+## 11. fetch_results
 
 Lưu kết quả fetch upstream cho skill/source.
 
@@ -369,13 +478,12 @@ Fields đề xuất:
 
 ```text
 id
-skill_id
 source_id
 status
-current_version
-latest_version
-current_commit
-latest_commit
+host_version_at_fetch
+upstream_version_at_fetch
+host_commit_at_fetch
+upstream_commit_at_fetch
 fetched_at
 error_message
 raw_metadata_json
@@ -398,10 +506,13 @@ not_fetchable
 Notes:
 
 - Bảng này cho phép Updates view hiển thị lịch sử fetch gần nhất.
+- `source_id` là FK chính. Skill context được suy ra qua `skills.source_id`.
+- Nếu cần query nhanh theo skill trong implementation, có thể thêm helper
+  denormalized `skill_id`, nhưng không nên coi nó là FK độc lập.
 - `raw_metadata_json` giúp debug mà không cần schema hóa mọi field provider
   ngay từ đầu.
 
-## 10. scan_results
+## 12. scan_results
 
 Lưu kết quả scan gần nhất cho Skill Host Folder hoặc project.
 
@@ -441,8 +552,11 @@ Notes:
 - UI không cần lưu mọi scan detail trong bảng này nếu detail đã reconcile vào
   `skills`, `project_providers`, và `installs`.
 - `summary_json` có thể lưu counts như skills found, providers found, warnings.
+- Nếu `operations` đã đủ cho audit trail, implementation có thể gộp scan result
+  vào `operations.metadata_json`. Tài liệu giữ entity này để làm rõ dữ liệu scan
+  cần có.
 
-## 11. warnings
+## 13. warnings
 
 Lưu warning/recoverable error để Dashboard, Projects, và Project Detail hiển thị
 nhất quán.
@@ -457,6 +571,7 @@ severity
 code
 message
 action_key
+source_operation_id
 is_resolved
 created_at
 updated_at
@@ -517,9 +632,12 @@ open_folder
 Notes:
 
 - Warnings có thể được regenerate sau scan.
+- `source_operation_id` nullable, trỏ tới operation/scan tạo ra warning nếu có.
 - `is_resolved` giúp UI ẩn warning cũ mà vẫn giữ lịch sử nếu cần.
+- Phase 1 nên ưu tiên regenerate active warnings sau scan thay vì giữ warning
+  history dài hạn.
 
-## 12. operations
+## 14. operations
 
 Lưu các operation dài hoặc quan trọng như scan, fetch, update, sync, install,
 remove, switch mode.
@@ -587,8 +705,8 @@ projects.id
 provider_definitions.id
   -> project_providers.provider_definition_id
 
-projects.id
-  -> installs.project_id
+provider_definitions.id
+  -> provider_path_candidates.provider_definition_id
 
 project_providers.id
   -> installs.project_provider_id
@@ -596,8 +714,11 @@ project_providers.id
 skills.id
   -> installs.skill_id
 
-skills.id / skill_sources.id
-  -> fetch_results.skill_id / fetch_results.source_id
+skill_sources.id
+  -> fetch_results.source_id
+
+operations.id
+  -> warnings.source_operation_id
 ```
 
 ## Data Needed By Main Views
@@ -688,7 +809,7 @@ warnings
 Needs:
 
 - Skills with update available.
-- Latest/current version or commit.
+- Host/upstream version or commit from latest fetch result.
 - Affected projects and install modes.
 - Rsync/copy installs needing sync.
 
@@ -711,13 +832,16 @@ Needs:
 - Database version/location.
 - Default install mode.
 - Provider definitions/config.
+- GitHub/Vercel credential metadata if configured.
 
 Tables:
 
 ```text
 app_settings
+api_credentials
 skill_host_folders
 provider_definitions
+provider_path_candidates
 ```
 
 ## Mapping From User Flows
@@ -762,6 +886,7 @@ Writes:
 Writes:
 
 - `skills.current_version/current_commit`
+- `skills.current_checksum`
 - `skill_sources.resolved_version/resolved_commit`
 - `operations`
 - `installs.install_status = needs_sync` for affected rsync/copy installs
@@ -809,8 +934,8 @@ warnings.code = project_missing
 Represented by:
 
 ```text
-projects.status = no_provider_detected
 warnings.code = no_provider_detected
+warnings.scope_type = project
 ```
 
 ### Broken Symlink
@@ -837,8 +962,8 @@ warnings.code = old_host_symlink
 Represented by:
 
 ```text
-installs.install_mode = external_symlink
-installs.install_status = external
+installs.install_mode = symlink
+installs.install_status = external_symlink
 warnings.code = external_symlink
 ```
 
@@ -848,7 +973,7 @@ Represented by:
 
 ```text
 installs.install_mode = direct
-installs.install_status = unmanaged
+installs.install_status = current
 installs.skill_id = null
 ```
 
@@ -880,15 +1005,37 @@ project_providers.detection_status = unsupported
 warnings.code = unsupported_provider
 ```
 
+### Multi-Path Provider Detection
+
+Represented by:
+
+```text
+provider_path_candidates.provider_definition_id
+provider_path_candidates.relative_path
+provider_path_candidates.priority
+project_providers.detected_path
+project_providers.skills_path
+```
+
+### Fetch Attempt Failed But Previous Fetch Was Successful
+
+Represented by:
+
+```text
+skill_sources.last_fetched_at
+skill_sources.last_successful_fetch_at
+skill_sources.last_fetch_status = failed | network_error | auth_required
+```
+
 ## Open Questions
 
-- Có cần soft delete cho projects/skills/installs không, hay scan sẽ hard delete
-  records không còn tồn tại?
+- Projects/skills có cần soft delete dài hạn không? Phase 1 đã chọn hard delete
+  cho user-initiated install removal.
 - Checksum cho rsync/copy nên tính toàn folder hay dựa vào manifest/snapshot
   metadata?
-- Provider path conventions nên nằm trong `provider_definitions` hay tách bảng
-  riêng nếu một provider có nhiều candidate paths?
-- `warnings` nên lưu lịch sử dài hạn hay regenerate theo scan và chỉ giữ trạng
-  thái hiện tại?
+- GitHub/Vercel auth credentials nên lưu trong OS keychain, SQLite encrypted
+  table, hay environment?
 - Phase 2 convert skill format có cần bảng `skill_variants` hoặc
   `provider_skill_formats` không?
+- Có nên thêm `skills.detected_format` ngay từ Phase 1 để chuẩn bị cho convert
+  Phase 2 không?
