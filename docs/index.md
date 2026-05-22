@@ -52,6 +52,13 @@ user flows/edge cases sang metadata mà app cần lưu.
 Đọc để hiểu chi tiết từng table/field: type dự kiến, nullable, enum, và ý nghĩa
 nghiệp vụ của từng cột.
 
+## 8. Provider Model
+
+[08-provider-model.md](08-provider-model.md)
+
+Đọc để hiểu provider adapter, path candidates, provider detection, install target
+resolution, provider UI state, và hướng Phase 2 conversion.
+
 ## Review Prompts
 
 [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
@@ -71,6 +78,7 @@ README.md
   -> docs/05-edge-cases-and-ux-states.md
   -> docs/06-data-model.md
   -> docs/07-schema-dictionary.md
+  -> docs/08-provider-model.md
 ```
 
 ## Current Source Of Truth
@@ -82,4 +90,5 @@ README.md
 - Edge cases and UX states: [05-edge-cases-and-ux-states.md](05-edge-cases-and-ux-states.md)
 - SQLite metadata model: [06-data-model.md](06-data-model.md)
 - Schema dictionary: [07-schema-dictionary.md](07-schema-dictionary.md)
+- Provider model: [08-provider-model.md](08-provider-model.md)
 - Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)

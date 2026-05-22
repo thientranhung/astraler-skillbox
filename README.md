@@ -108,4 +108,5 @@ Xem thêm:
 - [05 Edge Cases And UX States](docs/05-edge-cases-and-ux-states.md)
 - [06 Data Model](docs/06-data-model.md)
 - [07 Schema Dictionary](docs/07-schema-dictionary.md)
+- [08 Provider Model](docs/08-provider-model.md)
 - [Data Model Review Prompt](docs/review-prompts/data-model-review.md)
