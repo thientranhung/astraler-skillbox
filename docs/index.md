@@ -45,6 +45,13 @@ failure, provider mismatch, và cách UI nên phản hồi.
 Đọc để hiểu các entity SQLite cấp cao, relationship, status enum, và mapping từ
 user flows/edge cases sang metadata mà app cần lưu.
 
+## Review Prompts
+
+[review-prompts/data-model-review.md](review-prompts/data-model-review.md)
+
+Prompt dùng để nhờ agent/chuyên gia khác review chéo data model. Kết quả review
+nên được ghi vào `docs/review-results/data-model-review.md`.
+
 ## Suggested Reading Flow
 
 ```text
@@ -66,3 +73,4 @@ README.md
 - Detailed user flows: [04-user-flows.md](04-user-flows.md)
 - Edge cases and UX states: [05-edge-cases-and-ux-states.md](05-edge-cases-and-ux-states.md)
 - SQLite metadata model: [06-data-model.md](06-data-model.md)
+- Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
