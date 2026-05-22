@@ -79,6 +79,11 @@ nên được ghi vào `docs/review-results/data-model-review.md`.
 Prompt dùng để nhờ agent/chuyên gia khác review chéo provider model. Kết quả
 review nên được ghi vào `docs/review-results/provider-model-review.md`.
 
+[review-prompts/global-skills-layer-review.md](review-prompts/global-skills-layer-review.md)
+
+Prompt dùng để nhờ agent/chuyên gia khác review riêng Global Skills layer. Kết
+quả review nên được ghi vào `docs/review-results/global-skills-layer-review.md`.
+
 ## Suggested Reading Flow
 
 ```text
@@ -108,3 +113,4 @@ README.md
 - UI wireframes: [09-ui-wireframes.md](09-ui-wireframes.md)
 - Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
 - Provider model review prompt: [review-prompts/provider-model-review.md](review-prompts/provider-model-review.md)
+- Global Skills layer review prompt: [review-prompts/global-skills-layer-review.md](review-prompts/global-skills-layer-review.md)

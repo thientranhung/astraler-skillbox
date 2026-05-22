@@ -116,3 +116,4 @@ Xem thêm:
 - [09 UI Wireframes](docs/09-ui-wireframes.md)
 - [Data Model Review Prompt](docs/review-prompts/data-model-review.md)
 - [Provider Model Review Prompt](docs/review-prompts/provider-model-review.md)
+- [Global Skills Layer Review Prompt](docs/review-prompts/global-skills-layer-review.md)
