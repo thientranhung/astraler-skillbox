@@ -31,6 +31,13 @@ sync, và settings.
 install skill, fetch update, sync, switch mode, remove skill, và đổi Skill Host
 Folder.
 
+## 5. Edge Cases And UX States
+
+[05-edge-cases-and-ux-states.md](05-edge-cases-and-ux-states.md)
+
+Đọc để hiểu các trạng thái lỗi, warning, empty state, conflict, fetch/update
+failure, provider mismatch, và cách UI nên phản hồi.
+
 ## Suggested Reading Flow
 
 ```text
@@ -40,6 +47,7 @@ README.md
   -> docs/02-product-notes.md
   -> docs/03-information-architecture.md
   -> docs/04-user-flows.md
+  -> docs/05-edge-cases-and-ux-states.md
 ```
 
 ## Current Source Of Truth
@@ -48,3 +56,4 @@ README.md
 - Decisions and tradeoffs: [02-product-notes.md](02-product-notes.md)
 - App structure and core concepts: [03-information-architecture.md](03-information-architecture.md)
 - Detailed user flows: [04-user-flows.md](04-user-flows.md)
+- Edge cases and UX states: [05-edge-cases-and-ux-states.md](05-edge-cases-and-ux-states.md)
