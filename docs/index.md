@@ -38,6 +38,13 @@ Folder.
 Đọc để hiểu các trạng thái lỗi, warning, empty state, conflict, fetch/update
 failure, provider mismatch, và cách UI nên phản hồi.
 
+## 6. Data Model
+
+[06-data-model.md](06-data-model.md)
+
+Đọc để hiểu các entity SQLite cấp cao, relationship, status enum, và mapping từ
+user flows/edge cases sang metadata mà app cần lưu.
+
 ## Suggested Reading Flow
 
 ```text
@@ -48,6 +55,7 @@ README.md
   -> docs/03-information-architecture.md
   -> docs/04-user-flows.md
   -> docs/05-edge-cases-and-ux-states.md
+  -> docs/06-data-model.md
 ```
 
 ## Current Source Of Truth
@@ -57,3 +65,4 @@ README.md
 - App structure and core concepts: [03-information-architecture.md](03-information-architecture.md)
 - Detailed user flows: [04-user-flows.md](04-user-flows.md)
 - Edge cases and UX states: [05-edge-cases-and-ux-states.md](05-edge-cases-and-ux-states.md)
+- SQLite metadata model: [06-data-model.md](06-data-model.md)

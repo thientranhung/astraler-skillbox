@@ -106,3 +106,4 @@ Xem thêm:
 - [03 Information Architecture](docs/03-information-architecture.md)
 - [04 User Flows](docs/04-user-flows.md)
 - [05 Edge Cases And UX States](docs/05-edge-cases-and-ux-states.md)
+- [06 Data Model](docs/06-data-model.md)
