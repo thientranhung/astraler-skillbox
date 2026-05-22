@@ -26,7 +26,8 @@ Skillbox là local-first control center cho agent skills.
 
 Skillbox quản lý:
 
-- Skill Host: source of truth cho skill trên máy.
+- Skill Host Folder: folder do user chọn trong GUI để làm source of truth cho
+  skill trên máy.
 - Skills: các skill có trong host.
 - Sources: GitHub, Vercel skills, local/manual.
 - Projects: các project được add vào app.
@@ -68,24 +69,23 @@ Nhóm người dùng có thể gồm:
 
 - Skillbox là GUI-first.
 - CLI để sau, không phải trọng tâm ban đầu.
-- Skill Host là project/thư mục riêng, ví dụ `my-skills-host`.
-- Skill content source of truth nằm trong Skill Host.
+- Skill Host Folder là folder do user chọn và cấu hình trong GUI.
+- Skill content source of truth nằm trong Skill Host Folder.
 - App dùng SQLite ngay từ đầu để lưu metadata quản trị.
 - Skill source ưu tiên GitHub và Vercel skills.
 - Có nút Fetch để kiểm tra upstream update.
 - Convert skill format giữa provider là Phase 2.
 - Health check chi tiết chưa phải trọng tâm.
 - Người dùng cần hiểu các khái niệm kỹ thuật như symlink, rsync/copy, provider,
-  Skill Host.
+  Skill Host Folder.
 
-## Skill Host
+## Skill Host Folder
 
-Skill Host là nơi lưu source of truth skill trên máy.
-
-Ví dụ:
+Skill Host Folder là folder do user chọn trong GUI để làm source of truth cho
+skill trên máy.
 
 ```text
-my-skills-host/
+<skill-host-folder>/
   .agents/
     skills/
       documentation-and-adrs/
@@ -93,17 +93,18 @@ my-skills-host/
       browser-automation/
 ```
 
-Skillbox đọc danh sách skill từ host này và cài sang project khác.
+Skillbox đọc danh sách skill từ folder này và cài sang project khác bằng
+symlink hoặc rsync/copy.
 
 ## Project Install
 
-Project install là việc một skill từ Skill Host được cài vào một project/provider
-cụ thể.
+Project install là việc một skill từ Skill Host Folder được cài vào một
+project/provider cụ thể.
 
 Luồng chính:
 
 ```text
-my-skills-host/.agents/skills/<skill>
+<skill-host-folder>/.agents/skills/<skill>
         |
         | symlink hoặc rsync/copy
         v
@@ -112,8 +113,8 @@ target-project/.agents/skills/<skill>
 
 Install mode:
 
-- `symlink`: project trỏ trực tiếp về skill trong Skill Host.
-- `rsync/copy`: project nhận một bản snapshot từ Skill Host.
+- `symlink`: project trỏ trực tiếp về skill trong Skill Host Folder.
+- `rsync/copy`: project nhận một bản snapshot từ Skill Host Folder.
 - `direct`: skill đã nằm trong project nhưng không do Skillbox quản lý.
 
 ## Provider Model
@@ -140,10 +141,10 @@ Nguồn skill ưu tiên:
 - Vercel skills ecosystem.
 - Local/manual skill.
 
-Với symlink install, update Skill Host sẽ ảnh hưởng project ngay.
+Với symlink install, update Skill Host Folder sẽ ảnh hưởng project ngay.
 
-Với rsync/copy install, update Skill Host không đổi project cho tới khi project
-được sync lại.
+Với rsync/copy install, update Skill Host Folder không đổi project cho tới khi
+project được sync lại.
 
 ## Phase 2
 

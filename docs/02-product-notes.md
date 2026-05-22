@@ -19,8 +19,8 @@ users.
 ## Core Product Pieces
 
 ```text
-Skill Host
-  Source of truth chứa skill trên máy.
+Skill Host Folder
+  Folder do user chọn trong GUI để làm source of truth chứa skill trên máy.
 
 Skillbox GUI
   Giao diện chính để quản trị skill, project, provider, install, update.
@@ -41,7 +41,7 @@ CLI
 - Source skill ưu tiên GitHub và Vercel skills.
 - Dùng Fetch để kiểm tra skill nào có bản mới.
 - Symlink và rsync/copy là core design, không phải workaround.
-- Skill Host bị move/delete thì app sẽ warning khi mở hoặc scan.
+- Skill Host Folder bị move/delete thì app sẽ warning khi mở hoặc scan.
 - Convert format giữa provider để Phase 2.
 - Health check chi tiết để sau, không phải trọng tâm product hiện tại.
 - Non-developer users vẫn cần làm quen với khái niệm kỹ thuật.
@@ -50,26 +50,26 @@ CLI
 
 Symlink:
 
-- Project trỏ trực tiếp về Skill Host.
-- Sửa một chỗ trong Skill Host thì nhiều project nhận thay đổi ngay.
+- Project trỏ trực tiếp về Skill Host Folder.
+- Sửa một chỗ trong Skill Host Folder thì nhiều project nhận thay đổi ngay.
 - Đây là cơ chế chính để dùng chung source of truth.
 
 Rsync/copy:
 
 - Project nhận snapshot riêng.
-- Update Skill Host không tự động đổi project.
+- Update Skill Host Folder không tự động đổi project.
 - Dùng khi project cần ổn định hoặc muốn kiểm soát thời điểm sync.
 
 ## Update Model
 
 Fetch chỉ kiểm tra upstream có thay đổi không.
 
-Update là đưa thay đổi từ upstream về Skill Host.
+Update là đưa thay đổi từ upstream về Skill Host Folder.
 
-Sync là đưa thay đổi từ Skill Host sang project đã cài bằng rsync/copy.
+Sync là đưa thay đổi từ Skill Host Folder sang project đã cài bằng rsync/copy.
 
-Với project cài bằng symlink, update Skill Host đồng nghĩa project nhận thay đổi
-ngay.
+Với project cài bằng symlink, update Skill Host Folder đồng nghĩa project nhận
+thay đổi ngay.
 
 ## Remaining Tradeoffs
 
@@ -96,4 +96,4 @@ provider adapter. Phase 2 mới convert format.
 ### Visibility Khi Update
 
 Symlink là thiết kế chính, nhưng UI vẫn nên hiển thị project nào sẽ bị ảnh hưởng
-khi update Skill Host.
+khi update Skill Host Folder.

@@ -2,14 +2,13 @@
 
 ## Core Concepts
 
-### Skill Host
+### Skill Host Folder
 
-Thư mục/project lưu source of truth cho skill trên máy.
-
-Ví dụ:
+Folder do user chọn và cấu hình trong GUI để lưu source of truth cho skill trên
+máy.
 
 ```text
-my-skills-host/
+<skill-host-folder>/
   .agents/
     skills/
       skill-a/
@@ -18,7 +17,7 @@ my-skills-host/
 
 ### Skill
 
-Một skill cụ thể nằm trong Skill Host.
+Một skill cụ thể nằm trong Skill Host Folder.
 
 Skill có thể có source từ GitHub, Vercel skills, hoặc local/manual.
 
@@ -54,7 +53,7 @@ Ví dụ:
 
 ### Install
 
-Việc một skill được cài từ Skill Host vào một project/provider.
+Việc một skill được cài từ Skill Host Folder vào một project/provider.
 
 Install mode:
 
@@ -68,11 +67,11 @@ Kiểm tra upstream để biết skill có bản mới không.
 
 ### Update
 
-Đưa thay đổi từ upstream về Skill Host.
+Đưa thay đổi từ upstream về Skill Host Folder.
 
 ### Sync
 
-Đưa thay đổi từ Skill Host sang project cài bằng rsync/copy.
+Đưa thay đổi từ Skill Host Folder sang project cài bằng rsync/copy.
 
 ## Main App Areas
 
@@ -90,7 +89,7 @@ Settings
 
 Dashboard hiển thị tổng quan:
 
-- Tổng số skill trong Skill Host.
+- Tổng số skill trong Skill Host Folder.
 - Tổng số project đã add.
 - Skill có update sau lần Fetch gần nhất.
 - Project đang dùng symlink.
@@ -99,7 +98,7 @@ Dashboard hiển thị tổng quan:
 
 ## Skills Library
 
-Skills Library là nơi quản lý skill trong Skill Host.
+Skills Library là nơi quản lý skill trong Skill Host Folder.
 
 Hiển thị:
 
@@ -214,7 +213,7 @@ Action:
 
 Settings quản lý:
 
-- Skill Host path.
+- Skill Host Folder path.
 - Default install mode.
 - Provider configs.
 - Database location.

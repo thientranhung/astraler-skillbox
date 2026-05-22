@@ -16,9 +16,9 @@ Skillbox = local-first control center cho agent skills
 
 Skillbox giúp người dùng:
 
-- Quản lý một Skill Host làm source of truth cho skill trên máy.
+- Quản lý một Skill Host Folder làm source of truth cho skill trên máy.
 - Add project vào app và scan skill/provider trong project đó.
-- Cài skill từ Skill Host vào project bằng symlink hoặc rsync/copy.
+- Cài skill từ Skill Host Folder vào project bằng symlink hoặc rsync/copy.
 - Xem project nào đang dùng skill nào và theo cơ chế nào.
 - Fetch upstream để biết skill nào có bản mới.
 - Quản lý nhiều provider như Claude, Codex, opencode, Antigravity CLI, và các
@@ -30,8 +30,8 @@ Skillbox giúp người dùng:
 Skillbox App
   GUI quản trị chính
 
-Skill Host
-  Source of truth cho skill trên máy
+Skill Host Folder
+  Folder do user chọn trong GUI để làm source of truth cho skill trên máy
 
 Projects
   Các project được add vào Skillbox
@@ -43,10 +43,11 @@ Database
   SQLite lưu metadata quản trị
 ```
 
-Skill Host là một project/thư mục riêng, ví dụ:
+Skill Host Folder là folder do user chọn và cấu hình trong GUI. Skillbox dùng
+folder này làm source of truth để phân phối skill sang các project khác.
 
 ```text
-my-skills-host/
+<skill-host-folder>/
   .agents/
     skills/
       documentation-and-adrs/
@@ -54,10 +55,10 @@ my-skills-host/
       browser-automation/
 ```
 
-Project bất kỳ sẽ nhận skill từ Skill Host:
+Project bất kỳ sẽ nhận skill từ Skill Host Folder:
 
 ```text
-my-skills-host/.agents/skills/<skill>
+<skill-host-folder>/.agents/skills/<skill>
         |
         | symlink hoặc rsync/copy
         v
@@ -70,15 +71,16 @@ target-project/.agents/skills/<skill>
 
 Symlink là cơ chế chính để nhiều project dùng chung một source of truth.
 
-- Sửa skill trong Skill Host một lần thì các project symlink nhận thay đổi ngay.
+- Sửa skill trong Skill Host Folder một lần thì các project symlink nhận thay
+  đổi ngay.
 - Phù hợp khi muốn dùng chung skill và update nhanh trên nhiều project.
 
 ### Rsync / Copy
 
 Rsync/copy dùng khi một project cần snapshot ổn định.
 
-- Project nhận một bản copy từ Skill Host.
-- Update Skill Host không tự động đổi project đó.
+- Project nhận một bản copy từ Skill Host Folder.
+- Update Skill Host Folder không tự động đổi project đó.
 - Project cần sync lại nếu muốn nhận thay đổi mới.
 
 ## Product Scope Hiện Tại
