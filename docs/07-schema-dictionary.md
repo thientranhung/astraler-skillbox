@@ -138,7 +138,7 @@ Purpose: lưu danh sách provider/convention mà Skillbox biết.
 | `provider_type` | text | no | Provider category. Allowed: `claude`, `codex`, `opencode`, `antigravity_cli`, `generic_agents`, `custom`, `unsupported`. |
 | `icon_key` | text | yes | Key để UI chọn icon phù hợp. |
 | `status` | text | no | Adapter support state. Allowed: `supported`, `experimental`, `unsupported`, `disabled`. |
-| `can_create_structure` | integer | no | Boolean `0/1`. Cho biết adapter có thể scaffold provider folder structure hay không. |
+| `can_create_structure` | integer | no | Boolean `0/1`. Cho biết core Skillbox logic có thể scaffold provider folder structure cho provider này hay không. |
 | `created_at` | datetime | no | Thời điểm tạo row. |
 | `updated_at` | datetime | no | Thời điểm cập nhật row gần nhất. |
 

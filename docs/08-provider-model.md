@@ -330,6 +330,9 @@ can_create_structure = true
 
 Initial path candidates may use the generic `.agents` convention until Codex
 requires a distinct adapter.
+Phase 1 không nên seed `.agents` path candidates riêng cho Codex nếu
+`generic_agents` đã cover cùng convention, để tránh một `.agents` folder tạo
+nhiều provider detections trùng nhau.
 
 ### opencode
 
@@ -344,6 +347,8 @@ can_create_structure = true
 
 Initial path candidates may use the generic `.agents` convention until opencode
 requires a distinct adapter.
+Phase 1 không nên seed `.agents` path candidates riêng cho opencode nếu
+`generic_agents` đã cover cùng convention, để tránh duplicate provider badges.
 
 ### Antigravity CLI
 
@@ -358,6 +363,8 @@ can_create_structure = true
 
 Initial path candidates may use the generic `.agents` convention until
 Antigravity CLI requires a distinct adapter.
+Phase 1 không nên seed `.agents` path candidates riêng cho Antigravity CLI nếu
+`generic_agents` đã cover cùng convention, để tránh duplicate provider badges.
 
 ## UI Representation
 
@@ -430,7 +437,7 @@ warnings: list of {
 }
 entries: list of {
   name: text
-  path: absolute path
+  path: absolute path to the skill entry within the provider skills_path
   entry_type: symlink | directory | unknown
   symlink_target: path | null
 }
@@ -473,7 +480,5 @@ Phase 1 chưa cần lưu converted variants.
 - Claude convention chính xác nên là gì và path nào nên được adapter support?
 - Codex/opencode/Antigravity CLI có cần adapter riêng ngay, hay dùng
   `generic_agents` trước?
-- Khi một provider có nhiều skills path hợp lệ, app nên auto chọn theo priority
-  hay yêu cầu user chọn?
 - Có nên cho user tạo custom provider trong UI ở Phase 1 không?
 - Provider icon nên dùng bundled asset, icon key, hay package icon set?

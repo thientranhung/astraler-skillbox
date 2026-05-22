@@ -331,8 +331,8 @@ disabled
 Notes:
 
 - Provider adapter implementation sẽ dùng bảng này như metadata UI/config.
-- `can_create_structure` cho biết adapter có thể scaffold provider folder hay
-  chỉ được scan/install vào structure đã tồn tại.
+- `can_create_structure` cho biết core Skillbox logic có thể scaffold provider
+  folder cho provider này hay chỉ được scan/install vào structure đã tồn tại.
 
 ## 8. provider_path_candidates
 
