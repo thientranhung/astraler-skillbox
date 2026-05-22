@@ -155,6 +155,12 @@ Action:
 - Relink hoặc sync nếu entry được Skillbox quản lý.
 - Adopt/import sau này nếu feature này được support.
 
+Phase 1 scope:
+
+- Global Skills là scan, visibility, và remediation surface.
+- Chưa có flow Install Skill To Global Location.
+- Add Skill flow chỉ target project providers.
+
 ## Projects
 
 Projects là danh sách project được add vào Skillbox.

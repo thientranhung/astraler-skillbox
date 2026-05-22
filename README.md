@@ -96,6 +96,7 @@ Các phần chính của app:
 
 - Dashboard
 - Skills Library
+- Global Skills
 - Projects
 - Project Detail
 - Skill Detail
@@ -117,3 +118,4 @@ Xem thêm:
 - [Data Model Review Prompt](docs/review-prompts/data-model-review.md)
 - [Provider Model Review Prompt](docs/review-prompts/provider-model-review.md)
 - [Global Skills Layer Review Prompt](docs/review-prompts/global-skills-layer-review.md)
+- [Global Skills Layer Follow-Up Review Result](docs/review-results/global-skills-layer-followup-review.md)

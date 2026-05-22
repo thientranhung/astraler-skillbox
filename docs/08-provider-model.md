@@ -343,6 +343,7 @@ provider_type = generic_agents
 icon_key = agents
 status = supported
 can_create_structure = true
+has_global_level = true
 ```
 
 Path candidates:
@@ -361,6 +362,7 @@ provider_type = claude
 icon_key = claude
 status = experimental
 can_create_structure = false
+has_global_level = true
 ```
 
 Path candidates should be finalized after provider convention research.
@@ -376,6 +378,7 @@ provider_type = codex
 icon_key = codex
 status = experimental
 can_create_structure = true
+has_global_level = false
 ```
 
 Initial path candidates may use the generic `.agents` convention until Codex
@@ -393,6 +396,7 @@ provider_type = opencode
 icon_key = opencode
 status = experimental
 can_create_structure = true
+has_global_level = false
 ```
 
 Initial path candidates may use the generic `.agents` convention until opencode
@@ -409,6 +413,7 @@ provider_type = antigravity_cli
 icon_key = antigravity
 status = experimental
 can_create_structure = true
+has_global_level = false
 ```
 
 Initial path candidates may use the generic `.agents` convention until

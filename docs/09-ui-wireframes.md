@@ -531,6 +531,12 @@ Rsync/copy projects needing sync after update:
 Direct installs unaffected:
   project-e
 
+Global symlink installs updated immediately:
+  User Global (Generic Agents)
+
+Global rsync/copy installs needing sync:
+  Claude Global
+
 [Update Host Copy] [Cancel]
 ```
 

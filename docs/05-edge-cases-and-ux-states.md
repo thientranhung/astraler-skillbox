@@ -552,6 +552,7 @@ UI nên:
 
 - Scan Skill Host Folder.
 - Scan project.
+- Scan global locations.
 - Fetch update.
 - Sync rsync/copy.
 
