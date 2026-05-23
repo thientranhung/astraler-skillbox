@@ -4,8 +4,14 @@ Tài liệu này phác thảo kiến trúc kỹ thuật của Astraler Skillbox 
 boundary. Mục tiêu là giúp team build app mà không trộn lẫn UI, database,
 filesystem writes, provider conventions, và operation/audit logic.
 
-Đây chưa phải implementation spec cho framework cụ thể. Nếu sau này chọn
-Electron, Tauri, hoặc desktop web shell khác, các boundary bên dưới vẫn nên giữ.
+Stack đã chốt:
+
+- Desktop framework: Electron.
+- UI framework: React.
+- Core runtime language: Golang.
+
+Các boundary bên dưới vẫn quan trọng vì Electron/React không nên trực tiếp sở
+hữu database, filesystem writes, provider adapters, hoặc long-running jobs.
 
 ## Architecture Goals
 
@@ -21,20 +27,24 @@ Electron, Tauri, hoặc desktop web shell khác, các boundary bên dưới vẫ
 ## High-Level Shape
 
 ```text
-Desktop App
-  -> UI Layer
-  -> Application Services
-  -> Domain Services
-  -> Data Access Layer
-  -> SQLite
-  -> Filesystem Gateway
-  -> Provider Adapters
-  -> External Sources
+Electron Desktop App
+  -> React UI Layer
+  -> Electron Bridge / IPC Client
+  -> Golang Core Runtime
+     -> Application Services
+     -> Domain Services
+     -> Data Access Layer
+     -> SQLite
+     -> Filesystem Gateway
+     -> Provider Adapters
+     -> External Sources
 ```
 
 Ý nghĩa:
 
-- UI Layer chỉ render state, nhận input, gọi commands/queries.
+- React UI Layer chỉ render state, nhận input, gọi commands/queries.
+- Electron Bridge / IPC Client là boundary giữa UI và Golang core.
+- Golang Core Runtime giữ application services và mọi thao tác có side effect.
 - Application Services là entry point cho từng use case.
 - Domain Services chứa logic nghiệp vụ dùng chung.
 - Data Access Layer đọc/ghi SQLite.
@@ -44,15 +54,20 @@ Desktop App
 
 ## Runtime Processes
 
-Skillbox nên tách tư duy thành hai phía:
+Skillbox nên tách tư duy thành ba phần runtime:
 
 ```text
-Renderer/UI process
+Electron main process
+  -> app window lifecycle
+  -> launch/manage Golang core runtime
+  -> expose narrow IPC bridge to renderer
+
+Electron renderer process / React UI
   -> hiển thị màn hình
-  -> gửi command/query
+  -> gửi command/query qua bridge
   -> nhận progress/result/warning
 
-Core process
+Golang core runtime
   -> SQLite
   -> filesystem access
   -> provider adapters
@@ -60,13 +75,73 @@ Core process
   -> operation audit
 ```
 
-Nếu framework cho phép chạy một process duy nhất ở Phase 1, vẫn nên giữ boundary
-code như có hai phía để sau này không phải refactor lớn.
+Golang core có thể chạy như sidecar process do Electron main process quản lý.
+Transport giữa Electron và Golang sẽ được quyết định sau, nhưng UI contract vẫn
+nên là command/query API thay vì gọi trực tiếp implementation detail.
 
 UI không nên import trực tiếp database client, filesystem APIs, hoặc provider
 adapter implementation.
 
 ## Module Boundaries
+
+```text
+app/
+  ui/
+  electron/
+  core-go/
+  shared/
+```
+
+Module shape trong Golang core:
+
+```text
+core-go/
+  services/
+  domain/
+  repositories/
+  providers/
+  filesystem/
+  sources/
+  operations/
+  migrations/
+```
+
+Module shape trong React/Electron side:
+
+```text
+ui/
+  screens/
+  components/
+  view-models/
+  client/
+
+electron/
+  main/
+  preload/
+  core-process/
+
+shared/
+  api-contracts/
+```
+
+Boundary đề xuất:
+
+- `ui`: React screens, components, view models, client API.
+- `electron/main`: window lifecycle, app menu, native dialogs, core process
+  lifecycle.
+- `electron/preload`: narrow bridge exposed to renderer.
+- `electron/core-process`: start/stop/monitor Golang core runtime.
+- `shared/api-contracts`: command/query request and response shapes.
+- `core-go/services`: use case orchestration.
+- `core-go/domain`: business rules, enums, validation.
+- `core-go/repositories`: SQLite queries and transactions.
+- `core-go/providers`: provider definitions, adapters, detection contracts.
+- `core-go/filesystem`: safe path, symlink, copy, remove, scan helpers.
+- `core-go/sources`: GitHub/Vercel/local/manual source integrations.
+- `core-go/operations`: job runner, progress, cancellation, audit.
+- `core-go/migrations`: SQLite schema migrations and seed data.
+
+Previous conceptual grouping:
 
 ```text
 app/
@@ -82,17 +157,8 @@ app/
     migrations/
 ```
 
-Boundary đề xuất:
-
-- `ui`: screens, components, view models, client API.
-- `core/services`: use case orchestration.
-- `core/domain`: pure-ish business rules, enums, validation.
-- `core/repositories`: SQLite queries and transactions.
-- `core/providers`: provider definitions, adapters, detection contracts.
-- `core/filesystem`: safe path, symlink, copy, remove, scan helpers.
-- `core/sources`: GitHub/Vercel/local/manual source integrations.
-- `core/operations`: job runner, progress, cancellation, audit.
-- `core/migrations`: SQLite schema migrations and seed data.
+Conceptual boundary này vẫn đúng, nhưng implementation folder nên phản ánh rõ
+React/Electron side và Golang core side.
 
 ## Application Services
 
@@ -130,7 +196,7 @@ Mapping:
 
 ## Command And Query Pattern
 
-UI nên gọi core qua hai loại API:
+React UI nên gọi Golang core qua hai loại API:
 
 ```text
 Query:
@@ -153,6 +219,15 @@ Command:
 
 Query không nên tạo side effect. Command có thể tạo `operations` record, ghi DB,
 và thao tác filesystem.
+
+IPC/transport rules:
+
+- Renderer chỉ gọi API đã expose qua Electron preload bridge.
+- Renderer không được gọi Node filesystem API trực tiếp.
+- Electron main không nên chứa business logic, chỉ làm lifecycle/bridge/native
+  integration.
+- Golang core trả typed response cho mọi command/query.
+- Long-running command phải trả `operation_id` để UI subscribe/poll progress.
 
 ## Data Access Layer
 
@@ -521,8 +596,8 @@ Phase 2:
 
 ## Open Architecture Questions
 
-- Desktop framework: Electron, Tauri, or another shell.
-- Language/runtime for core: TypeScript, Rust, or hybrid.
+- IPC/transport giữa Electron và Golang: stdio JSON-RPC, local HTTP, gRPC, hoặc
+  custom protocol.
 - SQLite library and migration tool.
 - OS keychain library.
 - Whether operation runner needs a worker process from day one.

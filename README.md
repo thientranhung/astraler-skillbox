@@ -92,6 +92,12 @@ Rsync/copy dùng khi một project cần snapshot ổn định.
 GUI là trải nghiệm chính. CLI có thể phát triển sau để phục vụ power users và
 automation.
 
+Tech stack đã chốt:
+
+- Desktop framework: Electron
+- UI framework: React
+- Core runtime language: Golang
+
 Các phần chính của app:
 
 - Dashboard
