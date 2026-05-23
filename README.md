@@ -126,3 +126,5 @@ Xem thêm:
 - [Provider Model Review Prompt](docs/review-prompts/provider-model-review.md)
 - [Global Skills Layer Review Prompt](docs/review-prompts/global-skills-layer-review.md)
 - [Global Skills Layer Follow-Up Review Result](docs/review-results/global-skills-layer-followup-review.md)
+- [Technical Architecture Brainstorm Result](docs/review-results/technical-architecture-brainstorm.md)
+- [Transport Decision Brainstorm Result](docs/review-results/transport-decision-brainstorm.md)

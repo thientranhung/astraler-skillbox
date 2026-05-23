@@ -13,6 +13,17 @@ Stack đã chốt:
 Các boundary bên dưới vẫn quan trọng vì Electron/React không nên trực tiếp sở
 hữu database, filesystem writes, provider adapters, hoặc long-running jobs.
 
+Implementation decisions bên dưới có hai loại:
+
+- Chốt: stack nền tảng và responsibility boundary.
+- Recommended defaults: đề xuất kỹ thuật cần được brainstorm/chốt trước khi
+  scaffold code thật.
+
+Brainstorm kỹ thuật hiện tại được ghi ở:
+
+- `docs/review-results/technical-architecture-brainstorm.md`
+- `docs/review-results/transport-decision-brainstorm.md`
+
 ## Architecture Goals
 
 - GUI là trải nghiệm chính.
@@ -75,12 +86,59 @@ Golang core runtime
   -> operation audit
 ```
 
-Golang core có thể chạy như sidecar process do Electron main process quản lý.
-Transport giữa Electron và Golang sẽ được quyết định sau, nhưng UI contract vẫn
-nên là command/query API thay vì gọi trực tiếp implementation detail.
+Decision: Golang core chạy như sidecar process do Electron main process quản lý
+trong Phase 1.
+
+Decision: transport giữa Electron main process và Golang core là stdio
+JSON-RPC 2.0 trong Phase 1. Lý do chính: không cần mở local port, không có port
+conflict, không có macOS firewall prompt, dễ đóng gói desktop app, và hỗ trợ
+request/response lẫn server-push notifications.
+
+Migration path: nếu Phase 2 cần CLI reuse, multi-window, hoặc nhiều consumer
+cùng kết nối tới một Go core đang chạy, giữ JSON-RPC protocol và đổi transport
+sang unix socket/named pipe.
+
+Dù transport là stdio, UI contract vẫn nên là command/query API thay vì gọi
+trực tiếp implementation detail.
 
 UI không nên import trực tiếp database client, filesystem APIs, hoặc provider
 adapter implementation.
+
+## Transport Decision
+
+Phase 1 dùng stdio JSON-RPC 2.0:
+
+```text
+Electron main process
+  -> spawn Go core binary
+  -> write JSON-RPC requests to child stdin
+  -> read JSON-RPC responses/notifications from child stdout
+  -> forward safe events to React renderer through preload bridge
+
+Go core runtime
+  -> read JSON-RPC requests from stdin
+  -> write only JSON-RPC protocol messages to stdout
+  -> write logs/debug output to stderr or log file
+```
+
+Rules:
+
+- Stdout là protocol boundary. Không dùng `fmt.Print*` hoặc log output thường
+  vào stdout trong Go core.
+- Go core phải gửi `server.ready` notification trước khi Electron main forward
+  renderer requests.
+- Operation progress dùng JSON-RPC notifications như `operation.progress`.
+- Request/response dùng `id` của JSON-RPC để support multiple in-flight
+  requests.
+- Operation locking nằm ở service layer, không nằm ở transport layer.
+- Production không mở local HTTP server.
+
+Open implementation details:
+
+- JSON-RPC Go library: `sourcegraph/jsonrpc2`, `creachadair/jrpc2`, hoặc custom
+  minimal handler.
+- Framing: NDJSON đơn giản hơn; LSP-style `Content-Length` chặt hơn.
+- Dev-only debug server có cần không, hay chỉ dùng stdin/stdout test harness.
 
 ## Module Boundaries
 
@@ -92,7 +150,7 @@ app/
   shared/
 ```
 
-Module shape trong Golang core:
+Candidate module shape trong Golang core:
 
 ```text
 core-go/
@@ -106,7 +164,7 @@ core-go/
   migrations/
 ```
 
-Module shape trong React/Electron side:
+Candidate module shape trong React/Electron side:
 
 ```text
 ui/
@@ -130,7 +188,8 @@ Boundary đề xuất:
 - `electron/main`: window lifecycle, app menu, native dialogs, core process
   lifecycle.
 - `electron/preload`: narrow bridge exposed to renderer.
-- `electron/core-process`: start/stop/monitor Golang core runtime.
+- `electron/core-process`: start/stop/monitor Golang core runtime. Folder này có
+  thể đổi tên hoặc tách nhỏ sau khi transport được chốt.
 - `shared/api-contracts`: command/query request and response shapes.
 - `core-go/services`: use case orchestration.
 - `core-go/domain`: business rules, enums, validation.
@@ -157,8 +216,8 @@ app/
     migrations/
 ```
 
-Conceptual boundary này vẫn đúng, nhưng implementation folder nên phản ánh rõ
-React/Electron side và Golang core side.
+Conceptual boundary này vẫn đúng, nhưng implementation folder vẫn là candidate
+shape cho tới khi scaffold code thật.
 
 ## Application Services
 
@@ -227,7 +286,9 @@ IPC/transport rules:
 - Electron main không nên chứa business logic, chỉ làm lifecycle/bridge/native
   integration.
 - Golang core trả typed response cho mọi command/query.
-- Long-running command phải trả `operation_id` để UI subscribe/poll progress.
+- Long-running command phải trả `operation_id`.
+- Nếu dùng stdio JSON-RPC, progress nên đi qua JSON-RPC server-push
+  notifications như `operation.progress`, không dùng polling làm primary model.
 
 ## Data Access Layer
 
@@ -356,6 +417,17 @@ Operation runner nên:
 - Ghi result/error summary.
 - Không để hai operation xung đột chạy cùng lúc trên cùng target.
 - Cho phép retry nếu lỗi không phải validation error.
+
+Recommended progress model nếu dùng stdio JSON-RPC:
+
+- Go core gửi `operation.progress` notifications qua stdout.
+- Electron main parse notification và forward qua preload bridge.
+- React UI subscribe theo `operation_id`.
+- Khi operation kết thúc, UI re-fetch view model liên quan để lấy state đã
+  reconcile từ SQLite.
+- Cancel dùng command `operation.cancel` với `operation_id`; Go dùng
+  `context.WithCancel` và check cancel ở natural checkpoints.
+- Retry là command mới từ UI, không auto-retry âm thầm trong Go.
 
 Locking gợi ý:
 
@@ -594,11 +666,44 @@ Phase 2:
 - CLI layer over the same Application Services.
 - Multi-host support if needed.
 
-## Open Architecture Questions
+## Architecture Decisions To Confirm
 
-- IPC/transport giữa Electron và Golang: stdio JSON-RPC, local HTTP, gRPC, hoặc
-  custom protocol.
-- SQLite library and migration tool.
-- OS keychain library.
-- Whether operation runner needs a worker process from day one.
-- Whether provider definitions are seeded from code, bundled JSON, or migrations.
+Các decision dưới đây là các điểm còn cần chốt trước khi scaffold code thật.
+Transport Phase 1 đã chốt là stdio JSON-RPC 2.0; các chi tiết framing/library
+vẫn còn mở.
+
+```text
+IPC transport:
+  phase_1_decision = stdio JSON-RPC 2.0
+  phase_2_migration_path = unix socket/named pipe if CLI or multi-window needs it
+  open = JSON-RPC library, framing, dev debug server
+
+Go core lifecycle:
+  phase_1_decision = sidecar process managed by Electron main
+  alternative = persistent daemon if background work becomes product requirement
+
+Operation progress:
+  phase_1_decision = JSON-RPC server-push notifications
+  avoid = polling as primary progress model
+
+API contract:
+  recommended = JSON Schema in shared/api-contracts, generate TypeScript types
+  open = whether Go structs are generated or hand-matched
+
+SQLite:
+  recommended = modernc.org/sqlite for no-CGO Phase 1 builds
+  migrations = embedded SQL migrations
+  open = WAL mode policy and app data path
+
+Keychain:
+  recommended = Go core owns credentials via OS keychain library
+  open = exact library and env-var fallback behavior
+
+Packaging:
+  recommended = electron-builder with bundled Go binary
+  high-risk = macOS code signing and notarization for both app and Go binary
+
+Provider seed data:
+  recommended = seed via migration
+  alternatives = bundled JSON or code seed
+```

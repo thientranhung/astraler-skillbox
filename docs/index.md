@@ -95,6 +95,16 @@ quả review nên được ghi vào `docs/review-results/global-skills-layer-rev
 Follow-up review sau khi xử lý blocker nên được ghi vào
 `docs/review-results/global-skills-layer-followup-review.md`.
 
+[review-results/technical-architecture-brainstorm.md](review-results/technical-architecture-brainstorm.md)
+
+Brainstorm kỹ thuật với Agent Tech cho architecture decisions sau khi đã chốt
+Electron + React + Golang.
+
+[review-results/transport-decision-brainstorm.md](review-results/transport-decision-brainstorm.md)
+
+Brainstorm riêng cho transport decision giữa Electron main process và Golang
+core. Kết luận: Phase 1 dùng stdio JSON-RPC 2.0.
+
 ## Suggested Reading Flow
 
 ```text
@@ -128,3 +138,5 @@ README.md
 - Provider model review prompt: [review-prompts/provider-model-review.md](review-prompts/provider-model-review.md)
 - Global Skills layer review prompt: [review-prompts/global-skills-layer-review.md](review-prompts/global-skills-layer-review.md)
 - Global Skills layer follow-up review result: [review-results/global-skills-layer-followup-review.md](review-results/global-skills-layer-followup-review.md)
+- Technical architecture brainstorm result: [review-results/technical-architecture-brainstorm.md](review-results/technical-architecture-brainstorm.md)
+- Transport decision brainstorm result: [review-results/transport-decision-brainstorm.md](review-results/transport-decision-brainstorm.md)
