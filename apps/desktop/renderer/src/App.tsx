@@ -1,8 +1,8 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { methods } from "./lib/core-client/client.js";
 import type { PingResult } from "./lib/core-client/types.js";
 
-export default function App(): JSX.Element {
+export default function App(): React.JSX.Element {
   const [result, setResult] = useState<PingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

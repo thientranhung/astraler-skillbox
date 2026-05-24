@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { EventEmitter } from "events";
 import { Readable, Writable } from "stream";
 import { JsonRpcStdioClient } from "../json-rpc-client.js";
@@ -139,5 +139,35 @@ describe("JsonRpcStdioClient", () => {
     await new Promise((r) => setTimeout(r, 50));
 
     expect(received).toHaveLength(0);
+  });
+
+  it("timeoutMs: 0 means no timeout — call stays pending indefinitely", async () => {
+    const child = makeChild([]); // no response lines
+    const client = new JsonRpcStdioClient(child as never);
+
+    let settled = false;
+    const p = client.call("ping", {}, { timeoutMs: 0 }).then(
+      () => { settled = true; },
+      () => { settled = true; },
+    );
+
+    // Give 100ms — should still be pending
+    await new Promise((r) => setTimeout(r, 100));
+    expect(settled).toBe(false);
+
+    // Resolve by sending a response
+    const responseLine = JSON.stringify({ jsonrpc: "2.0", id: 1, result: { pong: true, ts: "t" } });
+    (child as unknown as { stdout: Readable }).stdout.push(responseLine + "\n");
+    await p;
+    expect(settled).toBe(true);
+  });
+
+  it("call() rejects with core_unavailable when stdin is not writable", async () => {
+    const child = makeChild([]);
+    const castedChild = child as unknown as { stdin: Writable & { writable: boolean } };
+    castedChild.stdin.writable = false;
+
+    const client = new JsonRpcStdioClient(child as never);
+    await expect(client.call("ping", {})).rejects.toThrow("core_unavailable");
   });
 });

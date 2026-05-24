@@ -4,7 +4,7 @@ import type { ChildProcess } from "child_process";
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (err: Error) => void;
-  timer: ReturnType<typeof setTimeout>;
+  timer: ReturnType<typeof setTimeout> | null; // null = no timeout
 }
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -35,14 +35,22 @@ export class JsonRpcStdioClient {
       return Promise.reject(new Error("core_unavailable"));
     }
 
+    if (!this.child.stdin?.writable) {
+      return Promise.reject(new Error("core_unavailable"));
+    }
+
     const id = this.nextId++;
-    const timeoutMs = opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    // timeoutMs === 0 means no timeout; undefined uses default.
+    const timeoutMs = opts?.timeoutMs !== undefined ? opts.timeoutMs : DEFAULT_TIMEOUT_MS;
 
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`rpc_timeout: ${method}`));
-      }, timeoutMs);
+      const timer =
+        timeoutMs > 0
+          ? setTimeout(() => {
+              this.pending.delete(id);
+              reject(new Error(`rpc_timeout: ${method}`));
+            }, timeoutMs)
+          : null;
 
       this.pending.set(id, {
         resolve: resolve as (v: unknown) => void,
@@ -51,7 +59,16 @@ export class JsonRpcStdioClient {
       });
 
       const msg = JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n";
-      this.child.stdin!.write(msg);
+      this.child.stdin!.write(msg, (err) => {
+        if (err) {
+          const pending = this.pending.get(id);
+          if (pending) {
+            this.pending.delete(id);
+            if (pending.timer !== null) clearTimeout(pending.timer);
+            pending.reject(new Error(`write_error: ${err.message}`));
+          }
+        }
+      });
     });
   }
 
@@ -71,7 +88,7 @@ export class JsonRpcStdioClient {
     process.stderr.write(`[core] client shutdown: ${reason}\n`);
 
     for (const [, pending] of this.pending) {
-      clearTimeout(pending.timer);
+      if (pending.timer !== null) clearTimeout(pending.timer);
       pending.reject(new Error("core_unavailable"));
     }
     this.pending.clear();
@@ -97,7 +114,7 @@ export class JsonRpcStdioClient {
         return;
       }
       this.pending.delete(id);
-      clearTimeout(pending.timer);
+      if (pending.timer !== null) clearTimeout(pending.timer);
 
       if ("error" in msg) {
         pending.reject(new Error(JSON.stringify(msg.error)));
