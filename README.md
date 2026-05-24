@@ -109,6 +109,11 @@ Các phần chính của app:
 - Updates
 - Settings
 
+Bắt đầu:
+
+- [SCAFFOLD.md](SCAFFOLD.md) — prerequisites, dev modes, DB, logs, tests, troubleshooting
+- [SMOKE.md](SMOKE.md) — manual end-to-end smoke checklist (slice 1)
+
 Xem thêm:
 
 - [Docs Index](docs/index.md)
