@@ -67,8 +67,10 @@ astraler-skillbox/
     internal/app/wire.go            composition root
     internal/rpc/server.go          creachadair/jrpc2 wiring với NDJSON channel
     internal/rpc/handlers/ping.go   trả {"pong": true, "ts": <iso8601>}
-  scripts/
-    build-go.sh                     go build -o dist/skillbox-core ./cmd/skillbox-core
+  apps/desktop/scripts/             // tooling cho pnpm scripts (M1 build-go,
+                                    // M2 generate-contracts) — sống cùng package
+                                    // duy nhất; KHÔNG ở root vì non-workspace decision
+    build-go.sh                     go build -o ../dist/skillbox-core ../../core-go/cmd/skillbox-core
   shared/                           folder placeholder (dùng từ M2)
   fixtures/                         folder placeholder (dùng từ M3)
 ```
@@ -96,6 +98,75 @@ Mid-session    Go exit unexpected → restart count++, respawn nếu count ≤ 3
                count == 4 → blocking error.
 Quit           before-quit handler: SIGTERM → wait 3s → SIGKILL nếu còn alive.
 Go SIGTERM     M1: ngay exit 0. M3+: mark running ops failed, close SQLite, exit 0.
+```
+
+**JSON-RPC client (Electron main side):**
+
+```text
+File: apps/desktop/electron/main/core-process/json-rpc-client.ts
+
+Decision: viết custom TS class JsonRpcStdioClient, KHÔNG dùng JS lib bên ngoài.
+Reasons:
+- NDJSON framing đơn giản (~150 LOC tổng);
+- vscode-jsonrpc dùng LSP Content-Length framing, không hợp NDJSON;
+- Tự own giúp control timeout, shutdown, child stdout parsing rõ ràng.
+
+Class JsonRpcStdioClient {
+  constructor(child: ChildProcessWithoutNullStreams,
+              opts?: { defaultTimeoutMs?: number })
+
+  // Send request, await response. Default timeout = 30000ms.
+  // opts.timeoutMs = 0 → no timeout (dùng cho long-running commands như
+  // host.scan trả operationId nhanh; còn long-running work chạy qua progress
+  // notifications, không cần timeout dài).
+  call<T>(method: string, params: unknown,
+          opts?: { timeoutMs?: number }): Promise<T>
+
+  // Subscribe to server-push notifications (no id). Returns unsubscribe fn.
+  on(method: string, handler: (params: unknown) => void): () => void
+
+  // Reject all pending requests with given error; called when child exits.
+  shutdown(reason: string): void
+}
+
+Internal responsibilities:
+1. Monotonic request ID counter (number, start 1, increment per call)
+2. pendingRequests: Map<id, { resolve, reject, timer }>
+3. notificationSubscribers: Map<method, Set<handler>>
+4. Listen to child.stdout via readline.createInterface (line-by-line, UTF-8);
+   one JSON envelope per line.
+5. For each line:
+   - try JSON.parse; nếu fail → log to stderr capture, skip
+   - validate { jsonrpc: "2.0", ... }
+   - if has "id" → response:
+       pending := pendingRequests.get(id)
+       if pending: clear timer, delete from map,
+                   if "error" in env → reject với AppRpcError(envelope.error)
+                   else → resolve(envelope.result)
+       else: log "orphan response id=<id>"
+   - if no "id" và có "method" → notification:
+       fan out to notificationSubscribers.get(env.method) ?? []
+6. child.stderr → forward vào core.log (Electron main's logger)
+7. child.on("exit", (code, signal)) → shutdown(`core_exited:${code}/${signal}`)
+8. child.on("error", err) → shutdown(`core_spawn_error:${err.message}`)
+9. shutdown(reason):
+   for each pending: clear timer, reject với new AppRpcError({
+     code: "core_unavailable", userMessage: "Skillbox core unavailable",
+     technicalMessage: reason })
+   clear maps, mark client closed (subsequent call() throws immediately)
+10. Write request:
+    line := JSON.stringify({jsonrpc:"2.0", id, method, params}) + "\n"
+    child.stdin.write(line, "utf-8")
+    Nếu child.stdin.writable === false → throw core_unavailable.
+
+Tests (manager.test.ts hoặc json-rpc-client.test.ts):
+- call resolves on matching response
+- call rejects on error envelope
+- call rejects on timeout (mock clock)
+- notification dispatches to subscribers
+- shutdown rejects all pending
+- non-parseable line không crash client
+- response with unknown id logged as orphan, không reject random pending
 ```
 
 **Method allowlist & IPC bridge:**
@@ -185,6 +256,7 @@ shared/api-contracts/
     host.scan.json
     skill.list.json
     operation.cancel.json
+    settings.get.json
   notifications/
     server.ready.json
     operation.progress.json
@@ -199,7 +271,7 @@ shared/api-contracts/
 
 shared/generated/
   index.ts
-  methods/{host-choose, host-scan, skill-list, operation-cancel}.ts
+  methods/{host-choose, host-scan, skill-list, operation-cancel, settings-get}.ts
   notifications/{server-ready, operation-progress}.ts
   shared/{operation, error, skill, warning}.ts
   electron/{dialog-open-host-folder}.ts
@@ -247,6 +319,26 @@ skill.list
     warnings: Array<{ code: string, message: string, scopeRef: string | null }>
   }
   Errors: validation_error (hostId không tồn tại)
+
+settings.get
+  Request: {}
+  Response: {
+    activeSkillHostFolderId: number | null,
+    defaultInstallMode: "symlink" | "rsync_copy",
+    databaseVersion: number,
+    activeHost: {
+      hostId: number,
+      path: string,
+      skillsPath: string,
+      status: "active" | "missing" | "unreadable" | "unwritable"
+            | "invalid_structure" | "empty" | "inactive",
+      lastScannedAt: string | null
+    } | null            // null khi activeSkillHostFolderId == null hoặc host record
+                        // không tồn tại trong DB (defensive)
+  }
+  Errors: (none typical; database_error nếu DB unavailable)
+  Purpose: app boot query — UI dùng để route /setup vs /skills, persist
+           reopen state, populate /settings screen
 ```
 
 **Notifications:**
@@ -304,7 +396,8 @@ error.data: {
 
 ```text
 DIALOG_METHODS = new Set(["dialog.openHostFolder"])
-GO_FORWARDED   = new Set(["ping", "host.choose", "host.scan", "skill.list", "operation.cancel"])
+GO_FORWARDED   = new Set(["ping", "host.choose", "host.scan", "skill.list",
+                          "operation.cancel", "settings.get"])
 
 ipcMain.handle("core:invoke", (_, method, params) => {
   if (DIALOG_METHODS.has(method)) return handleDialog(method, params);
@@ -318,14 +411,18 @@ ipcMain.handle("core:invoke", (_, method, params) => {
 ```text
 Tool: json-schema-to-typescript (npm)
 
-apps/desktop/package.json scripts:
+Script location: apps/desktop/scripts/generate-contracts.mjs
+  (không phải scripts/ ở root — consistent với non-workspace decision:
+   chỉ apps/desktop có package.json + node_modules)
+
+apps/desktop/package.json scripts (cwd = apps/desktop):
   "generate:contracts":      "node scripts/generate-contracts.mjs"
   "check:contracts-drift":   "node scripts/generate-contracts.mjs --check"
 
-scripts/generate-contracts.mjs:
-  - đọc shared/api-contracts/index.json
+apps/desktop/scripts/generate-contracts.mjs:
+  - đọc ../../shared/api-contracts/index.json (relative tới root)
   - cho mỗi schema, compile bằng json-schema-to-typescript
-  - write vào shared/generated/<corresponding>.ts
+  - write vào ../../shared/generated/<corresponding>.ts
   - --check mode: generate vào temp, diff với committed, exit 1 nếu khác
 ```
 
@@ -347,9 +444,10 @@ core-go/internal/rpc/handlers/contract_test.go
 **Acceptance:**
 
 ```text
-[ ] 3 method schemas + 2 notification schemas + 4 shared types + 1 electron schema committed
-[ ] pnpm generate:contracts chạy được, regenerate giống file đã commit
-[ ] Drift check fail nếu sửa schema mà chưa regen
+[ ] 5 method schemas (host.choose, host.scan, skill.list, operation.cancel, settings.get)
+    + 2 notification schemas + 4 shared types + 1 electron schema committed
+[ ] cd apps/desktop && pnpm generate:contracts regenerate giống file đã commit
+[ ] cd apps/desktop && pnpm check:contracts-drift fail nếu sửa schema mà chưa regen
 ```
 
 ### M3 — Go Core Slice 1 (TDD Layer-By-Layer)
@@ -386,14 +484,17 @@ core-go/migrations/0001_init.sql
     app_settings              singleton row (id=1, default_install_mode='symlink',
                                               database_version=1)
     skill_host_folders        full schema theo docs/07
-    skills                    full schema theo docs/07 (source_id nullable, slice 1 không seed)
+    skills                    full schema theo docs/07 (source_id nullable, slice 1 không insert)
+    skill_sources             full schema theo docs/07 — bao gồm để giữ FK integrity
+                              cho skills.source_id; slice 1 không có code path write
+                              vào table này (sẽ activate ở slice fetch/updates)
     operations                full schema theo docs/07 (polymorphic target)
     warnings                  full schema theo docs/07 (polymorphic scope)
 
   DEFER cho slice 2+:
     api_credentials, projects, provider_definitions, provider_path_candidates,
     project_providers, global_provider_locations, installs, global_installs,
-    fetch_results, skill_sources, scan_results
+    fetch_results, scan_results
 
   Note: scan_results defer. Slice 1 lưu scan summary trong operations.metadata_json.
 
@@ -453,16 +554,28 @@ core-go/internal/repositories/
   app_settings_repo.go       Get() *AppSettings    (singleton id=1)
                              UpdateActiveHost(hostId *int64)
                              UpdateDefaultInstallMode(mode string)
-  skill_host_folder_repo.go  Insert(SkillHostFolder) → int64
-                             GetByID(id) → *SkillHostFolder
+  skill_host_folder_repo.go  GetByID(id) → *SkillHostFolder
                              GetByPath(path) → *SkillHostFolder | nil
                              GetActive() → *SkillHostFolder | nil  (join app_settings)
-                             SetActive(hostId)            // TRANSACTION:
-                                                          // clear host cũ → inactive,
-                                                          // set host mới → active,
-                                                          // update app_settings
+                             UpsertAndActivate(ctx, name, path, skillsPath)
+                                  // ONE ATOMIC TRANSACTION (unit of work):
+                                  //   1. SELECT host WHERE path = ? FOR UPDATE-equiv
+                                  //   2. Nếu chưa có: INSERT host (status='active')
+                                  //      Nếu đã có: UPDATE host SET status='active'
+                                  //   3. SELECT app_settings.active_skill_host_folder_id
+                                  //   4. Nếu currentActive khác hostId mới:
+                                  //      UPDATE skill_host_folders
+                                  //      SET status='inactive' WHERE id=currentActive
+                                  //   5. UPDATE app_settings
+                                  //      SET active_skill_host_folder_id=hostId WHERE id=1
+                                  //   COMMIT
+                                  // → (hostId int64, isNew bool, err error)
+                                  //   isNew=true nếu vừa insert; false nếu update.
                              UpdateStatus(id, status)
                              UpdateLastScannedAt(id, t)
+  skill_source_repo.go       (slice 1 không cần methods; file tạo placeholder
+                              với package declaration để slice fetch/updates extend.
+                              Hoặc skip file hoàn toàn, chỉ giữ table trong migration.)
   skill_repo.go              UpsertMany(hostId, []Skill) trong transaction
                              ListByHost(hostId) → []Skill
                              MarkMissing(hostId, presentIds) trong transaction
@@ -512,22 +625,18 @@ SkillHostService (constructor inject: hostRepo, appSettings, fs, runner)
   ChooseHost(ctx, path string) → ChooseHostResult
     1. fs.ValidateHostPath(path) → validation_error nếu sai
     2. initialized := fs.EnsureAgentsSkills(path) → filesystem_error nếu fail
-    3. Transaction:
-       existing := repo.GetByPath(path)
-       if existing == nil:
-         hostId := repo.Insert(SkillHostFolder{
-           Name: filepath.Base(path), Path: path,
-           SkillsPath: filepath.Join(path, ".agents/skills"),
-           Status: "active"
-         })
-       else:
-         hostId := existing.ID
-         repo.UpdateStatus(hostId, "active")
-       currentActive := appSettings.Get().ActiveSkillHostFolderId
-       if currentActive != nil && *currentActive != hostId:
-         repo.UpdateStatus(*currentActive, "inactive")
-       appSettings.UpdateActiveHost(&hostId)
-    4. Return { HostId, Path, SkillsPath, Initialized, Status }
+    3. skillsPath := filepath.Join(path, ".agents/skills")
+       hostId, _ := hostRepo.UpsertAndActivate(ctx,
+                       filepath.Base(path), path, skillsPath)
+       // Đây là SINGLE TRANSACTIONAL unit-of-work call. Service KHÔNG
+       // compose nhiều repo calls quanh một "Transaction:" block — toàn bộ
+       // upsert + activation + deactivation host cũ + update app_settings
+       // nằm trong repo method.
+       // → database_error nếu transaction fail (filesystem state đã được
+       //   thay đổi ở bước 2, nhưng DB rollback đảm bảo không có partial state)
+    4. host := hostRepo.GetByID(hostId)
+    5. Return { HostId: hostId, Path: host.Path, SkillsPath: host.SkillsPath,
+                Initialized: initialized, Status: host.Status }
 
   Idempotent theo path. Switch host inline. KHÔNG conflict_error cho host.choose.
 
@@ -560,11 +669,31 @@ SkillLibraryService (constructor inject: skillRepo, hostRepo, warningRepo)
     totals := count theo status
     Return view model khớp skill.list response schema.
 
+SettingsService (constructor inject: appSettingsRepo, hostRepo)
+  Get(ctx) → SettingsView                // implements settings.get RPC
+    settings := appSettingsRepo.Get()    // singleton row id=1
+    var activeHost *ActiveHostView
+    if settings.ActiveSkillHostFolderId != nil:
+      host := hostRepo.GetByID(*settings.ActiveSkillHostFolderId)
+      if host != nil:                    // defensive: row có thể bị manual edit
+        activeHost = &ActiveHostView{
+          HostId: host.ID, Path: host.Path, SkillsPath: host.SkillsPath,
+          Status: host.Status, LastScannedAt: host.LastScannedAt,
+        }
+    Return SettingsView{
+      ActiveSkillHostFolderId: settings.ActiveSkillHostFolderId,
+      DefaultInstallMode:      settings.DefaultInstallMode,
+      DatabaseVersion:         settings.DatabaseVersion,
+      ActiveHost:              activeHost,
+    }
+
 *_test.go
   - Mock fs, repos qua interface
-  - ChooseHost: happy, validation_error, filesystem_error, switch-host transaction
+  - ChooseHost: happy, validation_error, filesystem_error, switch-host UpsertAndActivate
   - ScanHost: operation queued, fn gọi đúng order, progress emitted, metadata persisted
   - List: empty host, host với skills, host với warnings
+  - Get (Settings): no active host → nil; active host present; active host id orphan
+                    (id trỏ tới row không tồn tại) → activeHost=nil không panic
 ```
 
 #### Step 3.7 — JSON-RPC handlers + contract tests
@@ -575,6 +704,7 @@ core-go/internal/rpc/handlers/
   host_scan.go          wrap SkillHostService.ScanHost
   skill_list.go         wrap SkillLibraryService.List
   operation_cancel.go   wrap Runner.Cancel
+  settings_get.go       wrap SettingsService.Get
   ping.go               (M1, giữ cho health check)
   contract_test.go      go:embed shared/api-contracts/,
                         cho mỗi handler validate response qua JSON Schema
@@ -585,7 +715,7 @@ core-go/internal/rpc/notifications/
     Validate notification payload qua schema (bật khi test)
 
 Method allowlist update trong Electron main:
-  ["ping", "host.choose", "host.scan", "skill.list", "operation.cancel"]
+  ["ping", "host.choose", "host.scan", "skill.list", "operation.cancel", "settings.get"]
 ```
 
 #### Step 3.8 — Wire trong cmd/skillbox-core
@@ -600,15 +730,17 @@ core-go/cmd/skillbox-core/main.go
   6. runner := operations.NewRunner(operationRepo)
   7. hostService := services.NewSkillHostService(hostRepo, appSettingsRepo, fs, runner)
   8. libraryService := services.NewSkillLibraryService(skillRepo, hostRepo, warningRepo)
-  9. rpcServer := rpc.NewServer()
- 10. rpcServer.Register("ping", ping.Handler)
- 11. rpcServer.Register("host.choose", host_choose.NewHandler(hostService))
- 12. rpcServer.Register("host.scan", host_scan.NewHandler(hostService))
- 13. rpcServer.Register("skill.list", skill_list.NewHandler(libraryService))
- 14. rpcServer.Register("operation.cancel", operation_cancel.NewHandler(runner))
- 15. progressDispatcher.Subscribe(runner, rpcServer)
- 16. rpcServer.Notify("server.ready", {version, pid, capabilities})
- 17. rpcServer.Serve(stdin, stdout)
+  9. settingsService := services.NewSettingsService(appSettingsRepo, hostRepo)
+ 10. rpcServer := rpc.NewServer()
+ 11. rpcServer.Register("ping", ping.Handler)
+ 12. rpcServer.Register("host.choose", host_choose.NewHandler(hostService))
+ 13. rpcServer.Register("host.scan", host_scan.NewHandler(hostService))
+ 14. rpcServer.Register("skill.list", skill_list.NewHandler(libraryService))
+ 15. rpcServer.Register("operation.cancel", operation_cancel.NewHandler(runner))
+ 16. rpcServer.Register("settings.get", settings_get.NewHandler(settingsService))
+ 17. progressDispatcher.Subscribe(runner, rpcServer)
+ 18. rpcServer.Notify("server.ready", {version, pid, capabilities})
+ 19. rpcServer.Serve(stdin, stdout)
 
 Defer:
   db.Close()
@@ -622,13 +754,16 @@ Defer:
 1. SKILLBOX_DB_PATH=/tmp/skillbox-test.db go run ./cmd/skillbox-core
 2. Send qua stdin (NDJSON):
    {"jsonrpc":"2.0","id":1,"method":"ping","params":{}}
-   {"jsonrpc":"2.0","id":2,"method":"host.choose","params":{"path":"/tmp/test-host"}}
-   {"jsonrpc":"2.0","id":3,"method":"host.scan","params":{"hostId":1}}
+   {"jsonrpc":"2.0","id":2,"method":"settings.get","params":{}}    // expect activeHost=null
+   {"jsonrpc":"2.0","id":3,"method":"host.choose","params":{"path":"/tmp/test-host"}}
+   {"jsonrpc":"2.0","id":4,"method":"settings.get","params":{}}    // expect activeHost populated
+   {"jsonrpc":"2.0","id":5,"method":"host.scan","params":{"hostId":1}}
    wait operation.progress notifications
-   {"jsonrpc":"2.0","id":4,"method":"skill.list","params":{"hostId":1}}
+   {"jsonrpc":"2.0","id":6,"method":"skill.list","params":{"hostId":1}}
 3. Verify response shape match schema
-4. sqlite3 /tmp/skillbox-test.db ".schema" — verify migrations
+4. sqlite3 /tmp/skillbox-test.db ".schema" — verify migrations (skills, skill_sources, ...)
 5. sqlite3 ... "SELECT * FROM skills" — verify rows
+6. sqlite3 ... "SELECT * FROM skill_sources" — verify table tồn tại (rỗng OK)
 ```
 
 **Acceptance M3:**
@@ -662,11 +797,17 @@ components đầu: Button, Card, Dialog, AlertDialog, Badge, Skeleton,
 **Routes (createMemoryRouter):**
 
 ```text
-/                redirect → /skills nếu có active host, → /setup nếu chưa
+/                root route: useQuery("settings.app") via methods.getSettings():
+                   - data?.activeHost == null → redirect /setup
+                   - data?.activeHost != null → redirect /skills
+                 Spinner while query pending; ErrorBoundary nếu fail.
 /setup           First-time setup wizard
 /skills          Skills Library
 /settings        Active host + Change Host Folder
 ```
+
+App-load query `settings.get` cung cấp routing decision và reopen persistence
+(active host được DB nhớ). Không tự suy từ UI state; UI luôn hỏi Go core.
 
 **Folder layout sau M4:**
 
@@ -682,11 +823,19 @@ apps/desktop/renderer/src/
       client.ts                       typed invoke wrapper
       methods.ts                      per-method typed wrappers
       progress.ts                     subscribeOperationProgress(id, cb)
-    query-keys.ts                     skills.list(hostId), settings.app
+    query-keys.ts                     settings.app (no args),
+                                      skills.list(hostId)
   features/
+    app-settings/
+      use-app-settings.ts             useQuery({queryKey: settings.app,
+                                                 queryFn: methods.getSettings})
+                                      → trả về { activeHost, defaultInstallMode, ... }
     skill-host/
-      use-choose-host.ts              useMutation
-      use-active-host.ts              useQuery for settings + active host
+      use-choose-host.ts              useMutation; onSuccess invalidate
+                                      [settings.app, skills.list]
+      use-active-host.ts              derived selector trên use-app-settings:
+                                      const { data } = useAppSettings();
+                                      return data?.activeHost ?? null
       use-scan-host.ts                useMutation + operationId tracking
     skills-library/
       use-skills-list.ts              useQuery
@@ -709,14 +858,14 @@ apps/desktop/renderer/src/
 
 ```text
 /setup
-  Render khi appSettings.activeSkillHostFolderId == null
+  Render khi useAppSettings().data?.activeHost == null
   Centered card, không sidebar
   - Heading "Choose your Skill Host Folder"
   - Button "Choose Folder":
     1. await methods.openHostFolder()    (Electron dialog)
     2. nếu cancel → no-op
     3. await methods.chooseHost({path})
-    4. invalidate queries: app.settings, skills.list
+    4. invalidate queries: settings.app, skills.list
     5. router.navigate('/skills')
   - Error display nếu fail
 
@@ -753,7 +902,8 @@ lib/core-client/methods.ts
     chooseHost:      (req) => invoke<ChooseHostRequest, ChooseHostResponse>("host.choose", req),
     scanHost:        (req) => invoke<ScanHostRequest, ScanHostResponse>("host.scan", req),
     listSkills:      (req) => invoke<SkillListRequest, SkillListResponse>("skill.list", req),
-    cancelOperation: (req) => invoke<{operationId: number}, void>("operation.cancel", req),
+    cancelOperation: (req) => invoke<{operationId:number}, {acknowledged:boolean}>("operation.cancel", req),
+    getSettings:     () => invoke<{}, SettingsGetResponse>("settings.get", {}),
   };
   TS types import từ shared/generated/.
 
@@ -815,7 +965,7 @@ Playwright defer.
 
 ### M5 — End-To-End Smoke + Scaffold Docs
 
-Viết SMOKE.md (checklist manual đầy đủ) và SCAFFOLD.md (setup, 3 dev modes, troubleshooting). Tag commit `slice-1-skills-library`.
+Viết SMOKE.md (checklist manual đầy đủ) và SCAFFOLD.md (setup, 3 dev modes, troubleshooting). Tag `slice-1-skills-library` KHÔNG tạo trong M5 — defer cho đến khi owner approve explicit (xem section "Tag + commit boundary" bên dưới).
 
 **SMOKE.md** — checklist manual chi tiết, viết để chạy được mà không cần đọc spec này:
 
@@ -888,18 +1038,24 @@ Validation smoke:
 
 ```text
 Prerequisites: Node 20+, pnpm 9+, Go 1.22+, macOS/Linux (Windows defer)
-Install: pnpm install, cd core-go && go mod download
+
+Repo có 1 JS package duy nhất (apps/desktop) — KHÔNG có root package.json
+và KHÔNG dùng pnpm workspace. Mọi pnpm command phải chạy từ apps/desktop.
+
+Install:
+  cd apps/desktop && pnpm install
+  cd ../../core-go && go mod download
 
 Three dev modes:
-  Full-stack (default):     pnpm dev
+  Full-stack (default):     cd apps/desktop && pnpm dev
   Go-only (TDD):            cd core-go && go test -race ./...
                             SKILLBOX_DB_PATH=/tmp/dev.db go run ./cmd/skillbox-core
-  UI-only (mock core):      SKILLBOX_USE_MOCK_CORE=1 pnpm dev
+  UI-only (mock core):      cd apps/desktop && SKILLBOX_USE_MOCK_CORE=1 pnpm dev
                             (flag wired, fixtures minimal trong slice 1)
 
 Database:
   Default: ~/Library/Application Support/Astraler Skillbox/skillbox.db
-  Override: SKILLBOX_DB_PATH=/tmp/test.db pnpm dev
+  Override: SKILLBOX_DB_PATH=/tmp/test.db pnpm dev   (từ apps/desktop)
   Inspect: sqlite3 <path>
   Reset: rm -rf folder
 
@@ -907,14 +1063,14 @@ Logs:
   ~/Library/Logs/Astraler Skillbox/main.log     Electron main
   ~/Library/Logs/Astraler Skillbox/core.log     Go core stderr
 
-Contracts:
+Contracts (run từ apps/desktop):
   pnpm generate:contracts        regenerate TS từ JSON Schema
   pnpm check:contracts-drift     CI check
 
 Tests:
-  pnpm test                      Vitest
-  cd core-go && go test ./...    Go
-  cd core-go && go test -race ./internal/operations/...
+  cd apps/desktop && pnpm test         Vitest
+  cd core-go && go test ./...          Go unit + integration
+  cd core-go && go test -race ./internal/operations/...   race-sensitive packages
 
 Troubleshooting:
   "server.ready timeout"         check core.log; thường do go binary build fail
@@ -935,13 +1091,24 @@ Mỗi milestone là 1 PR/branch:
 Merge sequential, không squash để giữ history per layer.
 ```
 
+**Tag + commit boundary:**
+
+```text
+Sau M5 merge xong và smoke pass:
+  KHÔNG tự tạo tag slice-1-skills-library.
+  KHÔNG tự push --tags.
+  Đợi owner approve explicit release checkpoint trước khi tag/push.
+  (Aligned với plan: implementation agent không được tự ý publish release artifacts.)
+```
+
 **Acceptance M5:**
 
 ```text
 [ ] SMOKE.md checklist pass 100% trên macOS
-[ ] Fresh clone + pnpm install + pnpm dev → app chạy được trong ≤ 5 phút
-[ ] SCAFFOLD.md cover đủ 3 dev modes
-[ ] Tag slice-1-skills-library push lên remote
+[ ] Fresh clone + (cd apps/desktop && pnpm install) + (cd apps/desktop && pnpm dev)
+    → app chạy được trong ≤ 5 phút
+[ ] SCAFFOLD.md cover đủ 3 dev modes với explicit cd paths
+[ ] Tag slice-1-skills-library KHÔNG tạo (defer đến owner approval)
 ```
 
 ## What's Deferred Sau Slice 1
@@ -999,4 +1166,19 @@ R4  Native dialog absolute path consistency
             KHÔNG conflict_error (chỉ validation_error / filesystem_error)
 2026-05-25  dialog.openHostFolder contract ở shared/api-contracts/electron/
             namespace riêng, không trộn vào methods/ Go RPC
+2026-05-25  Tech-lead review findings applied:
+            - skill_sources table include trong migration 0001 (full schema docs/07)
+              để giữ FK integrity cho skills.source_id; slice 1 không write
+            - Thêm settings.get query method + SettingsService.Get + handler để
+              cover first-load routing và reopen persistence
+            - M1 Electron-side JSON-RPC client: custom TS class JsonRpcStdioClient
+              (~150 LOC, NDJSON), không dùng JS lib
+            - Scripts chuyển từ scripts/ ở root sang apps/desktop/scripts/
+              (consistent với non-workspace decision: 1 JS package duy nhất)
+            - ChooseHost dùng SkillHostFolderRepo.UpsertAndActivate (single
+              atomic unit-of-work) thay vì compose nhiều repo calls quanh
+              vague "Transaction:" block
+            - Mọi pnpm command chạy từ apps/desktop (root không có package.json)
+            - Tag + push slice-1-skills-library defer đến owner approval
+              explicit; không auto tag/push sau smoke pass
 ```
