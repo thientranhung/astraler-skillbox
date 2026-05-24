@@ -1,7 +1,8 @@
 {
   "include": [
     "renderer/src/**/*.ts",
-    "renderer/src/**/*.tsx"
+    "renderer/src/**/*.tsx",
+    "../../shared/generated/**/*.ts"
   ],
   "compilerOptions": {
     "composite": true,
@@ -13,6 +14,12 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "dist/renderer"
+    "outDir": "dist/renderer",
+    "rootDir": "../../",
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@contracts/*": ["../../shared/generated/*"]
+    }
   }
 }

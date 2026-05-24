@@ -1,5 +1,6 @@
 export const ALLOWLIST = new Set([
   "ping",
+  "dialog.openHostFolder",
   "host.choose",
   "host.scan",
   "skill.list",
