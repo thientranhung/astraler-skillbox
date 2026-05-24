@@ -119,6 +119,12 @@ Prompt dùng để nhờ agent/chuyên gia khác review riêng Tech Stack And Sc
 Decisions. Kết quả review nên được ghi vào
 `docs/review-results/tech-stack-scaffold-review.md`.
 
+[review-results/tech-stack-scaffold-review.md](review-results/tech-stack-scaffold-review.md)
+
+Kết quả review Tech Stack And Scaffold Decisions. Review này chốt các thay đổi
+cần làm trước scaffold như SQLite PRAGMAs, JSON-RPC framing/library, startup
+timeout, Electron security defaults, app data path, và dependency deferral.
+
 ## Suggested Reading Flow
 
 ```text
@@ -157,3 +163,4 @@ README.md
 - Global Skills layer follow-up review result: [review-results/global-skills-layer-followup-review.md](review-results/global-skills-layer-followup-review.md)
 - Technical architecture brainstorm result: [review-results/technical-architecture-brainstorm.md](review-results/technical-architecture-brainstorm.md)
 - Transport decision brainstorm result: [review-results/transport-decision-brainstorm.md](review-results/transport-decision-brainstorm.md)
+- Tech stack scaffold review result: [review-results/tech-stack-scaffold-review.md](review-results/tech-stack-scaffold-review.md)

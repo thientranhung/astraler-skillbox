@@ -94,6 +94,9 @@ JSON-RPC 2.0 trong Phase 1. Lý do chính: không cần mở local port, không 
 conflict, không có macOS firewall prompt, dễ đóng gói desktop app, và hỗ trợ
 request/response lẫn server-push notifications.
 
+Decision: JSON-RPC Phase 1 dùng NDJSON framing và `creachadair/jrpc2`, trừ khi
+spike implementation phát hiện blocker cụ thể.
+
 Migration path: nếu Phase 2 cần CLI reuse, multi-window, hoặc nhiều consumer
 cùng kết nối tới một Go core đang chạy, giữ JSON-RPC protocol và đổi transport
 sang unix socket/named pipe.
@@ -127,18 +130,22 @@ Rules:
   vào stdout trong Go core.
 - Go core phải gửi `server.ready` notification trước khi Electron main forward
   renderer requests.
+- Electron main chờ `server.ready` tối đa 10 giây sau khi spawn Go core.
+- Nếu timeout hoặc Go exit trước `server.ready`, Electron main kill child nếu
+  còn sống, hiển thị blocking error window, và surface stderr/log path.
 - Operation progress dùng JSON-RPC notifications như `operation.progress`.
 - Request/response dùng `id` của JSON-RPC để support multiple in-flight
   requests.
 - Operation locking nằm ở service layer, không nằm ở transport layer.
 - Production không mở local HTTP server.
+- App error codes không dùng JSON-RPC reserved range `-32768` đến `-32000`.
 
-Open implementation details:
+Implementation details:
 
-- JSON-RPC Go library: `sourcegraph/jsonrpc2`, `creachadair/jrpc2`, hoặc custom
-  minimal handler.
-- Framing: NDJSON đơn giản hơn; LSP-style `Content-Length` chặt hơn.
-- Dev-only debug server có cần không, hay chỉ dùng stdin/stdout test harness.
+- JSON-RPC Go library: `creachadair/jrpc2`.
+- Framing: NDJSON, one JSON object per line.
+- Dev-only debug server có thể thêm sau qua `SKILLBOX_DEBUG_PORT`, nhưng không
+  thuộc production path.
 
 ## Module Boundaries
 
@@ -323,6 +330,34 @@ Rules:
 - Không lưu plaintext secrets trong SQLite.
 - Migrations phải chạy trước khi UI vào app chính.
 
+SQLite startup sequence:
+
+```text
+Open SQLite connection
+  -> Apply connection PRAGMAs
+  -> Run migrations
+  -> Seed provider definitions through migration
+  -> Open app main window only after success
+```
+
+Required PRAGMAs for every connection, including tests:
+
+```sql
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
+PRAGMA busy_timeout=5000;
+PRAGMA synchronous=NORMAL;
+```
+
+SQLite file path:
+
+```text
+macOS:   ~/Library/Application Support/Astraler Skillbox/skillbox.db
+Windows: %APPDATA%\Astraler Skillbox\skillbox.db
+Linux:   ~/.config/astraler-skillbox/skillbox.db
+Tests:   SKILLBOX_DB_PATH override to temp database path
+```
+
 ## Filesystem Gateway
 
 Filesystem Gateway là boundary bắt buộc cho mọi thao tác path.
@@ -428,6 +463,18 @@ Recommended progress model nếu dùng stdio JSON-RPC:
 - Cancel dùng command `operation.cancel` với `operation_id`; Go dùng
   `context.WithCancel` và check cancel ở natural checkpoints.
 - Retry là command mới từ UI, không auto-retry âm thầm trong Go.
+
+Startup and shutdown lifecycle:
+
+- Electron main spawns Go with `spawn()`, not `exec()`.
+- Electron main waits up to 10 seconds for `server.ready`.
+- If Go exits or times out before `server.ready`, show blocking startup error;
+  do not silently retry.
+- During an app session, if Go exits unexpectedly, Electron main may restart up
+  to 3 times before showing blocking error.
+- On `before-quit`, Electron main sends SIGTERM, waits 3 seconds, then SIGKILL.
+- Go handles SIGTERM and stdin EOF by marking running operations as failed,
+  closing SQLite, and exiting.
 
 Locking gợi ý:
 
@@ -618,6 +665,18 @@ UI shows `user_message`. Logs/debug tools can show `technical_message`.
 - Log paths and operation metadata, but avoid logging secret values.
 - Any future telemetry must be opt-in.
 
+Electron security decisions:
+
+```text
+contextIsolation = true
+nodeIntegration = false
+sandbox = true if compatible
+preload exposes narrow typed bridge only
+renderer never receives Go process path or transport details
+Electron main validates JSON-RPC method allowlist before forwarding to Go
+CSP = default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
+```
+
 ## Testing Strategy
 
 Core test layers:
@@ -676,7 +735,9 @@ vẫn còn mở.
 IPC transport:
   phase_1_decision = stdio JSON-RPC 2.0
   phase_2_migration_path = unix socket/named pipe if CLI or multi-window needs it
-  open = JSON-RPC library, framing, dev debug server
+  library = creachadair/jrpc2
+  framing = NDJSON
+  open = dev debug server
 
 Go core lifecycle:
   phase_1_decision = sidecar process managed by Electron main
@@ -693,11 +754,12 @@ API contract:
 SQLite:
   recommended = modernc.org/sqlite for no-CGO Phase 1 builds
   migrations = embedded SQL migrations
-  open = WAL mode policy and app data path
+  pragmas = WAL, foreign_keys=ON, busy_timeout=5000, synchronous=NORMAL
+  path = OS app data directory, SKILLBOX_DB_PATH override for dev/test
 
 Keychain:
-  recommended = Go core owns credentials via OS keychain library
-  open = exact library and env-var fallback behavior
+  recommended = Go core owns credentials via zalando/go-keyring
+  fallback = SKILLBOX_GITHUB_TOKEN, SKILLBOX_VERCEL_TOKEN for dev/CI
 
 Packaging:
   recommended = electron-builder with bundled Go binary

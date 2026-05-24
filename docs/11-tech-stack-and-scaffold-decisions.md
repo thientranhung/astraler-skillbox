@@ -61,14 +61,13 @@ Recommended:
 
 ```text
 astraler-skillbox/
-  package.json
-  pnpm-lock.yaml
-  go.work
   README.md
   docs/
 
   apps/
     desktop/
+      package.json
+      pnpm-lock.yaml
       electron/
         main/
         preload/
@@ -83,6 +82,7 @@ astraler-skillbox/
           styles/
 
   core-go/
+    go.mod
     cmd/
       skillbox-core/
     internal/
@@ -117,8 +117,12 @@ Rationale:
 Open:
 
 - Có cần `apps/desktop/renderer` hay giữ `ui/` ở root cho ngắn hơn.
-- `go.work` có cần ngay không nếu Phase 1 chỉ có một Go module.
-- `shared/generated` có commit generated TypeScript types hay generate trong CI.
+
+Decided:
+
+- Không dùng `go.work` ở Phase 1 vì chỉ có một Go module.
+- Không dùng pnpm workspace ở Phase 1 nếu chỉ có một JS package.
+- Generated TypeScript types được commit vào repo và CI kiểm tra drift.
 
 ## Boilerplate Research Direction
 
@@ -186,31 +190,31 @@ Risks:
   bundled incorrectly.
 - Need separate configs or build targets for renderer, main, and preload.
 
-Decision to confirm:
+Decision:
 
-- Use `electron-vite` style integrated config or custom Vite configs.
+- Use `electron-vite` to manage renderer, main, and preload Vite targets.
 
 ## Package Manager
 
 Status: recommended.
 
-Choice: pnpm.
+Choice: pnpm, single JS package at `apps/desktop`.
 
 Why:
 
 - Fast install.
-- Good workspace support.
 - Deterministic lockfile.
-- Works well for Electron monorepo-ish structure.
+- Works well for Electron development without requiring workspace mode.
 
 Risk:
 
 - Some Electron tooling docs default to npm/yarn, so commands must be documented
   clearly.
 
-Decision to confirm:
+Decision:
 
-- Use pnpm workspace from day one.
+- Do not scaffold `pnpm-workspace.yaml` on day one.
+- Add pnpm workspace only when a second JS package exists.
 
 ## Electron Packaging
 
@@ -230,10 +234,11 @@ Risks:
 - macOS signing and notarization are high-risk and should be tested early.
 - Go binary must be included, signed, and launched from production resource path.
 
-Decision to confirm:
+Decision:
 
 - Use `electron-builder` rather than Electron Forge.
 - Plan signing/notarization as a technical milestone, not a late release task.
+- Defer `electron-updater` until release/update flow is needed.
 
 ## UI Component Stack
 
@@ -293,7 +298,7 @@ Avoid:
 
 ## Router
 
-Status: recommended.
+Status: decided for Phase 1.
 
 Choice: TanStack Router.
 
@@ -313,13 +318,13 @@ Alternative:
 
 - React Router if team wants a simpler, widely-known router.
 
-Decision to confirm:
+Decision:
 
-- TanStack Router vs React Router.
+- Use TanStack Router with `createMemoryHistory` for Electron/file URL context.
 
 ## Server State And View Models
 
-Status: recommended.
+Status: decided for Phase 1.
 
 Choice: TanStack Query for local JSON-RPC queries.
 
@@ -340,16 +345,18 @@ Risks:
 - Over-caching can show stale filesystem state after scan/update.
 - Query keys must be disciplined.
 
-Decision to confirm:
+Decision:
 
-- Use TanStack Query from day one, or start with a thin custom query layer and
-  add TanStack Query when screens grow.
+- Use TanStack Query from day one.
+- Keep stale time short and invalidate aggressively after command/operation
+  completion.
 
 ## Client UI State
 
 Status: recommended.
 
-Choice: React state first; Zustand only for cross-screen ephemeral state.
+Choice: React state first; Zustand deferred until cross-screen ephemeral state is
+actually needed.
 
 Use React state for:
 
@@ -370,7 +377,7 @@ Avoid:
 
 ## Forms And Validation
 
-Status: recommended.
+Status: decided for Phase 1.
 
 Choice:
 
@@ -385,20 +392,23 @@ Why:
 - Zod schemas can mirror API contract validation.
 - React Hook Form avoids excessive controlled-input re-rendering.
 
-Risks:
+Rules:
 
-- Duplicating validation rules between Zod, JSON Schema, and Go structs.
+- Zod schemas are UI/form validation schemas.
+- JSON Schema in `shared/api-contracts` is wire contract validation.
+- Go validates command/query params independently on the core side.
 
-Decision to confirm:
+Risk:
 
-- Whether UI validation schemas are derived from shared API contracts or written
-  separately for user-facing form constraints.
+- Some validation is intentionally duplicated because user-facing form
+  constraints and wire contract constraints are not always identical.
 
 ## Tables
 
-Status: recommended.
+Status: defer.
 
-Choice: TanStack Table.
+Choice: start with simple table components; add TanStack Table when the first
+sortable/filterable table screen proves it needs it.
 
 Why:
 
@@ -415,10 +425,9 @@ Risks:
 - TanStack Table is headless and can be verbose.
 - Need shared table components to avoid repeating setup.
 
-Decision to confirm:
+Decision:
 
-- Use TanStack Table from first table screen, or start with simple tables and
-  introduce it when sorting/filtering lands.
+- Do not include TanStack Table in the initial scaffold.
 
 ## JSON-RPC Protocol
 
@@ -427,24 +436,28 @@ Status: partially decided.
 Decided:
 
 - Phase 1 transport is stdio JSON-RPC 2.0.
+- JSON-RPC Go library is `creachadair/jrpc2`.
+- Framing is NDJSON.
 - Go core sends `server.ready` before Electron forwards renderer requests.
+- Electron main waits up to 10 seconds for `server.ready`.
 - Operation progress uses JSON-RPC notifications.
 - Production does not open local HTTP server.
 
 Open:
 
-- Framing: NDJSON vs LSP-style `Content-Length`.
-- Go JSON-RPC library: `sourcegraph/jsonrpc2`, `creachadair/jrpc2`, or custom
-  minimal handler.
 - Whether dev mode includes a debug HTTP server.
+
+Startup failure path:
+
+- If Go exits before `server.ready`, show blocking startup error and surface
+  stderr/log path.
+- If `server.ready` timeout fires, kill child and show blocking startup error.
+- Mid-session crash can restart up to 3 times, then show blocking error.
 
 Recommendation:
 
-- Prefer LSP-style `Content-Length` framing if using a mature JSON-RPC library
-  that already supports it.
-- Prefer custom NDJSON only if the team wants minimal implementation and accepts
-  stdout discipline/testing.
-- Do not build a production HTTP API in Phase 1.
+- Dev-only debug HTTP server can be added behind `SKILLBOX_DEBUG_PORT` after the
+  first JSON-RPC method works.
 
 ## API Contracts
 
@@ -462,15 +475,15 @@ Why:
 Open:
 
 - Generate Go structs from JSON Schema or hand-match Go structs.
-- Commit generated TypeScript files or generate in CI.
 - Naming/versioning convention for command/query schemas.
 
-Recommendation:
+Decision:
 
 - Commit generated TypeScript types for easier AI/code review.
 - Keep Go structs hand-written in Phase 1 unless drift becomes painful.
 - Add contract tests that serialize sample Go responses and validate against
   schemas.
+- Add CI check that generated TypeScript types match committed types.
 
 ## Go SQLite Stack
 
@@ -489,18 +502,27 @@ Why:
 - Embedded SQL migrations are auditable and versioned.
 - SQL remains readable to humans and AI.
 
-Open:
-
-- Migration library: `golang-migrate` vs lightweight custom runner.
-- SQLite file location.
-- WAL mode policy.
-- Busy timeout and locking policy.
-
-Recommendation:
+Decision:
 
 - Use OS-standard app data directory for SQLite.
-- Enable WAL unless packaging/platform tests show issues.
-- Use embedded SQL migrations.
+- macOS: `~/Library/Application Support/Astraler Skillbox/skillbox.db`.
+- Windows: `%APPDATA%\Astraler Skillbox\skillbox.db`.
+- Linux: `~/.config/astraler-skillbox/skillbox.db`.
+- Dev/test override: `SKILLBOX_DB_PATH`.
+- Enable WAL.
+- Enable foreign keys on every connection.
+- Set `busy_timeout=5000`.
+- Use `synchronous=NORMAL`.
+- Use `golang-migrate` with embedded SQL migrations.
+
+Startup PRAGMAs:
+
+```sql
+PRAGMA journal_mode=WAL;
+PRAGMA foreign_keys=ON;
+PRAGMA busy_timeout=5000;
+PRAGMA synchronous=NORMAL;
+```
 
 ## Keychain And Credentials
 
@@ -508,10 +530,7 @@ Status: recommended.
 
 Choice: Go core owns credentials via OS keychain.
 
-Candidates:
-
-- `zalando/go-keyring`
-- `99designs/keyring`
+Choice: `zalando/go-keyring`.
 
 Why:
 
@@ -519,16 +538,13 @@ Why:
 - Secret should stay in the process that uses it.
 - SQLite stores credential metadata/ref only, not plaintext.
 
-Open:
+Decision:
 
-- Exact Go keychain library.
-- Fallback when keychain unavailable.
-- Whether env var fallback is Phase 1.
-
-Recommendation:
-
-- Start with keychain library in Go.
+- Use `zalando/go-keyring` in Go.
 - Allow environment variable fallback for dev/CI.
+- Env vars: `SKILLBOX_GITHUB_TOKEN`, `SKILLBOX_VERCEL_TOKEN`.
+- Document Linux `libsecret` requirement if using a keychain library that needs
+  Secret Service API.
 - Do not store plaintext token in SQLite.
 
 ## Go Module And Dependency Policy
@@ -547,9 +563,9 @@ Recommended initial Go packages:
 
 ```text
 modernc.org/sqlite
-golang-migrate/migrate or custom embedded runner
-zalando/go-keyring or 99designs/keyring
-JSON-RPC library TBD
+golang-migrate/migrate
+zalando/go-keyring
+creachadair/jrpc2
 ```
 
 ## Testing Stack
@@ -583,6 +599,14 @@ Open:
 
 - Whether Playwright is introduced immediately or after first UI shell.
 - How to run full-stack tests with Electron + Go sidecar in CI.
+
+Required:
+
+- `go test -race` for operation runner, provider scan, JSON-RPC, and filesystem
+  gateway code.
+- Contract tests from the first JSON-RPC method: serialize Go responses and
+  validate against JSON Schema.
+- Mock-core fixtures must be validated against JSON Schema.
 
 ## Dev Workflow
 
@@ -618,9 +642,18 @@ Open:
 - Use `air` or another Go watcher for hot reload.
 - Whether mock core client is hand-written or generated from API contracts.
 
+Decision:
+
+- Support three dev modes in scaffold README:
+  - Go-only: Go tests and JSON-RPC harness without Electron.
+  - UI-only: Electron/React uses mock core fixture responses.
+  - Full-stack: Electron main launches real Go sidecar.
+- Mock-core fixtures are generated from Go integration test captures or
+  validated against JSON Schema in CI.
+
 ## Security Defaults
 
-Status: recommended.
+Status: decided for scaffold.
 
 Electron:
 
@@ -630,6 +663,8 @@ nodeIntegration = false
 sandbox = true if compatible
 preload exposes narrow API only
 renderer never receives Go process path or transport details
+Electron main validates JSON-RPC method allowlist before forwarding
+CSP = default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
 ```
 
 Go:
@@ -662,16 +697,8 @@ Status: informational.
 
 Must decide:
 
-- Vite config strategy: electron-vite style vs custom configs.
-- Package manager: pnpm yes/no.
-- Packaging: electron-builder yes/no.
-- UI stack: shadcn/ui + Radix + Tailwind + lucide-react yes/no.
-- Router: TanStack Router vs React Router.
-- Server state: TanStack Query now vs later.
-- JSON-RPC framing: NDJSON vs `Content-Length`.
-- JSON-RPC Go library: existing library vs custom.
-- SQLite migration approach: golang-migrate vs custom embedded runner.
-- Keychain library: `zalando/go-keyring` vs `99designs/keyring`.
+- Dev debug HTTP server yes/no.
+- Mock-core fixture generation policy.
 
 Can defer:
 
@@ -686,11 +713,13 @@ Can defer:
 
 ```text
 workspace:
-  pnpm workspace
+  pnpm
+  single package at apps/desktop
+  no pnpm workspace until second JS package
 
 desktop:
   Electron
-  Vite
+  electron-vite
   React
   electron-builder
 
@@ -701,26 +730,39 @@ ui:
   lucide-react
   TanStack Router
   TanStack Query
-  TanStack Table
   React Hook Form
   Zod
+  TanStack Table deferred
+  Zustand deferred
 
 core:
   Golang
   SQLite via modernc.org/sqlite
-  embedded SQL migrations
-  OS keychain via Go library
+  golang-migrate with embedded SQL migrations
+  zalando/go-keyring
+  no go.work until second Go module
 
 transport:
   stdio JSON-RPC 2.0
+  creachadair/jrpc2
+  NDJSON framing
   operation progress via JSON-RPC notifications
-  server.ready handshake
+  server.ready handshake with 10 second timeout
+
+sqlite:
+  WAL
+  foreign_keys=ON
+  busy_timeout=5000
+  synchronous=NORMAL
+  OS app data directory
+  SKILLBOX_DB_PATH override
 
 testing:
   Vitest
   React Testing Library
   Playwright later or after shell
   go test
+  go test -race for concurrent code
   filesystem fixtures
   contract tests
 ```

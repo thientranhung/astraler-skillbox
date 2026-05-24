@@ -130,3 +130,4 @@ Xem thêm:
 - [Global Skills Layer Follow-Up Review Result](docs/review-results/global-skills-layer-followup-review.md)
 - [Technical Architecture Brainstorm Result](docs/review-results/technical-architecture-brainstorm.md)
 - [Transport Decision Brainstorm Result](docs/review-results/transport-decision-brainstorm.md)
+- [Tech Stack Scaffold Review Result](docs/review-results/tech-stack-scaffold-review.md)
