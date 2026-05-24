@@ -53,7 +53,8 @@ All commands run from the **repo root** unless a different directory is specifie
 ## 2. Handshake Smoke
 
 - [ ] App renders the **Setup** screen (`/setup`) on first launch — no active host configured.
-- [ ] Terminal shows a line containing `server.ready` with `version`, `pid`, and `capabilities` fields (from Go core slog output).
+- [ ] Terminal shows `[manager] Go core ready` — confirms the JSON-RPC `server.ready` handshake succeeded.
+- [ ] Terminal shows Go slog startup lines prefixed with `[core]`, e.g. `[core] level=INFO msg="skillbox-core started" pid=…`.
 - [ ] The Electron window title is "Astraler Skillbox".
 - [ ] Go core stdout contains only NDJSON lines (no stray text). Verify by running Go standalone in a separate terminal:
 
@@ -61,7 +62,7 @@ All commands run from the **repo root** unless a different directory is specifie
   (cd core-go && SKILLBOX_DB_PATH=/tmp/smoke-handshake.db go run ./cmd/skillbox-core)
   ```
 
-  First line printed to stdout must be a valid JSON-RPC notification for `server.ready`.
+  First line printed to **stdout** must be a valid JSON-RPC notification for `server.ready` with `version`, `pid`, and `capabilities` fields. (In full-stack mode this JSON is consumed internally by the manager and not printed to the terminal.)
 
 ---
 
@@ -203,20 +204,29 @@ All commands run from the **repo root** unless a different directory is specifie
 
 ### Crash Restart
 
-- [ ] While the app is running, find the Go core PID (from the terminal output or `server.ready` log).
-- [ ] Kill it:
+The restart counter only applies after Go has successfully reached the ready state (i.e., after `server.ready` was received). Pre-ready crashes trigger the 10-second startup timeout / fatal path instead.
+
+- [ ] While the app is running and the terminal shows `[manager] Go core ready`, find the Go core PID from the `[core]` log line (e.g. `[core] level=INFO msg="skillbox-core started" pid=12345`) or via:
+
+  ```sh
+  pgrep -f skillbox-core
+  ```
+
+- [ ] Kill it after it has fully started:
 
   ```sh
   kill -9 <go_pid>
   ```
 
-- [ ] Electron detects the exit, restarts Go, and the app recovers without a fatal error dialog (restart 1 of 3).
+- [ ] Electron detects the exit and restarts Go (restart 1 of 3). Wait for `[manager] Go core ready` before proceeding.
 - [ ] The terminal shows `[manager] Go core exited (code=…), restart 1/3`.
 
 ### Restart Limit
 
-- [ ] Kill the Go process 3 more times in quick succession (before it finishes `server.ready`).
-- [ ] After the 4th crash total (3 restarts exhausted), a **blocking startup error** dialog appears.
+Each kill must happen after the restarted Go process has reached the ready state (wait for `[manager] Go core ready` between kills). Killing before ready is a startup timeout / fatal path, not the restart counter.
+
+- [ ] Kill the Go process 2 more times after each restart reaches ready (3 total crashes after the initial ready state). After the 3rd crash the restart counter is exhausted.
+- [ ] The terminal shows `[manager] Go core crashed too many times; giving up` and a **blocking startup error** dialog appears in the Electron window.
 - [ ] No further automatic restarts occur.
 - [ ] Close and reopen the app to recover (a new `pnpm dev` session resets the counter).
 
@@ -224,29 +234,32 @@ All commands run from the **repo root** unless a different directory is specifie
 
 ## 9. Validation Smoke
 
-### Invalid path via DevTools (file instead of directory)
+### Invalid path via DevTools
 
-> The native folder picker enforces directory selection, so triggering this validation requires calling the method directly.
+> The native folder picker enforces directory-only selection, so a file path cannot be selected through the normal UI flow. Use DevTools to invoke `host.choose` directly with an invalid path.
 
 - [ ] Open DevTools (`Cmd+Option+I` → Console).
-- [ ] Call:
+- [ ] Call with a file path (not a directory):
 
   ```js
   await window.core.invoke("host.choose", { path: "/etc/hosts" })
   ```
 
-- [ ] A structured error is thrown with `code: "validation_error"` and a human-readable `userMessage`.
+- [ ] The call throws in the console with a structured error object: `code: "validation_error"` and a human-readable `userMessage`. **This error appears in the DevTools console only** — it does not surface in the UI's ErrorDisplay, because the call bypasses `chooseMutation`.
 
-### Validation error in the UI (choose host from settings)
+### Validation error in the UI
 
-- [ ] From the Settings screen, attempt to choose a host at a path that already exists but is not a directory (create a test file):
+The Settings "Change" button and the Setup "Choose Skill Host Folder" button both open a directory-only native picker, so they cannot naturally produce a validation error in slice 1. To verify UI error display works for `chooseMutation`, test via the Setup screen after choosing a host folder that the Go core rejects (e.g., a path with no write permission):
+
+- [ ] Create a read-only directory:
 
   ```sh
-  touch /tmp/not-a-dir
+  mkdir -p /tmp/no-write-host && chmod 555 /tmp/no-write-host
   ```
 
-- [ ] Invoke via DevTools as above with `path: "/tmp/not-a-dir"`.
-- [ ] The error is surfaced in the UI (ErrorDisplay component) with `userMessage`.
+- [ ] From the Setup screen, click **"Choose Skill Host Folder…"** and select `/tmp/no-write-host`.
+- [ ] The app shows an error message via the ErrorDisplay component below the button (the chooseMutation error is surfaced in the UI with `userMessage`).
+- [ ] Clean up: `chmod 755 /tmp/no-write-host`
 
 ---
 
