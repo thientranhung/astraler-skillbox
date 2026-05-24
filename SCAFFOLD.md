@@ -13,8 +13,7 @@ Developer setup, dev modes, database management, and troubleshooting for slice 1
 | Go | 1.22+ | `go version` |
 | Platform | macOS 13+ (primary); Linux (secondary); Windows deferred | |
 
-> **No root `package.json`.**  
-> This repo has a single JS package at `apps/desktop/`. There is **no pnpm workspace** and no root-level `pnpm install`. Every `pnpm` command must be run from `apps/desktop/`.
+> **No root `package.json`.** This repo has a single JS package at `apps/desktop/`. There is **no pnpm workspace** and no root-level `pnpm install`. Every `pnpm` command must be run from `apps/desktop/`.
 
 ---
 
@@ -121,12 +120,21 @@ Migrations run automatically on next startup via `golang-migrate`.
 In **full-stack dev mode** (`pnpm dev`):
 
 - Electron main process output (`[manager] ...`) prints to the terminal that launched `pnpm dev`.
-- Go core's slog output goes to the stderr pipe created by `spawn()`. In slice 1 this pipe is not redirected to a file — Go logs are not visible in the terminal during full-stack mode.
+- Go core's stderr (slog output) is forwarded to the same terminal with a `[core]` prefix by `json-rpc-client.ts`. Example: `[core] level=INFO msg="skillbox-core started" pid=12345`.
+- When the JSON-RPC `server.ready` handshake succeeds, the manager prints `[manager] Go core ready`.
 
-To view Go core logs, run it standalone in a separate terminal:
+To capture Go logs to a file in full-stack mode, redirect the terminal output:
 
 ```sh
-(cd core-go && SKILLBOX_DB_PATH=/tmp/dev.db go run ./cmd/skillbox-core) 2>&1 | tee /tmp/core.log
+(cd apps/desktop && pnpm dev) 2>&1 | tee /tmp/skillbox-dev.log
+```
+
+To run Go core standalone and inspect its JSON-RPC stdout:
+
+```sh
+(cd core-go && SKILLBOX_DB_PATH=/tmp/dev.db go run ./cmd/skillbox-core)
+# stdout: JSON-RPC NDJSON (server.ready notification on first line)
+# stderr: slog output (not prefixed with [core] in standalone mode)
 ```
 
 > **Slice 1 limitation:** Log-file routing for the packaged app (`~/Library/Logs/Astraler Skillbox/`) is not yet configured. It is planned for a future slice when `electron-log` or equivalent is added.
