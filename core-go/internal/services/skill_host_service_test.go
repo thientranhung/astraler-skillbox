@@ -112,6 +112,50 @@ func TestScanHost_ReturnsOperationID(t *testing.T) {
 	}
 }
 
+func TestScanHost_RunnerRawError_WrappedAsDatabaseError(t *testing.T) {
+	hostRepo := newMockHostRepo()
+	ctx := context.Background()
+	hostID, _, _ := hostRepo.UpsertAndActivate(ctx, "host", "/tmp/host", "/tmp/host/.agents/skills")
+
+	runner := &mockRunner{
+		startFn: func(_ context.Context, _ operations.Target, _ domain.OperationType, _ operations.WorkFn) (int64, error) {
+			return 0, errors.New("connection pool exhausted")
+		},
+	}
+
+	svc := NewSkillHostService(hostRepo, newMockSettings(nil), &mockFS{}, runner, &mockScanWriter{})
+	_, err := svc.ScanHost(ctx, hostID)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	ae, ok := err.(*domain.AppError)
+	if !ok || ae.Code != domain.CodeDatabase {
+		t.Errorf("expected database_error, got %v", err)
+	}
+}
+
+func TestScanHost_RunnerConflictError_PassedThrough(t *testing.T) {
+	hostRepo := newMockHostRepo()
+	ctx := context.Background()
+	hostID, _, _ := hostRepo.UpsertAndActivate(ctx, "host", "/tmp/host", "/tmp/host/.agents/skills")
+
+	runner := &mockRunner{
+		startFn: func(_ context.Context, _ operations.Target, _ domain.OperationType, _ operations.WorkFn) (int64, error) {
+			return 0, domain.NewConflictError("scan already running", "target locked")
+		},
+	}
+
+	svc := NewSkillHostService(hostRepo, newMockSettings(nil), &mockFS{}, runner, &mockScanWriter{})
+	_, err := svc.ScanHost(ctx, hostID)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	ae, ok := err.(*domain.AppError)
+	if !ok || ae.Code != domain.CodeConflict {
+		t.Errorf("expected conflict_error, got %v", err)
+	}
+}
+
 func TestScanHostInternal_SkillsPassedToCommitter(t *testing.T) {
 	hostRepo := newMockHostRepo()
 	scanWriter := &mockScanWriter{}
