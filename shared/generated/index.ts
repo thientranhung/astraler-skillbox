@@ -1,0 +1,17 @@
+/* AUTO-GENERATED — do not edit by hand.
+ * Source: shared/api-contracts/
+ * Regenerate: (cd apps/desktop && pnpm generate:contracts)
+ */
+
+export * from './shared/error.js';
+export * from './shared/operation.js';
+export * from './shared/skill.js';
+export * from './shared/warning.js';
+export * from './methods/host-choose.js';
+export * from './methods/host-scan.js';
+export * from './methods/skill-list.js';
+export * from './methods/operation-cancel.js';
+export * from './methods/settings-get.js';
+export * from './notifications/server-ready.js';
+export * from './notifications/operation-progress.js';
+export * from './electron/dialog-open-host-folder.js';

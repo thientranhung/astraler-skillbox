@@ -1,0 +1,6 @@
+{
+  "name": "@astraler/skillbox-api-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JSON Schema contracts for the Astraler Skillbox JSON-RPC API"
+}

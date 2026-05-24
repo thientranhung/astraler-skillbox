@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WarningItem",
+  "description": "Warning attached to a host, skill, or other entity",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Machine-readable warning code"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable warning message"
+    },
+    "scopeRef": {
+      "type": ["string", "null"],
+      "description": "Optional reference to the affected entity (e.g. skill name)"
+    }
+  },
+  "required": ["code", "message", "scopeRef"],
+  "additionalProperties": false
+}

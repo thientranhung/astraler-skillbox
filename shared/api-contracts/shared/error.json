@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppError",
+  "description": "Error data payload carried in JSON-RPC error responses. App codes never fall in the reserved -32768..-32000 range.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Machine-readable error category",
+      "enum": [
+        "validation_error",
+        "filesystem_error",
+        "provider_error",
+        "database_error",
+        "auth_error",
+        "network_error",
+        "conflict_error",
+        "operation_cancelled",
+        "user_cancelled",
+        "unknown_error"
+      ]
+    },
+    "rpcCode": {
+      "type": "integer",
+      "description": "Numeric JSON-RPC error code. validation_error=1001 filesystem_error=1002 provider_error=1003 database_error=1004 conflict_error=1005 user_cancelled=1006 operation_cancelled=1007 unknown_error=1099"
+    },
+    "userMessage": {
+      "type": "string",
+      "description": "Human-readable message safe to display in UI"
+    },
+    "technicalMessage": {
+      "type": "string",
+      "description": "Developer/log message with internal detail"
+    },
+    "operationId": {
+      "type": "integer",
+      "description": "Related operation ID if applicable"
+    },
+    "entityRef": {
+      "type": "string",
+      "description": "Affected entity reference (e.g. path, host ID string)"
+    }
+  },
+  "required": ["code", "userMessage", "technicalMessage"],
+  "additionalProperties": false
+}

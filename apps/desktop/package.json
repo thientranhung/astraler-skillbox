@@ -6,7 +6,9 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "test": "vitest run",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "generate:contracts": "node scripts/generate-contracts.mjs",
+    "check:contracts-drift": "node scripts/generate-contracts.mjs --check"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -19,6 +21,7 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "json-schema-to-typescript": "latest",
     "typescript": "latest",
     "vite": "latest",
     "vitest": "latest"

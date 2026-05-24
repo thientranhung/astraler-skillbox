@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SettingsGetMethod",
+  "description": "Contract for settings.get JSON-RPC method. App-boot query used to route /setup vs /skills and to populate the Settings screen.",
+  "oneOf": [
+    { "$ref": "#/definitions/SettingsGetRequest" },
+    { "$ref": "#/definitions/SettingsGetResponse" }
+  ],
+  "definitions": {
+    "SettingsGetRequest": {
+      "title": "SettingsGetRequest",
+      "description": "Params for settings.get. Empty — no params needed.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SettingsGetActiveHost": {
+      "title": "SettingsGetActiveHost",
+      "description": "Active Skill Host Folder details, present when an active host is configured",
+      "type": "object",
+      "properties": {
+        "hostId": { "type": "integer" },
+        "path": { "type": "string" },
+        "skillsPath": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "missing", "unreadable", "unwritable", "invalid_structure", "empty", "inactive"]
+        },
+        "lastScannedAt": { "type": ["string", "null"] }
+      },
+      "required": ["hostId", "path", "skillsPath", "status", "lastScannedAt"],
+      "additionalProperties": false
+    },
+    "SettingsGetResponse": {
+      "title": "SettingsGetResponse",
+      "description": "Current app settings. Errors: database_error (1004) if DB unavailable.",
+      "type": "object",
+      "properties": {
+        "activeSkillHostFolderId": {
+          "type": ["integer", "null"],
+          "description": "ID of the currently active skill_host_folders row, or null if none configured"
+        },
+        "defaultInstallMode": {
+          "type": "string",
+          "enum": ["symlink", "rsync_copy"],
+          "description": "Default mechanism for installing skills into projects"
+        },
+        "databaseVersion": {
+          "type": "integer",
+          "description": "Current applied migration version"
+        },
+        "activeHost": {
+          "description": "Populated active host detail, or null when no active host or host row missing",
+          "oneOf": [
+            { "$ref": "#/definitions/SettingsGetActiveHost" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["activeSkillHostFolderId", "defaultInstallMode", "databaseVersion", "activeHost"],
+      "additionalProperties": false
+    }
+  }
+}

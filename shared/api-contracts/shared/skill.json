@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SkillViewItem",
+  "description": "Skill entity as returned in Skills Library view model",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Skill row ID (integer auto-increment)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Derived from folder name under .agents/skills/"
+    },
+    "relativePath": {
+      "type": "string",
+      "description": "Path relative to skillsPath of the host folder"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["available", "missing", "unreadable", "local_modified", "unknown"],
+      "description": "Computed status from last scan"
+    },
+    "sourceLabel": {
+      "type": ["string", "null"],
+      "description": "Human-readable source label (e.g. 'GitHub: org/repo') or null if no source"
+    },
+    "lastScannedAt": {
+      "type": ["string", "null"],
+      "description": "ISO 8601 timestamp of last scan, or null if never scanned"
+    }
+  },
+  "required": ["id", "name", "relativePath", "status", "sourceLabel", "lastScannedAt"],
+  "additionalProperties": false
+}

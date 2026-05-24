@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OperationProgressNotification",
+  "description": "Server-push notification emitted during long-running operations (host.scan, etc.). UI re-fetches the view model when status reaches success/failed/cancelled.",
+  "type": "object",
+  "properties": {
+    "operationId": {
+      "type": "integer",
+      "description": "ID of the operation this progress update belongs to"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "success", "failed", "cancelled", "partial"],
+      "description": "Current operation lifecycle state"
+    },
+    "phase": {
+      "type": "string",
+      "description": "Human-readable phase label, e.g. 'reading_host_folder', 'classifying_entries', 'done'"
+    },
+    "processed": {
+      "type": ["integer", "null"],
+      "description": "Number of items processed so far, or null if count is unknown"
+    },
+    "total": {
+      "type": ["integer", "null"],
+      "description": "Total items to process, or null if count is unknown"
+    },
+    "message": {
+      "type": ["string", "null"],
+      "description": "Optional human-readable status message for display in UI"
+    }
+  },
+  "required": ["operationId", "status", "phase", "processed", "total", "message"],
+  "additionalProperties": false
+}

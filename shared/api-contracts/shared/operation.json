@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OperationRef",
+  "description": "Minimal operation reference returned by long-running commands",
+  "type": "object",
+  "properties": {
+    "operationId": {
+      "type": "integer",
+      "description": "Unique integer ID for the operation"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "success", "failed", "cancelled", "partial"],
+      "description": "Current lifecycle state of the operation"
+    }
+  },
+  "required": ["operationId", "status"],
+  "additionalProperties": false
+}

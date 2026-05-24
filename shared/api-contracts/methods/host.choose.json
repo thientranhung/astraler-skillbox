@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HostChooseMethod",
+  "description": "Contract for host.choose JSON-RPC method. Caller passes absolute path from Electron native dialog; Go initialises .agents/skills if needed and persists the host.",
+  "oneOf": [
+    { "$ref": "#/definitions/HostChooseRequest" },
+    { "$ref": "#/definitions/HostChooseResponse" }
+  ],
+  "definitions": {
+    "HostChooseRequest": {
+      "title": "HostChooseRequest",
+      "description": "Params for host.choose. Path must be absolute; obtained from Electron showOpenDialog before calling.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute filesystem path of the chosen Skill Host Folder"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    },
+    "HostChooseResponse": {
+      "title": "HostChooseResponse",
+      "description": "Result of host.choose. Errors: validation_error (1001) if path invalid; filesystem_error (1002) if .agents/skills cannot be created.",
+      "type": "object",
+      "properties": {
+        "hostId": {
+          "type": "integer",
+          "description": "Persisted skill_host_folders row ID"
+        },
+        "path": {
+          "type": "string",
+          "description": "Absolute path (normalised)"
+        },
+        "skillsPath": {
+          "type": "string",
+          "description": "<path>/.agents/skills absolute path"
+        },
+        "initialized": {
+          "type": "boolean",
+          "description": "true if .agents/skills directory was created by this call"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "missing", "unreadable", "unwritable", "invalid_structure", "empty", "inactive"],
+          "description": "Computed status after choose"
+        }
+      },
+      "required": ["hostId", "path", "skillsPath", "initialized", "status"],
+      "additionalProperties": false
+    }
+  }
+}

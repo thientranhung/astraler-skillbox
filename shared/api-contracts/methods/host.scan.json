@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HostScanMethod",
+  "description": "Contract for host.scan JSON-RPC method. Starts a long-running scan operation; progress arrives via operation.progress notifications.",
+  "oneOf": [
+    { "$ref": "#/definitions/HostScanRequest" },
+    { "$ref": "#/definitions/HostScanResponse" }
+  ],
+  "definitions": {
+    "HostScanRequest": {
+      "title": "HostScanRequest",
+      "description": "Params for host.scan.",
+      "type": "object",
+      "properties": {
+        "hostId": {
+          "type": "integer",
+          "description": "ID of the skill_host_folders row to scan"
+        }
+      },
+      "required": ["hostId"],
+      "additionalProperties": false
+    },
+    "HostScanResponse": {
+      "title": "HostScanResponse",
+      "description": "Immediate response — the scan runs asynchronously. Errors: validation_error (1001) hostId not found; conflict_error (1005) host already being scanned.",
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "integer",
+          "description": "ID of the created scan operation; use with operation.progress notifications and operation.cancel"
+        }
+      },
+      "required": ["operationId"],
+      "additionalProperties": false
+    }
+  }
+}
