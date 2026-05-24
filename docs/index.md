@@ -83,6 +83,15 @@ operation runner, và testing strategy.
 React, Go, Vite, UI kit, router, query, forms, tables, JSON-RPC, SQLite,
 keychain, testing, packaging, và các GAP còn cần chốt.
 
+## 12. Implementation Patterns
+
+[12-implementation-patterns.md](12-implementation-patterns.md)
+
+Đọc để hiểu các pattern sẽ dùng khi implement code: Process Coordinator, preload
+bridge, JSON-RPC boundary, CQRS, services, repositories, filesystem gateway,
+provider/source adapters, operation runner, manual DI, view models, UI
+composition, validation, errors, và testing.
+
 ## Review Prompts
 
 [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
@@ -141,6 +150,7 @@ README.md
   -> docs/09-ui-wireframes.md
   -> docs/10-technical-architecture.md
   -> docs/11-tech-stack-and-scaffold-decisions.md
+  -> docs/12-implementation-patterns.md
 ```
 
 ## Current Source Of Truth
@@ -156,6 +166,7 @@ README.md
 - UI wireframes: [09-ui-wireframes.md](09-ui-wireframes.md)
 - Technical architecture: [10-technical-architecture.md](10-technical-architecture.md)
 - Tech stack and scaffold decisions: [11-tech-stack-and-scaffold-decisions.md](11-tech-stack-and-scaffold-decisions.md)
+- Implementation patterns: [12-implementation-patterns.md](12-implementation-patterns.md)
 - Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
 - Provider model review prompt: [review-prompts/provider-model-review.md](review-prompts/provider-model-review.md)
 - Global Skills layer review prompt: [review-prompts/global-skills-layer-review.md](review-prompts/global-skills-layer-review.md)

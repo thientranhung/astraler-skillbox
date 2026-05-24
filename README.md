@@ -123,6 +123,7 @@ Xem thêm:
 - [09 UI Wireframes](docs/09-ui-wireframes.md)
 - [10 Technical Architecture](docs/10-technical-architecture.md)
 - [11 Tech Stack And Scaffold Decisions](docs/11-tech-stack-and-scaffold-decisions.md)
+- [12 Implementation Patterns](docs/12-implementation-patterns.md)
 - [Data Model Review Prompt](docs/review-prompts/data-model-review.md)
 - [Provider Model Review Prompt](docs/review-prompts/provider-model-review.md)
 - [Global Skills Layer Review Prompt](docs/review-prompts/global-skills-layer-review.md)
