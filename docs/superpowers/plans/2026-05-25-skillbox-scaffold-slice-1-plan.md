@@ -177,13 +177,13 @@ contextBridge.exposeInMainWorld("core", {
 
 - [ ] **Step 6: Verify M1**
 
-Run:
+Run from repo root (each command is an independent subshell so cwd never drifts):
 
 ```sh
-cd apps/desktop && pnpm install
-cd ../core-go && go test ./...
-cd ../apps/desktop && pnpm test
-cd ../apps/desktop && pnpm dev
+(cd apps/desktop && pnpm install)
+(cd core-go && go test ./...)
+(cd apps/desktop && pnpm test)
+(cd apps/desktop && pnpm dev)
 ```
 
 Acceptance:
@@ -243,12 +243,12 @@ Install `json-schema-to-typescript` in `apps/desktop/package.json`. Create `apps
 
 - [ ] **Step 3: Generate and check drift**
 
-Run:
+Run from repo root (each subshell starts fresh from repo root; no cwd drift):
 
 ```sh
-cd apps/desktop && pnpm install
-cd apps/desktop && pnpm generate:contracts
-cd apps/desktop && pnpm check:contracts-drift
+(cd apps/desktop && pnpm install)
+(cd apps/desktop && pnpm generate:contracts)
+(cd apps/desktop && pnpm check:contracts-drift)
 ```
 
 Expected: generated files are stable and drift check passes.
@@ -428,12 +428,12 @@ Document prerequisites, install, full-stack dev, Go-only dev, UI-only mock flag,
 
 - [ ] **Step 3: Run final verification**
 
-Run:
+Run from repo root (subshell-isolated, no cwd drift):
 
 ```sh
-cd apps/desktop && pnpm test
-cd ../core-go && go test -race ./...
-cd ../apps/desktop && pnpm check:contracts-drift
+(cd apps/desktop && pnpm test)
+(cd core-go && go test -race ./...)
+(cd apps/desktop && pnpm check:contracts-drift)
 git diff --check
 ```
 

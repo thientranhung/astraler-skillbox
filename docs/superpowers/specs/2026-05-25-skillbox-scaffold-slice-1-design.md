@@ -975,10 +975,10 @@ Pre-conditions:
   - rm -rf ~/Library/Application Support/Astraler\ Skillbox/   (clean DB)
   - macOS hoặc Linux test env
 
-Setup smoke:
-  [ ] pnpm install hoàn tất < 2 phút
-  [ ] cd core-go && go mod download hoàn tất < 1 phút
-  [ ] pnpm dev mở app window trong < 10s
+Setup smoke (mọi command chạy từ repo root):
+  [ ] (cd apps/desktop && pnpm install) hoàn tất < 2 phút
+  [ ] (cd core-go && go mod download) hoàn tất < 1 phút
+  [ ] (cd apps/desktop && pnpm dev) mở app window trong < 10s
   [ ] Console không có lỗi đỏ
   [ ] core.log có line server.ready received
 
