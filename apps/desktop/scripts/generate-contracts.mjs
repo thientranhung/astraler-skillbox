@@ -41,6 +41,16 @@ async function compileSchema(inputPath) {
   });
 }
 
+/** Build the barrel index content from the schema manifest */
+function buildBarrel(index) {
+  return [
+    BANNER,
+    '',
+    ...index.schemas.map(e => `export * from './${e.output.replace(/\.ts$/, '.js')}';`),
+    '',
+  ].join('\n');
+}
+
 async function buildAll() {
   const index = JSON.parse(readFileSync(join(contractsDir, 'index.json'), 'utf8'));
   const results = {};
@@ -48,11 +58,13 @@ async function buildAll() {
     const inputPath = join(contractsDir, entry.input);
     results[entry.output] = await compileSchema(inputPath);
   }
+  // Include barrel index in the generated map so both write and --check handle it uniformly
+  results['index.ts'] = buildBarrel(index);
   return { index, results };
 }
 
 async function main() {
-  const { index, results } = await buildAll();
+  const { results } = await buildAll();
 
   if (isCheck) {
     let drifted = false;
@@ -77,24 +89,14 @@ async function main() {
     return;
   }
 
-  // Write generated files
+  // Write all generated files (schemas + barrel index)
   for (const [output, content] of Object.entries(results)) {
     const dest = join(generatedDir, output);
     mkdirSync(dirname(dest), { recursive: true });
     writeFileSync(dest, content, 'utf8');
     console.log(`generated  ${output}`);
   }
-
-  // Write barrel index
-  const barrelLines = [
-    BANNER,
-    '',
-    ...index.schemas.map(e => `export * from './${e.output.replace(/\.ts$/, '.js')}';`),
-    '',
-  ];
-  writeFileSync(join(generatedDir, 'index.ts'), barrelLines.join('\n'), 'utf8');
-  console.log('generated  index.ts');
-  console.log(`✓ Generated ${Object.keys(results).length + 1} files into shared/generated/`);
+  console.log(`✓ Generated ${Object.keys(results).length} files into shared/generated/`);
 }
 
 main().catch(err => {
