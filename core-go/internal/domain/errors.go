@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // Error codes matching M2 error taxonomy (JSON-RPC codes 1001-1099).
 const (
@@ -46,6 +49,27 @@ func (e *AppError) RPCCode() int {
 		return c
 	}
 	return rpcCodes[CodeUnknown]
+}
+
+// MarshalJSON includes rpcCode in the serialised payload to match
+// shared/api-contracts/shared/error.json.
+func (e *AppError) MarshalJSON() ([]byte, error) {
+	type wire struct {
+		Code             string `json:"code"`
+		RPCCode          int    `json:"rpcCode"`
+		UserMessage      string `json:"userMessage"`
+		TechnicalMessage string `json:"technicalMessage"`
+		OperationID      *int64 `json:"operationId,omitempty"`
+		EntityRef        string `json:"entityRef,omitempty"`
+	}
+	return json.Marshal(wire{
+		Code:             e.Code,
+		RPCCode:          e.RPCCode(),
+		UserMessage:      e.UserMessage,
+		TechnicalMessage: e.TechnicalMessage,
+		OperationID:      e.OperationID,
+		EntityRef:        e.EntityRef,
+	})
 }
 
 func NewValidationError(userMsg, techMsg string) *AppError {

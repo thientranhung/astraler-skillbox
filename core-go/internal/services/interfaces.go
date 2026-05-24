@@ -45,8 +45,17 @@ type WarningRepo interface {
 	ClearByScope(ctx context.Context, scopeType domain.WarningScopeType, scopeID int64) error
 }
 
+// ScanCommitter performs the full scan write phase atomically in one transaction:
+// upsert skills, mark missing, update host timestamp, clear+insert warnings.
+type ScanCommitter interface {
+	CommitScanResults(ctx context.Context, hostID int64, skills []domain.Skill, warnings []domain.Warning, now time.Time) error
+}
+
 // OperationRunner is the minimal runner interface.
 type OperationRunner interface {
 	Start(ctx context.Context, target operations.Target, opType domain.OperationType, fn operations.WorkFn) (int64, error)
-	Cancel(operationID int64) bool
+	// Cancel signals the operation to stop.
+	// Returns (true, nil) if signal sent; (false, nil) if already finished;
+	// (false, validation_error) if operationID not found; (false, db_error) on failure.
+	Cancel(ctx context.Context, operationID int64) (bool, error)
 }

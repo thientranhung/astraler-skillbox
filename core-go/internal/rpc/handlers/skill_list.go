@@ -53,12 +53,12 @@ func NewSkillListHandler(svc skillListService) jrpc2.Handler {
 	return handler.New(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
 		var p skillListRequest
 		if err := req.UnmarshalParams(&p); err != nil {
-			return nil, domain.NewValidationError("Invalid params", err.Error())
+			return nil, wrapError(domain.NewValidationError("Invalid params", err.Error()))
 		}
 
 		view, err := svc.List(ctx, p.HostID)
 		if err != nil {
-			return nil, err
+			return nil, wrapError(err)
 		}
 
 		resp := skillListResponse{

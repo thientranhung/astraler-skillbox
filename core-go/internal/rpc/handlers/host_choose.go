@@ -30,15 +30,15 @@ func NewHostChooseHandler(svc hostChooseService) jrpc2.Handler {
 	return handler.New(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
 		var p hostChooseRequest
 		if err := req.UnmarshalParams(&p); err != nil {
-			return nil, domain.NewValidationError("Invalid params", err.Error())
+			return nil, wrapError(domain.NewValidationError("Invalid params", err.Error()))
 		}
 		if p.Path == "" {
-			return nil, domain.NewValidationError("path is required", "path field missing")
+			return nil, wrapError(domain.NewValidationError("path is required", "path field missing"))
 		}
 
 		result, err := svc.ChooseHost(ctx, p.Path)
 		if err != nil {
-			return nil, err
+			return nil, wrapError(err)
 		}
 
 		return hostChooseResponse{

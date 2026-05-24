@@ -12,14 +12,14 @@ import (
 // -- mock filesystem --
 
 type mockFS struct {
-	validateErr    error
-	ensureCreated  bool
-	ensureErr      error
-	scanEntries    []filesystem.HostEntry
-	scanErr        error
+	validateErr   error
+	ensureCreated bool
+	ensureErr     error
+	scanEntries   []filesystem.HostEntry
+	scanErr       error
 }
 
-func (m *mockFS) ValidateHostPath(path string) error        { return m.validateErr }
+func (m *mockFS) ValidateHostPath(_ string) error         { return m.validateErr }
 func (m *mockFS) EnsureAgentsSkills(_ string) (bool, error) { return m.ensureCreated, m.ensureErr }
 func (m *mockFS) ScanHostFolder(_ string) ([]filesystem.HostEntry, error) {
 	return m.scanEntries, m.scanErr
@@ -28,11 +28,11 @@ func (m *mockFS) ScanHostFolder(_ string) ([]filesystem.HostEntry, error) {
 // -- mock host repo --
 
 type mockHostRepo struct {
-	hosts      map[int64]*domain.SkillHostFolder
-	byPath     map[string]*domain.SkillHostFolder
-	nextID     int64
-	activeID   *int64
-	upsertErr  error
+	hosts     map[int64]*domain.SkillHostFolder
+	byPath    map[string]*domain.SkillHostFolder
+	nextID    int64
+	activeID  *int64
+	upsertErr error
 }
 
 func newMockHostRepo() *mockHostRepo {
@@ -109,7 +109,7 @@ func (m *mockAppSettingsRepo) Get(_ context.Context) (*domain.AppSettings, error
 	return m.settings, nil
 }
 
-// -- mock skill repo --
+// -- mock skill repo (used by SkillLibraryService tests) --
 
 type mockSkillRepo struct {
 	skills map[int64][]domain.Skill
@@ -152,7 +152,7 @@ func (m *mockSkillRepo) ListIDsByHost(_ context.Context, hostID int64) ([]int64,
 	return ids, nil
 }
 
-// -- mock warning repo --
+// -- mock warning repo (used by SkillLibraryService tests) --
 
 type mockWarningRepo struct {
 	warnings []domain.Warning
@@ -183,6 +183,20 @@ func (m *mockWarningRepo) ClearByScope(_ context.Context, _ domain.WarningScopeT
 	return nil
 }
 
+// -- mock scan committer (used by SkillHostService tests) --
+
+type mockScanWriter struct {
+	skills   []domain.Skill
+	warnings []domain.Warning
+	err      error
+}
+
+func (m *mockScanWriter) CommitScanResults(_ context.Context, _ int64, skills []domain.Skill, warnings []domain.Warning, _ time.Time) error {
+	m.skills = skills
+	m.warnings = warnings
+	return m.err
+}
+
 // -- mock runner --
 
 type mockRunner struct {
@@ -196,4 +210,4 @@ func (m *mockRunner) Start(ctx context.Context, target operations.Target, opType
 	return 1, nil
 }
 
-func (m *mockRunner) Cancel(_ int64) bool { return true }
+func (m *mockRunner) Cancel(_ context.Context, _ int64) (bool, error) { return true, nil }

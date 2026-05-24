@@ -11,7 +11,7 @@ import (
 )
 
 func newHostService(fs *mockFS, hostRepo *mockHostRepo) *SkillHostService {
-	return NewSkillHostService(hostRepo, newMockSettings(nil), fs, &mockRunner{}, newMockSkillRepo(), &mockWarningRepo{})
+	return NewSkillHostService(hostRepo, newMockSettings(nil), fs, &mockRunner{}, &mockScanWriter{})
 }
 
 func TestChooseHost_Happy(t *testing.T) {
@@ -80,7 +80,7 @@ func TestChooseHost_Idempotent(t *testing.T) {
 }
 
 func TestScanHost_ValidationError_UnknownHost(t *testing.T) {
-	svc := NewSkillHostService(newMockHostRepo(), newMockSettings(nil), &mockFS{}, &mockRunner{}, newMockSkillRepo(), &mockWarningRepo{})
+	svc := NewSkillHostService(newMockHostRepo(), newMockSettings(nil), &mockFS{}, &mockRunner{}, &mockScanWriter{})
 	_, err := svc.ScanHost(context.Background(), 99999)
 	if err == nil {
 		t.Fatal("expected error for unknown hostID")
@@ -96,15 +96,13 @@ func TestScanHost_ReturnsOperationID(t *testing.T) {
 	ctx := context.Background()
 	hostID, _, _ := hostRepo.UpsertAndActivate(ctx, "host", "/tmp/host", "/tmp/host/.agents/skills")
 
-	calledFn := false
 	runner := &mockRunner{
-		startFn: func(_ context.Context, target operations.Target, _ domain.OperationType, fn operations.WorkFn) (int64, error) {
-			calledFn = true
+		startFn: func(_ context.Context, _ operations.Target, _ domain.OperationType, _ operations.WorkFn) (int64, error) {
 			return 42, nil
 		},
 	}
 
-	svc := NewSkillHostService(hostRepo, newMockSettings(nil), &mockFS{}, runner, newMockSkillRepo(), &mockWarningRepo{})
+	svc := NewSkillHostService(hostRepo, newMockSettings(nil), &mockFS{}, runner, &mockScanWriter{})
 	opID, err := svc.ScanHost(ctx, hostID)
 	if err != nil {
 		t.Fatalf("ScanHost: %v", err)
@@ -112,37 +110,80 @@ func TestScanHost_ReturnsOperationID(t *testing.T) {
 	if opID != 42 {
 		t.Errorf("opID: got %d want 42", opID)
 	}
-	if !calledFn {
-		t.Error("expected runner.Start to be called")
-	}
 }
 
-func TestScanHostInternal_UpsertsMissingMarks(t *testing.T) {
+func TestScanHostInternal_SkillsPassedToCommitter(t *testing.T) {
 	hostRepo := newMockHostRepo()
-	skillRepo := newMockSkillRepo()
-	warnRepo := &mockWarningRepo{}
+	scanWriter := &mockScanWriter{}
 	ctx := context.Background()
 	hostID, _, _ := hostRepo.UpsertAndActivate(ctx, "host", "/tmp/host", "/tmp/host/.agents/skills")
 
-	// Pre-seed one skill that will be "missing" after scan.
-	_ = skillRepo.UpsertMany(ctx, hostID, []domain.Skill{
-		{ID: 1, Name: "old-skill", RelativePath: ".agents/skills/old-skill", AbsolutePath: "/tmp/host/.agents/skills/old-skill", Status: domain.SkillStatusAvailable},
-	})
-
 	fs := &mockFS{
 		scanEntries: []filesystem.HostEntry{
-			{Name: "new-skill", RelativePath: ".agents/skills/new-skill", AbsolutePath: "/tmp/host/.agents/skills/new-skill", IsDir: true},
+			{Name: "skill-a", RelativePath: "skill-a", AbsolutePath: "/tmp/host/.agents/skills/skill-a", IsDir: true},
 		},
 	}
 
-	svc := NewSkillHostService(hostRepo, newMockSettings(nil), fs, &mockRunner{}, skillRepo, warnRepo)
+	svc := NewSkillHostService(hostRepo, newMockSettings(nil), fs, &mockRunner{}, scanWriter)
 	host, _ := hostRepo.GetByID(ctx, hostID)
-	summary, err := svc.scanHostInternal(ctx, host, func(_ string, _, _ int, _ string) {})
-	_ = summary
-
-	// MarkMissing with empty presentIDs means all existing skills should be marked missing.
-	// But our mock re-derives correctly. Just verify no error.
+	_, err := svc.scanHostInternal(ctx, host, func(_ string, _, _ int, _ string) {})
 	if err != nil {
 		t.Fatalf("scanHostInternal: %v", err)
+	}
+	if len(scanWriter.skills) != 1 {
+		t.Errorf("expected 1 skill committed, got %d", len(scanWriter.skills))
+	}
+	if scanWriter.skills[0].Name != "skill-a" {
+		t.Errorf("skill name: got %q want skill-a", scanWriter.skills[0].Name)
+	}
+}
+
+func TestScanHostInternal_WarningsScopeIsHost(t *testing.T) {
+	hostRepo := newMockHostRepo()
+	scanWriter := &mockScanWriter{}
+	ctx := context.Background()
+	hostID, _, _ := hostRepo.UpsertAndActivate(ctx, "host", "/tmp/host", "/tmp/host/.agents/skills")
+
+	fs := &mockFS{
+		scanEntries: []filesystem.HostEntry{
+			{Name: "broken", RelativePath: "broken", IsSymlink: true, Broken: true},
+			{Name: "external", RelativePath: "external", IsSymlink: true, External: true},
+		},
+	}
+
+	svc := NewSkillHostService(hostRepo, newMockSettings(nil), fs, &mockRunner{}, scanWriter)
+	host, _ := hostRepo.GetByID(ctx, hostID)
+	_, err := svc.scanHostInternal(ctx, host, func(_ string, _, _ int, _ string) {})
+	if err != nil {
+		t.Fatalf("scanHostInternal: %v", err)
+	}
+	if len(scanWriter.warnings) != 2 {
+		t.Fatalf("expected 2 warnings, got %d", len(scanWriter.warnings))
+	}
+	for _, w := range scanWriter.warnings {
+		if w.ScopeType != domain.WarningScopeSkillHostFolder {
+			t.Errorf("warning %q scope: got %q want skill_host_folder", w.Code, w.ScopeType)
+		}
+		if w.ScopeID == nil || *w.ScopeID != hostID {
+			t.Errorf("warning %q scopeID: got %v want %d", w.Code, w.ScopeID, hostID)
+		}
+	}
+}
+
+func TestScanHostInternal_FilesystemError(t *testing.T) {
+	hostRepo := newMockHostRepo()
+	ctx := context.Background()
+	hostID, _, _ := hostRepo.UpsertAndActivate(ctx, "host", "/tmp/host", "/tmp/host/.agents/skills")
+
+	fs := &mockFS{scanErr: errors.New("read failed")}
+	svc := NewSkillHostService(hostRepo, newMockSettings(nil), fs, &mockRunner{}, &mockScanWriter{})
+	host, _ := hostRepo.GetByID(ctx, hostID)
+	_, err := svc.scanHostInternal(ctx, host, func(_ string, _, _ int, _ string) {})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	ae, ok := err.(*domain.AppError)
+	if !ok || ae.Code != domain.CodeFilesystem {
+		t.Errorf("expected filesystem_error, got %v", err)
 	}
 }
