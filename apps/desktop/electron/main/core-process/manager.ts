@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "child_process";
-import path from "path";
 import { app } from "electron";
 import { JsonRpcStdioClient } from "./json-rpc-client.js";
+import { resolveCoreGoPath } from "./core-go-path.js";
 
 const READY_TIMEOUT_MS = 10_000;
 const MAX_RESTARTS = 3;
@@ -10,11 +10,8 @@ const SIGKILL_DELAY_MS = 3_000;
 let goClient: JsonRpcStdioClient | null = null;
 let activeChild: ChildProcess | null = null;
 let restartCount = 0;
+let intentionalShutdown = false;
 let onFatalError: ((message: string) => void) | null = null;
-
-function coreGoPath(): string {
-  return path.resolve(__dirname, "../../../../../core-go");
-}
 
 export function getGoClient(): JsonRpcStdioClient {
   if (!goClient) throw new Error("Go client not initialized");
@@ -32,7 +29,7 @@ function fatal(message: string): void {
 
 export function spawnGoCore(): Promise<JsonRpcStdioClient> {
   return new Promise((resolve, reject) => {
-    const cwd = coreGoPath();
+    const cwd = resolveCoreGoPath(__dirname);
     process.stderr.write(`[manager] spawning Go core from ${cwd}\n`);
 
     const child = spawn("go", ["run", "./cmd/skillbox-core"], {
@@ -55,6 +52,8 @@ export function spawnGoCore(): Promise<JsonRpcStdioClient> {
       process.stderr.write("[manager] Go core ready\n");
 
       child.on("exit", (code) => {
+        // Never restart when the shutdown was initiated intentionally.
+        if (intentionalShutdown) return;
         if (code !== 0 && restartCount < MAX_RESTARTS) {
           restartCount++;
           process.stderr.write(
@@ -78,6 +77,9 @@ export function spawnGoCore(): Promise<JsonRpcStdioClient> {
 }
 
 export function shutdownGoCore(): void {
+  // Set flag before sending signal so the exit handler never triggers a restart.
+  intentionalShutdown = true;
+
   goClient?.shutdown("app_quit");
   goClient = null;
 
