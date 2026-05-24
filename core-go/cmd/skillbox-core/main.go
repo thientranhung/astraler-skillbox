@@ -4,9 +4,17 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
 	"github.com/astraler/skillbox/core-go/internal/app"
+	"github.com/astraler/skillbox/core-go/internal/filesystem"
+	"github.com/astraler/skillbox/core-go/internal/operations"
+	"github.com/astraler/skillbox/core-go/internal/repositories"
 	corerpc "github.com/astraler/skillbox/core-go/internal/rpc"
+	"github.com/astraler/skillbox/core-go/internal/rpc/notifications"
+	"github.com/astraler/skillbox/core-go/internal/services"
 )
 
 func main() {
@@ -21,14 +29,44 @@ func main() {
 		}
 	}()
 
-	a := app.New()
-	srv := corerpc.New(a.Assigner(), os.Stdin, os.Stdout)
+	dbPath := resolveDBPath()
+	slog.Info("opening database", "path", dbPath)
 
-	ctx := context.Background()
+	db, err := repositories.OpenDatabase(dbPath)
+	if err != nil {
+		slog.Error("failed to open database", "err", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	fs := filesystem.NewGateway()
+
+	hostRepo := repositories.NewSkillHostFolderRepo(db)
+	skillRepo := repositories.NewSkillRepo(db)
+	warningRepo := repositories.NewWarningRepo(db)
+	appSettingsRepo := repositories.NewAppSettingsRepo(db)
+	operationRepo := repositories.NewOperationRepo(db)
+
+	progressCh := make(chan operations.ProgressEvent, 64)
+	runner := operations.NewRunner(operationRepo, progressCh)
+	runner.MarkAllRunningAsFailed("process restarted")
+
+	hostSvc := services.NewSkillHostService(hostRepo, appSettingsRepo, fs, runner, skillRepo, warningRepo)
+	libSvc := services.NewSkillLibraryService(skillRepo, hostRepo, warningRepo)
+	settingsSvc := services.NewSettingsService(appSettingsRepo, hostRepo)
+
+	a := app.New(hostSvc, libSvc, settingsSvc, runner)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	srv := corerpc.New(a.Assigner(), os.Stdin, os.Stdout)
+	notifications.StartDispatcher(ctx, srv, progressCh)
+
 	if err := srv.Notify(ctx, "server.ready", map[string]interface{}{
-		"version":      "0.1.0-m1",
+		"version":      "0.1.0-m3",
 		"pid":          os.Getpid(),
-		"capabilities": []string{"ping"},
+		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel"},
 	}); err != nil {
 		slog.Error("failed to send server.ready", "err", err)
 		os.Exit(1)
@@ -36,8 +74,29 @@ func main() {
 
 	slog.Info("skillbox-core started", "pid", os.Getpid())
 
+	go func() {
+		<-ctx.Done()
+		slog.Info("shutdown signal received, stopping server")
+		srv.Stop()
+	}()
+
 	if err := srv.Wait(); err != nil {
-		slog.Error("server exited with error", "err", err)
-		os.Exit(1)
+		slog.Info("server stopped", "reason", err)
 	}
+}
+
+func resolveDBPath() string {
+	if p := os.Getenv("SKILLBOX_DB_PATH"); p != "" {
+		return p
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "skillbox.db"
+	}
+	dir := filepath.Join(home, "Library", "Application Support", "Astraler Skillbox")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		slog.Warn("could not create data dir, falling back to cwd", "err", err)
+		return "skillbox.db"
+	}
+	return filepath.Join(dir, "skillbox.db")
 }

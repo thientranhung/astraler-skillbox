@@ -5,7 +5,10 @@ import (
 
 	"github.com/creachadair/jrpc2"
 	"github.com/creachadair/jrpc2/handler"
+
 	rpchandlers "github.com/astraler/skillbox/core-go/internal/rpc/handlers"
+	"github.com/astraler/skillbox/core-go/internal/operations"
+	"github.com/astraler/skillbox/core-go/internal/services"
 )
 
 // App holds the registered JSON-RPC method map.
@@ -14,12 +17,20 @@ type App struct {
 }
 
 // New builds the composition root and registers all RPC handlers.
-func New() *App {
+func New(
+	hostSvc *services.SkillHostService,
+	libSvc *services.SkillLibraryService,
+	settingsSvc *services.SettingsService,
+	runner *operations.Runner,
+) *App {
 	a := &App{
 		methods: handler.Map{
-			"ping": handler.New(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-				return rpchandlers.Ping(), nil
-			}),
+			"ping":             handler.New(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) { return rpchandlers.Ping(), nil }),
+			"host.choose":      rpchandlers.NewHostChooseHandler(hostSvc),
+			"host.scan":        rpchandlers.NewHostScanHandler(hostSvc),
+			"skill.list":       rpchandlers.NewSkillListHandler(libSvc),
+			"settings.get":     rpchandlers.NewSettingsGetHandler(settingsSvc),
+			"operation.cancel": rpchandlers.NewOperationCancelHandler(runner),
 		},
 	}
 	return a
