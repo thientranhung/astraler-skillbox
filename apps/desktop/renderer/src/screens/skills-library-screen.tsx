@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import { useActiveHost } from "../features/skill-host/use-active-host.js";
 import { useSkillsList } from "../features/skills-library/use-skills-list.js";
@@ -6,18 +6,11 @@ import { useScanHost } from "../features/skill-host/use-scan-host.js";
 import { SkillRow } from "../features/skills-library/skill-row.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
-import { OperationProgressToast } from "../components/operation-progress-toast.js";
 
 export function SkillsLibraryScreen(): React.JSX.Element {
   const activeHost = useActiveHost();
   const { data, isPending, isError, error } = useSkillsList();
   const scanMutation = useScanHost();
-
-  const handleScanComplete = useCallback(() => {
-    if (activeHost != null) {
-      scanMutation.handleScanComplete(activeHost.hostId);
-    }
-  }, [activeHost, scanMutation]);
 
   function handleScan(): void {
     if (activeHost == null) return;
@@ -123,15 +116,6 @@ export function SkillsLibraryScreen(): React.JSX.Element {
           </table>
         )}
       </div>
-
-      {/* Operation progress tracking */}
-      {scanMutation.operationId != null && (
-        <OperationProgressToast
-          operationId={scanMutation.operationId}
-          label="Scanning skills"
-          onComplete={handleScanComplete}
-        />
-      )}
     </div>
   );
 }

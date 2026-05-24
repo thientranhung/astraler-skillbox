@@ -1,36 +1,26 @@
 import React, { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FolderOpen, ArrowRight } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { methods } from "../lib/core-client/methods.js";
 import { useChooseHost } from "../features/skill-host/use-choose-host.js";
 import { ErrorDisplay } from "../components/error-display.js";
 
 export function SetupScreen(): React.JSX.Element {
   const navigate = useNavigate();
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [pickError, setPickError] = useState<unknown>(null);
-
+  const [dialogError, setDialogError] = useState<unknown>(null);
   const chooseMutation = useChooseHost();
 
   async function handlePickFolder(): Promise<void> {
-    setPickError(null);
+    setDialogError(null);
     try {
       const result = await methods.openHostFolder();
-      if (result.path != null) {
-        setSelectedPath(result.path);
-      }
+      if (result.path == null) return; // user cancelled — no-op
+      chooseMutation.mutate(result.path, {
+        onSuccess: () => void navigate({ to: "/skills" }),
+      });
     } catch (err) {
-      setPickError(err);
+      setDialogError(err);
     }
-  }
-
-  async function handleSetActive(): Promise<void> {
-    if (selectedPath == null) return;
-    chooseMutation.mutate(selectedPath, {
-      onSuccess: () => {
-        void navigate({ to: "/skills" });
-      },
-    });
   }
 
   return (
@@ -45,25 +35,15 @@ export function SetupScreen(): React.JSX.Element {
       <div className="w-full max-w-md space-y-3">
         <button
           onClick={handlePickFolder}
-          className="flex w-full items-center gap-2 rounded border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
+          disabled={chooseMutation.isPending}
+          className="flex w-full items-center gap-2 rounded border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100 disabled:opacity-50"
         >
           <FolderOpen size={16} />
-          {selectedPath ?? "Choose Skill Host Folder…"}
+          {chooseMutation.isPending ? "Setting up…" : "Choose Skill Host Folder…"}
         </button>
 
-        {pickError != null && <ErrorDisplay error={pickError} />}
+        {dialogError != null && <ErrorDisplay error={dialogError} />}
         {chooseMutation.error != null && <ErrorDisplay error={chooseMutation.error} />}
-
-        {selectedPath != null && (
-          <button
-            onClick={handleSetActive}
-            disabled={chooseMutation.isPending}
-            className="flex w-full items-center justify-center gap-2 rounded bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50"
-          >
-            {chooseMutation.isPending ? "Setting up…" : "Set as Active Host"}
-            {!chooseMutation.isPending && <ArrowRight size={15} />}
-          </button>
-        )}
       </div>
     </div>
   );

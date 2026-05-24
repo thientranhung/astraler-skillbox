@@ -11,3 +11,13 @@ export function subscribeOperationProgress(
     }
   });
 }
+
+// Subscribes to ALL operation.progress events without operationId filtering.
+// Used to buffer events that may arrive before an operationId is known.
+export function subscribeAllProgress(
+  onProgress: (p: OperationProgressNotification) => void,
+): () => void {
+  return window.core.onEvent("operation.progress", (params) => {
+    onProgress(params as OperationProgressNotification);
+  });
+}
