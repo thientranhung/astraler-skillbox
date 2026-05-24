@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgentSkill Pro - Skills Library</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#E4E4E7",
+                        "surface-dim": "#D4D4D8",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container-high": "#e7e8e9",
+                        "error-container": "#FEF2F2",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#ffddb8",
+                        "primary-fixed-dim": "#ffb3b6",
+                        "success-container": "#F0FDF4",
+                        "success": "#22C55E",
+                        "secondary-container": "#dce2f3",
+                        "on-primary-fixed-variant": "#920028",
+                        "on-surface-variant": "#5c3f40",
+                        "on-tertiary-fixed": "#2a1700",
+                        "surface": "#f8f9fa",
+                        "on-primary-container": "#9F1239",
+                        "secondary": "#585f6c",
+                        "surface-variant": "#e1e3e4",
+                        "surface-container": "#ECECEE",
+                        "surface-tint": "#be0037",
+                        "outline": "#71717A",
+                        "inverse-primary": "#ffb3b6",
+                        "on-tertiary-container": "#fffaf9",
+                        "inverse-surface": "#27272A",
+                        "tertiary-fixed-dim": "#ffb95f",
+                        "on-tertiary-fixed-variant": "#653e00",
+                        "on-surface": "#09090B",
+                        "surface-bright": "#f8f9fa",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#FFFFFF",
+                        "on-background": "#191c1d",
+                        "surface-container-low": "#F4F4F5",
+                        "caution-amber": "#F59E0B",
+                        "on-error": "#ffffff",
+                        "background": "#f8f9fa",
+                        "on-secondary-container": "#5e6572",
+                        "primary-fixed": "#ffdada",
+                        "primary-container": "#e11d48",
+                        "secondary-fixed-dim": "#c0c7d6",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#404754",
+                        "on-secondary-fixed": "#151c27",
+                        "on-primary-fixed": "#40000c",
+                        "caution-container": "#FFFBEB",
+                        "on-secondary": "#ffffff",
+                        "primary": "#b80035",
+                        "tertiary": "#815100",
+                        "tertiary-container": "#a36700",
+                        "secondary-fixed": "#dce2f3",
+                        "error": "#EF4444"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "lg": "24px",
+                        "xl": "32px",
+                        "sidebar-width": "220px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "gutter": "16px",
+                        "content-inset": "16px",
+                        "toolbar-height": "32px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "caption": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+                        "page-title": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+                        "section-header": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+                        "mono": ["SF Mono", "Menlo", "Fira Code", "monospace"],
+                        "body": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"],
+                        "micro-label": ["-apple-system", "BlinkMacSystemFont", "Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "caption": ["12px", {"lineHeight": "16px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "page-title": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "section-header": ["14px", {"lineHeight": "20px", "letterSpacing": "0", "fontWeight": "600"}],
+                        "mono": ["12px", {"lineHeight": "18px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body": ["13px", {"lineHeight": "20px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "micro-label": ["11px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-size: 16px;
+            vertical-align: middle;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D4D4D8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #A1A1AA;
+        }
+        .mac-traffic-lights span {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-background font-body text-body text-on-surface select-none overflow-hidden h-screen w-screen flex flex-col">
+<!-- macOS Window Title Bar -->
+<header class="h-toolbar-height flex items-center bg-surface border-b border-outline-variant px-md z-50 shrink-0">
+<div class="mac-traffic-lights flex gap-2 w-sidebar-width shrink-0">
+<span class="bg-[#FF5F57]"></span>
+<span class="bg-[#FEBC2E]"></span>
+<span class="bg-[#28C840]"></span>
+</div>
+<div class="flex-grow flex justify-center">
+<h1 class="font-section-header text-micro-label uppercase tracking-widest text-secondary">Skillbox</h1>
+</div>
+<div class="w-sidebar-width flex justify-end gap-sm">
+<!-- Window controls placeholder -->
+</div>
+</header>
+<div class="flex flex-grow overflow-hidden">
+<!-- SideNavBar -->
+<aside class="w-sidebar-width bg-surface-container-low border-r border-outline-variant flex flex-col shrink-0">
+<div class="p-md">
+<div class="flex items-center gap-sm mb-lg">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div>
+<div class="font-section-header text-body font-bold text-on-surface">AgentSkill Pro</div>
+<div class="font-caption text-micro-label text-secondary">Utility v1.0.4</div>
+</div>
+</div>
+<nav class="space-y-xs">
+<div class="text-micro-label font-bold text-secondary px-sm py-xs uppercase tracking-tight">Main</div>
+<a class="flex items-center gap-sm px-sm py-[6px] rounded hover:bg-surface-container-high transition-colors text-secondary" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-[6px] rounded bg-primary-container text-on-primary-container border-l-2 border-primary font-semibold" href="#">
+<span class="material-symbols-outlined">extension</span>
+<span>Skills Library</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-[6px] rounded hover:bg-surface-container-high transition-colors text-secondary" href="#">
+<span class="material-symbols-outlined">public</span>
+<span>Global Skills</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-[6px] rounded hover:bg-surface-container-high transition-colors text-secondary" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+<span>Projects</span>
+</a>
+<div class="pt-md text-micro-label font-bold text-secondary px-sm py-xs uppercase tracking-tight">System</div>
+<a class="flex items-center gap-sm px-sm py-[6px] rounded hover:bg-surface-container-high transition-colors text-secondary" href="#">
+<span class="material-symbols-outlined">system_update</span>
+<span>Updates</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-[6px] rounded hover:bg-surface-container-high transition-colors text-secondary" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto p-md border-t border-outline-variant">
+<div class="flex items-center gap-sm">
+<img alt="AI Agent Logo" class="w-6 h-6 rounded-full bg-surface-container-highest" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0W274yd-A99rmn52cppwlxCJwWr477rZgjrqfqFKRBTAicGDZqHLc7vl7-TrNCOH04X0Jgb3rTDG4KI03ocmYaOX9ojky26KY7m4yWYiIHd09ywQrdKip8FdX_wRi5XyQusfTDHTzvRvYtAX-JVUT1ErnbrdIAgHZikQbqEVD23q-GmjpTdKD-DCNQWojmMFnXXXDcTzEP0nHoA0mxRO72HzVhIwmhg5th1Vza8xE096waaF9kjPXX4dwKtEVM_xKOhKzpsB8PT-a"/>
+<div class="text-micro-label font-medium">Local Node: Active</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Panel -->
+<main class="flex-grow flex flex-col overflow-hidden bg-surface">
+<!-- Toolbar Area -->
+<div class="h-toolbar-height bg-surface border-b border-outline-variant flex items-center px-md gap-sm shrink-0">
+<button class="flex items-center gap-xs px-2 py-0.5 rounded hover:bg-surface-container-low text-secondary text-micro-label border border-outline-variant bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[14px]">refresh</span>
+<span>Scan</span>
+</button>
+<button class="flex items-center gap-xs px-2 py-0.5 rounded hover:bg-surface-container-low text-secondary text-micro-label border border-outline-variant bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[14px]">download</span>
+<span>Fetch</span>
+</button>
+<button class="flex items-center gap-xs px-2 py-0.5 rounded hover:bg-surface-container-low text-secondary text-micro-label border border-outline-variant bg-surface-container-lowest">
+<span class="material-symbols-outlined text-[14px]">folder_open</span>
+<span>Open Skill Host Folder</span>
+</button>
+<div class="flex-grow"></div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary hover:text-on-surface cursor-pointer">sync</span>
+<span class="material-symbols-outlined text-secondary hover:text-on-surface cursor-pointer">terminal</span>
+<span class="material-symbols-outlined text-secondary hover:text-on-surface cursor-pointer">help_outline</span>
+</div>
+</div>
+<!-- Content Area Inset -->
+<div class="p-md flex-grow flex flex-col gap-md overflow-hidden">
+<!-- Header -->
+<div class="flex items-center justify-between shrink-0">
+<h2 class="font-page-title text-page-title text-on-surface">Skills Library</h2>
+<div class="flex items-center gap-sm">
+<button class="bg-primary text-on-primary px-3 py-1.5 rounded-lg font-semibold text-body hover:brightness-110 flex items-center gap-sm">
+<span class="material-symbols-outlined">add</span>
+                            Add / Import Skill
+                        </button>
+<button class="bg-surface-container-lowest border border-outline-variant text-on-surface px-3 py-1.5 rounded-lg font-medium text-body hover:bg-surface-container-low">
+                            Fetch All
+                        </button>
+</div>
+</div>
+<!-- Filters -->
+<div class="flex items-center gap-sm bg-surface-container-low p-sm rounded shrink-0">
+<div class="flex items-center gap-xs text-micro-label font-medium text-secondary">
+                        Source:
+                        <select class="bg-surface-container-lowest border border-outline-variant rounded px-1.5 py-0.5 text-body focus:ring-0">
+<option>All</option>
+<option>GitHub</option>
+<option>Local</option>
+<option>Vercel</option>
+</select>
+</div>
+<div class="flex items-center gap-xs text-micro-label font-medium text-secondary">
+                        Status:
+                        <select class="bg-surface-container-lowest border border-outline-variant rounded px-1.5 py-0.5 text-body focus:ring-0">
+<option>All</option>
+<option>Up to date</option>
+<option>Update available</option>
+<option>Error</option>
+</select>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant mx-xs"></div>
+<div class="relative flex-grow max-w-xs">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-outline text-[16px]">search</span>
+<input class="w-full pl-8 pr-3 py-1 bg-surface-container-lowest border border-outline-variant rounded text-body focus:ring-1 focus:ring-primary focus:border-primary outline-none" placeholder="Search skills..." type="text"/>
+</div>
+</div>
+<!-- Data Table -->
+<div class="flex-grow overflow-auto border border-outline-variant bg-surface-container-lowest rounded">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container-high z-10">
+<tr class="text-micro-label text-secondary uppercase tracking-wider font-semibold">
+<th class="px-md py-2 border-b border-outline-variant">Name</th>
+<th class="px-md py-2 border-b border-outline-variant">Source</th>
+<th class="px-md py-2 border-b border-outline-variant">Version</th>
+<th class="px-md py-2 border-b border-outline-variant">Fetch Status</th>
+<th class="px-md py-2 border-b border-outline-variant text-center">Projects</th>
+<th class="px-md py-2 border-b border-outline-variant text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low group transition-colors">
+<td class="px-md py-2 font-medium text-on-surface">documentation-writer</td>
+<td class="px-md py-2 text-secondary">GitHub</td>
+<td class="px-md py-2 font-mono text-micro-label text-secondary">a1b2c3</td>
+<td class="px-md py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro-label font-medium bg-success-container text-success">
+                                        Up to date
+                                    </span>
+</td>
+<td class="px-md py-2 text-center text-secondary">4</td>
+<td class="px-md py-2 text-right space-x-1">
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">download</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">folder</span></button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low group transition-colors bg-surface-container-low border-l-2 border-primary">
+<td class="px-md py-2 font-medium text-on-surface">browser-automation</td>
+<td class="px-md py-2 text-secondary">Local</td>
+<td class="px-md py-2 font-mono text-micro-label text-secondary">—</td>
+<td class="px-md py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro-label font-medium bg-surface-container-high text-secondary">
+                                        Not fetchable
+                                    </span>
+</td>
+<td class="px-md py-2 text-center text-secondary">2</td>
+<td class="px-md py-2 text-right space-x-1">
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">download</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">folder</span></button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low group transition-colors">
+<td class="px-md py-2 font-medium text-on-surface">adr-helper</td>
+<td class="px-md py-2 text-secondary">GitHub</td>
+<td class="px-md py-2 font-mono text-micro-label text-secondary">d4e5f6</td>
+<td class="px-md py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro-label font-medium bg-caution-container text-caution-amber">
+                                        Update available
+                                    </span>
+</td>
+<td class="px-md py-2 text-center text-secondary">7</td>
+<td class="px-md py-2 text-right space-x-1">
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">download</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">folder</span></button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low group transition-colors">
+<td class="px-md py-2 font-medium text-on-surface">research-writer</td>
+<td class="px-md py-2 text-secondary">GitHub</td>
+<td class="px-md py-2 font-mono text-micro-label text-secondary">v1.2</td>
+<td class="px-md py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro-label font-medium bg-success-container text-success">
+                                        Up to date
+                                    </span>
+</td>
+<td class="px-md py-2 text-center text-secondary">2</td>
+<td class="px-md py-2 text-right space-x-1">
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">download</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">folder</span></button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-low group transition-colors">
+<td class="px-md py-2 font-medium text-on-surface">content-planner</td>
+<td class="px-md py-2 text-secondary">Vercel</td>
+<td class="px-md py-2 font-mono text-micro-label text-secondary">9af2b1</td>
+<td class="px-md py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro-label font-medium bg-success-container text-success">
+                                        Up to date
+                                    </span>
+</td>
+<td class="px-md py-2 text-center text-secondary">3</td>
+<td class="px-md py-2 text-right space-x-1">
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">download</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">folder</span></button>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-surface-container-low group transition-colors">
+<td class="px-md py-2 font-medium text-on-surface">manual-script</td>
+<td class="px-md py-2 text-secondary">Manual</td>
+<td class="px-md py-2 font-mono text-micro-label text-secondary">—</td>
+<td class="px-md py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro-label font-medium bg-caution-container text-caution-amber">
+                                        Local modified
+                                    </span>
+</td>
+<td class="px-md py-2 text-center text-secondary">1</td>
+<td class="px-md py-2 text-right space-x-1">
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">download</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">folder</span></button>
+</td>
+</tr>
+<!-- Row 7 -->
+<tr class="hover:bg-surface-container-low group transition-colors">
+<td class="px-md py-2 font-medium text-on-surface">legacy-tool</td>
+<td class="px-md py-2 text-secondary">GitHub</td>
+<td class="px-md py-2 font-mono text-micro-label text-secondary">8e4d2a</td>
+<td class="px-md py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro-label font-medium bg-error-container text-error">
+                                        Fetch failed
+                                    </span>
+</td>
+<td class="px-md py-2 text-center text-secondary">0</td>
+<td class="px-md py-2 text-right space-x-1">
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">download</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">folder</span></button>
+</td>
+</tr>
+<!-- Row 8 -->
+<tr class="hover:bg-surface-container-low group transition-colors">
+<td class="px-md py-2 font-medium text-on-surface">code-reviewer</td>
+<td class="px-md py-2 text-secondary">GitHub</td>
+<td class="px-md py-2 font-mono text-micro-label text-secondary">c7f1e8</td>
+<td class="px-md py-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-micro-label font-medium bg-success-container text-success">
+                                        Up to date
+                                    </span>
+</td>
+<td class="px-md py-2 text-center text-secondary">5</td>
+<td class="px-md py-2 text-right space-x-1">
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">visibility</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">download</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high text-secondary"><span class="material-symbols-outlined">folder</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Footer Status Bar -->
+<footer class="flex items-center justify-between shrink-0 py-sm">
+<div class="text-micro-label text-secondary">8 skills · Last scan 2 minutes ago</div>
+<div class="flex items-center gap-sm">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-success"></span>
+<span class="text-micro-label text-secondary">Node: Online</span>
+</div>
+<div class="flex items-center gap-xs border-l border-outline-variant pl-sm ml-sm">
+<span class="text-micro-label text-secondary">API Latency: 42ms</span>
+</div>
+</div>
+</footer>
+</div>
+</main>
+</div>
+<!-- Micro-interaction effects -->
+<script>
+        document.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('mousedown', () => {
+                row.classList.add('brightness-95');
+            });
+            row.addEventListener('mouseup', () => {
+                row.classList.remove('brightness-95');
+            });
+        });
+    </script>
+</body></html>
