@@ -13,14 +13,14 @@ import (
 // -- fake repo --
 
 type fakeOpRepo struct {
-	mu      sync.Mutex
-	ops     map[int64]*fakeOp
-	nextID  int64
+	mu     sync.Mutex
+	ops    map[int64]*fakeOp
+	nextID int64
 }
 
 type fakeOp struct {
-	status      domain.OperationStatus
-	errMsg      *string
+	status       domain.OperationStatus
+	errMsg       *string
 	metadataJSON *string
 }
 
@@ -28,7 +28,7 @@ func newFakeRepo() *fakeOpRepo {
 	return &fakeOpRepo{ops: make(map[int64]*fakeOp), nextID: 1}
 }
 
-func (f *fakeOpRepo) Insert(_ context.Context, targetType string, targetID *int64, opType domain.OperationType) (int64, error) {
+func (f *fakeOpRepo) Insert(_ context.Context, _ string, _ *int64, _ domain.OperationType) (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	id := f.nextID
@@ -55,6 +55,17 @@ func (f *fakeOpRepo) UpdateStatus(_ context.Context, id int64, status domain.Ope
 		op.metadataJSON = metaJSON
 	}
 	return nil
+}
+
+// GetByID returns (nil, nil) when not found — matches the repositories contract.
+func (f *fakeOpRepo) GetByID(_ context.Context, id int64) (*domain.Operation, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	op, ok := f.ops[id]
+	if !ok {
+		return nil, nil
+	}
+	return &domain.Operation{ID: id, Status: op.status}, nil
 }
 
 func (f *fakeOpRepo) getStatus(id int64) domain.OperationStatus {
@@ -145,8 +156,43 @@ func TestRunner_Cancel(t *testing.T) {
 		})
 
 	<-started
-	r.Cancel(id)
+	acked, err := r.Cancel(context.Background(), id)
+	if err != nil || !acked {
+		t.Errorf("Cancel running op: acked=%v err=%v", acked, err)
+	}
 	waitStatus(t, repo, id, domain.OperationStatusCancelled)
+}
+
+func TestRunner_Cancel_AlreadyFinished(t *testing.T) {
+	r, _ := newRunner()
+	repo := r.repo.(*fakeOpRepo)
+	target := Target{Type: "skill_host_folder", ID: 1}
+
+	done := make(chan struct{})
+	id, _ := r.Start(context.Background(), target, domain.OperationTypeScan,
+		func(ctx context.Context, _ ProgressFn) (any, error) {
+			close(done)
+			return nil, nil
+		})
+	<-done
+	waitStatus(t, repo, id, domain.OperationStatusSuccess)
+
+	acked, err := r.Cancel(context.Background(), id)
+	if err != nil {
+		t.Fatalf("Cancel finished op: unexpected error %v", err)
+	}
+	if acked {
+		t.Error("expected acknowledged=false for already-finished operation")
+	}
+}
+
+func TestRunner_Cancel_Nonexistent(t *testing.T) {
+	r, _ := newRunner()
+	_, err := r.Cancel(context.Background(), 99999)
+	ae, ok := err.(*domain.AppError)
+	if !ok || ae.Code != domain.CodeValidation {
+		t.Errorf("expected validation_error for nonexistent id, got %v", err)
+	}
 }
 
 func TestRunner_Lock_ConflictError(t *testing.T) {
@@ -196,7 +242,6 @@ func TestRunner_LockReleasedAfterCompletion(t *testing.T) {
 	r, _ := newRunner()
 	target := Target{Type: "skill_host_folder", ID: 1}
 
-	done := make(chan struct{})
 	id, _ := r.Start(context.Background(), target, domain.OperationTypeScan,
 		func(ctx context.Context, _ ProgressFn) (any, error) {
 			return nil, nil
@@ -204,7 +249,7 @@ func TestRunner_LockReleasedAfterCompletion(t *testing.T) {
 	repo := r.repo.(*fakeOpRepo)
 	waitStatus(t, repo, id, domain.OperationStatusSuccess)
 
-	// Lock should be released; second Start should succeed.
+	done := make(chan struct{})
 	id2, err := r.Start(context.Background(), target, domain.OperationTypeScan,
 		func(ctx context.Context, _ ProgressFn) (any, error) {
 			close(done)
@@ -231,7 +276,6 @@ func TestRunner_ProgressEvents(t *testing.T) {
 		})
 	<-finished
 
-	// Drain progress channel; must see at least one progress event.
 	time.Sleep(20 * time.Millisecond)
 	if len(ch) == 0 {
 		t.Fatal("expected at least one progress event")

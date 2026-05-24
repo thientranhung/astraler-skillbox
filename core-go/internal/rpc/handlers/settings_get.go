@@ -6,7 +6,6 @@ import (
 	"github.com/creachadair/jrpc2"
 	"github.com/creachadair/jrpc2/handler"
 
-	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/services"
 )
 
@@ -33,10 +32,7 @@ func NewSettingsGetHandler(svc settingsService) jrpc2.Handler {
 	return handler.New(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
 		view, err := svc.Get(ctx)
 		if err != nil {
-			if ae, ok := err.(*domain.AppError); ok {
-				return nil, ae
-			}
-			return nil, domain.NewDatabaseError("Could not read settings", err.Error())
+			return nil, wrapError(err)
 		}
 
 		resp := settingsGetResponse{

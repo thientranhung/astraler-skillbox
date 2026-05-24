@@ -21,12 +21,11 @@ type ChooseHostResult struct {
 
 // SkillHostService handles skill host folder operations.
 type SkillHostService struct {
-	hostRepo    HostRepo
+	hostRepo     HostRepo
 	settingsRepo AppSettingsRepo
-	fs          Filesystem
-	runner      OperationRunner
-	warningRepo WarningRepo
-	skillRepo   SkillRepo
+	fs           Filesystem
+	runner       OperationRunner
+	scanWriter   ScanCommitter
 }
 
 func NewSkillHostService(
@@ -34,16 +33,14 @@ func NewSkillHostService(
 	settingsRepo AppSettingsRepo,
 	fs Filesystem,
 	runner OperationRunner,
-	skillRepo SkillRepo,
-	warningRepo WarningRepo,
+	scanWriter ScanCommitter,
 ) *SkillHostService {
 	return &SkillHostService{
-		hostRepo:    hostRepo,
+		hostRepo:     hostRepo,
 		settingsRepo: settingsRepo,
-		fs:          fs,
-		runner:      runner,
-		skillRepo:   skillRepo,
-		warningRepo: warningRepo,
+		fs:           fs,
+		runner:       runner,
+		scanWriter:   scanWriter,
 	}
 }
 
@@ -108,7 +105,7 @@ func (s *SkillHostService) ScanHost(ctx context.Context, hostID int64) (int64, e
 }
 
 type scanSummary struct {
-	SkillsFound    int `json:"skillsFound"`
+	SkillsFound     int `json:"skillsFound"`
 	WarningsCreated int `json:"warningsCreated"`
 }
 
@@ -143,41 +140,10 @@ func (s *SkillHostService) scanHostInternal(ctx context.Context, host *domain.Sk
 		}
 	}
 
-	// Upsert found skills.
-	if err := s.skillRepo.UpsertMany(ctx, hostID, skills); err != nil {
-		return nil, domain.NewDatabaseError("Could not save skills", err.Error())
-	}
-
-	// Collect IDs of present skills to mark others missing.
-	presentIDs, _ := s.skillRepo.ListIDsByHost(ctx, hostID)
-	// presentIDs contains all (upserted), not just the ones found this scan.
-	// Re-derive by filtering only the skills we just upserted.
-	presentNames := make(map[string]struct{}, len(skills))
-	for _, sk := range skills {
-		presentNames[sk.RelativePath] = struct{}{}
-	}
-	allSkills, _ := s.skillRepo.ListByHost(ctx, hostID)
-	var foundIDs []int64
-	for _, sk := range allSkills {
-		if _, ok := presentNames[sk.RelativePath]; ok {
-			foundIDs = append(foundIDs, sk.ID)
-		}
-	}
-	if err := s.skillRepo.MarkMissing(ctx, hostID, foundIDs); err != nil {
-		return nil, domain.NewDatabaseError("Could not mark missing skills", err.Error())
-	}
-
-	_ = presentIDs // used only for MarkMissing derivation above
-
-	// Update host.
-	if err := s.hostRepo.UpdateLastScannedAt(ctx, hostID, time.Now()); err != nil {
-		return nil, domain.NewDatabaseError("Could not update last scanned at", err.Error())
-	}
-
-	// Regenerate warnings.
-	_ = s.warningRepo.ClearByScope(ctx, domain.WarningScopeSkillHostFolder, hostID)
-	for _, w := range warnings {
-		_, _ = s.warningRepo.Insert(ctx, w)
+	// Commit everything atomically: upsert skills, mark missing, update host
+	// timestamp, clear old warnings, insert new warnings.
+	if err := s.scanWriter.CommitScanResults(ctx, hostID, skills, warnings, time.Now()); err != nil {
+		return nil, domain.NewDatabaseError("Could not persist scan results", err.Error())
 	}
 
 	progress("done", len(skills), len(skills), "")
@@ -198,32 +164,29 @@ func classifyEntry(e filesystem.HostEntry) domain.SkillStatus {
 	return domain.SkillStatusUnknown
 }
 
+// warningForEntry generates a host-scope warning for broken or external symlinks.
+// Warnings use WarningScopeSkillHostFolder so that SkillLibraryService.List
+// and ClearByScope operate on the correct scope.
 func warningForEntry(e filesystem.HostEntry, hostID int64) *domain.Warning {
+	id := hostID
+	action := "rescan"
 	if e.Broken {
-		id := hostID
-		code := "broken_symlink"
-		msg := "Skill " + e.Name + " has a broken symlink"
-		action := "rescan"
 		return &domain.Warning{
-			ScopeType: domain.WarningScopeSkill,
+			ScopeType: domain.WarningScopeSkillHostFolder,
 			ScopeID:   &id,
 			Severity:  domain.WarningSeverityWarning,
-			Code:      code,
-			Message:   msg,
+			Code:      "broken_symlink",
+			Message:   "Skill " + e.Name + " has a broken symlink",
 			ActionKey: &action,
 		}
 	}
 	if e.External {
-		id := hostID
-		code := "external_symlink"
-		msg := "Skill " + e.Name + " points outside the skills folder"
-		action := "rescan"
 		return &domain.Warning{
-			ScopeType: domain.WarningScopeSkill,
+			ScopeType: domain.WarningScopeSkillHostFolder,
 			ScopeID:   &id,
 			Severity:  domain.WarningSeverityWarning,
-			Code:      code,
-			Message:   msg,
+			Code:      "external_symlink",
+			Message:   "Skill " + e.Name + " points outside the skills folder",
 			ActionKey: &action,
 		}
 	}

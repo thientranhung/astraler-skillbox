@@ -10,7 +10,7 @@ import (
 )
 
 type operationRunner interface {
-	Cancel(operationID int64) bool
+	Cancel(ctx context.Context, operationID int64) (bool, error)
 }
 
 type operationCancelRequest struct {
@@ -25,12 +25,15 @@ func NewOperationCancelHandler(runner operationRunner) jrpc2.Handler {
 	return handler.New(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
 		var p operationCancelRequest
 		if err := req.UnmarshalParams(&p); err != nil {
-			return nil, domain.NewValidationError("Invalid params", err.Error())
+			return nil, wrapError(domain.NewValidationError("Invalid params", err.Error()))
 		}
 		if p.OperationID <= 0 {
-			return nil, domain.NewValidationError("operationId is required", "operationId must be positive")
+			return nil, wrapError(domain.NewValidationError("operationId is required", "operationId must be positive"))
 		}
-		acked := runner.Cancel(p.OperationID)
+		acked, err := runner.Cancel(ctx, p.OperationID)
+		if err != nil {
+			return nil, wrapError(err)
+		}
 		return operationCancelResponse{Acknowledged: acked}, nil
 	})
 }

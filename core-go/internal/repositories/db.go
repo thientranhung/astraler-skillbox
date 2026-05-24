@@ -19,6 +19,9 @@ func OpenDatabase(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
+	// SQLite PRAGMAs are per-connection; limit pool to one so all queries
+	// share the connection where pragmas were applied.
+	db.SetMaxOpenConns(1)
 
 	if err := applyPragmas(db); err != nil {
 		db.Close()

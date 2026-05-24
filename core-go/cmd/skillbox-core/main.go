@@ -46,24 +46,30 @@ func main() {
 	warningRepo := repositories.NewWarningRepo(db)
 	appSettingsRepo := repositories.NewAppSettingsRepo(db)
 	operationRepo := repositories.NewOperationRepo(db)
+	scanWriter := repositories.NewScanRepo(db)
 
 	progressCh := make(chan operations.ProgressEvent, 64)
 	runner := operations.NewRunner(operationRepo, progressCh)
-	runner.MarkAllRunningAsFailed("process restarted")
 
-	hostSvc := services.NewSkillHostService(hostRepo, appSettingsRepo, fs, runner, skillRepo, warningRepo)
+	// Clean up any operations left in queued/running state from a prior crash.
+	ctx := context.Background()
+	if err := operationRepo.MarkStaleAsFailed(ctx, "process restarted"); err != nil {
+		slog.Warn("could not mark stale operations failed", "err", err)
+	}
+
+	hostSvc := services.NewSkillHostService(hostRepo, appSettingsRepo, fs, runner, scanWriter)
 	libSvc := services.NewSkillLibraryService(skillRepo, hostRepo, warningRepo)
 	settingsSvc := services.NewSettingsService(appSettingsRepo, hostRepo)
 
 	a := app.New(hostSvc, libSvc, settingsSvc, runner)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
 	srv := corerpc.New(a.Assigner(), os.Stdin, os.Stdout)
-	notifications.StartDispatcher(ctx, srv, progressCh)
+	notifications.StartDispatcher(sigCtx, srv, progressCh)
 
-	if err := srv.Notify(ctx, "server.ready", map[string]interface{}{
+	if err := srv.Notify(sigCtx, "server.ready", map[string]interface{}{
 		"version":      "0.1.0-m3",
 		"pid":          os.Getpid(),
 		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel"},
@@ -75,8 +81,10 @@ func main() {
 	slog.Info("skillbox-core started", "pid", os.Getpid())
 
 	go func() {
-		<-ctx.Done()
+		<-sigCtx.Done()
 		slog.Info("shutdown signal received, stopping server")
+		// Cancel in-memory operations before stopping so goroutines exit cleanly.
+		runner.MarkAllRunningAsFailed("server shutting down")
 		srv.Stop()
 	}()
 

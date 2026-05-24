@@ -21,15 +21,17 @@ type OperationRepo interface {
 	Insert(ctx context.Context, targetType string, targetID *int64, opType domain.OperationType) (int64, error)
 	MarkStarted(ctx context.Context, id int64) error
 	UpdateStatus(ctx context.Context, id int64, status domain.OperationStatus, errMsg *string, metadataJSON *string, finishedAt *time.Time) error
+	// GetByID returns the operation, or (nil, nil) if not found.
+	GetByID(ctx context.Context, id int64) (*domain.Operation, error)
 }
 
 // Runner manages the lifecycle of long-running operations.
 type Runner struct {
-	repo          OperationRepo
-	mu            sync.Mutex
-	activeLocks   map[string]struct{}     // per-target lock keys
-	cancelFns     map[int64]context.CancelFunc
-	progressCh    chan ProgressEvent
+	repo        OperationRepo
+	mu          sync.Mutex
+	activeLocks map[string]struct{} // per-target lock keys
+	cancelFns   map[int64]context.CancelFunc
+	progressCh  chan ProgressEvent
 }
 
 // NewRunner creates a Runner. progressCh receives all progress events;
@@ -145,21 +147,37 @@ func (r *Runner) emit(opID int64, status, phase string, processed, total *int, m
 	}
 }
 
-// Cancel sends a cancellation signal to the running operation.
-// Returns true if the signal was sent (operation was running), false if already done.
-func (r *Runner) Cancel(operationID int64) bool {
+// Cancel sends a cancellation signal to the operation.
+// Returns (true, nil) if the signal was sent to a running operation.
+// Returns (false, nil) if the operation already finished.
+// Returns (false, validation_error) if operationID does not exist.
+// Returns (false, database_error) on a DB lookup failure.
+func (r *Runner) Cancel(ctx context.Context, operationID int64) (bool, error) {
 	r.mu.Lock()
 	cancel, ok := r.cancelFns[operationID]
 	r.mu.Unlock()
-	if !ok {
-		return false
+
+	if ok {
+		cancel()
+		return true, nil
 	}
-	cancel()
-	return true
+
+	// Not active in memory — check the DB to distinguish "finished" vs "never existed".
+	op, err := r.repo.GetByID(ctx, operationID)
+	if err != nil {
+		return false, domain.NewDatabaseError("Could not check operation status", err.Error())
+	}
+	if op == nil {
+		return false, domain.NewValidationError(
+			"Operation not found",
+			fmt.Sprintf("operationId %d does not exist", operationID),
+		)
+	}
+	return false, nil
 }
 
-// MarkAllRunningAsFailed marks all currently tracked operations as failed.
-// Used during shutdown.
+// MarkAllRunningAsFailed cancels all in-memory operations and marks them failed in the DB.
+// Call during graceful shutdown; pair with OperationRepo.MarkStaleAsFailed for full coverage.
 func (r *Runner) MarkAllRunningAsFailed(reason string) {
 	r.mu.Lock()
 	ids := make([]int64, 0, len(r.cancelFns))

@@ -56,6 +56,19 @@ func (r *OperationRepo) GetByID(ctx context.Context, id int64) (*domain.Operatio
 	return scanOperation(row)
 }
 
+// MarkStaleAsFailed sets status='failed' for all queued or running operations.
+// Call on process startup to clean up orphaned operations from prior crashes,
+// and during graceful shutdown before closing the database.
+func (r *OperationRepo) MarkStaleAsFailed(ctx context.Context, reason string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE operations SET status='failed', error_message=?,
+		 finished_at=strftime('%Y-%m-%dT%H:%M:%SZ','now'),
+		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+		 WHERE status IN ('queued','running')`,
+		reason)
+	return err
+}
+
 func (r *OperationRepo) ListActiveByTarget(ctx context.Context, targetType string, targetID int64) ([]domain.Operation, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, operation_type, target_type, target_id, status,
@@ -95,6 +108,9 @@ func scanOperation(row *sql.Row) (*domain.Operation, error) {
 
 	err := row.Scan(&op.ID, &op.OperationType, &op.TargetType, &targetID, &op.Status,
 		&startedAt, &finishedAt, &errMsg, &metaJSON, &createdAt, &updatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}

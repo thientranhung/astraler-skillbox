@@ -57,6 +57,33 @@ func TestOperationRepo_UpdateStatus(t *testing.T) {
 	}
 }
 
+func TestOperationRepo_MarkStaleAsFailed(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewOperationRepo(db)
+	ctx := context.Background()
+
+	// Insert one queued and one running op.
+	id1, _ := repo.Insert(ctx, "skill_host_folder", nil, domain.OperationTypeScan)
+	id2, _ := repo.Insert(ctx, "skill_host_folder", nil, domain.OperationTypeScan)
+	_ = repo.MarkStarted(ctx, id2)
+
+	if err := repo.MarkStaleAsFailed(ctx, "process restarted"); err != nil {
+		t.Fatalf("MarkStaleAsFailed: %v", err)
+	}
+
+	op1, _ := repo.GetByID(ctx, id1)
+	op2, _ := repo.GetByID(ctx, id2)
+	if op1.Status != domain.OperationStatusFailed {
+		t.Errorf("op1 status: got %q want failed", op1.Status)
+	}
+	if op2.Status != domain.OperationStatusFailed {
+		t.Errorf("op2 status: got %q want failed", op2.Status)
+	}
+	if op1.ErrorMessage == nil || *op1.ErrorMessage != "process restarted" {
+		t.Errorf("op1 errorMessage: got %v", op1.ErrorMessage)
+	}
+}
+
 func TestOperationRepo_ListActiveByTarget(t *testing.T) {
 	db := NewTestDB(t)
 	repo := NewOperationRepo(db)
