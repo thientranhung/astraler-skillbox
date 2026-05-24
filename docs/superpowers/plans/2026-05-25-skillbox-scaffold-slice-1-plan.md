@@ -55,8 +55,11 @@ Do not include unrelated untracked files such as `AGENTS.md` or `CLAUDE.md` unle
 - Create: `core-go/internal/app/wire.go`
 - Create: `core-go/internal/rpc/server.go`
 - Create: `core-go/internal/rpc/handlers/ping.go`
-- Create: `scripts/build-go.sh`
+- Create: `apps/desktop/electron/main/core-process/json-rpc-client.ts`
+- Create: `apps/desktop/scripts/build-go.sh`
 - Modify: `.gitignore`
+
+Repo is non-workspace (single JS package at `apps/desktop`); all `pnpm` commands below are run from `apps/desktop`.
 
 - [ ] **Step 1: Scaffold packages and ignore rules**
 
@@ -143,6 +146,16 @@ Expected: pass.
 
 Implement `CoreProcessManager` in `manager.ts` using `spawn("go", ["run", "./cmd/skillbox-core"], { cwd: coreGoPath })`. Add 10s `server.ready` timeout, SIGTERM then SIGKILL on quit, and restart up to 3 times for mid-session exits.
 
+Implement `JsonRpcStdioClient` in `json-rpc-client.ts` per the "JSON-RPC client (Electron main side)" section of the design spec. Required surface:
+
+- `call<T>(method, params, opts?: { timeoutMs?: number }): Promise<T>` with monotonic request id, pending-promise map, default 30s timeout, opts to opt out.
+- `on(method, handler): () => void` for server-push notifications (no id).
+- `shutdown(reason)` rejects all pending requests with `core_unavailable` and is called on child `exit`/`error`.
+- stdout parsed via `readline` line-by-line (NDJSON); stderr forwarded to `core.log`; non-parseable lines logged and skipped.
+- Orphan responses (id with no pending) logged, never reject random pending.
+
+`CoreProcessManager` owns the spawn lifecycle; `JsonRpcStdioClient` owns the wire correlation. They compose: manager constructs the client with the spawned child, returns `goClient` used by `ipc-bridge.ts`.
+
 Expose in preload:
 
 ```ts
@@ -168,9 +181,9 @@ Run:
 
 ```sh
 cd apps/desktop && pnpm install
-cd ../.. && cd core-go && go test ./...
+cd ../core-go && go test ./...
 cd ../apps/desktop && pnpm test
-pnpm dev
+cd ../apps/desktop && pnpm dev
 ```
 
 Acceptance:
@@ -182,9 +195,11 @@ Acceptance:
 - [ ] **Step 7: Commit M1**
 
 ```sh
-git add .gitignore apps/desktop core-go scripts/build-go.sh
+git add .gitignore apps/desktop core-go
 git commit -m "Add Electron Go walking skeleton"
 ```
+
+`apps/desktop/scripts/build-go.sh` is covered by `apps/desktop` path; no separate add line.
 
 ---
 
@@ -200,6 +215,7 @@ git commit -m "Add Electron Go walking skeleton"
 - Create: `shared/api-contracts/methods/host.scan.json`
 - Create: `shared/api-contracts/methods/skill.list.json`
 - Create: `shared/api-contracts/methods/operation.cancel.json`
+- Create: `shared/api-contracts/methods/settings.get.json`
 - Create: `shared/api-contracts/notifications/server.ready.json`
 - Create: `shared/api-contracts/notifications/operation.progress.json`
 - Create: `shared/api-contracts/shared/operation.json`
@@ -207,16 +223,23 @@ git commit -m "Add Electron Go walking skeleton"
 - Create: `shared/api-contracts/shared/skill.json`
 - Create: `shared/api-contracts/shared/warning.json`
 - Create: `shared/api-contracts/electron/dialog.openHostFolder.json`
-- Create: `scripts/generate-contracts.mjs`
+- Create: `apps/desktop/scripts/generate-contracts.mjs`
 - Create: `shared/generated/**`
 
 - [ ] **Step 1: Add schema files**
 
-Implement schemas exactly matching the method shapes in the design spec. Use integer IDs, `additionalProperties:false` on responses, and keep `dialog.openHostFolder` under `electron/`.
+Implement schemas exactly matching the method shapes in the design spec. Use integer IDs, `additionalProperties:false` on responses, and keep `dialog.openHostFolder` under `electron/`. Include `settings.get` returning `{ activeSkillHostFolderId, defaultInstallMode, databaseVersion, activeHost | null }` — this query backs first-load routing and reopen persistence in M4.
 
 - [ ] **Step 2: Add generator**
 
-Install `json-schema-to-typescript` in `apps/desktop/package.json`. Create `scripts/generate-contracts.mjs` to read `shared/api-contracts/index.json`, generate TS to `shared/generated/`, and support `--check`.
+Install `json-schema-to-typescript` in `apps/desktop/package.json`. Create `apps/desktop/scripts/generate-contracts.mjs` (NOT at repo root — consistent with non-workspace decision) that reads `../../shared/api-contracts/index.json`, generates TS to `../../shared/generated/`, and supports `--check`.
+
+`apps/desktop/package.json` scripts:
+
+```json
+"generate:contracts": "node scripts/generate-contracts.mjs",
+"check:contracts-drift": "node scripts/generate-contracts.mjs --check"
+```
 
 - [ ] **Step 3: Generate and check drift**
 
@@ -224,8 +247,8 @@ Run:
 
 ```sh
 cd apps/desktop && pnpm install
-pnpm generate:contracts
-pnpm check:contracts-drift
+cd apps/desktop && pnpm generate:contracts
+cd apps/desktop && pnpm check:contracts-drift
 ```
 
 Expected: generated files are stable and drift check passes.
@@ -233,9 +256,11 @@ Expected: generated files are stable and drift check passes.
 - [ ] **Step 4: Commit M2**
 
 ```sh
-git add apps/desktop/package.json pnpm-lock.yaml shared scripts/generate-contracts.mjs
+git add apps/desktop shared
 git commit -m "Add slice 1 API contracts"
 ```
+
+`apps/desktop/scripts/generate-contracts.mjs` and `pnpm-lock.yaml` (inside `apps/desktop/`) are covered by `apps/desktop` path.
 
 ---
 
@@ -250,7 +275,7 @@ git commit -m "Add slice 1 API contracts"
 - Create: `core-go/internal/repositories/*.go`
 - Create: `core-go/internal/operations/*.go`
 - Create: `core-go/internal/services/*.go`
-- Create: `core-go/internal/rpc/handlers/{host_choose,host_scan,skill_list,operation_cancel}.go`
+- Create: `core-go/internal/rpc/handlers/{host_choose,host_scan,skill_list,operation_cancel,settings_get}.go`
 - Create: matching `*_test.go` files for every package.
 - Modify: `core-go/cmd/skillbox-core/main.go`
 - Modify: `core-go/internal/app/wire.go`
@@ -264,7 +289,7 @@ Run: `cd core-go && go test ./internal/domain -v`
 
 - [ ] **Step 2: SQLite TDD**
 
-Write `db_test.go` verifying migrations, WAL, foreign keys, busy timeout, and singleton `app_settings`. Implement `OpenDatabase`.
+Write `db_test.go` verifying migrations, WAL, foreign keys, busy timeout, and singleton `app_settings`. Implement `OpenDatabase`. Migration `0001_init.sql` includes `app_settings`, `skill_host_folders`, `skills`, `skill_sources`, `operations`, `warnings` per docs/07. `skill_sources` is included (not deferred) so `skills.source_id` FK integrity holds even though slice 1 never writes to it. Defer all other tables.
 
 Run: `cd core-go && go test ./internal/repositories -run TestOpenDatabase -v`
 
@@ -276,7 +301,7 @@ Run: `cd core-go && go test ./internal/filesystem -v`
 
 - [ ] **Step 4: Repository TDD**
 
-Implement repos after tests for insert/get/set-active, skill upsert/mark-missing, operation status updates, and warning clear/list. `SetActive` must set old host `inactive`, new host `active`, and update `app_settings.active_skill_host_folder_id` in one transaction.
+Implement repos after tests. `SkillHostFolderRepository` exposes `GetByID`, `GetByPath`, `GetActive`, `UpdateStatus`, `UpdateLastScannedAt`, and one transactional unit-of-work method `UpsertAndActivate(ctx, name, path, skillsPath) → (hostId int64, isNew bool, err)`. `UpsertAndActivate` must, in a single transaction: upsert the host by path with `status='active'`, demote the prior active host to `status='inactive'` if different, and update `app_settings.active_skill_host_folder_id`. No separate `SetActive` method — ChooseHost calls only `UpsertAndActivate`. Other repos: skill `UpsertMany`/`MarkMissing`/`ListByHost`, operation `Insert`/`UpdateStatus`, warning `Insert`/`ListByScope`/`ClearByScope`.
 
 Run: `cd core-go && go test ./internal/repositories -v`
 
@@ -290,13 +315,16 @@ cd core-go && go test -race ./internal/operations -v
 
 - [ ] **Step 6: Services TDD**
 
-Test `ChooseHost`, `ScanHost`, and `SkillLibraryService.List` with mock filesystem/repos. `ChooseHost` must be idempotent by path and switch active host without `conflict_error`.
+Test `ChooseHost`, `ScanHost`, `SkillLibraryService.List`, and `SettingsService.Get` with mock filesystem/repos.
+
+- `ChooseHost`: must be idempotent by path and switch active host without `conflict_error`. Service calls `fs.ValidateHostPath` → `fs.EnsureAgentsSkills` → `hostRepo.UpsertAndActivate` (single transactional call, no service-side transaction composition) → `hostRepo.GetByID` to return current status.
+- `SettingsService.Get`: returns `activeHost=null` when no active id; populates `activeHost` from `hostRepo.GetByID(*activeId)`; tolerates orphan id (host row missing) by returning `activeHost=null` instead of erroring.
 
 Run: `cd core-go && go test ./internal/services -v`
 
 - [ ] **Step 7: RPC handlers and contract tests**
 
-Add handlers for `host.choose`, `host.scan`, `skill.list`, and `operation.cancel`. Add contract tests validating handler responses against `shared/api-contracts`.
+Add handlers for `host.choose`, `host.scan`, `skill.list`, `operation.cancel`, and `settings.get`. Register all in `cmd/skillbox-core/main.go`. Update `apps/desktop/electron/main/core-process/method-allowlist.ts` to `["ping", "host.choose", "host.scan", "skill.list", "operation.cancel", "settings.get"]`. Add contract tests validating handler responses against `shared/api-contracts`.
 
 Run:
 
@@ -310,10 +338,10 @@ cd core-go && go test -race ./...
 Run:
 
 ```sh
-SKILLBOX_DB_PATH=/tmp/skillbox-test.db go run ./cmd/skillbox-core
+cd core-go && SKILLBOX_DB_PATH=/tmp/skillbox-test.db go run ./cmd/skillbox-core
 ```
 
-Send NDJSON requests for `ping`, `host.choose`, `host.scan`, and `skill.list`. Verify DB rows with `sqlite3`.
+Send NDJSON requests for `ping`, `settings.get` (expect `activeHost=null`), `host.choose`, `settings.get` again (expect `activeHost` populated), `host.scan`, and `skill.list`. Verify DB rows with `sqlite3 /tmp/skillbox-test.db`; confirm `skill_sources` table exists (empty) alongside `skills`.
 
 - [ ] **Step 9: Commit M3**
 
@@ -346,31 +374,31 @@ Add TanStack Router/Query, Tailwind, shadcn/ui dependencies, lucide-react, zod, 
 
 - [ ] **Step 2: Core client tests first**
 
-Write Vitest tests for invoke, method wrappers, error mapping, missing `window.core`, and progress filtering by `operationId`.
+Write Vitest tests for invoke, method wrappers (including `getSettings`), error mapping, missing `window.core`, and progress filtering by `operationId`.
 
 Run: `cd apps/desktop && pnpm test -- core-client`
 
 - [ ] **Step 3: Implement core client**
 
-Import generated types from `shared/generated`. Implement `methods.openHostFolder`, `chooseHost`, `scanHost`, `listSkills`, and `cancelOperation`.
+Import generated types from `shared/generated`. Implement `methods.openHostFolder`, `chooseHost`, `scanHost`, `listSkills`, `cancelOperation`, and `getSettings` (wraps `settings.get`, no params).
 
 - [ ] **Step 4: Add router and providers**
 
-Create memory routes: `/`, `/setup`, `/skills`, `/settings`. Redirect `/` based on active host query.
+Create memory routes: `/`, `/setup`, `/skills`, `/settings`. Add `useAppSettings` hook in `features/app-settings/use-app-settings.ts` that calls `methods.getSettings()` and is the single source of truth for active host. Root route `/` uses it to redirect: `data?.activeHost == null → /setup`, otherwise → `/skills`. Show a spinner while the query is pending.
 
 - [ ] **Step 5: Add screens and hooks**
 
-Implement setup flow, Skills Library list with Rescan, warning banner, operation progress toast, and settings Change Host Folder. Keep settings minimal.
+Implement setup flow, Skills Library list with Rescan, warning banner, operation progress toast, and settings Change Host Folder. Keep settings minimal. `useChooseHost` and `useScanHost` invalidate `settings.app` and `skills.list` on success so routing/UI converge.
 
 - [ ] **Step 6: Hook tests**
 
-Test `useChooseHost`, `useScanHost`, and `useSkillsList` with mocked `methods`; verify query invalidation and error handling.
+Test `useAppSettings`, `useChooseHost`, `useScanHost`, and `useSkillsList` with mocked `methods`; verify query invalidation and error handling.
 
 Run: `cd apps/desktop && pnpm test`
 
 - [ ] **Step 7: Manual M4 acceptance**
 
-Run `pnpm dev`, choose `/tmp/test-host`, create skills, rescan, verify list/status/warnings, switch host, quit/reopen.
+Run `cd apps/desktop && pnpm dev`, choose `/tmp/test-host`, create skills, rescan, verify list/status/warnings, switch host, quit/reopen (reopen must land on `/skills` via `settings.get` persistence).
 
 - [ ] **Step 8: Commit M4**
 
@@ -404,7 +432,7 @@ Run:
 
 ```sh
 cd apps/desktop && pnpm test
-cd ../../core-go && go test -race ./...
+cd ../core-go && go test -race ./...
 cd ../apps/desktop && pnpm check:contracts-drift
 git diff --check
 ```
@@ -427,8 +455,13 @@ Do not create or push `slice-1-skills-library` tag until the user explicitly app
 - Spec coverage: M1-M5 all mapped to tasks.
 - Native dialog decision: Electron opens dialog, Go receives `{ path }`.
 - IDs: number in TS, `int64` in Go.
-- `host.choose`: idempotent by path, switches active host inline, no conflict on switching.
+- `host.choose`: idempotent by path, switches active host inline via single `UpsertAndActivate` repo call, no conflict on switching.
+- `settings.get`: contract, handler, allowlist, and UI client all aligned; backs `/` routing and reopen persistence.
+- `skill_sources` table included in `0001_init.sql` (FK integrity); slice 1 has no write path.
 - `scan_results`: deferred; scan summary in `operations.metadata_json`.
+- `JsonRpcStdioClient`: custom TS client per spec (NDJSON, id correlation, pending map, notifications, timeout, shutdown).
+- Scripts under `apps/desktop/scripts/` (non-workspace); all `pnpm` commands run from `apps/desktop`.
+- Tag `slice-1-skills-library` not created or pushed — waits for owner approval.
 - Related untracked files: `AGENTS.md` and `CLAUDE.md` must remain outside plan commits unless explicitly requested.
 
 ## Execution Handoff
