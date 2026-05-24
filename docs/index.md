@@ -75,6 +75,14 @@ và impact previews.
 SQLite repositories, filesystem gateway, provider adapters, source integrations,
 operation runner, và testing strategy.
 
+## 11. Tech Stack And Scaffold Decisions
+
+[11-tech-stack-and-scaffold-decisions.md](11-tech-stack-and-scaffold-decisions.md)
+
+Đọc để hiểu các quyết định stack/scaffold trước khi tạo codebase thật: Electron,
+React, Go, Vite, UI kit, router, query, forms, tables, JSON-RPC, SQLite,
+keychain, testing, packaging, và các GAP còn cần chốt.
+
 ## Review Prompts
 
 [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
@@ -105,6 +113,12 @@ Electron + React + Golang.
 Brainstorm riêng cho transport decision giữa Electron main process và Golang
 core. Kết luận: Phase 1 dùng stdio JSON-RPC 2.0.
 
+[review-prompts/tech-stack-scaffold-review.md](review-prompts/tech-stack-scaffold-review.md)
+
+Prompt dùng để nhờ agent/chuyên gia khác review riêng Tech Stack And Scaffold
+Decisions. Kết quả review nên được ghi vào
+`docs/review-results/tech-stack-scaffold-review.md`.
+
 ## Suggested Reading Flow
 
 ```text
@@ -120,6 +134,7 @@ README.md
   -> docs/08-provider-model.md
   -> docs/09-ui-wireframes.md
   -> docs/10-technical-architecture.md
+  -> docs/11-tech-stack-and-scaffold-decisions.md
 ```
 
 ## Current Source Of Truth
@@ -134,9 +149,11 @@ README.md
 - Provider model: [08-provider-model.md](08-provider-model.md)
 - UI wireframes: [09-ui-wireframes.md](09-ui-wireframes.md)
 - Technical architecture: [10-technical-architecture.md](10-technical-architecture.md)
+- Tech stack and scaffold decisions: [11-tech-stack-and-scaffold-decisions.md](11-tech-stack-and-scaffold-decisions.md)
 - Data model review prompt: [review-prompts/data-model-review.md](review-prompts/data-model-review.md)
 - Provider model review prompt: [review-prompts/provider-model-review.md](review-prompts/provider-model-review.md)
 - Global Skills layer review prompt: [review-prompts/global-skills-layer-review.md](review-prompts/global-skills-layer-review.md)
+- Tech stack scaffold review prompt: [review-prompts/tech-stack-scaffold-review.md](review-prompts/tech-stack-scaffold-review.md)
 - Global Skills layer follow-up review result: [review-results/global-skills-layer-followup-review.md](review-results/global-skills-layer-followup-review.md)
 - Technical architecture brainstorm result: [review-results/technical-architecture-brainstorm.md](review-results/technical-architecture-brainstorm.md)
 - Transport decision brainstorm result: [review-results/transport-decision-brainstorm.md](review-results/transport-decision-brainstorm.md)
