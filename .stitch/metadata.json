@@ -1,0 +1,31 @@
+{
+  "projectId": "13974267998189566765",
+  "title": "Astraler Skillbox",
+  "deviceType": "DESKTOP",
+  "designSystem": {
+    "assetId": "42fbd106aaef407e8f41833f0c557a53",
+    "sourceScreen": "projects/13974267998189566765/screens/11954380542404234180",
+    "screenInstanceId": "11954380542404234180",
+    "title": "Skillbox Design System"
+  },
+  "screens": [
+    {
+      "title": "Dashboard",
+      "screenId": "266bf3973cb448828bc1055c7ddff607",
+      "file": ".stitch/designs/dashboard.png",
+      "generatedWith": "base (initial)"
+    },
+    {
+      "title": "Skills Library",
+      "screenId": "4a2671f961fd4edd9fe1d095c3cc1b26",
+      "file": ".stitch/designs/skills-library.png",
+      "generatedWith": "generate_screen_from_text + designSystem param"
+    },
+    {
+      "title": "Projects Library",
+      "screenId": "afb7fa65ff1245df8b35621e5be57dd2",
+      "file": ".stitch/designs/projects.png",
+      "generatedWith": "generate_screen_from_text + designSystem param"
+    }
+  ]
+}

@@ -1,63 +1,58 @@
-# Tech Stack And Scaffold Decisions
+# Các Quyết Định Về Tech Stack Và Scaffold
 
-Tài liệu này gom các quyết định tech stack và scaffold trước khi bắt đầu tạo
-codebase thật. Mục tiêu là tiết kiệm thời gian bằng cách chọn framework/library
-phù hợp, nhưng vẫn giữ architecture boundary đã chốt trong
-`10-technical-architecture.md`.
+Tài liệu này gom các quyết định về tech stack (công nghệ) và scaffold (cấu trúc nền tảng) trước khi bắt đầu tạo codebase thật. Mục tiêu là tiết kiệm thời gian bằng cách chọn framework/library phù hợp, nhưng vẫn giữ các ranh giới kiến trúc (architecture boundary) đã chốt trong `10-technical-architecture.md`.
 
-Decision status:
+Trạng thái quyết định:
 
 ```text
-decided       = đã chốt, dùng làm constraint khi scaffold
-recommended   = đề xuất mặc định, cần review/chốt trước khi code
-open          = còn cần thảo luận hoặc spike nhỏ
-defer         = chưa cần ở Phase 1
+decided       = đã chốt, dùng làm ràng buộc khi scaffold
+recommended   = đề xuất mặc định, cần xem xét/chốt trước khi code
+open          = còn cần thảo luận hoặc làm một thử nghiệm nhỏ (spike)
+defer         = chưa cần ở Giai đoạn 1 (Phase 1)
 ```
 
-## Stack Summary
+## Tóm Tắt Tech Stack
 
 ```text
 Desktop shell:
-  status = decided
-  choice = Electron
+  trạng thái = đã chốt (decided)
+  lựa chọn = Electron
 
 UI runtime:
-  status = decided
-  choice = React
+  trạng thái = đã chốt
+  lựa chọn = React
 
 Core runtime:
-  status = decided
-  choice = Golang
+  trạng thái = đã chốt
+  lựa chọn = Golang
 
 Database:
-  status = decided
-  choice = SQLite
+  trạng thái = đã chốt
+  lựa chọn = SQLite
 
-Electron <-> Go transport:
-  status = decided for Phase 1
-  choice = stdio JSON-RPC 2.0
+Giao tiếp Electron <-> Go (transport):
+  trạng thái = đã chốt cho Giai đoạn 1
+  lựa chọn = stdio JSON-RPC 2.0
 
-Go core lifecycle:
-  status = decided for Phase 1
-  choice = sidecar process managed by Electron main
+Quản lý vòng đời (lifecycle) của Go core:
+  trạng thái = đã chốt cho Giai đoạn 1
+  lựa chọn = sidecar process do Electron main quản lý
 ```
 
-## Scaffold Principles
+## Nguyên Tắc Scaffold
 
-- Không clone nguyên boilerplate nếu boilerplate làm mờ boundary của Skillbox.
-- Dùng boilerplate để học packaging, Electron security, Vite config, test setup,
-  và folder conventions.
-- Scaffold phải phản ánh architecture boundary:
-  - React renderer không đụng filesystem/database.
-  - Electron main chỉ quản lý lifecycle/bridge/native dialogs.
-  - Golang core giữ business logic, SQLite, provider adapters, filesystem
-    gateway, source integrations, operation runner.
-- Ưu tiên structure dễ review bởi AI và người: folder rõ, file nhỏ, contract rõ.
-- Không đưa library lớn nếu chưa có screen/use case cần nó.
+- Không clone nguyên một boilerplate (mẫu dự án có sẵn) nếu boilerplate đó làm mờ ranh giới của Skillbox.
+- Dùng boilerplate để học cách đóng gói (packaging), bảo mật Electron (Electron security), cấu hình Vite, thiết lập test, và các quy tắc đặt tên thư mục (folder conventions).
+- Scaffold phải phản ánh đúng ranh giới kiến trúc:
+  - React renderer không chạm vào hệ thống file (filesystem) hay database.
+  - Electron main chỉ quản lý vòng đời (lifecycle), cầu nối (bridge), và các hộp thoại gốc (native dialogs).
+  - Golang core giữ logic nghiệp vụ, SQLite, các adapter cho provider, cổng giao tiếp filesystem (filesystem gateway), tích hợp source, và trình chạy tác vụ (operation runner).
+- Ưu tiên cấu trúc dễ review bởi AI và người: thư mục rõ ràng, file nhỏ, contract rõ ràng.
+- Không đưa thư viện lớn vào nếu chưa có màn hình hoặc use case nào cần đến nó.
 
-## Candidate Project Structure
+## Cấu Trúc Dự Án Đề Xuất
 
-Recommended:
+Đề xuất (Recommended):
 
 ```text
 astraler-skillbox/
@@ -106,145 +101,140 @@ astraler-skillbox/
   fixtures/
 ```
 
-Rationale:
+Lý do (Rationale):
 
-- `apps/desktop` gom Electron + React app.
-- `core-go` là Go module riêng, có thể build/test độc lập.
-- `shared/api-contracts` là nơi giữ JSON Schema hoặc protocol contract.
-- `fixtures` phục vụ provider/filesystem scan tests.
-- `scripts` chứa build/dev/release helpers.
+- `apps/desktop` gom chung Electron + React app.
+- `core-go` là module Go riêng, có thể build/test độc lập.
+- `shared/api-contracts` là nơi giữ JSON Schema hoặc contract của giao thức.
+- `fixtures` phục vụ cho việc test provider/filesystem scan.
+- `scripts` chứa các helper để build/dev/release.
 
-Open:
+Đang mở (Open):
 
-- Có cần `apps/desktop/renderer` hay giữ `ui/` ở root cho ngắn hơn.
+- Có cần thư mục `apps/desktop/renderer` hay giữ `ui/` ở thư mục gốc (root) cho ngắn hơn.
 
-Decided:
+Đã chốt (Decided):
 
-- Không dùng `go.work` ở Phase 1 vì chỉ có một Go module.
-- Không dùng pnpm workspace ở Phase 1 nếu chỉ có một JS package.
-- Generated TypeScript types được commit vào repo và CI kiểm tra drift.
+- Không dùng `go.work` ở Giai đoạn 1 vì chỉ có một Go module.
+- Không dùng pnpm workspace ở Giai đoạn 1 nếu chỉ có một JS package.
+- Generated TypeScript types (kiểu TS được tạo tự động) được commit vào repo và CI sẽ kiểm tra nếu có sự sai lệch (drift).
 
-## Boilerplate Research Direction
+## Hướng Nghiên Cứu Boilerplate
 
-Không chọn boilerplate cuối cùng trong tài liệu này, nhưng khi khảo sát nên dùng
-criteria sau:
+Không chọn boilerplate cuối cùng trong tài liệu này, nhưng khi khảo sát nên dùng các tiêu chí sau:
 
 ```text
-Electron security:
+Bảo mật Electron (Electron security):
   contextIsolation = true
   nodeIntegration = false
-  preload bridge narrow
-  no renderer filesystem access
+  preload bridge hẹp (narrow)
+  renderer không có quyền truy cập filesystem
 
 Build/dev:
-  Vite for renderer
-  fast HMR
-  Electron main/preload build supported
-  external binary packaging supported
+  Vite cho renderer
+  HMR (Hot Module Replacement) nhanh
+  Hỗ trợ build Electron main/preload
+  Hỗ trợ đóng gói binary bên ngoài (external binary packaging)
 
-Packaging:
-  electron-builder support
-  extraResources support for Go binary
-  macOS signing/notarization path clear
+Đóng gói (Packaging):
+  Hỗ trợ electron-builder
+  Hỗ trợ extraResources cho Go binary
+  Đường dẫn ký xác nhận (signing/notarization) trên macOS rõ ràng
 
 Testing:
-  Vitest or equivalent for UI/core TS
-  Playwright for desktop/e2e possible
-  Go test independent
+  Vitest hoặc tương đương cho UI/core TS
+  Có thể dùng Playwright cho desktop/e2e
+  Go test chạy độc lập
 
-Maintainability:
-  simple folder structure
-  no overgrown SaaS/dashboard template assumptions
+Khả năng bảo trì (Maintainability):
+  Cấu trúc thư mục đơn giản
+  Không dùng template SaaS/dashboard quá phức tạp
 ```
 
-References to evaluate:
+Các nguồn tham khảo để đánh giá:
 
 - `electron-vite-react`
 - `vite-electron-builder`
 - `electron-react-boilerplate`
-- official Electron Forge Vite template
+- Template chính thức Electron Forge Vite
 
-Recommendation:
+Khuyến nghị:
 
-- Use a Vite/Electron boilerplate as reference, not as unquestioned source of
-  truth.
-- Scaffold our own structure if the template conflicts with Go sidecar,
-  JSON-RPC, or security boundaries.
+- Dùng Vite/Electron boilerplate như tài liệu tham khảo, không phải là chân lý tuyệt đối.
+- Tự scaffold cấu trúc riêng nếu template xung đột với Go sidecar, JSON-RPC, hoặc ranh giới bảo mật.
 
-## Frontend Build Tool
+## Công Cụ Build Frontend
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Choice: Vite.
+Lựa chọn: Vite.
 
-Why:
+Tại sao:
 
-- Fast React dev server and HMR.
-- Common in modern Electron + React scaffolds.
-- Good production bundling for renderer.
-- Works well with Tailwind, shadcn/ui, Vitest.
+- Dev server và HMR của React nhanh.
+- Phổ biến trong các scaffold Electron + React hiện đại.
+- Đóng gói cho production tốt đối với renderer.
+- Hoạt động tốt với Tailwind, shadcn/ui, Vitest.
 
-Risks:
+Rủi ro:
 
-- Electron main/preload build needs clear config so Node/Electron APIs are not
-  bundled incorrectly.
-- Need separate configs or build targets for renderer, main, and preload.
+- Build Electron main/preload cần cấu hình rõ ràng để các API Node/Electron không bị đóng gói sai.
+- Cần cấu hình hoặc build target riêng cho renderer, main, và preload.
 
-Decision:
+Quyết định:
 
-- Use `electron-vite` to manage renderer, main, and preload Vite targets.
+- Dùng `electron-vite` để quản lý các target Vite cho renderer, main, và preload.
 
-## Package Manager
+## Trình Quản Lý Package (Package Manager)
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Choice: pnpm, single JS package at `apps/desktop`.
+Lựa chọn: pnpm, gói JS duy nhất tại `apps/desktop`.
 
-Why:
+Tại sao:
 
-- Fast install.
-- Deterministic lockfile.
-- Works well for Electron development without requiring workspace mode.
+- Cài đặt nhanh.
+- Lockfile xác định rõ ràng.
+- Hoạt động tốt cho việc phát triển Electron mà không cần chế độ workspace.
 
-Risk:
+Rủi ro:
 
-- Some Electron tooling docs default to npm/yarn, so commands must be documented
-  clearly.
+- Một số tài liệu công cụ Electron mặc định dùng npm/yarn, nên các lệnh cần được ghi chú rõ ràng.
 
-Decision:
+Quyết định:
 
-- Do not scaffold `pnpm-workspace.yaml` on day one.
-- Add pnpm workspace only when a second JS package exists.
+- Không scaffold `pnpm-workspace.yaml` ngay từ ngày đầu.
+- Chỉ thêm pnpm workspace khi có một JS package thứ hai.
 
-## Electron Packaging
+## Đóng Gói Electron (Electron Packaging)
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Choice: electron-builder.
+Lựa chọn: electron-builder.
 
-Why:
+Tại sao:
 
-- Mature packaging for Electron apps.
-- Supports `extraResources` for bundled Go binary.
-- Strong macOS signing/notarization support.
-- Pairs with `electron-updater` if auto-update is added.
+- Trưởng thành trong việc đóng gói app Electron.
+- Hỗ trợ `extraResources` cho Go binary đi kèm.
+- Hỗ trợ tốt việc signing/notarization trên macOS.
+- Kết hợp tốt với `electron-updater` nếu thêm tính năng auto-update.
 
-Risks:
+Rủi ro:
 
-- macOS signing and notarization are high-risk and should be tested early.
-- Go binary must be included, signed, and launched from production resource path.
+- Việc signing và notarization trên macOS có rủi ro cao và nên được test sớm.
+- Go binary phải được đính kèm, signed, và khởi chạy từ đường dẫn resource của production.
 
-Decision:
+Quyết định:
 
-- Use `electron-builder` rather than Electron Forge.
-- Plan signing/notarization as a technical milestone, not a late release task.
-- Defer `electron-updater` until release/update flow is needed.
+- Dùng `electron-builder` thay vì Electron Forge.
+- Lên kế hoạch cho signing/notarization như một cột mốc kỹ thuật, không phải là tác vụ đẩy về cuối lúc release.
+- Hoãn dùng `electron-updater` cho đến khi cần luồng release/update.
 
-## UI Component Stack
+## Stack Component UI
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Choice:
+Lựa chọn:
 
 ```text
 shadcn/ui
@@ -253,269 +243,258 @@ Tailwind CSS
 lucide-react
 ```
 
-Why:
+Tại sao:
 
-- Radix gives accessible primitives for dialogs, menus, tabs, popovers, tooltips,
-  select, switch, checkbox, toast, scroll area, and more.
-- shadcn/ui provides styled component source that can live in the repo and be
-  customized.
-- Tailwind keeps styling local and fast for app UI.
-- lucide-react provides consistent icons and matches the design direction.
+- Radix cung cấp các primitive dễ truy cập cho dialog, menu, tab, popover, tooltip, select, switch, checkbox, toast, scroll area, và nhiều cái khác.
+- shadcn/ui cung cấp mã nguồn component có style sẵn, có thể đặt trong repo và tùy chỉnh được.
+- Tailwind giữ cho việc styling cục bộ (local) và nhanh chóng cho UI của app.
+- lucide-react cung cấp các icon đồng nhất và phù hợp với hướng thiết kế.
 
-Risks:
+Rủi ro:
 
-- shadcn components are copied into the repo, so ownership is ours.
-- Tailwind can become messy if layout conventions are not documented.
-- Need restraint: do not add large block/template collections blindly.
+- Các component của shadcn được sao chép vào repo, nên ta phải tự quản lý (ownership).
+- Tailwind có thể trở nên lộn xộn nếu không có tài liệu về các quy tắc layout.
+- Cần kiềm chế: không thêm các bộ sưu tập block/template lớn một cách mù quáng.
 
-Decision to confirm:
+Quyết định cần xác nhận:
 
-- Use shadcn/ui as component source, not a fully prebuilt dashboard template.
-- Create Skillbox-specific app shell, sidebar, toolbar, table, warning, and
-  status components instead of using a generic SaaS template wholesale.
+- Dùng shadcn/ui như nguồn component, không phải là một template dashboard tạo sẵn hoàn chỉnh.
+- Tạo app shell, sidebar, toolbar, table, warning, và component status đặc thù cho Skillbox thay vì dùng một template SaaS chung chung.
 
-## UI App Style
+## Phong Cách App UI
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Skillbox should feel like an operational desktop tool:
+Skillbox nên có cảm giác như một công cụ desktop nghiệp vụ (operational desktop tool):
 
-- Dense but readable.
-- Sidebar navigation.
-- Tables/lists for skills, projects, global locations, updates.
-- Detail panes for selected entities.
-- Clear status badges and warnings.
-- Minimal marketing/hero styling.
-- Functional dialogs and wizards.
+- Dày đặc (dense) nhưng dễ đọc.
+- Điều hướng sidebar.
+- Bảng/danh sách cho skills, projects, global locations, updates.
+- Khung chi tiết cho các thực thể được chọn (selected entities).
+- Các huy hiệu (badge) trạng thái và cảnh báo rõ ràng.
+- Hạn chế tối đa phong cách marketing/hero.
+- Các dialog và wizard mang tính chức năng (functional).
 
-Avoid:
+Tránh:
 
-- Landing-page layout.
-- Oversized hero sections.
-- Decorative cards inside cards.
-- Heavy gradients/illustrations.
-- Generic SaaS dashboard template that hides filesystem/provider details.
+- Layout kiểu landing-page.
+- Các phần hero quá khổ.
+- Card trang trí nằm lồng trong card khác.
+- Gradient/hình minh họa quá nặng.
+- Template SaaS dashboard chung chung che khuất đi các chi tiết về filesystem/provider.
 
 ## Router
 
-Status: decided for Phase 1.
+Trạng thái: đã chốt cho Giai đoạn 1.
 
-Choice: TanStack Router.
+Lựa chọn: TanStack Router.
 
-Why:
+Tại sao:
 
-- Type-safe route definitions.
-- Good fit for app screens with nested detail routes.
-- Stronger than React Router when route params/search state become important.
+- Định nghĩa route an toàn về kiểu (type-safe).
+- Phù hợp cho các màn hình app có route chi tiết lồng nhau (nested detail routes).
+- Mạnh mẽ hơn React Router khi params/search state của route trở nên quan trọng.
 
-Risks:
+Rủi ro:
 
-- Slightly more learning/setup than React Router.
-- Need to keep route model simple because this is a desktop app, not a public
-  web app.
+- Cần học/setup nhiều hơn một chút so với React Router.
+- Cần giữ mô hình route đơn giản vì đây là app desktop, không phải app web công cộng.
 
-Alternative:
+Lựa chọn thay thế:
 
-- React Router if team wants a simpler, widely-known router.
+- React Router nếu team muốn một router đơn giản hơn, nhiều người biết hơn.
 
-Decision:
+Quyết định:
 
-- Use TanStack Router with `createMemoryHistory` for Electron/file URL context.
+- Dùng TanStack Router với `createMemoryHistory` cho ngữ cảnh Electron/file URL.
 
-## Server State And View Models
+## Server State Và View Models
 
-Status: decided for Phase 1.
+Trạng thái: đã chốt cho Giai đoạn 1.
 
-Choice: TanStack Query for local JSON-RPC queries.
+Lựa chọn: TanStack Query cho các truy vấn JSON-RPC cục bộ.
 
-Why:
+Tại sao:
 
-- Even though data is local, screens still need loading/error/refetch/cache.
-- Operation completion can invalidate relevant queries.
-- Keeps React UI from manually managing every request lifecycle.
+- Mặc dù dữ liệu là cục bộ (local), các màn hình vẫn cần trạng thái loading/error/refetch/cache.
+- Hoàn thành một operation có thể vô hiệu hóa (invalidate) các query liên quan.
+- Tránh việc React UI phải tự quản lý mọi vòng đời request một cách thủ công.
 
-Rules:
+Quy tắc:
 
-- Queries call the Electron preload bridge client, not Go directly.
-- Mutations call commands and return `operation_id` when relevant.
-- UI re-fetches view models after operation completion.
+- Query gọi đến Electron preload bridge client, không gọi trực tiếp Go.
+- Mutation gọi commands và trả về `operation_id` khi cần thiết.
+- UI tải lại (re-fetch) view models sau khi hoàn thành operation.
 
-Risks:
+Rủi ro:
 
-- Over-caching can show stale filesystem state after scan/update.
-- Query keys must be disciplined.
+- Caching quá mức có thể hiển thị trạng thái filesystem cũ sau khi scan/update.
+- Các khóa query (query keys) phải được thiết kế kỷ luật.
 
-Decision:
+Quyết định:
 
-- Use TanStack Query from day one.
-- Keep stale time short and invalidate aggressively after command/operation
-  completion.
+- Dùng TanStack Query ngay từ ngày đầu.
+- Giữ thời gian stale (stale time) ngắn và invalidate mạnh tay sau khi command/operation hoàn thành.
 
-## Client UI State
+## Trạng Thái UI Ở Client
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Choice: React state first; Zustand deferred until cross-screen ephemeral state is
-actually needed.
+Lựa chọn: Dùng React state trước; Zustand bị hoãn lại (deferred) cho đến khi thực sự cần state chia sẻ giữa các màn hình (cross-screen ephemeral state).
 
-Use React state for:
+Dùng React state cho:
 
-- Dialog open/close.
-- Current form values.
-- Local selections.
+- Mở/đóng Dialog.
+- Các giá trị form hiện tại.
+- Các lựa chọn cục bộ (local selections).
 
-Use Zustand only if needed for:
+Chỉ dùng Zustand nếu cần cho:
 
-- App shell UI state.
-- Selected project/skill context shared across multiple panels.
-- Long-lived operation panel state not owned by one screen.
+- UI state của App shell.
+- Ngữ cảnh project/skill đang chọn được chia sẻ qua nhiều panel.
+- State của panel operation tồn tại lâu (long-lived) không thuộc về riêng một màn hình nào.
 
-Avoid:
+Tránh:
 
-- Putting server/database state into Zustand.
-- Duplicating TanStack Query cache in a global store.
+- Đưa server/database state vào Zustand.
+- Lặp lại cache của TanStack Query trong global store.
 
-## Forms And Validation
+## Forms Và Validation
 
-Status: decided for Phase 1.
+Trạng thái: đã chốt cho Giai đoạn 1.
 
-Choice:
+Lựa chọn:
 
 ```text
 react-hook-form
 zod
 ```
 
-Why:
+Tại sao:
 
-- Settings and wizard flows need clear validation.
-- Zod schemas can mirror API contract validation.
-- React Hook Form avoids excessive controlled-input re-rendering.
+- Các luồng settings và wizard cần validation rõ ràng.
+- Zod schema có thể phản ánh (mirror) lại validation của API contract.
+- React Hook Form giúp tránh render lại quá nhiều các input có kiểm soát (controlled-input).
 
-Rules:
+Quy tắc:
 
-- Zod schemas are UI/form validation schemas.
-- JSON Schema in `shared/api-contracts` is wire contract validation.
-- Go validates command/query params independently on the core side.
+- Zod schema là schema validation cho UI/form.
+- JSON Schema trong `shared/api-contracts` là validation cho wire contract (dữ liệu truyền tải).
+- Go kiểm tra command/query params độc lập ở phía core.
 
-Risk:
+Rủi ro:
 
-- Some validation is intentionally duplicated because user-facing form
-  constraints and wire contract constraints are not always identical.
+- Một số validation cố ý bị lặp lại vì ràng buộc form giao diện cho người dùng và ràng buộc wire contract không phải lúc nào cũng giống hệt nhau.
 
-## Tables
+## Bảng (Tables)
 
-Status: defer.
+Trạng thái: hoãn lại (defer).
 
-Choice: start with simple table components; add TanStack Table when the first
-sortable/filterable table screen proves it needs it.
+Lựa chọn: bắt đầu với các component bảng đơn giản; thêm TanStack Table khi có màn hình bảng đầu tiên thực sự cần sắp xếp (sort)/lọc (filter).
 
-Why:
+Tại sao:
 
-- Skillbox has many table-heavy screens:
+- Skillbox có nhiều màn hình chứa bảng:
   - Skills Library
   - Global Skills
   - Projects
   - Project Detail installs
   - Updates affected projects/global installs
-- Sorting/filtering/selection will be common.
+- Sắp xếp/lọc/chọn sẽ rất phổ biến.
 
-Risks:
+Rủi ro:
 
-- TanStack Table is headless and can be verbose.
-- Need shared table components to avoid repeating setup.
+- TanStack Table là headless nên code có thể dài dòng.
+- Cần các component bảng dùng chung để tránh lặp lại setup.
 
-Decision:
+Quyết định:
 
-- Do not include TanStack Table in the initial scaffold.
+- Không đưa TanStack Table vào scaffold ban đầu.
 
-## JSON-RPC Protocol
+## Giao Thức JSON-RPC (JSON-RPC Protocol)
 
-Status: partially decided.
+Trạng thái: đã chốt một phần.
 
-Decided:
+Đã chốt:
 
-- Phase 1 transport is stdio JSON-RPC 2.0.
-- JSON-RPC Go library is `creachadair/jrpc2`.
-- Framing is NDJSON.
-- Go core sends `server.ready` before Electron forwards renderer requests.
-- Electron main waits up to 10 seconds for `server.ready`.
-- Operation progress uses JSON-RPC notifications.
-- Production does not open local HTTP server.
+- Giao tiếp (transport) của Giai đoạn 1 là stdio JSON-RPC 2.0.
+- Thư viện JSON-RPC cho Go là `creachadair/jrpc2`.
+- Định dạng gói tin (framing) là NDJSON.
+- Go core gửi `server.ready` trước khi Electron chuyển tiếp request từ renderer.
+- Electron main chờ tối đa 10 giây để nhận `server.ready`.
+- Tiến độ của Operation sử dụng JSON-RPC notifications.
+- Bản Production không mở local HTTP server.
 
-Open:
+Đang mở:
 
-- Whether dev mode includes a debug HTTP server.
+- Có nên bật debug HTTP server trong chế độ dev hay không.
 
-Startup failure path:
+Luồng xử lý khi startup thất bại:
 
-- If Go exits before `server.ready`, show blocking startup error and surface
-  stderr/log path.
-- If `server.ready` timeout fires, kill child and show blocking startup error.
-- Mid-session crash can restart up to 3 times, then show blocking error.
+- Nếu Go thoát (exit) trước khi báo `server.ready`, hiển thị lỗi startup chặn màn hình (blocking) và đưa ra đường dẫn stderr/log.
+- Nếu quá thời gian chờ (timeout) `server.ready`, kill process con và hiển thị lỗi chặn màn hình.
+- Nều crash giữa chừng có thể khởi động lại tối đa 3 lần, sau đó hiển thị lỗi chặn màn hình.
 
-Recommendation:
+Khuyến nghị:
 
-- Dev-only debug HTTP server can be added behind `SKILLBOX_DEBUG_PORT` after the
-  first JSON-RPC method works.
+- Dev-only debug HTTP server có thể được thêm vào sau cổng `SKILLBOX_DEBUG_PORT` sau khi method JSON-RPC đầu tiên hoạt động.
 
 ## API Contracts
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Choice: JSON Schema in `shared/api-contracts`.
+Lựa chọn: JSON Schema trong `shared/api-contracts`.
 
-Why:
+Tại sao:
 
-- Human-readable contract for commands/queries.
-- Can generate TypeScript types.
-- Fits JSON-RPC payloads.
-- Less heavy than protobuf/gRPC for internal local IPC.
+- Contract dạng người dễ đọc cho commands/queries.
+- Có thể tạo (generate) ra TypeScript types.
+- Phù hợp với payload của JSON-RPC.
+- Nhẹ hơn protobuf/gRPC khi dùng cho IPC cục bộ.
 
-Open:
+Đang mở:
 
-- Generate Go structs from JSON Schema or hand-match Go structs.
-- Naming/versioning convention for command/query schemas.
+- Generate Go structs từ JSON Schema hoặc tự viết Go structs khớp bằng tay.
+- Quy tắc đặt tên/đánh phiên bản cho các schema command/query.
 
-Decision:
+Quyết định:
 
-- Commit generated TypeScript types for easier AI/code review.
-- Keep Go structs hand-written in Phase 1 unless drift becomes painful.
-- Add contract tests that serialize sample Go responses and validate against
-  schemas.
-- Add CI check that generated TypeScript types match committed types.
+- Commit các TypeScript types được tạo tự động để AI/người dễ review hơn.
+- Giữ các struct Go viết bằng tay trong Giai đoạn 1 trừ khi sự sai lệch (drift) trở nên khó xử lý.
+- Thêm contract tests để serialize các response mẫu của Go và validate dựa trên schema.
+- Thêm check CI để đảm bảo TypeScript types tạo tự động khớp với types đã commit.
 
 ## Go SQLite Stack
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Choice:
+Lựa chọn:
 
 ```text
 driver = modernc.org/sqlite
-migrations = embedded SQL migrations
+migrations = embedded SQL migrations (migrations viết bằng SQL nhúng)
 ```
 
-Why:
+Tại sao:
 
-- `modernc.org/sqlite` avoids CGO and simplifies cross-platform builds.
-- Embedded SQL migrations are auditable and versioned.
-- SQL remains readable to humans and AI.
+- `modernc.org/sqlite` tránh dùng CGO và làm đơn giản việc build cross-platform.
+- SQL migrations nhúng có thể kiểm toán (auditable) và có phiên bản.
+- SQL giữ tính dễ đọc cho người và AI.
 
-Decision:
+Quyết định:
 
-- Use OS-standard app data directory for SQLite.
+- Dùng thư mục app data tiêu chuẩn của HĐH cho SQLite.
 - macOS: `~/Library/Application Support/Astraler Skillbox/skillbox.db`.
 - Windows: `%APPDATA%\Astraler Skillbox\skillbox.db`.
 - Linux: `~/.config/astraler-skillbox/skillbox.db`.
-- Dev/test override: `SKILLBOX_DB_PATH`.
-- Enable WAL.
-- Enable foreign keys on every connection.
-- Set `busy_timeout=5000`.
-- Use `synchronous=NORMAL`.
-- Use `golang-migrate` with embedded SQL migrations.
+- Ghi đè (override) khi Dev/test: biến `SKILLBOX_DB_PATH`.
+- Bật WAL.
+- Bật foreign keys trên mọi kết nối.
+- Đặt `busy_timeout=5000`.
+- Dùng `synchronous=NORMAL`.
+- Dùng `golang-migrate` với các SQL migrations nhúng.
 
-Startup PRAGMAs:
+Các PRAGMA khi khởi động:
 
 ```sql
 PRAGMA journal_mode=WAL;
@@ -524,42 +503,40 @@ PRAGMA busy_timeout=5000;
 PRAGMA synchronous=NORMAL;
 ```
 
-## Keychain And Credentials
+## Keychain Và Thông Tin Đăng Nhập (Credentials)
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Choice: Go core owns credentials via OS keychain.
+Lựa chọn: Go core sở hữu credentials thông qua OS keychain.
 
-Choice: `zalando/go-keyring`.
+Lựa chọn thư viện: `zalando/go-keyring`.
 
-Why:
+Tại sao:
 
-- Source adapters live in Go.
-- Secret should stay in the process that uses it.
-- SQLite stores credential metadata/ref only, not plaintext.
+- Source adapters nằm ở phía Go.
+- Secret nên nằm trong process sử dụng nó.
+- SQLite chỉ lưu trữ metadata/tham chiếu của credential, không lưu plaintext.
 
-Decision:
+Quyết định:
 
-- Use `zalando/go-keyring` in Go.
-- Allow environment variable fallback for dev/CI.
-- Env vars: `SKILLBOX_GITHUB_TOKEN`, `SKILLBOX_VERCEL_TOKEN`.
-- Document Linux `libsecret` requirement if using a keychain library that needs
-  Secret Service API.
-- Do not store plaintext token in SQLite.
+- Dùng `zalando/go-keyring` trong Go.
+- Cho phép dùng environment variable (biến môi trường) thay thế (fallback) khi dev/CI.
+- Các biến env: `SKILLBOX_GITHUB_TOKEN`, `SKILLBOX_VERCEL_TOKEN`.
+- Viết tài liệu về yêu cầu `libsecret` của Linux nếu dùng một thư viện keychain cần Secret Service API.
+- Không lưu token plaintext trong SQLite.
 
-## Go Module And Dependency Policy
+## Go Module Và Chính Sách Phụ Thuộc (Dependency Policy)
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Rules:
+Quy tắc:
 
-- Keep Go core dependency-light.
-- Use standard library where reasonable.
-- Use libraries for SQLite, migrations, keychain, and JSON-RPC only after
-  review.
-- Keep provider adapters mostly internal code.
+- Giữ cho Go core ít dependency.
+- Dùng standard library khi hợp lý.
+- Chỉ dùng các thư viện cho SQLite, migrations, keychain, và JSON-RPC sau khi đã review.
+- Giữ các provider adapters phần lớn là code nội bộ (internal code).
 
-Recommended initial Go packages:
+Các package Go khởi đầu đề xuất:
 
 ```text
 modernc.org/sqlite
@@ -570,7 +547,7 @@ creachadair/jrpc2
 
 ## Testing Stack
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
 Frontend/Electron:
 
@@ -584,35 +561,33 @@ Go:
 
 ```text
 go test
-temporary SQLite database
+SQLite database tạm thời
 filesystem fixtures
-contract tests against JSON Schema
+contract tests đối chiếu với JSON Schema
 ```
 
-Why:
+Tại sao:
 
-- Vitest fits Vite.
-- Playwright can test real Electron flows later.
-- Go tests can validate provider scan/install/fs behavior without UI.
+- Vitest hợp với Vite.
+- Playwright có thể dùng test các luồng Electron thật sau này.
+- Go tests có thể validate hành vi của provider scan/install/fs mà không cần UI.
 
-Open:
+Đang mở:
 
-- Whether Playwright is introduced immediately or after first UI shell.
-- How to run full-stack tests with Electron + Go sidecar in CI.
+- Có nên đưa Playwright vào ngay lập tức hay sau khi có UI shell đầu tiên.
+- Cách chạy full-stack tests với Electron + Go sidecar trên CI.
 
-Required:
+Yêu cầu bắt buộc:
 
-- `go test -race` for operation runner, provider scan, JSON-RPC, and filesystem
-  gateway code.
-- Contract tests from the first JSON-RPC method: serialize Go responses and
-  validate against JSON Schema.
-- Mock-core fixtures must be validated against JSON Schema.
+- `go test -race` cho operation runner, provider scan, JSON-RPC, và code filesystem gateway.
+- Contract tests từ JSON-RPC method đầu tiên: serialize Go responses và validate với JSON Schema.
+- Các mock-core fixtures phải được validate với JSON Schema.
 
-## Dev Workflow
+## Luồng Làm Việc Dev (Dev Workflow)
 
-Status: recommended.
+Trạng thái: đề xuất (recommended).
 
-Desired commands:
+Các lệnh mong muốn:
 
 ```text
 pnpm install
@@ -624,98 +599,97 @@ pnpm package
 go test ./...
 ```
 
-Dev modes:
+Các chế độ dev:
 
 ```text
 Go-only:
-  run core tests and JSON-RPC harness without Electron
+  chạy core tests và JSON-RPC harness không có Electron
 
 UI-only:
-  React app uses mock core client/view models
+  React app dùng mock core client/view models
 
 Full-stack:
-  Electron main launches Go sidecar and renderer connects through preload
+  Electron main khởi chạy Go sidecar và renderer kết nối qua preload
 ```
 
-Open:
+Đang mở:
 
-- Use `air` or another Go watcher for hot reload.
-- Whether mock core client is hand-written or generated from API contracts.
+- Dùng `air` hoặc watcher Go nào khác để hot reload.
+- Mock core client được viết tay hay sinh tự động từ API contracts.
 
-Decision:
+Quyết định:
 
-- Support three dev modes in scaffold README:
-  - Go-only: Go tests and JSON-RPC harness without Electron.
-  - UI-only: Electron/React uses mock core fixture responses.
-  - Full-stack: Electron main launches real Go sidecar.
-- Mock-core fixtures are generated from Go integration test captures or
-  validated against JSON Schema in CI.
+- Hỗ trợ ba chế độ dev trong phần README của scaffold:
+  - Go-only: Go tests và JSON-RPC harness không có Electron.
+  - UI-only: Electron/React dùng các mock core fixture responses.
+  - Full-stack: Electron main khởi chạy Go sidecar thật.
+- Các mock-core fixtures được tạo ra từ việc capture lại các Go integration test hoặc validate với JSON Schema trên CI.
 
-## Security Defaults
+## Mặc Định Bảo Mật (Security Defaults)
 
-Status: decided for scaffold.
+Trạng thái: đã chốt cho scaffold.
 
 Electron:
 
 ```text
 contextIsolation = true
 nodeIntegration = false
-sandbox = true if compatible
-preload exposes narrow API only
-renderer never receives Go process path or transport details
-Electron main validates JSON-RPC method allowlist before forwarding
+sandbox = true nếu tương thích
+preload chỉ lộ ra API hẹp (narrow API)
+renderer không bao giờ nhận được đường dẫn Go process hoặc chi tiết về transport
+Electron main xác nhận (validate) method JSON-RPC dựa trên allowlist trước khi chuyển tiếp
 CSP = default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
 ```
 
 Go:
 
 ```text
-stdout = JSON-RPC protocol only
+stdout = chỉ dành cho giao thức JSON-RPC
 stderr/log file = logs
-validate all filesystem writes
-never trust renderer-provided paths without core validation
+validate mọi lệnh ghi vào hệ thống file (filesystem writes)
+không bao giờ tin tưởng các đường dẫn từ renderer cung cấp mà không validate ở core
 ```
 
-Packaging:
+Đóng gói (Packaging):
 
 ```text
-Go binary bundled through electron-builder extraResources
-macOS signing/notarization tested early
+Go binary được đính kèm qua electron-builder extraResources
+Việc signing/notarization trên macOS được test sớm
 ```
 
-## Build Size Notes
+## Ghi Chú Về Kích Thước Bản Build (Build Size Notes)
 
-Status: informational.
+Trạng thái: để cung cấp thông tin (informational).
 
-- Electron dominates app size because Chromium and Node are bundled.
-- Radix/shadcn/Tailwind are not the main size risk.
-- shadcn/ui copies component source; bundle size depends on what is imported.
-- lucide-react should import icons individually.
-- Go binary should use release flags such as `-ldflags="-s -w"` when packaging.
+- Electron chiếm phần lớn kích thước app vì Chromium và Node được đóng gói kèm.
+- Radix/shadcn/Tailwind không phải là rủi ro chính về kích thước.
+- shadcn/ui copy component source; kích thước bundle phụ thuộc vào việc import cái gì.
+- lucide-react nên import từng icon riêng biệt.
+- Go binary nên dùng release flags như `-ldflags="-s -w"` khi đóng gói.
 
-## Decisions Before Scaffold
+## Các Quyết Định Trước Khi Scaffold
 
-Must decide:
+Cần chốt:
 
-- Dev debug HTTP server yes/no.
-- Mock-core fixture generation policy.
+- Có dev debug HTTP server hay không (yes/no).
+- Chính sách sinh ra (generation policy) cho mock-core fixture.
 
-Can defer:
+Có thể hoãn:
 
-- Auto-update behavior.
-- Persistent daemon.
+- Hành vi Auto-update.
+- Trình nền (persistent daemon).
 - CLI.
 - Multi-window.
-- Install Skill To Global Location.
+- Cài đặt Skill vào vị trí Global (Install Skill To Global Location).
 - Custom provider UI.
 
-## Recommended Phase 1 Scaffold Decision Set
+## Tập Quyết Định Scaffold Đề Xuất Cho Giai Đoạn 1
 
 ```text
 workspace:
   pnpm
-  single package at apps/desktop
-  no pnpm workspace until second JS package
+  package đơn lẻ ở apps/desktop
+  không dùng pnpm workspace cho tới khi có JS package thứ hai
 
 desktop:
   Electron
@@ -732,37 +706,37 @@ ui:
   TanStack Query
   React Hook Form
   Zod
-  TanStack Table deferred
-  Zustand deferred
+  TanStack Table (hoãn lại)
+  Zustand (hoãn lại)
 
 core:
   Golang
-  SQLite via modernc.org/sqlite
-  golang-migrate with embedded SQL migrations
+  SQLite thông qua modernc.org/sqlite
+  golang-migrate với SQL migrations nhúng
   zalando/go-keyring
-  no go.work until second Go module
+  không dùng go.work cho tới khi có Go module thứ hai
 
 transport:
   stdio JSON-RPC 2.0
   creachadair/jrpc2
-  NDJSON framing
-  operation progress via JSON-RPC notifications
-  server.ready handshake with 10 second timeout
+  định dạng NDJSON
+  tiến độ operation qua JSON-RPC notifications
+  handshake server.ready với timeout 10 giây
 
 sqlite:
   WAL
   foreign_keys=ON
   busy_timeout=5000
   synchronous=NORMAL
-  OS app data directory
-  SKILLBOX_DB_PATH override
+  thư mục app data của OS
+  ghi đè qua SKILLBOX_DB_PATH
 
 testing:
   Vitest
   React Testing Library
-  Playwright later or after shell
+  Playwright sau này hoặc sau khi có shell
   go test
-  go test -race for concurrent code
+  go test -race cho concurrent code
   filesystem fixtures
   contract tests
 ```
