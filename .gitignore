@@ -1,1 +1,8 @@
 .mcp.json
+node_modules/
+dist/
+out/
+*.db
+*.db-shm
+*.db-wal
+core-go/skillbox-core
