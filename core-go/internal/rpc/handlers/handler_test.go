@@ -25,18 +25,46 @@ func startServer(t *testing.T, methods handler.Map) *jrpc2.Client {
 	return jrpc2.NewClient(cch, nil)
 }
 
-// extractAppError unmarshals the jrpc2 error Data field into domain.AppError.
-func extractAppError(t *testing.T, err error) *domain.AppError {
+// wireError holds the raw wire-level assertions about a jrpc2 error response.
+type wireError struct {
+	rpcErr *jrpc2.Error
+	ae     domain.AppError
+	// rawRPCCode is the rpcCode field in the JSON data payload, as sent on the wire.
+	rawRPCCode int
+}
+
+// extractWireError asserts err is a *jrpc2.Error and unmarshals its Data field.
+// It verifies that:
+//   - rpcErr.Code equals wantCode (the JSON-RPC integer error code on the wire)
+//   - data.rpcCode in the payload matches the same value
+func extractWireError(t *testing.T, err error, wantCode jrpc2.Code) wireError {
 	t.Helper()
 	var rpcErr *jrpc2.Error
 	if !errors.As(err, &rpcErr) {
 		t.Fatalf("expected *jrpc2.Error, got %T: %v", err, err)
 	}
+	if rpcErr.Code != wantCode {
+		t.Errorf("wire error code: got %d want %d", rpcErr.Code, wantCode)
+	}
+
+	// Unmarshal the structured payload.
 	var ae domain.AppError
 	if err2 := json.Unmarshal(rpcErr.Data, &ae); err2 != nil {
 		t.Fatalf("unmarshal error data: %v (raw: %s)", err2, rpcErr.Data)
 	}
-	return &ae
+
+	// Parse rpcCode directly from raw JSON to prove the wire payload includes it.
+	var raw struct {
+		RPCCode int `json:"rpcCode"`
+	}
+	if err2 := json.Unmarshal(rpcErr.Data, &raw); err2 != nil {
+		t.Fatalf("unmarshal rpcCode from payload: %v", err2)
+	}
+	if raw.RPCCode != int(wantCode) {
+		t.Errorf("payload rpcCode: got %d want %d", raw.RPCCode, int(wantCode))
+	}
+
+	return wireError{rpcErr: rpcErr, ae: ae, rawRPCCode: raw.RPCCode}
 }
 
 // -- stubs --
@@ -99,6 +127,8 @@ func TestHostChooseHandler_Success(t *testing.T) {
 	}
 }
 
+// TestHostChooseHandler_ValidationError asserts the full wire contract:
+// JSON-RPC error.code == 1001 and payload data.rpcCode == 1001.
 func TestHostChooseHandler_ValidationError_MapsToJRPCError(t *testing.T) {
 	svc := &stubHostChoose{err: domain.NewValidationError("Host not found", "path invalid")}
 	cli := startServer(t, handler.Map{"host.choose": handlers.NewHostChooseHandler(svc)})
@@ -107,12 +137,9 @@ func TestHostChooseHandler_ValidationError_MapsToJRPCError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	ae := extractAppError(t, err)
-	if ae.Code != domain.CodeValidation {
-		t.Errorf("code: got %q want %q", ae.Code, domain.CodeValidation)
-	}
-	if ae.RPCCode() != 1001 {
-		t.Errorf("rpcCode: got %d want 1001", ae.RPCCode())
+	we := extractWireError(t, err, jrpc2.Code(1001))
+	if we.ae.Code != domain.CodeValidation {
+		t.Errorf("payload code: got %q want %q", we.ae.Code, domain.CodeValidation)
 	}
 }
 
@@ -124,12 +151,14 @@ func TestHostChooseHandler_MissingPath_ReturnsBadRequest(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty path")
 	}
-	ae := extractAppError(t, err)
-	if ae.Code != domain.CodeValidation {
-		t.Errorf("code: got %q want %q", ae.Code, domain.CodeValidation)
+	// wire code 1001 (validation_error), payload code matches
+	we := extractWireError(t, err, jrpc2.Code(1001))
+	if we.ae.Code != domain.CodeValidation {
+		t.Errorf("payload code: got %q want %q", we.ae.Code, domain.CodeValidation)
 	}
 }
 
+// TestOperationCancelHandler_Nonexistent asserts wire code 1001 for a missing operation.
 func TestOperationCancelHandler_Nonexistent_ReturnsValidationError(t *testing.T) {
 	runner := &stubRunner{err: domain.NewValidationError("Operation not found", "operationId 9999 does not exist")}
 	cli := startServer(t, handler.Map{"operation.cancel": handlers.NewOperationCancelHandler(runner)})
@@ -138,9 +167,9 @@ func TestOperationCancelHandler_Nonexistent_ReturnsValidationError(t *testing.T)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	ae := extractAppError(t, err)
-	if ae.Code != domain.CodeValidation {
-		t.Errorf("code: got %q want validation_error", ae.Code)
+	we := extractWireError(t, err, jrpc2.Code(1001))
+	if we.ae.Code != domain.CodeValidation {
+		t.Errorf("payload code: got %q want validation_error", we.ae.Code)
 	}
 }
 
@@ -170,6 +199,7 @@ func TestHostScanHandler_ReturnsOperationID(t *testing.T) {
 	}
 }
 
+// TestHostScanHandler_ConflictError asserts wire code 1005 for conflict_error.
 func TestHostScanHandler_ConflictError_MapsToJRPCError(t *testing.T) {
 	svc := &stubHostScan{err: domain.NewConflictError("scan already running", "target locked")}
 	cli := startServer(t, handler.Map{"host.scan": handlers.NewHostScanHandler(svc)})
@@ -178,8 +208,8 @@ func TestHostScanHandler_ConflictError_MapsToJRPCError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	ae := extractAppError(t, err)
-	if ae.Code != domain.CodeConflict {
-		t.Errorf("code: got %q want conflict_error", ae.Code)
+	we := extractWireError(t, err, jrpc2.Code(1005))
+	if we.ae.Code != domain.CodeConflict {
+		t.Errorf("payload code: got %q want conflict_error", we.ae.Code)
 	}
 }

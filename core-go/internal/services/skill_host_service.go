@@ -101,7 +101,13 @@ func (s *SkillHostService) ScanHost(ctx context.Context, hostID int64) (int64, e
 		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
 			return s.scanHostInternal(opCtx, host, progress)
 		})
-	return opID, err
+	if err != nil {
+		if _, ok := err.(*domain.AppError); ok {
+			return 0, err
+		}
+		return 0, domain.NewDatabaseError("Could not queue scan operation", err.Error())
+	}
+	return opID, nil
 }
 
 type scanSummary struct {
