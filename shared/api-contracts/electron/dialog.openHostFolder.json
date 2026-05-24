@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DialogOpenHostFolderMethod",
+  "description": "Contract for dialog.openHostFolder. ELECTRON-HANDLED ONLY — this method is intercepted by Electron main and never forwarded to the Go core. It opens the native macOS/Windows folder picker.",
+  "oneOf": [
+    { "$ref": "#/definitions/DialogOpenHostFolderRequest" },
+    { "$ref": "#/definitions/DialogOpenHostFolderResponse" }
+  ],
+  "definitions": {
+    "DialogOpenHostFolderRequest": {
+      "title": "DialogOpenHostFolderRequest",
+      "description": "No params needed for the dialog.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DialogOpenHostFolderResponse": {
+      "title": "DialogOpenHostFolderResponse",
+      "description": "The selected folder path, or null if the user dismissed the dialog.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": ["string", "null"],
+          "description": "Absolute path chosen by the user, or null if cancelled"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    }
+  }
+}

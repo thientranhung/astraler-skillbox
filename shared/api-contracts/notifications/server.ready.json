@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ServerReadyNotification",
+  "description": "Notification sent by Go core immediately after startup. Electron main waits for this before forwarding any renderer requests. Must arrive within 10 seconds or Electron shows a blocking startup error.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Skillbox core version string"
+    },
+    "pid": {
+      "type": "integer",
+      "description": "PID of the Go core process"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of registered RPC method names (used for feature detection)"
+    }
+  },
+  "required": ["version", "pid", "capabilities"],
+  "additionalProperties": false
+}

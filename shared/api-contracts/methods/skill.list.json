@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SkillListMethod",
+  "description": "Contract for skill.list JSON-RPC method. Returns Skills Library view model for a given host.",
+  "oneOf": [
+    { "$ref": "#/definitions/SkillListRequest" },
+    { "$ref": "#/definitions/SkillListResponse" }
+  ],
+  "definitions": {
+    "SkillListRequest": {
+      "title": "SkillListRequest",
+      "description": "Params for skill.list.",
+      "type": "object",
+      "properties": {
+        "hostId": {
+          "type": "integer",
+          "description": "ID of the skill_host_folders row to list skills for"
+        }
+      },
+      "required": ["hostId"],
+      "additionalProperties": false
+    },
+    "SkillListSkill": {
+      "title": "SkillListSkill",
+      "description": "Skill item within the skill.list response",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "relativePath": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["available", "missing", "unreadable", "local_modified", "unknown"]
+        },
+        "sourceLabel": { "type": ["string", "null"] },
+        "lastScannedAt": { "type": ["string", "null"] }
+      },
+      "required": ["id", "name", "relativePath", "status", "sourceLabel", "lastScannedAt"],
+      "additionalProperties": false
+    },
+    "SkillListTotals": {
+      "title": "SkillListTotals",
+      "description": "Counts per status for the skills list",
+      "type": "object",
+      "properties": {
+        "available": { "type": "integer" },
+        "missing": { "type": "integer" },
+        "unreadable": { "type": "integer" },
+        "local_modified": { "type": "integer" },
+        "unknown": { "type": "integer" }
+      },
+      "required": ["available", "missing", "unreadable", "local_modified", "unknown"],
+      "additionalProperties": false
+    },
+    "SkillListWarning": {
+      "title": "SkillListWarning",
+      "description": "Warning attached to the skill host or a specific skill",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "scopeRef": { "type": ["string", "null"] }
+      },
+      "required": ["code", "message", "scopeRef"],
+      "additionalProperties": false
+    },
+    "SkillListResponse": {
+      "title": "SkillListResponse",
+      "description": "Skills Library view model. Errors: validation_error (1001) hostId not found.",
+      "type": "object",
+      "properties": {
+        "hostPath": {
+          "type": "string",
+          "description": "Absolute path of the skill host folder"
+        },
+        "skills": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/SkillListSkill" },
+          "description": "All skills known to this host, sorted by name"
+        },
+        "totals": {
+          "$ref": "#/definitions/SkillListTotals"
+        },
+        "lastScanAt": {
+          "type": ["string", "null"],
+          "description": "ISO 8601 timestamp of most recent completed scan, or null"
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/SkillListWarning" },
+          "description": "Active warnings for this host or its skills"
+        }
+      },
+      "required": ["hostPath", "skills", "totals", "lastScanAt", "warnings"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$comment": "Manifest of all JSON Schema contracts. The generator at apps/desktop/scripts/generate-contracts.mjs reads this to produce shared/generated/.",
+  "schemas": [
+    { "input": "shared/error.json",        "output": "shared/error.ts" },
+    { "input": "shared/operation.json",    "output": "shared/operation.ts" },
+    { "input": "shared/skill.json",        "output": "shared/skill.ts" },
+    { "input": "shared/warning.json",      "output": "shared/warning.ts" },
+    { "input": "methods/host.choose.json",      "output": "methods/host-choose.ts" },
+    { "input": "methods/host.scan.json",        "output": "methods/host-scan.ts" },
+    { "input": "methods/skill.list.json",       "output": "methods/skill-list.ts" },
+    { "input": "methods/operation.cancel.json", "output": "methods/operation-cancel.ts" },
+    { "input": "methods/settings.get.json",     "output": "methods/settings-get.ts" },
+    { "input": "notifications/server.ready.json",       "output": "notifications/server-ready.ts" },
+    { "input": "notifications/operation.progress.json", "output": "notifications/operation-progress.ts" },
+    { "input": "electron/dialog.openHostFolder.json", "output": "electron/dialog-open-host-folder.ts" }
+  ]
+}
