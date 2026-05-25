@@ -14,6 +14,7 @@ func TestAllMethodsRegistered(t *testing.T) {
 	for _, method := range []string{
 		"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel",
 		"project.add", "project.list", "project.get", "project.scan", "project.remove",
+		"install.skill",
 	} {
 		if !a.HasMethod(method) {
 			t.Errorf("method %q not registered", method)

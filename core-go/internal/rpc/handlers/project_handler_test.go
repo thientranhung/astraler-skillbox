@@ -467,3 +467,22 @@ func TestInstallSkillHandler_ServiceError_MapsToJRPCError(t *testing.T) {
 		t.Errorf("payload code: got %q want validation_error", we.ae.Code)
 	}
 }
+
+func TestInstallSkillHandler_ConflictError_MapsTo1005(t *testing.T) {
+	svc := &stubInstallSkill{err: domain.NewConflictError("install already running", "target locked")}
+	cli := startServer(t, handler.Map{"install.skill": handlers.NewInstallSkillHandler(svc)})
+
+	params := map[string]interface{}{
+		"projectId":   int64(1),
+		"providerKey": "generic_agents",
+		"skillIds":    []int64{1},
+	}
+	err := cli.CallResult(context.Background(), "install.skill", params, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	we := extractWireError(t, err, jrpc2.Code(1005))
+	if we.ae.Code != domain.CodeConflict {
+		t.Errorf("payload code: got %q want conflict_error", we.ae.Code)
+	}
+}
