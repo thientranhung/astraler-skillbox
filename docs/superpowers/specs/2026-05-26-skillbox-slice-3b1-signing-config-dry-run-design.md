@@ -41,7 +41,7 @@ Add, in principle (exact YAML fixed at implementation):
 - `mac.gatekeeperAssess: false` — don't run a local Gatekeeper assessment mid-build (it would fail before notarization exists).
 - `mac.entitlements: build/entitlements.mac.plist`
 - `mac.entitlementsInherit: build/entitlements.mac.inherit.plist`
-- `mac.binaries: [resources/core/skillbox-core]` — force-sign the nested sidecar (see §5).
+- `mac.binaries: [Contents/Resources/core/skillbox-core]` — force-sign the nested sidecar (see §5). **Path note:** in electron-builder 26.8.1, relative `mac.binaries` entries resolve from the built `.app` path (existing paths are treated as external artifacts). The entry must therefore point at the **installed bundle** sidecar (`Contents/Resources/core/skillbox-core`), **not** the staging source `apps/desktop/resources/core/skillbox-core` and **not** a `.app/resources/...` variant. The exact form (`Contents/Resources/...` vs an implementation-verified equivalent) is confirmed against the actual packed output during implementation.
 - `mac.notarize: true` — Electron Builder's built-in notarization (notarytool). Inert in 3B1 because no credentials are present in the environment; it only engages in 3B2. Custom `afterSign` notarization is **not** used — built-in `mac.notarize` is the supported path.
 - `mac.identity` left to keychain auto-discovery (a Developer ID Application identity). No `identity` key in the committed file.
 - Keep `appId: com.astraler.skillbox`, `category`, `target: dmg / arch: [arm64]` from 3A.
@@ -83,9 +83,10 @@ All plist files must pass `plutil -lint`.
 **Risk:** binaries placed via `extraResources` can be missed by the bundle signing walk; an unsigned nested Mach-O makes notarization fail in 3B2. The sidecar lives at `Contents/Resources/core/skillbox-core` — inside the bundle but not in a standard auto-signed location.
 
 **Coverage in 3B1 (no Apple cert needed):**
-- Declare `mac.binaries: [resources/core/skillbox-core]` so electron-builder explicitly signs it (inside-out: sidecar first, then the `.app`).
+- Declare `mac.binaries: [Contents/Resources/core/skillbox-core]` (path resolution per §3.1) so electron-builder explicitly signs it (inside-out: sidecar first, then the `.app`).
 - Do **not** sign the sidecar inside `build:core` (Go already ad-hoc-signs arm64 output; electron-builder re-signs it). The build script stays as-is from 3A.
-- **Dry-run proof:** ad-hoc sign the packed bundle locally (`codesign -s - --deep` or, preferably, let electron-builder sign with an ad-hoc/identity-less path) and assert via `codesign -dvvv` that the **installed sidecar carries a signature** and that `codesign --verify --deep --strict` passes. This proves `mac.binaries` reaches the sidecar before any Developer ID cert exists.
+- **Dry-run proof — must exercise electron-builder's own signing, not a manual rescue.** Run the packaging with an **ad-hoc identity** (`electron-builder --mac dmg -c.mac.identity=- -c.mac.notarize=false`), letting electron-builder's signing path (`@electron/osx-sign`) sign the sidecar via `mac.binaries`. Then, **before any manual `codesign`**, inspect the sidecar with `codesign -dvvv` and confirm it carries an ad-hoc signature, and that `codesign --verify --strict` passes. Only this proves `mac.binaries` reached the sidecar.
+- **Why not a manual deep sign:** a post-hoc `codesign -s - --deep --force "$APP"` would re-sign the sidecar after packaging and could *rescue* a `mac.binaries` misconfiguration, masking the exact failure 3B1 is meant to catch. The dry-run therefore inspects the binary as electron-builder left it; manual signing, if used at all, happens only after the verification check has been recorded.
 
 **Coverage in 3B2:** the same path, but with a Developer ID identity, so `codesign -dvvv` then shows `Authority=Developer ID Application: … (TEAMID)` and `flags=…(runtime)` on both the app and the sidecar.
 
@@ -94,7 +95,7 @@ All plist files must pass `plutil -lint`.
 - [ ] **Unsigned path intact:** `package:mac:unsigned` still produces a launchable `apps/desktop/dist/Astraler Skillbox-<version>-arm64.dmg`; the 3A functional smoke (host scan, skill list, project add/scan, symlink install/remove, Dashboard, clean quit, no orphan sidecar) still passes.
 - [ ] **Entitlements valid:** `plutil -lint build/entitlements.mac.plist` and the inherit plist both report `OK`.
 - [ ] **Config parses:** electron-builder accepts the signed config (build reaches packing) with `CSC_IDENTITY_AUTO_DISCOVERY=false`, i.e. no signing attempted, no config error.
-- [ ] **Sidecar reachable by signing (ad-hoc):** after an ad-hoc-signed pack, `codesign -dvvv` shows a signature on `Contents/Resources/core/skillbox-core`, and `codesign --verify --deep --strict --verbose=2` on the `.app` passes. (Proves `mac.binaries` works without a Developer ID cert.)
+- [ ] **Sidecar signed by electron-builder (ad-hoc identity):** after packaging with `-c.mac.identity=- -c.mac.notarize=false`, and **before any manual `codesign`**, `codesign -dvvv` shows a signature on `Contents/Resources/core/skillbox-core` and `codesign --verify --deep --strict --verbose=2` on the `.app` passes. (Proves `mac.binaries` reached the sidecar via electron-builder's own signing — not a post-hoc rescue — without a Developer ID cert.)
 - [ ] **No notarization attempted:** with no credentials in env, the build does not call notarytool and does not fail for missing credentials.
 - [ ] **All existing gates green:** `go test ./...`, `pnpm typecheck`, `pnpm test --run`, `pnpm check:contracts-drift`, `pnpm build`.
 - [ ] **No out-of-scope drift:** no JSON-RPC contract, schema, or product changes.
@@ -126,16 +127,17 @@ plutil -lint build/entitlements.mac.inherit.plist
 pnpm package:mac:unsigned
 ls "dist/Astraler Skillbox-0.1.0-arm64.dmg"
 
-# Signed config parses without attempting to sign (no cert needed)
-CSC_IDENTITY_AUTO_DISCOVERY=false pnpm build && \
-  CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg -c.mac.notarize=false
+# Prove mac.binaries reaches the sidecar via electron-builder's OWN signing,
+# using an ad-hoc identity (no Developer ID cert needed). Do NOT manually sign first.
+pnpm build:core && pnpm build && \
+  electron-builder --mac dmg -c.mac.identity=- -c.mac.notarize=false
 
-# Prove mac.binaries reaches the sidecar via an ad-hoc signature
 APP="dist/mac-arm64/Astraler Skillbox.app"      # adjust to electron-builder's unpacked output
 SIDE="$APP/Contents/Resources/core/skillbox-core"
-codesign -s - --deep --force "$APP"             # ad-hoc sign for the dry-run only
-codesign -dvvv "$SIDE"                          # expect: a signature present
+# Inspect BEFORE any manual codesign — this is the real mac.binaries proof:
+codesign -dvvv "$SIDE"                          # expect: ad-hoc signature present (Signature=adhoc)
 codesign --verify --deep --strict --verbose=2 "$APP"   # expect: valid on disk
+# (No manual `codesign -s - --deep` rescue — that would mask a mac.binaries misconfig.)
 
 # Gates
 ( cd ../../core-go && go test ./... )
@@ -159,11 +161,21 @@ spctl -a -vvv -t open "$APP"                # expect: accepted, source=Notarized
 xcrun stapler validate "$APP"
 xcrun stapler validate "$DMG"
 
-# Simulate a downloaded copy — must open with NO right-click / xattr override
-xattr -w com.apple.quarantine "0081;0;Safari;" "$APP"
+# Simulate a downloaded copy WITHOUT mutating /Applications: copy to a temp dir,
+# mark it quarantined, launch, then clean up. Must open with NO right-click / xattr override.
+TMP="$(mktemp -d)"
+cp -R "$APP" "$TMP/"
+TMP_APP="$TMP/Astraler Skillbox.app"
+xattr -w com.apple.quarantine "0081;0;Safari;" "$TMP_APP"   # mimic a Safari download
+xattr -p com.apple.quarantine "$TMP_APP"                    # confirm attr is set
+open "$TMP_APP"                                             # expect: launches, NO Gatekeeper prompt
+# verify it ran, then quit, then clean up the temp copy
+pgrep -fl skillbox-core                                     # sidecar from the temp bundle is live
+osascript -e 'quit app "Astraler Skillbox"'
+rm -rf "$TMP"
 
-# Process identity (from 3A)
-pgrep -fl skillbox-core
+# Process identity / no orphan (from 3A)
+pgrep -fl skillbox-core                                     # expect: nothing after quit
 ```
 
 ## 9. Risks and Mitigations (3B1 scope)
