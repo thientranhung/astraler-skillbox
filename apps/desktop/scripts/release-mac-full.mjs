@@ -51,8 +51,9 @@ async function snapshotDist() {
  * Spawn a pnpm sub-command, streaming output with a stage prefix.
  * Handles spawn errors (missing pnpm executable, permission denied).
  * Returns { code } — never throws on non-zero child exit.
+ * For the manifest stage, also parses manifest/sums paths from stdout.
  */
-function runStage(_stage, scriptArgs) {
+function runStage(stage, scriptArgs) {
   const label = `[${scriptArgs[0]}]`;
   const errLabel = `[${scriptArgs[0]}][err]`;
 
@@ -76,6 +77,15 @@ function runStage(_stage, scriptArgs) {
       spawnError = err;
     });
 
+    // Capture manifest/sums paths from the manifest stage output lines
+    let manifestPath;
+    let sha256sumsPath;
+    if (stage === "manifest" && scriptArgs[1]) {
+      const artifactBasename = path.basename(scriptArgs[1]);
+      manifestPath = path.join(distDir, `${artifactBasename}.manifest.json`);
+      sha256sumsPath = path.join(distDir, "SHA256SUMS");
+    }
+
     function prefixLines(stream, prefix, sink) {
       let buf = "";
       stream.on("data", (chunk) => {
@@ -87,7 +97,9 @@ function runStage(_stage, scriptArgs) {
         }
       });
       stream.on("end", () => {
-        if (buf) sink.write(`${prefix} ${buf}\n`);
+        if (buf) {
+          sink.write(`${prefix} ${buf}\n`);
+        }
       });
     }
 
@@ -102,7 +114,7 @@ function runStage(_stage, scriptArgs) {
         resolve({ code: 1 });
         return;
       }
-      resolve({ code: code ?? 1 });
+      resolve({ code: code ?? 1, manifestPath, sha256sumsPath });
     });
   });
 }
@@ -129,9 +141,15 @@ if (result.failedStage === "preflight") {
   process.stderr.write(
     "\n[release:mac:full] STOPPED: release:mac:verify failed — release not complete.\n"
   );
+} else if (result.failedStage === "manifest") {
+  process.stderr.write(
+    "\n[release:mac:full] STOPPED: release:mac:manifest failed — integrity artifacts not written.\n"
+  );
 } else if (result.exitCode === 0) {
   process.stdout.write(
-    `\n[release:mac:full] OK: all stages passed — ${result.dmgPath} verified (${result.dmgReason}).\n`
+    `\n[release:mac:full] OK: all stages passed — ${result.dmgPath} verified (${result.dmgReason}).\n` +
+      (result.manifestPath ? `  manifest : ${result.manifestPath}\n` : "") +
+      (result.sha256sumsPath ? `  sums     : ${result.sha256sumsPath}\n` : "")
   );
 }
 

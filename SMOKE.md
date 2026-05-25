@@ -444,6 +444,92 @@ On any machine without signing/notarization credentials, the orchestrator must e
 
 ---
 
+## Release Manifest + Checksums (Slice 3C)
+
+Credential-free. Works against any unsigned/ad-hoc DMG. Performs file reads and two atomic writes
+into `dist/`; never builds, signs, notarizes, calls Apple, or makes a network request.
+
+### Standalone manifest smoke (no Apple credentials required)
+
+Use the existing unsigned/ad-hoc DMG built from Slice 3A/3B1.
+
+- [ ] Run manifest against the existing DMG (adjust basename if needed):
+  ```sh
+  (cd apps/desktop && pnpm release:mac:manifest "dist/Astraler Skillbox-0.1.0-arm64.dmg")
+  ```
+  Expected: exits `0`. Output shows `artifact`, `byteSize`, `sha256`, `manifest`, and `sums` lines.
+
+- [ ] Inspect the manifest — must contain exactly eight fields in order:
+  ```sh
+  cat "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg.manifest.json"
+  ```
+  Expected fields: `appId`, `productName`, `version`, `artifact`, `arch`, `byteSize`, `sha256`, `buildTimestamp`.
+  - `appId` = `com.astraler.skillbox`
+  - `productName` = `Astraler Skillbox`
+  - `arch` = `arm64`
+  - `byteSize` is an integer (no quotes)
+  - `sha256` is 64 lowercase hex chars
+  - `buildTimestamp` is UTC ISO-8601 (`…Z`)
+  - `artifact` is the basename only (no path prefix)
+
+- [ ] Verify the SHA-256 from the shell:
+  ```sh
+  cd apps/desktop/dist && shasum -a 256 -c SHA256SUMS && echo "shasum OK"
+  ```
+  Expected: `Astraler Skillbox-0.1.0-arm64.dmg: OK` and `shasum OK`.
+  ```sh
+  # Also run with sha256sum when available (e.g. via Homebrew coreutils):
+  cd apps/desktop/dist && sha256sum -c SHA256SUMS && echo "sha256sum OK"
+  ```
+
+- [ ] Idempotency — re-run must not add a duplicate line:
+  ```sh
+  (cd apps/desktop && pnpm release:mac:manifest "dist/Astraler Skillbox-0.1.0-arm64.dmg")
+  wc -l apps/desktop/dist/SHA256SUMS
+  ```
+  Expected: same line count as before the second run (no stale duplicate for the same artifact).
+
+- [ ] Confirm no secrets in output:
+  ```sh
+  (cd apps/desktop && pnpm release:mac:manifest "dist/Astraler Skillbox-0.1.0-arm64.dmg" 2>&1 | grep -E '/[^[:space:]]+\.(p8|p12|pem)|-----BEGIN') || echo "clean"
+  ```
+  Expected: `clean`.
+
+### Error handling checks
+
+- [ ] Missing argument → non-zero exit:
+  ```sh
+  (cd apps/desktop && pnpm release:mac:manifest); echo "exit=$?"
+  ```
+  Expected: `exit=1` and a usage message.
+
+- [ ] Non-existent path → non-zero exit:
+  ```sh
+  (cd apps/desktop && pnpm release:mac:manifest "dist/nonexistent.dmg"); echo "exit=$?"
+  ```
+  Expected: `exit=1` and a clear error message.
+
+- [ ] Non-`.dmg` extension → non-zero exit:
+  ```sh
+  (cd apps/desktop && pnpm release:mac:manifest "dist/SHA256SUMS"); echo "exit=$?"
+  ```
+  Expected: `exit=1` and a clear error message.
+
+### Wiring in release:mac:full (unit-test coverage; live run still stops at preflight)
+
+- [ ] The manifest stage fires only after a successful verify:
+  See `scripts/release-mac-full.test.mjs` — injected `runStage` tests verify that manifest
+  is invoked with the selected DMG path after verify succeeds, is skipped when verify fails,
+  and fails the orchestrator when manifest itself fails.
+
+- [ ] Live `release:mac:full` still exits at preflight on this no-credential machine:
+  ```sh
+  (cd apps/desktop && pnpm release:mac:full); echo "exit=$?"
+  ```
+  Expected: `exit=1`, output contains `STOPPED: preflight`, no `[release:mac:manifest]` lines.
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:

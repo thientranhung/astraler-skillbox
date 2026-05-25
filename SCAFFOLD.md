@@ -280,13 +280,36 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 
 ### Release orchestrator — canonical customer-release command (Slice 3B2C)
 - `pnpm release:mac:full` — composes `release:mac:check` → `package:mac` → `release:mac:verify <dmg>`
-  in the only safe order. Fails fast at the first failed stage.
+  → `release:mac:manifest <dmg>` in the only safe order. Fails fast at the first failed stage.
 - DMG selection: detects exactly one `.dmg` created or modified in `dist/` between before/after snapshots
   using path+size+mtime metadata. Handles same-name overwrites. Errors on zero or multiple changed DMGs.
 - Missing `dist/` is treated as an empty snapshot (clean checkout can still package).
+- The manifest stage runs **only after** a successful verify, using the same selected DMG path.
+  On manifest failure: `STOPPED: release:mac:manifest failed`; `failedStage: "manifest"`.
+  On full success: reports `manifest` and `sums` paths.
 - Never passes `--allow-adhoc`. Never calls `package:mac:unsigned`. Never reads or prints secret values.
 - On a machine without Apple credentials: exits non-zero at preflight; `package:mac` is never invoked.
 - See SMOKE.md → "Release Orchestrator (Slice 3B2C)".
+
+### Release manifest + checksums (Slice 3C)
+- `pnpm release:mac:manifest <path-to-dmg>` — credential-free artifact integrity generator.
+  Given the **exact** path to a built `.dmg`, computes its SHA-256 and emits:
+  - `dist/<artifact>.manifest.json` — structured integrity manifest with exactly eight fields:
+    `appId`, `productName`, `version`, `artifact`, `arch`, `byteSize`, `sha256`, `buildTimestamp`.
+  - `dist/SHA256SUMS` — coreutils-compatible checksum file customers verify with
+    `shasum -a 256 -c` / `sha256sum -c`. Uses basename-only entries; deterministic upsert
+    (replace existing line for the same artifact in place; append for new artifacts; never duplicates).
+- Both outputs are written **atomically** (temp file in `dist/` then rename). A failed write
+  leaves the previous `SHA256SUMS` intact; no truncated output is ever left as the visible file.
+- Input: required explicit path — no `dist/` auto-discovery, no glob, no "latest DMG" heuristic.
+  Missing/non-existent/non-`.dmg` path → non-zero exit with a clear error message.
+- Metadata sources: `appId` and `productName` from `electron-builder.yml`; `version` from
+  `package.json`; `arch` from `electron-builder.yml` `mac.target.arch` (filename parsing only
+  as a fallback when config is ambiguous); `artifact` is the basename of the supplied path;
+  `byteSize` and `sha256` from the file itself; `buildTimestamp` from `new Date().toISOString()`.
+- Never reads credentials, calls Apple services, builds, signs, notarizes, or makes network requests.
+- Works on any DMG regardless of signing status (unsigned/ad-hoc until real credentials land).
+- See SMOKE.md → "Release Manifest + Checksums (Slice 3C)".
 
 ---
 

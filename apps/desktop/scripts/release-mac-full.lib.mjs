@@ -68,16 +68,16 @@ export function selectChangedDmg(before, after, _packageStartMs) {
 /**
  * Injectable orchestrator for the full macOS release flow.
  *
- * Flow: preflight → snapshot before → package → snapshot after → select dmg → verify
+ * Flow: preflight → snapshot before → package → snapshot after → select dmg → verify → manifest
  *
  * All I/O is injected so unit tests can run without spawning real processes.
  *
  * @param {{
- *   runStage: (stage: string, args: string[]) => Promise<{code: number}>,
+ *   runStage: (stage: string, args: string[]) => Promise<{code: number, manifestPath?: string, sha256sumsPath?: string}>,
  *   snapshotDist: () => Promise<StatRecord[]>,
  *   now: () => number,
  * }} deps
- * @returns {Promise<{ exitCode: number, failedStage?: string, dmgError?: string, dmgPath?: string, dmgReason?: string }>}
+ * @returns {Promise<{ exitCode: number, failedStage?: string, dmgError?: string, dmgPath?: string, dmgReason?: string, manifestPath?: string, sha256sumsPath?: string }>}
  */
 export async function runReleaseMacFull({ runStage, snapshotDist, now }) {
   // Stage 1: preflight
@@ -113,5 +113,20 @@ export async function runReleaseMacFull({ runStage, snapshotDist, now }) {
     return { exitCode: verifyResult.code, failedStage: "verify" };
   }
 
-  return { exitCode: 0, dmgPath: selected.dmgPath, dmgReason: selected.reason };
+  // Stage 4: manifest — only after successful verify, using the same selected DMG path
+  const manifestResult = await runStage("manifest", [
+    "release:mac:manifest",
+    selected.dmgPath,
+  ]);
+  if (manifestResult.code !== 0) {
+    return { exitCode: manifestResult.code, failedStage: "manifest" };
+  }
+
+  return {
+    exitCode: 0,
+    dmgPath: selected.dmgPath,
+    dmgReason: selected.reason,
+    manifestPath: manifestResult.manifestPath,
+    sha256sumsPath: manifestResult.sha256sumsPath,
+  };
 }
