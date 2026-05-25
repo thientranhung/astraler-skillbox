@@ -14,11 +14,12 @@ rescan. Slice 2G is the inverse: let a user remove one installed skill from a
 project/provider.
 
 This is the **minimum safe** remove. It only deletes a symlink that is verified
-(at execution time, not from stale DB state) to point inside a known host. That
-guarantee — "we only ever unlink a pointer into managed host content" — is what
-keeps the slice safe: it can never delete real files. Removing `direct` installs
-(real folders), `external_symlink`, or `broken_symlink` entries is deferred,
-because those either hold real content or point somewhere we cannot prove is
+(at execution time, not from stale DB state) to point inside the **active** Skill
+Host Folder. That guarantee — "we only ever unlink a pointer into managed host
+content" — is what keeps the slice safe: it can never delete real files. Removing
+`old_host`, `direct` installs (real folders), `external_symlink`, or
+`broken_symlink` entries is deferred, because those either hold real content,
+point into an inactive host, or point somewhere we cannot prove is
 managed.
 
 ## Key Difference From Slice 2F
@@ -47,12 +48,12 @@ installs are ever hard-deleted.
   UPDATE`, preserving the id), is unambiguous when the same skill name exists
   under two providers, and is already exposed to the renderer by `project.get`
   (`projectGetEntry.ID`).
-- **Removable set (MVP):** `install_mode = symlink` AND `install_status ∈
-  {current, old_host}`. These are exactly the symlinks whose target resolves
-  inside a known host — active (`current`) or inactive (`old_host`) — i.e.
-  `installed_from_host_folder_id` is non-null. Everything else is **not**
-  auto-removed this slice: `direct` (real content), `external_symlink` (resolves
-  outside all known hosts), `broken_symlink`, `error`.
+- **Removable set (MVP):** `install_mode = symlink` AND `install_status =
+  current`. This is exactly a symlink whose target resolves inside the **active**
+  Skill Host Folder. Everything else is **not** auto-removed this slice:
+  `old_host` (symlink into an inactive/old host — deferred, see Out Of Scope),
+  `direct` (real content), `external_symlink` (resolves outside all known hosts),
+  `broken_symlink`, `error`.
 - Remove **re-verifies on disk** before unlinking and does not trust the stored
   classification (disk may have changed since the last scan). See "On-disk
   re-verification".
@@ -79,7 +80,7 @@ installs are ever hard-deleted.
   delete (the only hard delete of an install row in the app).
 - On-disk re-verification (lstat + resolve, reusing existing `isWithin` /
   resolve helpers and host summaries) so removal only ever targets a symlink
-  resolving inside a known host.
+  resolving inside the active host.
 - Minimal Project Detail UI: wire the existing per-row `[Remove]` action **only**
   for removable symlink entries; a confirmation dialog showing provider, skill,
   and exact path; toast on success/failure; query invalidation on terminal
@@ -88,6 +89,11 @@ installs are ever hard-deleted.
 
 ## Out Of Scope
 
+- Removing `old_host` installs (symlinks into an inactive/old Skill Host Folder).
+  Unlinking one is equally safe as a `current` removal, but it is deferred to keep
+  the MVP's removable set to a single, unambiguous state — a symlink into the
+  **active** host. Old-host remediation pairs naturally with relink/change-host
+  flows and is a follow-up.
 - Removing `rsync_copy` / `direct` installs (these delete real folder content;
   a future slice with a stronger "delete N files" confirmation).
 - Force-deleting a real directory or file at the install path.
@@ -112,7 +118,7 @@ remove.skill(projectId, installId)
   -> load install by id; must exist AND belong to project      -> validation_error
        (join installs -> project_providers -> project)
   -> removable precheck (DB-level fast reject):                -> validation_error
-       install_mode == symlink AND install_status ∈ {current, old_host}
+       install_mode == symlink AND install_status == current
   -> resolve path = install.project_skill_path
        must be inside the project root (NormalizeAbs/Realpath)  -> validation_error
   -> start operation: Target{project, projectId}, type remove_skill
@@ -123,8 +129,8 @@ remove.skill(projectId, installId)
          - missing            -> idempotent no-op: skip unlink, set alreadyAbsent=true
          - not a symlink      -> conflict_error (entry changed on disk; rescan & retry)
          - symlink:
-             resolve target; if it resolves inside a known host -> proceed
-             else (broken / outside all hosts now)              -> conflict_error (stale)
+             resolve target; if it resolves inside the ACTIVE host -> proceed
+             else (broken / inactive host / outside all hosts now) -> conflict_error (stale)
 
   [removing_symlink]  if not alreadyAbsent: gateway.RemoveSymlink(path)
        on failure (permission, etc.) -> operation FAILED, filesystem_error;
@@ -152,13 +158,16 @@ path and:
   skip the unlink and continue to rescan + row delete. `alreadyAbsent=true`.
 - **not a symlink** (real dir/file now) → `conflict_error`; never unlink/delete
   real content. The user rescans and re-decides.
-- **symlink resolving inside a known host** → the only state that proceeds.
-- **symlink that is broken or resolves outside all known hosts now** →
-  `conflict_error` (it is no longer a known-host symlink — outside MVP scope).
+- **symlink resolving inside the active host** → the only state that proceeds
+  (this is what the scan classifier records as `current`).
+- **symlink that is broken, resolves into an inactive/old host, or resolves
+  outside all known hosts now** → `conflict_error` (it is no longer a
+  `current` install — outside MVP scope).
 
-This reuses the same resolve / `isWithin(hostSkillsPath, resolved)` logic the
-scan classifier uses, evaluated against the current host summaries, so "resolves
-inside a known host" means the same thing at remove time as at scan time.
+This reuses the same resolve / `isWithin(activeHostSkillsPath, resolved)` logic
+the scan classifier uses to produce `current`, evaluated against the current
+active host, so "resolves inside the active host" means the same thing at remove
+time as at scan time.
 
 ### Why rescan, then delete by id
 
@@ -183,7 +192,7 @@ Failure points and resulting state:
   the entry stays exactly as it was. Safe to retry.
 - **Rescan fails** after a successful unlink (DB error): operation FAILED with
   `database_error`. The symlink is gone but the install row was not deleted, so
-  it lingers (as `current`/`old_host`) until the next manual scan tombstones it.
+  it lingers (as `current`) until the next manual scan tombstones it.
   Rare; accepted and documented. Recovery: rescan the project.
 - **Row delete fails** after a successful unlink + rescan (DB error): operation
   FAILED with `database_error`. The row is currently `missing` (tombstoned by the
@@ -212,7 +221,7 @@ RemoveSymlink(path string) error
 ```
 
 The service only calls `RemoveSymlink` after re-verifying the on-disk entry is a
-symlink resolving inside a known host. Path-safety (confirm the path is inside
+symlink resolving inside the active host. Path-safety (confirm the path is inside
 the project root) lives in the service using existing `NormalizeAbs` / `Realpath`,
 not in the gateway.
 
@@ -273,9 +282,9 @@ mirroring `installSkill`.
 | Missing/invalid params (`projectId`/`installId` absent or ≤ 0) | `validation_error` |
 | Project not found or not `active` | `validation_error` |
 | Install id not found, or not belonging to this project | `validation_error` |
-| Install not removable (`mode ≠ symlink`, or `status ∉ {current, old_host}`) | `validation_error` |
+| Install not removable (`mode ≠ symlink`, or `status ≠ current`) | `validation_error` |
 | Resolved path escapes the project root | `validation_error` |
-| On-disk entry changed: now a real dir/file, or a symlink no longer resolving inside a known host | `conflict_error` (stale; rescan & retry) |
+| On-disk entry changed: now a real dir/file, or a symlink no longer resolving inside the active host | `conflict_error` (stale; rescan & retry) |
 | Another operation already running on this project | `conflict_error` (from runner) |
 | `RemoveSymlink` failure (permission, etc.) | `filesystem_error` (operation FAILED; no rescan, no row delete) |
 | Rescan or row-delete DB failure after a successful unlink | `database_error` (operation FAILED; documented lingering-state) |
@@ -287,7 +296,7 @@ All validation and the on-disk re-verification run **before** the unlink, so a
 
 Entry point: the existing per-row `[Remove]` action in Project Detail → Installed
 Skills. This slice wires it **only** for removable entries (`mode=symlink` and
-`status ∈ {current, old_host}`); for `direct` / `external_symlink` /
+`status=current`); for `old_host` / `direct` / `external_symlink` /
 `broken_symlink` / `error` entries the `[Remove]` action is not wired this slice
 (disabled, with a tooltip that removal of that entry type is not yet supported).
 
@@ -341,20 +350,19 @@ Go (`go test ./...`, with `-race` on the write path):
 - Happy path: a `current` symlink install is removed → symlink gone from disk,
   rescan runs, install row hard-deleted, project detail no longer lists it,
   operation SUCCESS with metadata (`alreadyAbsent=false`).
-- `old_host` symlink: removable, same outcome.
 - Idempotent already-absent: DB row exists but the on-disk symlink is already
   gone → no unlink, rescan + row delete still run, SUCCESS with
   `alreadyAbsent=true`.
-- Not-removable rejections (no writes): `direct` entry, `external_symlink`,
-  `broken_symlink`, `error` status → `validation_error`.
+- Not-removable rejections (no writes): `old_host` symlink, `direct` entry,
+  `external_symlink`, `broken_symlink`, `error` status → `validation_error`.
 - Install not found / install belongs to another project → `validation_error`.
 - Project not found / not active → `validation_error`.
 - Path escaping project root (crafted `project_skill_path`) → `validation_error`,
   no unlink.
 - On-disk divergence (don't trust DB): DB says `current` but the path is now a
   real directory → `conflict_error`, the real directory is **not** deleted.
-- On-disk divergence: symlink now resolves outside all known hosts → `conflict_error`,
-  no unlink.
+- On-disk divergence: symlink now resolves into an inactive/old host or outside
+  all known hosts → `conflict_error`, no unlink.
 - Unlink failure (injected gateway error) → operation FAILED `filesystem_error`,
   rescan and row delete NOT run, install row and symlink unchanged.
 - Operation lock: remove vs concurrent scan/install on the same project → one
@@ -390,18 +398,20 @@ disabled for non-removable entry types.
   (`missing`) and the UI renders tombstones; the delete is scoped to the single
   user-selected row, by primary key, after the authoritative rescan.
 - **Lingering row on post-unlink DB failure.** If the rescan or the row delete
-  fails after the symlink is gone, the row lingers (as `current`/`old_host` or
-  `missing`) until the next scan. Rare DB-error case; documented; recovered by a
-  rescan.
-- **Scope conservatism.** Direct / external / broken removals are common real
-  needs but are deferred to keep the slice incapable of deleting real content.
-  Surfaced in the UI as a disabled action with an explanatory tooltip.
+  fails after the symlink is gone, the row lingers (as `current` or `missing`)
+  until the next scan. Rare DB-error case; documented; recovered by a rescan.
+- **Scope conservatism.** Old-host / direct / external / broken removals are
+  common real needs but are deferred to keep the slice's removable set to a single
+  unambiguous state (a symlink into the active host) and incapable of deleting
+  real content. Surfaced in the UI as a disabled action with an explanatory
+  tooltip.
 
 ## Open Questions
 
-1. **`old_host` inclusion.** This spec treats `old_host` symlinks as removable
-   ("resolves inside a known host"). Should MVP restrict to `current` only and
-   defer `old_host`? (Removal is equally safe either way; this is a scope call.)
+1. **`old_host` remove follow-up.** MVP restricts the removable set to `current`
+   (active host) and defers `old_host` (see Out Of Scope). Should the follow-up
+   that adds `old_host` removal land standalone, or be bundled with the
+   relink/change-host work it pairs with?
 2. **Externally-`missing` rows.** Rows tombstoned `missing` by a prior scan
    (entry vanished outside Skillbox) currently render as a red "Missing" badge
    with no action. Out of scope here, but a future "Clear missing entry" action
@@ -415,14 +425,14 @@ disabled for non-removable entry types.
 
 ## Acceptance Criteria
 
-- `remove.skill` removes a `current` or `old_host` **symlink** install from a
-  project provider by deleting the symlink, then rescanning the project and
-  hard-deleting the targeted install row; the skill disappears from Project
-  Detail's installed list.
-- Remove never deletes a real directory/file: `direct`, `external_symlink`,
-  `broken_symlink`, and `error` entries are rejected with `validation_error` and
-  no filesystem write; a path that is no longer a known-host symlink on disk is
-  rejected with `conflict_error` and no delete.
+- `remove.skill` removes a `current` **symlink** install (symlink into the active
+  host) from a project provider by deleting the symlink, then rescanning the
+  project and hard-deleting the targeted install row; the skill disappears from
+  Project Detail's installed list.
+- Remove never deletes a real directory/file: `old_host`, `direct`,
+  `external_symlink`, `broken_symlink`, and `error` entries are rejected with
+  `validation_error` and no filesystem write; a path that is no longer a symlink
+  into the active host on disk is rejected with `conflict_error` and no delete.
 - The Skill Host Folder source is never modified by remove.
 - Re-verification happens on disk at execution time; stored classification is not
   trusted for the delete decision.
@@ -436,9 +446,10 @@ disabled for non-removable entry types.
   complete, and the UI invalidates project detail on that terminal result.
 - All filesystem writes go through `filesystem.Gateway.RemoveSymlink`; the only
   hard delete of an install row goes through `InstallRepo.DeleteByID`.
-- No out-of-scope behavior (rsync/copy or direct delete, external/broken removal,
-  relink, switch mode, sync, update, global remove, bulk remove) is introduced.
-- Tests cover happy path (`current` and `old_host`), idempotent already-absent,
-  not-removable rejections, on-disk divergence (real dir not deleted; symlink
-  outside hosts), path-escape rejection, unlink failure, lock conflict, gateway
-  `RemoveSymlink`, and repo `DeleteByID`.
+- No out-of-scope behavior (old_host, rsync/copy or direct delete, external/broken
+  removal, relink, switch mode, sync, update, global remove, bulk remove) is
+  introduced.
+- Tests cover happy path (`current`), idempotent already-absent, not-removable
+  rejections (including `old_host`), on-disk divergence (real dir not deleted;
+  symlink into inactive host or outside hosts), path-escape rejection, unlink
+  failure, lock conflict, gateway `RemoveSymlink`, and repo `DeleteByID`.
