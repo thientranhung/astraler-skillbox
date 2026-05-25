@@ -77,7 +77,7 @@ export interface ProjectGetProvider {
   /**
    * Detection status for this provider
    */
-  detectionStatus: 'detected' | 'missing' | 'invalid_structure';
+  detectionStatus: 'detected' | 'configured' | 'missing' | 'invalid_structure';
   /**
    * Absolute path where the provider was detected (e.g. <root>/.agents)
    */

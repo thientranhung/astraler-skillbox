@@ -21,7 +21,7 @@ export function AddSkillWizard({
   const installableProviders = providers.filter(
     (p) =>
       (p.providerStatus === "supported" || p.providerStatus === "experimental") &&
-      p.detectionStatus === "detected",
+      (p.detectionStatus === "detected" || p.detectionStatus === "configured"),
   );
 
   const availableSkills = skills.filter((s) => s.status === "available");
@@ -49,7 +49,7 @@ export function AddSkillWizard({
     if (providerKey === "") return;
     installSkill.mutate({
       projectId,
-      providerKey: providerKey as "generic_agents",
+      providerKey: providerKey as "generic_agents" | "claude",
       skillIds: [...selectedSkillIds] as [number, ...number[]],
     });
     onClose();

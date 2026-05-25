@@ -77,5 +77,5 @@ export interface ProjectListProviderSummary {
   /**
    * Detection status for this provider in the project
    */
-  detectionStatus: 'detected' | 'missing' | 'invalid_structure';
+  detectionStatus: 'detected' | 'configured' | 'missing' | 'invalid_structure';
 }

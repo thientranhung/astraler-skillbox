@@ -14,7 +14,7 @@ export interface OperationProgressNotification {
   /**
    * Current operation lifecycle state
    */
-  status: 'queued' | 'running' | 'success' | 'failed' | 'cancelled' | 'partial';
+  status: 'queued' | 'running' | 'success' | 'failed' | 'cancelled';
   /**
    * Human-readable phase label, e.g. 'reading_host_folder', 'classifying_entries', 'done'
    */

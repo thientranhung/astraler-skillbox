@@ -32,6 +32,7 @@ const WARNING_CONFIG: Record<
 
 const DETECTION_CLS: Record<ProjectGetProvider["detectionStatus"], string> = {
   detected: "bg-blue-100 text-blue-800",
+  configured: "bg-blue-100 text-blue-800",
   missing: "bg-zinc-100 text-zinc-500",
   invalid_structure: "bg-yellow-100 text-yellow-700",
 };
