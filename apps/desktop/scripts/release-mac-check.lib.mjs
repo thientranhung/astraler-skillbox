@@ -23,7 +23,7 @@ export function checkPlatform(platform) {
   };
 }
 
-/** @param {Record<string,boolean>} tools */
+/** @param {Record<string, boolean | undefined>} tools */
 export function checkTooling(tools) {
   const defs = [
     ["A2", "notarytool", "xcrun notarytool"],
@@ -33,7 +33,7 @@ export function checkTooling(tools) {
     ["A4c", "plutil", "plutil"],
   ];
   return defs.map(([id, key, label]) =>
-    tools[key]
+    tools[key] === true
       ? { id, category: "platform", status: "PASS", message: `${label} found` }
       : {
           id,
