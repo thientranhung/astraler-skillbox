@@ -13,6 +13,7 @@ export default defineConfig({
       "electron/**/__tests__/**/*.test.ts",
       "renderer/**/__tests__/**/*.test.ts",
       "renderer/**/__tests__/**/*.test.tsx",
+      "scripts/**/*.test.mjs",
     ],
     environmentMatchGlobs: [
       ["renderer/**", "happy-dom"],
