@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import React from "react";
 
 vi.mock("../../features/dashboard/use-dashboard.js", () => ({
@@ -93,15 +93,11 @@ describe("DashboardScreen", () => {
     });
 
     render(<DashboardScreen />);
-    // Skills count
-    const allFives = screen.getAllByText("5");
-    expect(allFives.length).toBeGreaterThan(0);
-    // Projects count
-    const allThrees = screen.getAllByText("3");
-    expect(allThrees.length).toBeGreaterThan(0);
-    // Warnings count
-    const allTwos = screen.getAllByText("2");
-    expect(allTwos.length).toBeGreaterThan(0);
+    // Use the Summary section to scope count assertions
+    const summarySection = screen.getByText("Summary").closest("section")!;
+    expect(within(summarySection).getByText("5")).not.toBeNull(); // skills
+    expect(within(summarySection).getByText("3")).not.toBeNull(); // projects
+    expect(within(summarySection).getByText("2")).not.toBeNull(); // warnings
   });
 
   it("shows 'Not in this slice' placeholders for global skills and updates", () => {
