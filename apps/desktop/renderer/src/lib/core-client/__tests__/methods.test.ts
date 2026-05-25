@@ -61,3 +61,38 @@ describe("methods.openHostFolder", () => {
     expect(mockInvoke).toHaveBeenCalledWith("dialog.openHostFolder", {});
   });
 });
+
+describe("methods.openProjectFolder", () => {
+  it("calls dialog.openProjectFolder with empty params", async () => {
+    await methods.openProjectFolder();
+    expect(mockInvoke).toHaveBeenCalledWith("dialog.openProjectFolder", {});
+  });
+});
+
+describe("methods.addProject", () => {
+  it("calls project.add with path", async () => {
+    await methods.addProject({ path: "/home/user/myproject" });
+    expect(mockInvoke).toHaveBeenCalledWith("project.add", { path: "/home/user/myproject" });
+  });
+});
+
+describe("methods.listProjects", () => {
+  it("calls project.list with empty params", async () => {
+    await methods.listProjects();
+    expect(mockInvoke).toHaveBeenCalledWith("project.list", {});
+  });
+});
+
+describe("methods.getProject", () => {
+  it("calls project.get with projectId", async () => {
+    await methods.getProject({ projectId: 5 });
+    expect(mockInvoke).toHaveBeenCalledWith("project.get", { projectId: 5 });
+  });
+});
+
+describe("methods.scanProject", () => {
+  it("calls project.scan with projectId", async () => {
+    await methods.scanProject({ projectId: 3 });
+    expect(mockInvoke).toHaveBeenCalledWith("project.scan", { projectId: 3 });
+  });
+});
