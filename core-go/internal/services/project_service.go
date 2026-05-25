@@ -8,6 +8,7 @@ import (
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
+	"github.com/astraler/skillbox/core-go/internal/operations"
 )
 
 // AddProjectResult is returned by AddProject.
@@ -38,16 +39,19 @@ type ProjectDetailView struct {
 	Warnings  []domain.Warning
 }
 
-// ProjectService handles read-only project operations (add, list, detail).
+// ProjectService handles project operations (add, list, detail, scan).
 type ProjectService struct {
 	projectRepo ProjectRepo
 	ppRepo      ProjectProviderRepo
 	warningRepo ProjectWarningRepo
 	installRepo ProjectInstallRepo
 	fs          ProjectFilesystem
+	// scan dependencies — nil until WithScanDeps is called
+	runner   OperationRunner
+	scanRepo ProjectScanCommitter
 }
 
-// NewProjectService constructs a ProjectService.
+// NewProjectService constructs a ProjectService for read/add operations.
 func NewProjectService(
 	projectRepo ProjectRepo,
 	ppRepo ProjectProviderRepo,
@@ -62,6 +66,14 @@ func NewProjectService(
 		installRepo: installRepo,
 		fs:          fs,
 	}
+}
+
+// WithScanDeps attaches the dependencies required for ScanProject.
+// Returns the receiver to allow chaining with NewProjectService.
+func (s *ProjectService) WithScanDeps(runner OperationRunner, scanRepo ProjectScanCommitter) *ProjectService {
+	s.runner = runner
+	s.scanRepo = scanRepo
+	return s
 }
 
 // AddProject validates path, normalizes it, and persists the project idempotently.
@@ -177,4 +189,77 @@ func (s *ProjectService) GetProject(ctx context.Context, projectID int64) (*Proj
 		Entries:   entries,
 		Warnings:  warnings,
 	}, nil
+}
+
+// ScanProject queues an async scan operation for the given project.
+// Returns conflict_error if a scan is already running for this project.
+func (s *ProjectService) ScanProject(ctx context.Context, projectID int64) (int64, error) {
+	project, err := s.projectRepo.GetByID(ctx, projectID)
+	if err != nil {
+		return 0, domain.NewDatabaseError("Could not fetch project", err.Error())
+	}
+	if project == nil {
+		return 0, domain.NewValidationError(
+			"Project not found",
+			fmt.Sprintf("projectId %d does not exist", projectID),
+		)
+	}
+
+	target := operations.Target{Type: "project", ID: projectID}
+	opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
+		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
+			return s.scanProjectInternal(opCtx, project, progress)
+		})
+	if err != nil {
+		if _, ok := err.(*domain.AppError); ok {
+			return 0, err
+		}
+		return 0, domain.NewDatabaseError("Could not queue scan operation", err.Error())
+	}
+	return opID, nil
+}
+
+func (s *ProjectService) scanProjectInternal(
+	ctx context.Context,
+	project *domain.Project,
+	progress operations.ProgressFn,
+) (any, error) {
+	progress("reading_project", 0, 0, "")
+
+	if err := s.fs.ValidateProjectPath(project.Path); err != nil {
+		return s.commitTerminalPath(ctx, project, err)
+	}
+
+	// M3c2b2: provider detection, classification, commit scan — not yet implemented.
+	return nil, nil
+}
+
+func (s *ProjectService) commitTerminalPath(
+	ctx context.Context,
+	project *domain.Project,
+	pathErr error,
+) (any, error) {
+	status := domain.ProjectStatusUnreadable
+	warnCode := "project_unreadable"
+	warnMsg := "Project folder is unreadable: " + project.Path
+
+	if fe, ok := pathErr.(*filesystem.FilesystemError); ok && fe.Code == filesystem.ErrPathNotFound {
+		status = domain.ProjectStatusMissing
+		warnCode = "project_missing"
+		warnMsg = "Project folder not found: " + project.Path
+	}
+
+	rescan := "rescan"
+	warning := domain.Warning{
+		ScopeType: domain.WarningScopeProject,
+		Severity:  domain.WarningSeverityWarning,
+		Code:      warnCode,
+		Message:   warnMsg,
+		ActionKey: &rescan,
+	}
+
+	if err := s.scanRepo.CommitProjectTerminal(ctx, project.ID, status, &warning, time.Now()); err != nil {
+		return nil, domain.NewDatabaseError("Could not commit terminal scan state", err.Error())
+	}
+	return nil, nil
 }

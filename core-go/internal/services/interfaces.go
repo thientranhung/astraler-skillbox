@@ -89,3 +89,9 @@ type ProjectWarningRepo interface {
 type ProjectInstallRepo interface {
 	ListByProject(ctx context.Context, projectID int64) ([]domain.Install, error)
 }
+
+// ProjectScanCommitter writes project scan terminal states atomically.
+// *repositories.ProjectScanRepo satisfies this interface.
+type ProjectScanCommitter interface {
+	CommitProjectTerminal(ctx context.Context, projectID int64, status domain.ProjectStatus, warning *domain.Warning, now time.Time) error
+}
