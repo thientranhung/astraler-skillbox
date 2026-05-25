@@ -345,6 +345,14 @@ func TestInstallSkills_DuplicateSkillIDs(t *testing.T) {
 	requireAppError(t, err, domain.CodeValidation)
 }
 
+func TestInstallSkills_NonPositiveSkillID(t *testing.T) {
+	svc := newInstallSvc(newMockProjectRepo(), &mockRunner{})
+	for _, id := range []int64{0, -1} {
+		_, err := svc.InstallSkills(context.Background(), 1, "generic_agents", []int64{id})
+		requireAppError(t, err, domain.CodeValidation)
+	}
+}
+
 func TestInstallSkills_UnknownProviderKey(t *testing.T) {
 	svc := newInstallSvc(newMockProjectRepo(), &mockRunner{})
 	_, err := svc.InstallSkills(context.Background(), 1, "unknown_provider", []int64{1, 2})
@@ -374,7 +382,17 @@ func TestInstallSkills_HappyPath(t *testing.T) {
 	ctx := context.Background()
 	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
 
-	runner := &mockRunner{}
+	runner := &mockRunner{
+		startFn: func(_ context.Context, target operations.Target, opType domain.OperationType, _ operations.WorkFn) (int64, error) {
+			if target.Type != "project" || target.ID != 1 {
+				t.Errorf("unexpected target: %+v", target)
+			}
+			if opType != domain.OperationTypeInstallSkill {
+				t.Errorf("unexpected opType: %q", opType)
+			}
+			return 1, nil
+		},
+	}
 	svc := newInstallSvc(projRepo, runner)
 
 	opID, err := svc.InstallSkills(ctx, 1, "generic_agents", []int64{1, 2})
