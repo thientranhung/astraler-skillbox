@@ -10,8 +10,14 @@ extraResources:
   - from: resources/core/skillbox-core
     to: core/skillbox-core
 mac:
-  identity: null            # unsigned spike (signing is Slice 3B)
   category: public.app-category.developer-tools
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.inherit.plist
+  notarize: true
+  binaries:
+    - Contents/Resources/core/skillbox-core
   target:
     - target: dmg
       arch:
