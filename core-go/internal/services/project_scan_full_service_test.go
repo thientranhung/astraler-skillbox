@@ -355,3 +355,65 @@ func TestScanProjectInternal_ProviderNotPresent_ZeroProviderResults(t *testing.T
 		t.Errorf("warning scope: got %q want project", w.ScopeType)
 	}
 }
+
+// --- metadata summary tests ---
+
+// TestScanProjectInternal_MetadataCounts verifies that scanProjectInternal returns a
+// non-nil summary with correct providersFound, entriesClassified, and warningsCreated.
+// Setup: 1 present provider, 2 entries (plain dir + broken symlink), 1 provider warning.
+// Expected counts: providers=1, entries=2, warnings=2 (1 provider + 1 install warning).
+func TestScanProjectInternal_MetadataCounts(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "p", "/tmp/p") //nolint:errcheck
+
+	adapter := &mockAdapter{
+		key: "generic_agents",
+		result: providers.DetectResult{
+			Present:         true,
+			DetectedPath:    "/tmp/p/.agents",
+			SkillsPath:      "/tmp/p/.agents/skills",
+			DetectionStatus: domain.DetectionStatusDetected,
+			Entries: []providers.AdapterEntry{
+				{Name: "tool", Path: "/tmp/p/.agents/skills/tool", IsDir: true},
+				{Name: "sk", Path: "/tmp/p/.agents/skills/sk", IsSymlink: true, Broken: true},
+			},
+			Warnings: []providers.AdapterWarning{
+				{Code: "some_warning", Severity: domain.WarningSeverityWarning, ScopeType: domain.WarningScopeProjectProvider},
+			},
+		},
+	}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{adapter}}
+	pdRepo := &mockProviderDefRepo{
+		defs: map[string]*domain.ProviderDefinition{
+			"generic_agents": {ID: 1, Key: "generic_agents"},
+		},
+	}
+	scanRepo := &mockProjectScanCommitter{}
+	svc := newFullScanSvc(
+		projRepo, &mockProjectFS{}, &mockRunner{}, scanRepo,
+		registry, pdRepo, &mockHostLister{}, &mockSkillsByHostLister{},
+	)
+
+	project, _ := projRepo.GetByID(ctx, 1)
+	got, err := svc.scanProjectInternal(ctx, project, func(string, int, int, string) {})
+	if err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected non-nil metadata summary, got nil")
+	}
+	summary, ok := got.(*projectScanSummary)
+	if !ok {
+		t.Fatalf("expected *projectScanSummary, got %T", got)
+	}
+	if summary.ProvidersFound != 1 {
+		t.Errorf("ProvidersFound: got %d want 1", summary.ProvidersFound)
+	}
+	if summary.EntriesClassified != 2 {
+		t.Errorf("EntriesClassified: got %d want 2", summary.EntriesClassified)
+	}
+	if summary.WarningsCreated != 2 {
+		t.Errorf("WarningsCreated: got %d want 2 (1 provider + 1 install)", summary.WarningsCreated)
+	}
+}
