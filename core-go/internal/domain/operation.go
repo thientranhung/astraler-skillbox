@@ -19,6 +19,7 @@ const (
 	OperationTypeScan                  OperationType = "scan"
 	OperationTypeChangeSkillHostFolder OperationType = "change_skill_host_folder"
 	OperationTypeInstallSkill          OperationType = "install_skill"
+	OperationTypeRemoveSkill           OperationType = "remove_skill"
 )
 
 type Operation struct {
