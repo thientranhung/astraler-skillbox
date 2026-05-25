@@ -67,6 +67,7 @@ type ProjectRepo interface {
 	UpsertByPath(ctx context.Context, name, path string) (int64, bool, error)
 	GetByID(ctx context.Context, id int64) (*domain.Project, error)
 	List(ctx context.Context) ([]domain.Project, error)
+	MarkRemoved(ctx context.Context, id int64) error
 }
 
 // ProjectFilesystem provides the read-only filesystem operations needed by the project service.
