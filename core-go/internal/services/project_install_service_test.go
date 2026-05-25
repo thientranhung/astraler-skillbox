@@ -370,7 +370,7 @@ func TestInstallSkillsInternal_ClaudeNoScaffold(t *testing.T) {
 		},
 	}
 
-	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{providers.NewGenericAgentsAdapter()}}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{providers.NewClaudeAdapter()}}
 	hostLister := &mockHostLister{hosts: []domain.SkillHostFolder{*activeHost}}
 	scanRepo := &mockProjectScanCommitter{}
 	runner := &mockRunner{}
@@ -594,6 +594,13 @@ func TestInstallSkillsInternal_ValidationErrors(t *testing.T) {
 			if len(entries) != 0 {
 				t.Fatalf("skills dir should be empty after a pre-write failure, got %d entries", len(entries))
 			}
+			// For the unsafe-name case: assert the escaped path was NOT created outside the skills dir.
+			if tc.name == "unsafe skill name" {
+				escapedPath := filepath.Join(fx.project.Path, ".agents", "escape")
+				if _, serr := os.Lstat(escapedPath); !os.IsNotExist(serr) {
+					t.Fatalf("traversal escape: %q must not exist, got stat err %v", escapedPath, serr)
+				}
+			}
 		})
 	}
 }
@@ -603,6 +610,7 @@ func TestInstallSkillsInternal_ValidationErrors(t *testing.T) {
 // flakyInstallFS wraps the real gateway but injects a CreateSymlink failure once
 // the call count exceeds failAfter. Calls up to and including failAfter delegate to
 // the real os, so successful links land on disk for the rescan to observe.
+// Not goroutine-safe; must not be used with t.Parallel or concurrent callers.
 type flakyInstallFS struct {
 	callCount int
 	failAfter int // fail CreateSymlink on calls > failAfter
