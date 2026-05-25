@@ -398,3 +398,72 @@ func TestProjectRemoveHandler_NotFound_ReturnsValidationError(t *testing.T) {
 		t.Errorf("payload code: got %q want validation_error", we.ae.Code)
 	}
 }
+
+// --- install.skill ---
+
+type stubInstallSkill struct {
+	opID int64
+	err  error
+}
+
+func (s *stubInstallSkill) InstallSkills(_ context.Context, _ int64, _ string, _ []int64) (int64, error) {
+	return s.opID, s.err
+}
+
+func TestInstallSkillHandler_ReturnsOperationID(t *testing.T) {
+	svc := &stubInstallSkill{opID: 42}
+	cli := startServer(t, handler.Map{"install.skill": handlers.NewInstallSkillHandler(svc)})
+
+	var resp struct {
+		OperationID int64 `json:"operationId"`
+	}
+	params := map[string]interface{}{
+		"projectId":   int64(1),
+		"providerKey": "generic_agents",
+		"skillIds":    []int64{10, 20},
+	}
+	if err := cli.CallResult(context.Background(), "install.skill", params, &resp); err != nil {
+		t.Fatalf("install.skill: %v", err)
+	}
+	if resp.OperationID != 42 {
+		t.Errorf("operationId: got %d want 42", resp.OperationID)
+	}
+}
+
+func TestInstallSkillHandler_BadParams_ReturnsValidationError(t *testing.T) {
+	svc := &stubInstallSkill{}
+	cli := startServer(t, handler.Map{"install.skill": handlers.NewInstallSkillHandler(svc)})
+
+	// Pass a string where an int64 is expected to trigger UnmarshalParams failure.
+	err := cli.CallResult(context.Background(), "install.skill", map[string]interface{}{
+		"projectId":   "not-a-number",
+		"providerKey": "generic_agents",
+		"skillIds":    []int64{1},
+	}, nil)
+	if err == nil {
+		t.Fatal("expected error for bad params")
+	}
+	we := extractWireError(t, err, jrpc2.Code(1001))
+	if we.ae.Code != domain.CodeValidation {
+		t.Errorf("payload code: got %q want validation_error", we.ae.Code)
+	}
+}
+
+func TestInstallSkillHandler_ServiceError_MapsToJRPCError(t *testing.T) {
+	svc := &stubInstallSkill{err: domain.NewValidationError("Project not found", "projectId 99 does not exist")}
+	cli := startServer(t, handler.Map{"install.skill": handlers.NewInstallSkillHandler(svc)})
+
+	params := map[string]interface{}{
+		"projectId":   int64(99),
+		"providerKey": "generic_agents",
+		"skillIds":    []int64{1},
+	}
+	err := cli.CallResult(context.Background(), "install.skill", params, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	we := extractWireError(t, err, jrpc2.Code(1001))
+	if we.ae.Code != domain.CodeValidation {
+		t.Errorf("payload code: got %q want validation_error", we.ae.Code)
+	}
+}

@@ -37,6 +37,7 @@ func New(
 			"project.get":      rpchandlers.NewProjectGetHandler(projectSvc),
 			"project.scan":     rpchandlers.NewProjectScanHandler(projectSvc),
 			"project.remove":   rpchandlers.NewProjectRemoveHandler(projectSvc),
+			"install.skill":    rpchandlers.NewInstallSkillHandler(projectSvc),
 		},
 	}
 	return a
