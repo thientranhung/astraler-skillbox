@@ -2,20 +2,28 @@
 
 ## Project Structure & Module Organization
 
-This repository is currently a planning and architecture repository for Astraler Skillbox, a local-first desktop app for managing agent skills. The source of truth is `README.md` plus the numbered documents in `docs/`; read `docs/index.md` first for the intended order. Review prompts live in `docs/review-prompts/`, and completed review notes live in `docs/review-results/`.
+This repository contains Astraler Skillbox, a local-first desktop app for managing agent skills. The product and architecture source of truth is `README.md` plus the numbered documents in `docs/`; read `docs/index.md` first for the intended order. Review prompts live in `docs/review-prompts/`, and completed review notes live in `docs/review-results/`.
 
-The planned implementation structure is documented in `docs/11-tech-stack-and-scaffold-decisions.md`: Electron + React under `apps/desktop/`, Go core under `core-go/`, shared API contracts under `shared/api-contracts/`, helper scripts under `scripts/`, and test fixtures under `fixtures/`. Do not create alternate top-level layouts without updating the architecture docs.
+Implementation is split across Electron + React under `apps/desktop/`, Go core under `core-go/`, shared JSON Schema contracts under `shared/api-contracts/`, and generated TypeScript types under `shared/generated/`. Do not create alternate top-level layouts without updating the architecture docs.
 
 ## Build, Test, and Development Commands
 
-No application scaffold exists yet, so there are no build or test commands to run today. For documentation-only changes, verify Markdown by reading the changed files and checking links manually:
+For documentation-only changes, read changed files and links:
 
 ```sh
 rg "TODO|GAP|Open" docs README.md
 git diff --check
 ```
 
-When the scaffold is added, prefer the documented stack: `pnpm` for `apps/desktop`, `electron-vite` for Electron targets, and `go test ./...` for `core-go`.
+Key implementation commands:
+
+```sh
+(cd core-go && go test ./...)
+(cd apps/desktop && pnpm typecheck)
+(cd apps/desktop && pnpm test)
+(cd apps/desktop && pnpm build)
+(cd apps/desktop && pnpm check:contracts-drift)
+```
 
 ## Coding Style & Naming Conventions
 
@@ -25,7 +33,7 @@ For future code, preserve the architecture boundaries: React renderer must not a
 
 ## Testing Guidelines
 
-Current changes are documentation-only. Validate consistency against `README.md`, `docs/index.md`, and the relevant architecture document before committing. Once code exists, add focused tests near the affected layer: Vitest for renderer TypeScript, Playwright for desktop/e2e flows, and Go unit/integration tests for `core-go`.
+Add focused tests near the affected layer: Vitest for renderer TypeScript, agent-browser/manual smoke for desktop flows, and Go tests for `core-go`. Contract changes must regenerate `shared/generated` and pass `pnpm check:contracts-drift`.
 
 ## Commit & Pull Request Guidelines
 
