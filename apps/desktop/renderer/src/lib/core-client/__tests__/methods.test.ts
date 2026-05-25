@@ -117,3 +117,14 @@ describe("methods.openTerminal", () => {
     expect(mockInvoke).toHaveBeenCalledWith("dialog.openTerminal", { path: "/home/user/myproject" });
   });
 });
+
+describe("methods.installSkill", () => {
+  it("calls install.skill with projectId, providerKey, skillIds", async () => {
+    await methods.installSkill({ projectId: 5, providerKey: "generic_agents", skillIds: [1, 2] });
+    expect(mockInvoke).toHaveBeenCalledWith("install.skill", {
+      projectId: 5,
+      providerKey: "generic_agents",
+      skillIds: [1, 2],
+    });
+  });
+});

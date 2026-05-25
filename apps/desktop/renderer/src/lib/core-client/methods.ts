@@ -16,6 +16,8 @@ import type {
   ProjectScanResponse,
   ProjectRemoveRequest,
   ProjectRemoveResponse,
+  InstallSkillRequest,
+  InstallSkillResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -54,6 +56,9 @@ export const methods = {
 
   removeProject: (req: ProjectRemoveRequest) =>
     invoke<ProjectRemoveResponse>("project.remove", req),
+
+  installSkill: (req: InstallSkillRequest) =>
+    invoke<InstallSkillResponse>("install.skill", req),
 
   openPath: (path: string) =>
     invoke<{ opened: boolean }>("dialog.openPath", { path }),
