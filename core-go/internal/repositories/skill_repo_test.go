@@ -63,6 +63,52 @@ func TestSkillRepo_UpsertMany_Updates(t *testing.T) {
 	}
 }
 
+func TestSkillRepo_CountByHost(t *testing.T) {
+	db := NewTestDB(t)
+	skillRepo := NewSkillRepo(db)
+	hostRepo := NewSkillHostFolderRepo(db)
+	ctx := context.Background()
+
+	host1ID := seedHost(t, hostRepo)
+	host2ID, _, err := hostRepo.UpsertAndActivate(ctx, "host2", "/tmp/host2", "/tmp/host2/.agents/skills")
+	if err != nil {
+		t.Fatalf("seedHost2: %v", err)
+	}
+
+	skills1 := []domain.Skill{
+		{Name: "a", RelativePath: ".agents/skills/a", AbsolutePath: "/tmp/host/.agents/skills/a", Status: domain.SkillStatusAvailable},
+		{Name: "b", RelativePath: ".agents/skills/b", AbsolutePath: "/tmp/host/.agents/skills/b", Status: domain.SkillStatusAvailable},
+	}
+	if err := skillRepo.UpsertMany(ctx, host1ID, skills1); err != nil {
+		t.Fatalf("UpsertMany host1: %v", err)
+	}
+
+	skills2 := []domain.Skill{
+		{Name: "x", RelativePath: ".agents/skills/x", AbsolutePath: "/tmp/host2/.agents/skills/x", Status: domain.SkillStatusAvailable},
+		{Name: "y", RelativePath: ".agents/skills/y", AbsolutePath: "/tmp/host2/.agents/skills/y", Status: domain.SkillStatusAvailable},
+		{Name: "z", RelativePath: ".agents/skills/z", AbsolutePath: "/tmp/host2/.agents/skills/z", Status: domain.SkillStatusAvailable},
+	}
+	if err := skillRepo.UpsertMany(ctx, host2ID, skills2); err != nil {
+		t.Fatalf("UpsertMany host2: %v", err)
+	}
+
+	count1, err := skillRepo.CountByHost(ctx, host1ID)
+	if err != nil {
+		t.Fatalf("CountByHost host1: %v", err)
+	}
+	if count1 != 2 {
+		t.Errorf("host1 count: got %d want 2", count1)
+	}
+
+	count2, err := skillRepo.CountByHost(ctx, host2ID)
+	if err != nil {
+		t.Fatalf("CountByHost host2: %v", err)
+	}
+	if count2 != 3 {
+		t.Errorf("host2 count: got %d want 3", count2)
+	}
+}
+
 func TestSkillRepo_MarkMissing(t *testing.T) {
 	db := NewTestDB(t)
 	skillRepo := NewSkillRepo(db)

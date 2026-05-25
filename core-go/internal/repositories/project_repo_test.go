@@ -261,6 +261,30 @@ func TestProjectRepo_MarkRemoved_Missing(t *testing.T) {
 	}
 }
 
+func TestProjectRepo_CountActive(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewProjectRepo(db)
+	ctx := context.Background()
+
+	// Insert one active and one removed project via direct SQL.
+	_, err := db.ExecContext(ctx, `INSERT INTO projects (name, path, status) VALUES ('active-proj', '/tmp/active', 'active')`)
+	if err != nil {
+		t.Fatalf("insert active project: %v", err)
+	}
+	_, err = db.ExecContext(ctx, `INSERT INTO projects (name, path, status) VALUES ('removed-proj', '/tmp/removed', 'removed')`)
+	if err != nil {
+		t.Fatalf("insert removed project: %v", err)
+	}
+
+	count, err := repo.CountActive(ctx)
+	if err != nil {
+		t.Fatalf("CountActive: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("CountActive: got %d want 1 (removed excluded)", count)
+	}
+}
+
 func TestProjectRepo_MarkRemoved_AlreadyRemoved(t *testing.T) {
 	db := NewTestDB(t)
 	repo := NewProjectRepo(db)

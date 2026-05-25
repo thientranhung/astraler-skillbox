@@ -122,6 +122,83 @@ func (r *WarningRepo) ClearByScope(ctx context.Context, scopeType domain.Warning
 	return err
 }
 
+// activeWarningPredicate is the SQL WHERE clause that filters out resolved
+// warnings and warnings belonging to removed projects (across project,
+// project_provider, and install scopes).
+const activeWarningPredicate = `
+	is_resolved = 0
+	AND NOT (
+		  (scope_type = 'project'
+		     AND scope_id IN (SELECT id FROM projects WHERE status = 'removed'))
+		OR (scope_type = 'project_provider'
+		     AND scope_id IN (
+		          SELECT pp.id FROM project_providers pp
+		          JOIN projects p ON p.id = pp.project_id
+		          WHERE p.status = 'removed'))
+		OR (scope_type = 'install'
+		     AND scope_id IN (
+		          SELECT i.id FROM installs i
+		          JOIN project_providers pp ON pp.id = i.project_provider_id
+		          JOIN projects p ON p.id = pp.project_id
+		          WHERE p.status = 'removed'))
+	)`
+
+// CountActiveBySeverity returns counts of active non-removed-project warnings
+// grouped by severity. Unrecognized severity values are silently ignored.
+func (r *WarningRepo) CountActiveBySeverity(ctx context.Context) (domain.WarningSeverityCounts, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT severity, COUNT(*) FROM warnings WHERE `+activeWarningPredicate+` GROUP BY severity`)
+	if err != nil {
+		return domain.WarningSeverityCounts{}, err
+	}
+	defer rows.Close()
+
+	var counts domain.WarningSeverityCounts
+	for rows.Next() {
+		var sev string
+		var n int
+		if err := rows.Scan(&sev, &n); err != nil {
+			return domain.WarningSeverityCounts{}, err
+		}
+		switch domain.WarningSeverity(sev) {
+		case domain.WarningSeverityInfo:
+			counts.Info += n
+		case domain.WarningSeverityWarning:
+			counts.Warning += n
+		case domain.WarningSeverityError:
+			counts.Error += n
+		case domain.WarningSeverityBlocking:
+			counts.Blocking += n
+		}
+	}
+	return counts, rows.Err()
+}
+
+// ListActive returns up to limit active non-removed-project warnings ordered by
+// id DESC. Returns nil (not an error) on empty result.
+func (r *WarningRepo) ListActive(ctx context.Context, limit int) ([]domain.Warning, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, scope_type, scope_id, severity, code, message, action_key,
+		        source_operation_id, is_resolved, created_at, updated_at, resolved_at
+		   FROM warnings
+		  WHERE `+activeWarningPredicate+`
+		  ORDER BY id DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var warnings []domain.Warning
+	for rows.Next() {
+		w, err := scanWarning(rows)
+		if err != nil {
+			return nil, err
+		}
+		warnings = append(warnings, w)
+	}
+	return warnings, rows.Err()
+}
+
 func scanWarning(rows *sql.Rows) (domain.Warning, error) {
 	var w domain.Warning
 	var scopeID, sourceOpID sql.NullInt64

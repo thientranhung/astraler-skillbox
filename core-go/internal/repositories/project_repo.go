@@ -104,6 +104,14 @@ func (r *ProjectRepo) MarkRemoved(ctx context.Context, id int64) (bool, error) {
 	return n > 0, nil
 }
 
+// CountActive returns the number of projects that are not in removed status.
+func (r *ProjectRepo) CountActive(ctx context.Context) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM projects WHERE status <> 'removed'`).Scan(&count)
+	return count, err
+}
+
 func (r *ProjectRepo) UpdateLastScannedAt(ctx context.Context, id int64, t time.Time) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE projects SET last_scanned_at=?,

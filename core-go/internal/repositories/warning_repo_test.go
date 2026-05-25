@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
@@ -201,6 +202,153 @@ func TestWarningRepo_ListActiveForProject_AcrossAllScopes(t *testing.T) {
 		if !codes[code] {
 			t.Errorf("expected warning code %q in list", code)
 		}
+	}
+}
+
+// seedWarningDirect inserts a warning row directly via SQL and returns its id.
+func seedWarningDirect(t *testing.T, db *sql.DB, scopeType string, scopeID *int64, severity, code string, isResolved int) int64 {
+	t.Helper()
+	var res sql.Result
+	var err error
+	if scopeID == nil {
+		res, err = db.ExecContext(context.Background(),
+			`INSERT INTO warnings (scope_type, scope_id, severity, code, message, is_resolved)
+			 VALUES (?, NULL, ?, ?, 'msg', ?)`, scopeType, severity, code, isResolved)
+	} else {
+		res, err = db.ExecContext(context.Background(),
+			`INSERT INTO warnings (scope_type, scope_id, severity, code, message, is_resolved)
+			 VALUES (?, ?, ?, ?, 'msg', ?)`, scopeType, *scopeID, severity, code, isResolved)
+	}
+	if err != nil {
+		t.Fatalf("seedWarningDirect: %v", err)
+	}
+	id, _ := res.LastInsertId()
+	return id
+}
+
+func TestWarningRepo_ExcludeRemovedProject(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewWarningRepo(db)
+	ctx := context.Background()
+
+	// Seed projects.
+	activeProj := int64(0)
+	res, err := db.ExecContext(ctx, `INSERT INTO projects (name, path, status) VALUES ('active', '/tmp/active', 'active')`)
+	if err != nil {
+		t.Fatalf("insert active project: %v", err)
+	}
+	activeProj, _ = res.LastInsertId()
+
+	res, err = db.ExecContext(ctx, `INSERT INTO projects (name, path, status) VALUES ('removed', '/tmp/removed', 'removed')`)
+	if err != nil {
+		t.Fatalf("insert removed project: %v", err)
+	}
+	removedProj, _ := res.LastInsertId()
+
+	// Seed project_providers.
+	defID := getGenericAgentsDefID(t, db)
+	res, err = db.ExecContext(ctx, `INSERT INTO project_providers (project_id, provider_definition_id) VALUES (?, ?)`, activeProj, defID)
+	if err != nil {
+		t.Fatalf("insert active provider: %v", err)
+	}
+	activePP, _ := res.LastInsertId()
+
+	res, err = db.ExecContext(ctx, `INSERT INTO project_providers (project_id, provider_definition_id) VALUES (?, ?)`, removedProj, defID)
+	if err != nil {
+		t.Fatalf("insert removed provider: %v", err)
+	}
+	removedPP, _ := res.LastInsertId()
+
+	// Seed installs.
+	res, err = db.ExecContext(ctx,
+		`INSERT INTO installs (project_provider_id, skill_name, install_mode, install_status, project_skill_path)
+		 VALUES (?, 'sk', 'direct', 'current', '/tmp/active/.agents/skills/sk')`, activePP)
+	if err != nil {
+		t.Fatalf("insert active install: %v", err)
+	}
+	activeInstall, _ := res.LastInsertId()
+
+	res, err = db.ExecContext(ctx,
+		`INSERT INTO installs (project_provider_id, skill_name, install_mode, install_status, project_skill_path)
+		 VALUES (?, 'sk', 'direct', 'current', '/tmp/removed/.agents/skills/sk')`, removedPP)
+	if err != nil {
+		t.Fatalf("insert removed install: %v", err)
+	}
+	removedInstall, _ := res.LastInsertId()
+
+	// Seed warnings according to spec.
+	sid1 := activeProj
+	seedWarningDirect(t, db, "project", &sid1, "warning", "w1", 0)           // 1 KEEP
+	sid2 := removedProj
+	seedWarningDirect(t, db, "project", &sid2, "warning", "w2", 0)           // 2 EXCLUDE removed project
+	sid3 := removedPP
+	seedWarningDirect(t, db, "project_provider", &sid3, "warning", "w3", 0)  // 3 EXCLUDE provider of removed
+	sid4 := removedInstall
+	seedWarningDirect(t, db, "install", &sid4, "warning", "w4", 0)           // 4 EXCLUDE install of removed
+	hostID := int64(1)
+	seedWarningDirect(t, db, "skill_host_folder", &hostID, "error", "w5", 0) // 5 KEEP
+	seedWarningDirect(t, db, "app", nil, "info", "w6", 0)                    // 6 KEEP (NULL scope_id)
+	sid7 := activeInstall
+	seedWarningDirect(t, db, "install", &sid7, "blocking", "w7", 0)          // 7 KEEP (install of active)
+	seedWarningDirect(t, db, "app", nil, "critical", "w8", 0)                // 8 KEEP in ListActive, NOT bucketed in Count
+	sid9 := activeProj
+	seedWarningDirect(t, db, "project", &sid9, "warning", "w9", 1)           // 9 EXCLUDE (resolved)
+
+	// CountActiveBySeverity: {Info:1, Warning:1, Error:1, Blocking:1} — critical not bucketed
+	counts, err := repo.CountActiveBySeverity(ctx)
+	if err != nil {
+		t.Fatalf("CountActiveBySeverity: %v", err)
+	}
+	if counts.Info != 1 {
+		t.Errorf("Info: got %d want 1", counts.Info)
+	}
+	if counts.Warning != 1 {
+		t.Errorf("Warning: got %d want 1", counts.Warning)
+	}
+	if counts.Error != 1 {
+		t.Errorf("Error: got %d want 1", counts.Error)
+	}
+	if counts.Blocking != 1 {
+		t.Errorf("Blocking: got %d want 1", counts.Blocking)
+	}
+	if total := counts.Total(); total != 4 {
+		t.Errorf("Total: got %d want 4", total)
+	}
+
+	// ListActive(50): 5 rows (1,5,6,7,8), id-DESC order
+	list, err := repo.ListActive(ctx, 50)
+	if err != nil {
+		t.Fatalf("ListActive: %v", err)
+	}
+	if len(list) != 5 {
+		t.Errorf("ListActive len: got %d want 5", len(list))
+	}
+	if len(list) > 0 && list[0].ID < list[len(list)-1].ID {
+		t.Errorf("ListActive not in id-DESC order: first=%d last=%d", list[0].ID, list[len(list)-1].ID)
+	}
+}
+
+func TestWarningRepo_ListActive_Limit(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewWarningRepo(db)
+	ctx := context.Background()
+
+	// Insert 10 active warnings.
+	for i := 0; i < 10; i++ {
+		_, err := db.ExecContext(ctx,
+			`INSERT INTO warnings (scope_type, scope_id, severity, code, message, is_resolved)
+			 VALUES ('app', NULL, 'info', 'code', 'msg', 0)`)
+		if err != nil {
+			t.Fatalf("insert warning %d: %v", i, err)
+		}
+	}
+
+	list, err := repo.ListActive(ctx, 5)
+	if err != nil {
+		t.Fatalf("ListActive: %v", err)
+	}
+	if len(list) != 5 {
+		t.Errorf("ListActive(5): got %d want 5", len(list))
 	}
 }
 
