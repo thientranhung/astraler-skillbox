@@ -182,6 +182,37 @@ func TestScanProjectInternal_MissingPath_WarningIsProjectScoped(t *testing.T) {
 	}
 }
 
+func TestScanProjectInternal_ValidatePasses_DirUnreadable_CommitsTerminalUnreadable(t *testing.T) {
+	// Regression: ValidateProjectPath succeeds (os.Stat sees the dir) but the
+	// directory is not openable. PathInfo.Readable=false must trigger unreadable.
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj", "/tmp/proj") //nolint:errcheck
+
+	unreadable := filesystem.PathInfo{Exists: true, IsDir: true, Readable: false}
+	fs := &mockProjectFS{
+		validateErr:    nil,
+		pathInfoResult: &unreadable,
+	}
+	scanRepo := &mockProjectScanCommitter{}
+	svc := newProjectScanSvc(projRepo, fs, &mockRunner{}, scanRepo)
+
+	project, _ := projRepo.GetByID(ctx, 1)
+	_, err := svc.scanProjectInternal(ctx, project, func(string, int, int, string) {})
+	if err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+	if scanRepo.terminalCallCount != 1 {
+		t.Fatalf("expected 1 CommitProjectTerminal call, got %d", scanRepo.terminalCallCount)
+	}
+	if scanRepo.lastTerminalStatus != domain.ProjectStatusUnreadable {
+		t.Errorf("status: got %q want unreadable", scanRepo.lastTerminalStatus)
+	}
+	if scanRepo.lastTerminalWarning == nil || scanRepo.lastTerminalWarning.Code != "project_unreadable" {
+		t.Errorf("expected project_unreadable warning, got %v", scanRepo.lastTerminalWarning)
+	}
+}
+
 func TestScanProjectInternal_CommitTerminalError_ReturnsDatabaseError(t *testing.T) {
 	projRepo := newMockProjectRepo()
 	ctx := context.Background()

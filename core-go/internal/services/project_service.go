@@ -230,34 +230,41 @@ func (s *ProjectService) scanProjectInternal(
 		return s.commitTerminalPath(ctx, project, err)
 	}
 
+	// ValidateProjectPath uses os.Stat, which succeeds even when the directory
+	// cannot be opened. PathInfo additionally tries os.Open to verify readability.
+	pi, err := s.fs.PathInfo(project.Path)
+	if err != nil || !pi.Readable {
+		return s.commitTerminalDirect(ctx, project,
+			domain.ProjectStatusUnreadable, "project_unreadable",
+			"Project folder is not readable: "+project.Path)
+	}
+
 	// M3c2b2: provider detection, classification, commit scan — not yet implemented.
 	return nil, nil
 }
 
-func (s *ProjectService) commitTerminalPath(
-	ctx context.Context,
-	project *domain.Project,
-	pathErr error,
-) (any, error) {
+func (s *ProjectService) commitTerminalPath(ctx context.Context, project *domain.Project, pathErr error) (any, error) {
 	status := domain.ProjectStatusUnreadable
-	warnCode := "project_unreadable"
-	warnMsg := "Project folder is unreadable: " + project.Path
+	code := "project_unreadable"
+	msg := "Project folder is unreadable: " + project.Path
 
 	if fe, ok := pathErr.(*filesystem.FilesystemError); ok && fe.Code == filesystem.ErrPathNotFound {
 		status = domain.ProjectStatusMissing
-		warnCode = "project_missing"
-		warnMsg = "Project folder not found: " + project.Path
+		code = "project_missing"
+		msg = "Project folder not found: " + project.Path
 	}
+	return s.commitTerminalDirect(ctx, project, status, code, msg)
+}
 
+func (s *ProjectService) commitTerminalDirect(ctx context.Context, project *domain.Project, status domain.ProjectStatus, code, msg string) (any, error) {
 	rescan := "rescan"
 	warning := domain.Warning{
 		ScopeType: domain.WarningScopeProject,
 		Severity:  domain.WarningSeverityWarning,
-		Code:      warnCode,
-		Message:   warnMsg,
+		Code:      code,
+		Message:   msg,
 		ActionKey: &rescan,
 	}
-
 	if err := s.scanRepo.CommitProjectTerminal(ctx, project.ID, status, &warning, time.Now()); err != nil {
 		return nil, domain.NewDatabaseError("Could not commit terminal scan state", err.Error())
 	}

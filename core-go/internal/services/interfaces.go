@@ -71,6 +71,9 @@ type ProjectRepo interface {
 type ProjectFilesystem interface {
 	ValidateProjectPath(path string) error
 	NormalizeAbs(path string) (string, error)
+	// PathInfo returns existence and readability facts for path (follows symlinks).
+	// Used by ScanProject to detect unreadable directories that os.Stat alone misses.
+	PathInfo(path string) (filesystem.PathInfo, error)
 }
 
 // ProjectProviderRepo reads project_providers joined with definitions and entry counts.

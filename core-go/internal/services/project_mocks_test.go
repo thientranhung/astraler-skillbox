@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
+	"github.com/astraler/skillbox/core-go/internal/filesystem"
 )
 
 // -- mock project filesystem --
@@ -14,6 +15,9 @@ type mockProjectFS struct {
 	validateErr    error
 	normalizedPath string
 	normalizeErr   error
+	// pathInfoResult overrides the default (readable dir). nil = readable dir.
+	pathInfoResult *filesystem.PathInfo
+	pathInfoErr    error
 }
 
 func (m *mockProjectFS) ValidateProjectPath(_ string) error { return m.validateErr }
@@ -26,6 +30,16 @@ func (m *mockProjectFS) NormalizeAbs(path string) (string, error) {
 		return m.normalizedPath, nil
 	}
 	return filepath.Clean(path), nil
+}
+
+func (m *mockProjectFS) PathInfo(_ string) (filesystem.PathInfo, error) {
+	if m.pathInfoErr != nil {
+		return filesystem.PathInfo{}, m.pathInfoErr
+	}
+	if m.pathInfoResult != nil {
+		return *m.pathInfoResult, nil
+	}
+	return filesystem.PathInfo{Exists: true, IsDir: true, Readable: true}, nil
 }
 
 // -- mock project repo --
