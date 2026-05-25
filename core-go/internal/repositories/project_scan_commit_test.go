@@ -484,6 +484,55 @@ func TestProjectScanRepo_CommitProjectTerminal_ClearsOldProjectWarning(t *testin
 	}
 }
 
+func TestProjectScanRepo_CommitProjectScan_AbsentProviderInstallsBecomeMissing(t *testing.T) {
+	db := NewTestDB(t)
+	projRepo := NewProjectRepo(db)
+	repo := NewProjectScanRepo(db)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	pid := seedProject(t, projRepo, "proj-a", "/tmp/proj-a")
+	defID := getGenericAgentsDefID(t, db)
+
+	pathX := "/tmp/proj-a/.agents/skills/skill-x"
+	pathY := "/tmp/proj-a/.agents/skills/skill-y"
+
+	// First scan: provider detected with two current installs.
+	_ = repo.CommitProjectScan(ctx, pid, []ProviderScanResult{{
+		ProviderDefinitionID: defID,
+		DetectedPath:         strPtr("/tmp/proj-a/.agents"),
+		SkillsPath:           strPtr("/tmp/proj-a/.agents/skills"),
+		DetectionStatus:      domain.DetectionStatusDetected,
+		Installs: []InstallScanResult{
+			{SkillName: "skill-x", InstallMode: domain.InstallModeDirect, InstallStatus: domain.InstallStatusCurrent, ProjectSkillPath: pathX},
+			{SkillName: "skill-y", InstallMode: domain.InstallModeDirect, InstallStatus: domain.InstallStatusCurrent, ProjectSkillPath: pathY},
+		},
+	}}, nil, now)
+
+	ppID := getProjectProviderID(t, db, pid, defID)
+	if getInstallStatus(t, db, ppID, pathX) != domain.InstallStatusCurrent {
+		t.Fatalf("precondition: skill-x should be current after first scan")
+	}
+
+	// Second scan: provider is completely absent.
+	if err := repo.CommitProjectScan(ctx, pid, nil, nil, now.Add(time.Minute)); err != nil {
+		t.Fatalf("CommitProjectScan (no providers): %v", err)
+	}
+
+	// Provider must be marked missing.
+	if getProviderDetectionStatus(t, db, pid, defID) != domain.DetectionStatusMissing {
+		t.Errorf("provider should be missing after second scan")
+	}
+
+	// Installs under that provider must also be marked missing (the regression).
+	if getInstallStatus(t, db, ppID, pathX) != domain.InstallStatusMissing {
+		t.Errorf("skill-x install should be missing when its provider is absent")
+	}
+	if getInstallStatus(t, db, ppID, pathY) != domain.InstallStatusMissing {
+		t.Errorf("skill-y install should be missing when its provider is absent")
+	}
+}
+
 func TestProjectScanRepo_CommitProjectTerminal_NilWarningIsOK(t *testing.T) {
 	db := NewTestDB(t)
 	projRepo := NewProjectRepo(db)

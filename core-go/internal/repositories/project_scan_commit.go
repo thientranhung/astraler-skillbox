@@ -88,6 +88,11 @@ func (r *ProjectScanRepo) CommitProjectScan(
 		return fmt.Errorf("mark absent providers: %w", err)
 	}
 
+	// Cascade: installs under absent providers also become missing.
+	if err := cascadeInstallsMissingForAbsentProviders(ctx, tx, projectID, seenDefIDs, nowStr); err != nil {
+		return fmt.Errorf("cascade installs missing for absent providers: %w", err)
+	}
+
 	// 3. For each provider, reconcile installs and insert warnings.
 	for i, p := range providers {
 		ppID := providerDBIDs[i]
@@ -256,6 +261,35 @@ func markAbsentProvidersMissing(ctx context.Context, tx *sql.Tx, projectID int64
 		"UPDATE project_providers SET detection_status='missing',"+
 			" updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')"+
 			" WHERE project_id=? AND provider_definition_id NOT IN ("+ph+")",
+		args...)
+	return err
+}
+
+// cascadeInstallsMissingForAbsentProviders marks all installs as missing for
+// providers that were not seen in the current scan (i.e., those just marked missing).
+func cascadeInstallsMissingForAbsentProviders(ctx context.Context, tx *sql.Tx, projectID int64, seenDefIDs []int64, nowStr string) error {
+	if len(seenDefIDs) == 0 {
+		_, err := tx.ExecContext(ctx, `
+			UPDATE installs SET install_status='missing',
+			 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+			 WHERE project_provider_id IN (
+			     SELECT id FROM project_providers WHERE project_id=?
+			 )`, projectID)
+		return err
+	}
+	ph := strings.Repeat("?,", len(seenDefIDs))
+	ph = ph[:len(ph)-1]
+	args := make([]interface{}, 0, 1+len(seenDefIDs))
+	args = append(args, projectID)
+	for _, id := range seenDefIDs {
+		args = append(args, id)
+	}
+	_, err := tx.ExecContext(ctx,
+		"UPDATE installs SET install_status='missing',"+
+			" updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')"+
+			" WHERE project_provider_id IN ("+
+			"     SELECT id FROM project_providers WHERE project_id=? AND provider_definition_id NOT IN ("+ph+")"+
+			")",
 		args...)
 	return err
 }
