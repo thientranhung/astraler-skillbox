@@ -13,6 +13,12 @@ architecture hoặc visual design.
 - Project và provider scope phải hiển thị rõ để tránh nhầm skill trùng tên.
 - Symlink, rsync/copy, direct là khái niệm kỹ thuật được hiển thị trực tiếp.
 
+## Table Notation
+
+ASCII table examples use the abbreviation **Shared Agents** for the full user-facing label
+**Shared Agent Skills (.agents)**. The full name appears in filters, selection dialogs,
+status labels, and confirmation steps where it is the primary information shown to the user.
+
 ## Navigation Shell
 
 Layout đề xuất:
@@ -151,15 +157,15 @@ Actions
   [Fetch] [Update Host Copy] [Open Folder]
 
 Projects Using This Skill
-  Project              Provider          Mode        Status
-  project-a            Shared Agent Skills (.agents)    symlink     current
-  project-b            Claude            rsync/copy  needs sync
-  project-c            Shared Agent Skills (.agents)    direct      current
+  Project              Provider        Mode        Status
+  project-a            Shared Agents   symlink     current
+  project-b            Claude          rsync/copy  needs sync
+  project-c            Shared Agents   direct      current
 
 Global Usage
-  Provider          Location               Mode        Status
-  Shared Agent Skills (.agents)    User Global            direct      current
-  Claude            Claude Global          symlink     external symlink
+  Provider        Location               Mode        Status
+  Shared Agents   User Global            direct      current
+  Claude          Claude Global          symlink     external symlink
 ```
 
 Warnings:
@@ -180,15 +186,15 @@ Global Skills
 [Scan Global] [Open Selected Folder]
 
 Global Locations
-  Provider          Path                         Status          Entries
-  Shared Agent Skills (.agents)    ~/.agents/skills             active          4
-  Claude            ~/.claude/...                not configured  0
+  Provider        Path                   Status          Entries
+  Shared Agents   ~/.agents/skills       active          4
+  Claude          ~/.claude/...          not configured  0
 
 Global Entries
-  Provider          Skill/Entry             Mode        Status             Actions
-  Shared Agent Skills (.agents)    research-writer         direct      current            [Open]
-  Shared Agent Skills (.agents)    adr-helper              symlink     current            [Relink] [Remove]
-  Claude            old-command             symlink     broken symlink     [Relink] [Remove]
+  Provider        Skill/Entry             Mode        Status             Actions
+  Shared Agents   research-writer         direct      current            [Open]
+  Shared Agents   adr-helper              symlink     current            [Relink] [Remove]
+  Claude          old-command             symlink     broken symlink     [Relink] [Remove]
 ```
 
 Warnings:
@@ -226,10 +232,10 @@ Filters
   Search: __________________
 
 Table
-  Project        Path                    Providers                 Skills  Warnings
-  skillbox       /repo/skillbox          Shared Agent Skills (.agents)            3       0
-  content-lab    /repo/content-lab       Claude, Shared Agent Skills (.agents)    8       1
-  old-project    /repo/old-project       -                         0       missing
+  Project        Path                    Providers                  Skills  Warnings
+  skillbox       /repo/skillbox          Shared Agents              3       0
+  content-lab    /repo/content-lab       Claude, Shared Agents      8       1
+  old-project    /repo/old-project       -                          0       missing
 ```
 
 Row actions:
@@ -259,11 +265,11 @@ Actions
   [Add Skill] [Scan Project] [Open Folder]
 
 Installed Skills
-  Provider          Skill                 Mode        Status            Actions
-  Shared Agent Skills (.agents)    documentation-writer  symlink     current           [Switch] [Remove]
-  Shared Agent Skills (.agents)    adr-helper            rsync/copy  needs sync        [Sync] [Switch] [Remove]
-  Claude            old-skill             symlink     broken symlink    [Relink] [Remove]
-  Claude            manual-note           direct      current           [Open]
+  Provider        Skill                 Mode        Status            Actions
+  Shared Agents   documentation-writer  symlink     current           [Switch] [Remove]
+  Shared Agents   adr-helper            rsync/copy  needs sync        [Sync] [Switch] [Remove]
+  Claude          old-skill             symlink     broken symlink    [Relink] [Remove]
+  Claude          manual-note           direct      current           [Open]
 ```
 
 Grouping:
@@ -336,15 +342,15 @@ Available Updates
   research-writer       v1.2         v1.3         2
 
 Affected Projects: adr-helper
-  Project       Provider          Mode        Result after host update
-  project-a     Shared Agent Skills (.agents)    symlink     updates immediately
-  project-b     Shared Agent Skills (.agents)    rsync/copy  needs sync
-  project-c     Claude            direct      unaffected
+  Project       Provider        Mode        Result after host update
+  project-a     Shared Agents   symlink     updates immediately
+  project-b     Shared Agents   rsync/copy  needs sync
+  project-c     Claude          direct      unaffected
 
 Affected Global Installs
-  Location              Provider          Mode        Result after host update
-  User Global           Shared Agent Skills (.agents)    symlink     updates immediately
-  Claude Global         Claude            rsync/copy  needs sync
+  Location              Provider        Mode        Result after host update
+  User Global           Shared Agents   symlink     updates immediately
+  Claude Global         Claude          rsync/copy  needs sync
 
 Actions
   [Update Host Copy] [Sync rsync/copy Projects]
@@ -379,17 +385,17 @@ Default Install Mode
   ( ) rsync/copy
 
 Providers
-  Provider          Status          Create Structure   Icon
-  Shared Agent Skills (.agents)    supported       yes                agents
-  Claude            experimental    no                 claude
-  Codex             experimental    yes                codex
-  opencode          experimental    yes                opencode
-  Antigravity CLI   experimental    yes                antigravity
+  Provider        Status          Create Structure   Icon
+  Shared Agents   supported       yes                agents
+  Claude          experimental    no                 claude
+  Codex           experimental    yes                codex
+  opencode        experimental    yes                opencode
+  Antigravity CLI experimental    yes                antigravity
 
 Global Provider Locations
-  Provider          Path                         Status          Actions
-  Shared Agent Skills (.agents)    ~/.agents/skills             active          [Change] [Scan]
-  Claude            -                            not configured  [Configure]
+  Provider        Path                   Status          Actions
+  Shared Agents   ~/.agents/skills       active          [Change] [Scan]
+  Claude          -                      not configured  [Configure]
 
 Credentials
   GitHub            active          [Validate] [Change]
