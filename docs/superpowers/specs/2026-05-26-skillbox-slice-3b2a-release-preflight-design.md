@@ -59,23 +59,40 @@ Status vocabulary:
 | A2 | Tooling | `xcrun -f notarytool` resolves | found (altool retired 2023-11-01; notarytool is the only accepted path) | FAIL |
 | A3 | Tooling | `xcrun -f stapler` resolves | found | FAIL |
 | A4 | Tooling | `codesign`, `spctl`, `plutil` on PATH | all found | FAIL |
-| B1 | Developer ID identity | `security find-identity -v -p codesigning` parsed for `Developer ID Application:` lines | ≥1 such identity (`-v` already filters to valid/non-expired) | FAIL |
-| C1 | Notarization credentials | exactly one **complete** credential group present (see §5) | ≥1 complete group | FAIL |
+| B1 | Signing credentials | either a keychain Developer ID Application identity **or** a `.p12` via `CSC_LINK` + `CSC_KEY_PASSWORD` (see §5.1) | ≥1 acceptable signing path satisfied | FAIL |
+| C1 | Notarization credentials | **at least one complete** credential group present (see §5.2) | ≥1 complete group | FAIL |
 | D1 | Config invariant | `mac.hardenedRuntime === true` | true | FAIL |
 | D2 | Config invariant | `mac.notarize === true` | true | FAIL |
 | D3 | Config invariant | `mac.entitlements` + `mac.entitlementsInherit` files exist and pass `plutil -lint` | both OK | FAIL |
 | D4 | Config invariant | `mac.binaries` includes `Contents/Resources/core/skillbox-core` | present | FAIL |
 | D5 | Config invariant | `mac.target` includes a dmg target with arch arm64 | present | FAIL |
 | E1 | Sidecar staging | staged `apps/desktop/resources/core/skillbox-core` is a Mach-O **arm64** with the exec bit set | present + arm64 + executable | **WARN if absent** (built by `package:mac` via `build:core`); **FAIL if present but wrong arch / not executable** |
-| F1 | Artifact hygiene | `git status --porcelain` shows no **tracked** `apps/desktop/dist/**` or `apps/desktop/resources/core/**` | no tracked build artifacts | FAIL |
+| F1 | Artifact hygiene | `git status --porcelain --untracked-files=no -- apps/desktop/dist apps/desktop/resources/core` shows no **tracked** build artifacts (untracked `??` entries excluded by `--untracked-files=no`; a present-but-untracked `dist/` is expected and must not fail) | no tracked-status entries | FAIL |
 | F2 | Secret-file hygiene | no **tracked** `*.p12` / `*.p8` under `apps/desktop` (narrow tracked-file check, not a content scanner) | none tracked | FAIL |
 | G1 | Version | `package.json` `version` is a real release string (not `0.0.0`) | non-`0.0.0` | WARN |
 
 The report closes with a **"Missing for a customer-ready notarized DMG:"** section that lists each FAIL with a one-line remediation (e.g. "Install a Developer ID Application certificate into the login keychain"; "export APPLE_API_KEY_ID=…").
 
-## 5. Credential Group Logic
+## 5. Signing and Notarization Credential Logic
 
-A notarized release needs exactly one **complete** notarization credential group. The preflight evaluates groups on **presence only** (env var set and non-empty; referenced files exist and are readable) and **never reads or prints their values**.
+A notarized release needs **both** (a) a way to sign with a Developer ID Application identity and (b) notarization credentials. These are evaluated independently — §5.1 covers signing (check B1), §5.2 covers notarization (check C1). All evaluation is **presence/existence only**; the preflight **never reads or prints** any credential value, env value, or file path (see §6).
+
+### 5.1 Signing credentials (B1)
+
+Existing project docs (3B1 spec §7, SCAFFOLD "Signed + notarized") allow a Developer ID Application identity in the login keychain **or** a `.p12` supplied via `CSC_LINK` + `CSC_KEY_PASSWORD`. B1 must therefore PASS when **either** path is satisfied:
+
+- **Path A — keychain identity:** `security find-identity -v -p codesigning` yields ≥1 `Developer ID Application:` line (`-v` already filters to valid/non-expired). Report the matched identity **names** only (non-secret; see §6).
+- **Path B — `.p12` via env:** `CSC_LINK` is set **and** `CSC_KEY_PASSWORD` is set. If `CSC_LINK` looks like a **local file path** (not a `https://` URL or base64 blob), additionally require that the file **exists and is readable**; if it is a URL/base64 form, presence of the env var is sufficient (the preflight does not fetch or decode it). Report only `CSC_LINK set` + (for local paths) `exists`/`readable`, and `CSC_KEY_PASSWORD set` — **never the path or value**.
+
+Rules:
+- **Either path satisfied** → B1 PASS; emit an INFO line naming which path was detected (e.g. "Signing: keychain Developer ID Application identity", or "Signing: CSC_LINK + CSC_KEY_PASSWORD").
+- **Both satisfied** → B1 PASS; emit INFO noting the keychain identity is electron-builder's default discovery path when no explicit `CSC_LINK` override is forced. Do not fail.
+- **Path B partial** (e.g. `CSC_LINK` set but `CSC_KEY_PASSWORD` missing, or a local `CSC_LINK` path that does not exist/readable) and **no keychain identity** → B1 FAIL, naming exactly what is missing (e.g. "CSC_LINK is set but CSC_KEY_PASSWORD is missing", or "CSC_LINK points to a local file that is missing or unreadable") — without printing the path.
+- **Neither path satisfied** → B1 FAIL: "No signing credential found. Provide a Developer ID Application identity in the login keychain, or set CSC_LINK + CSC_KEY_PASSWORD."
+
+### 5.2 Notarization credential groups (C1)
+
+A notarized release needs **at least one complete** notarization credential group. The preflight evaluates groups on **presence only** (env var set and non-empty; referenced files exist and are readable) and **never reads or prints their values**.
 
 - **Group 1 — App Store Connect API key (preferred):**
   `APPLE_API_KEY` (path to the `.p8`; the file must exist and be readable) + `APPLE_API_KEY_ID` + `APPLE_API_ISSUER`.
@@ -85,16 +102,17 @@ A notarized release needs exactly one **complete** notarization credential group
   A stored `notarytool store-credentials` profile referenced via `APPLE_KEYCHAIN_PROFILE`. electron-builder's built-in `mac.notarize` consumes the API-key or Apple-ID env groups directly; a keychain profile is a notarytool convenience and is **not** a first-class electron-builder env input, so it is reported as **INFO** ("a notarytool keychain profile env var is set, but electron-builder's `mac.notarize` uses Group 1 or Group 2") and does **not** by itself satisfy C1. Document it; do not let it pass the gate.
 
 Rules:
-- **Complete group** → C1 PASS; emit an INFO line naming which group was detected (e.g. "Detected notarization credentials: API key (Group 1)").
+- **At least one complete group** → C1 PASS; emit an INFO line naming which group was detected (e.g. "Detected notarization credentials: API key (Group 1)").
+- **Multiple complete groups present** → C1 still PASS (never a failure); emit a **WARN** about precedence: Group 1 (API key) is preferred, and electron-builder/notarytool will use one — surface which to avoid ambiguity (e.g. "Both Group 1 and Group 2 are complete; the API key (Group 1) is preferred and will be used"). Do **not** fail on redundancy.
 - **No group present** → C1 FAIL: "No notarization credential group found. Provide Group 1 (APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER) or Group 2 (APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID)."
-- **Partial group** → C1 FAIL naming exactly the **missing variable names** of the group the user has started (e.g. "APPLE_API_KEY and APPLE_API_KEY_ID are set; missing APPLE_API_ISSUER"). Never print the value of any set variable — only its name and `set`/`missing` state.
-- If a referenced file (`APPLE_API_KEY` `.p8`, or `CSC_LINK`) is set but missing/unreadable → FAIL reporting the **path existence/readability**, never the file contents.
+- **Partial group** (and no other group complete) → C1 FAIL naming exactly the **missing variable names** of the group the user has started (e.g. "APPLE_API_KEY and APPLE_API_KEY_ID are set; missing APPLE_API_ISSUER"). Never print the value of any set variable — only its name and `set`/`missing` state.
+- If a referenced file (`APPLE_API_KEY` `.p8`, or `CSC_LINK` local path) is set but missing/unreadable → FAIL reporting only the variable name plus `missing`/`unreadable`, **never the path or file contents** (see §6).
 
 ## 6. Secret Hygiene and Side-Effect Boundaries
 
 **Secret hygiene (hard rules):**
-- Credentials are reported **presence-only** — `set` / `missing`, never the value.
-- Files behind `APPLE_API_KEY` / `CSC_LINK` are reported as **exists + readable**, never by content.
+- Credentials are reported **presence-only** — by variable **name** plus one state token (`set` / `missing` / `exists` / `readable` / `unreadable`), **never the value**.
+- For **`APPLE_API_KEY` and `CSC_LINK` specifically**, the preflight must **not print the env value or the file path** — only the variable name and its state token. (The path itself can leak a username or directory layout, so it is treated as sensitive.) Files behind these vars are reported as `exists`/`readable`/`missing`/`unreadable`, never by content and never by path.
 - The identity check prints only matched identity **names** from `security find-identity`. Identity names and Team IDs are **not secrets** (they are embedded in every shipped notarized app and visible via `codesign -dvvv`); the cert private key, passwords, and `.p8` body are the secrets and are never read or printed.
 - No `set -x`, no echoing of any command line that could carry a secret.
 
@@ -115,8 +133,8 @@ Platform & tooling
   PASS  macOS (darwin)
   PASS  xcrun notarytool found
   ...
-Developer ID identity
-  FAIL  no "Developer ID Application" identity in login keychain
+Signing credentials
+  FAIL  no Developer ID Application identity in login keychain, and CSC_LINK + CSC_KEY_PASSWORD not set
 Notarization credentials
   FAIL  no complete credential group (see remediation)
 electron-builder config
@@ -124,7 +142,7 @@ electron-builder config
   ...
 
 Missing for a customer-ready notarized DMG:
-  - Developer ID Application certificate (install into login keychain)
+  - Signing credential: a Developer ID Application identity in the login keychain, OR CSC_LINK + CSC_KEY_PASSWORD
   - One notarization credential group (Group 1: APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER, or Group 2: APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID)
 ```
 
@@ -144,17 +162,17 @@ The logic is nontrivial (credential-group completeness, config parsing, status a
   - a parsed electron-builder config object,
   - a list of identity **names** (strings),
   - a tool-presence map (`{ notarytool: boolean, ... }`),
-  - file-probe results (sidecar arch/exec, entitlements lint outcome, tracked-artifact list).
+  - file-probe results (sidecar arch/exec, entitlements lint outcome, tracked-artifact list, and — for local-path `CSC_LINK` / `APPLE_API_KEY` — an `exists`/`readable`/`isLocalPath` flag set, with the path itself **not** carried into the evaluator output).
   No process spawning, no filesystem, no env access inside the evaluator.
 - **Thin IO shell** — gathers the facts (spawns `security` / `xcrun` / `plutil`, reads/parses `electron-builder.yml`, runs `git status --porcelain`, stats the sidecar), passes them to the evaluator, renders the report, sets the exit code. Kept minimal and not unit-tested directly (covered by the manual SMOKE line).
 
 **Vitest cases (on the pure evaluator):**
-- Credential groups: none → C1 FAIL; partial Group 1 (missing `APPLE_API_ISSUER`) → FAIL naming the missing var; complete Group 1 → PASS; complete Group 2 → PASS; both groups → PASS; keychain-profile-only → C1 FAIL + INFO line.
-- Identity: empty name list → B1 FAIL; ≥1 `Developer ID Application` name → PASS.
+- Notarization groups (C1): none → FAIL; partial Group 1 (missing `APPLE_API_ISSUER`) → FAIL naming the missing var; complete Group 1 → PASS; complete Group 2 → PASS; **both groups complete → PASS + WARN naming Group 1 as preferred (never FAIL)**; keychain-profile-only → C1 FAIL + INFO line.
+- Signing credentials (B1): no keychain name and no `CSC_LINK` → FAIL; ≥1 `Developer ID Application` name only → PASS (Path A); no keychain name but `CSC_LINK` + `CSC_KEY_PASSWORD` set with a readable local path → PASS (Path B); `CSC_LINK` set as a URL/base64 + `CSC_KEY_PASSWORD` set → PASS (no fetch/decode); `CSC_LINK` set as a local path that is missing/unreadable, no keychain → FAIL; `CSC_LINK` set but `CSC_KEY_PASSWORD` missing, no keychain → FAIL naming the missing var; both keychain identity and CSC env present → PASS.
 - Config invariants: each of `hardenedRuntime` / `notarize` flipped false → FAIL; `mac.binaries` missing the sidecar path → FAIL; all-good → PASS.
 - Sidecar staging: absent → WARN; present+arm64+exec → PASS; present+wrong-arch → FAIL.
 - Hygiene: tracked `dist/` artifact → F1 FAIL; tracked `.p8` → F2 FAIL; clean → PASS.
-- **Redaction:** feed an env map whose credential values are sentinel strings; assert the rendered report (and every `message`/`remediation`) contains **none** of those sentinel values — only var names and `set`/`missing` tokens.
+- **Redaction:** feed an env map whose credential values are sentinel strings — including a sentinel **file path** for `CSC_LINK` and `APPLE_API_KEY` (e.g. `/Users/SENTINEL/key.p8`); assert the rendered report (and every `message`/`remediation`) contains **none** of those sentinel values **or paths** — only var names and `set`/`missing`/`exists`/`readable` tokens.
 - Exit-code mapping: any FAIL → `1`; only WARN/INFO → `0`.
 
 **Manual smoke (SMOKE.md line):** run `pnpm release:mac:check` on this machine; confirm it reports the two missing items and exits non-zero, and `grep` the output to confirm no value-looking secret appears.
@@ -162,7 +180,7 @@ The logic is nontrivial (credential-group completeness, config parsing, status a
 ## 9. Acceptance Criteria (current machine, no credentials)
 
 - [ ] `pnpm release:mac:check` exits **non-zero** (`1`).
-- [ ] The "Missing for a customer-ready notarized DMG" list contains **exactly two** items: the Developer ID Application identity (B1) and one notarization credential group (C1).
+- [ ] The "Missing for a customer-ready notarized DMG" list contains **exactly two** items: signing credentials (B1 — neither a keychain Developer ID Application identity nor `CSC_LINK` + `CSC_KEY_PASSWORD` is present) and one notarization credential group (C1).
 - [ ] All platform/tooling checks (A1–A4) PASS.
 - [ ] All electron-builder config invariants (D1–D5) PASS against the committed `electron-builder.yml`.
 - [ ] Artifact hygiene (F1), secret-file hygiene (F2) PASS; version (G1) PASS (`0.1.0`).
