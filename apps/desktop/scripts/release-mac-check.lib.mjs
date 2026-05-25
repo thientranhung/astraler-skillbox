@@ -234,3 +234,49 @@ export function checkVersion(version) {
     ? { id: "G1", category: "version", status: "PASS", message: `version ${version}` }
     : { id: "G1", category: "version", status: "WARN", message: `version is ${version || "unset"} (set a real release version)` };
 }
+
+/** @param {import('./release-mac-check.lib.mjs').Facts} facts */
+export function evaluate(facts) {
+  const results = [
+    checkPlatform(facts.platform),
+    ...checkTooling(facts.tools),
+    checkSigning(facts),
+    ...checkNotarization(facts.env, facts.fileProbes),
+    ...checkConfig(facts.config, facts.entitlements),
+    checkSidecar(facts.sidecar),
+    ...checkHygiene(facts),
+    checkVersion(facts.version),
+  ];
+  const fails = results.filter((r) => r.status === "FAIL");
+  const missing = fails.map((r) => r.remediation ?? r.message);
+  const exitCode = fails.length > 0 ? 1 : 0;
+  return { results, missing, exitCode };
+}
+
+const CATEGORY_ORDER = ["platform", "signing", "notarization", "config", "sidecar", "hygiene", "version"];
+const CATEGORY_LABEL = {
+  platform: "Platform & tooling",
+  signing: "Signing credentials",
+  notarization: "Notarization credentials",
+  config: "electron-builder config",
+  sidecar: "Sidecar staging",
+  hygiene: "Artifact & secret hygiene",
+  version: "Version",
+};
+
+/** @param {import('./release-mac-check.lib.mjs').CheckResult[]} results @param {string[]} missing */
+export function render(results, missing) {
+  const lines = [];
+  for (const cat of CATEGORY_ORDER) {
+    const rows = results.filter((r) => r.category === cat);
+    if (rows.length === 0) continue;
+    lines.push(CATEGORY_LABEL[cat]);
+    for (const r of rows) lines.push(`  ${r.status.padEnd(4)}  ${r.message}`);
+  }
+  if (missing.length > 0) {
+    lines.push("");
+    lines.push("Missing for a customer-ready notarized DMG:");
+    for (const m of missing) lines.push(`  - ${m}`);
+  }
+  return lines.join("\n");
+}
