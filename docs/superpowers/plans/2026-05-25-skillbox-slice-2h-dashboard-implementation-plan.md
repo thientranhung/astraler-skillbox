@@ -44,7 +44,7 @@ Dedicated `dashboard.get`; backend omits global-skills & updates counts (UI mute
   - CountByHost: 2 hosts, count per host.
   - CountActive: excludes `removed`.
   - CountByModeActive: symlink/direct counted; installs of removed project excluded; absent mode = 0.
-  - Warning exclusion: seed active project (id 1, pp 10, install 100) + removed project (id 2, pp 20, install 200). Warnings: project/1(warning,keep), project/2(exclude), project_provider/20(exclude), install/200(exclude), skill_host_folder/1(error,keep), app/NULL(info,keep), install/100(blocking,keep), resolved row(exclude), app/`critical`(unrecognized,keep-in-list). Assert `CountActiveBySeverity`={info1,warning1,error1,blocking1} (critical not bucketed; Total 4); `ListActive(50)` returns the 5 kept rows in id-desc order.
+  - Warning exclusion: seed active project (id 1, pp 10, install 100) + removed project (id 2, pp 20, install 200). Warnings: project/1(warning,keep), project/2(exclude), project_provider/20(exclude), install/200(exclude), skill_host_folder/1(error,keep), app/NULL(info,keep), install/100(blocking,keep), resolved row(exclude), app/`critical`(unrecognized,exclude). Assert `CountActiveBySeverity`={info1,warning1,error1,blocking1} (critical not bucketed; Total 4); `ListActive(50)` returns the 4 kept rows in id-desc order.
   - Limit: seed >limit, assert len==limit.
 - [ ] Commit.
 
@@ -110,7 +110,7 @@ Dedicated `dashboard.get`; backend omits global-skills & updates counts (UI mute
 - `warnings` serialized as `null` instead of `[]` → init empty slice in handler.
 - Contract drift if generated TS not committed → run `generate:contracts`, commit `shared/generated/**`.
 - Removed-project predicate correctness → covered by dedicated repo test (all 3 scopes + NULL + control).
-- Unrecognized severity skewing counts → switch ignores it; defensive test asserts.
+- Unrecognized severity leaking outside the response contract → count switch ignores it and `ListActive` filters to recognized severities; defensive test asserts.
 
 ## Commit checkpoints
 1. domain types · 2. repo queries+tests · 3. service+tests · 4. contract+generated · 5. handler+wire+allowlist+main · 6. core-client+keys · 7. hook · 8. screen · 9. router+sidebar. Final: full verification green.
