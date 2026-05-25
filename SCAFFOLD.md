@@ -278,6 +278,16 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 - It never builds, signs, notarizes, staples, calls Apple, or mutates the keychain. Run it AFTER
   `pnpm package:mac`. See SMOKE.md → "Release Artifact Verification (Slice 3B2B)".
 
+### Release orchestrator — canonical customer-release command (Slice 3B2C)
+- `pnpm release:mac:full` — composes `release:mac:check` → `package:mac` → `release:mac:verify <dmg>`
+  in the only safe order. Fails fast at the first failed stage.
+- DMG selection: detects exactly one `.dmg` created or modified in `dist/` between before/after snapshots
+  using path+size+mtime metadata. Handles same-name overwrites. Errors on zero or multiple changed DMGs.
+- Missing `dist/` is treated as an empty snapshot (clean checkout can still package).
+- Never passes `--allow-adhoc`. Never calls `package:mac:unsigned`. Never reads or prints secret values.
+- On a machine without Apple credentials: exits non-zero at preflight; `package:mac` is never invoked.
+- See SMOKE.md → "Release Orchestrator (Slice 3B2C)".
+
 ---
 
 ## Release Tag
