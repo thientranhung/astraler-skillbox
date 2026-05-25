@@ -90,3 +90,6 @@ SELECT id, '.agents', 'detect', 10 FROM provider_definitions WHERE key = 'generi
 
 INSERT OR IGNORE INTO provider_path_candidates (provider_definition_id, relative_path, purpose, priority)
 SELECT id, '.agents/skills', 'skills', 10 FROM provider_definitions WHERE key = 'generic_agents';
+
+-- Bump schema version to reflect this migration.
+UPDATE app_settings SET database_version = 2, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = 1;
