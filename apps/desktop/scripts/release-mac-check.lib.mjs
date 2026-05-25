@@ -154,3 +154,60 @@ export function checkTooling(tools) {
         }
   );
 }
+
+const SIDECAR_BUNDLE_PATH = "Contents/Resources/core/skillbox-core";
+
+/** @param {any} config @param {{mainExists:boolean,mainLintOk:boolean,inheritExists:boolean,inheritLintOk:boolean}} entitlements */
+export function checkConfig(config, entitlements) {
+  const mac = (config && config.mac) || {};
+  const out = [];
+
+  out.push(
+    mac.hardenedRuntime === true
+      ? { id: "D1", category: "config", status: "PASS", message: "mac.hardenedRuntime: true" }
+      : { id: "D1", category: "config", status: "FAIL", message: `mac.hardenedRuntime is not true (got ${JSON.stringify(mac.hardenedRuntime)})`, remediation: "Set mac.hardenedRuntime: true in electron-builder.yml" }
+  );
+  out.push(
+    mac.notarize === true
+      ? { id: "D2", category: "config", status: "PASS", message: "mac.notarize: true" }
+      : { id: "D2", category: "config", status: "FAIL", message: `mac.notarize is not true (got ${JSON.stringify(mac.notarize)})`, remediation: "Set mac.notarize: true in electron-builder.yml" }
+  );
+
+  const entOk = entitlements.mainExists && entitlements.mainLintOk && entitlements.inheritExists && entitlements.inheritLintOk;
+  out.push(
+    entOk
+      ? { id: "D3", category: "config", status: "PASS", message: "entitlements present and lint OK" }
+      : { id: "D3", category: "config", status: "FAIL", message: "entitlements missing or failed plutil -lint", remediation: "Ensure build/entitlements.mac.plist and .inherit.plist exist and pass plutil -lint" }
+  );
+
+  const bins = Array.isArray(mac.binaries) ? mac.binaries : [];
+  out.push(
+    bins.includes(SIDECAR_BUNDLE_PATH)
+      ? { id: "D4", category: "config", status: "PASS", message: `mac.binaries includes ${SIDECAR_BUNDLE_PATH}` }
+      : { id: "D4", category: "config", status: "FAIL", message: `mac.binaries does not include ${SIDECAR_BUNDLE_PATH}`, remediation: `Add ${SIDECAR_BUNDLE_PATH} to mac.binaries in electron-builder.yml` }
+  );
+
+  const targets = Array.isArray(mac.target) ? mac.target : [];
+  const hasDmgArm64 = targets.some((t) => t && t.target === "dmg" && Array.isArray(t.arch) && t.arch.includes("arm64"));
+  out.push(
+    hasDmgArm64
+      ? { id: "D5", category: "config", status: "PASS", message: "mac.target includes dmg/arm64" }
+      : { id: "D5", category: "config", status: "FAIL", message: "mac.target does not include a dmg/arm64 target", remediation: "Add a dmg target with arch arm64 to mac.target" }
+  );
+
+  return out;
+}
+
+/** @param {{present:boolean,arch:string|null,executable:boolean}} sidecar */
+export function checkSidecar(sidecar) {
+  if (!sidecar || !sidecar.present) {
+    return { id: "E1", category: "sidecar", status: "WARN", message: "staged sidecar absent (will be built by package:mac via build:core)" };
+  }
+  if (sidecar.arch !== "arm64") {
+    return { id: "E1", category: "sidecar", status: "FAIL", message: `staged sidecar arch is ${sidecar.arch ?? "unknown"}, expected arm64`, remediation: "Rebuild the sidecar for arm64 (pnpm build:core)" };
+  }
+  if (!sidecar.executable) {
+    return { id: "E1", category: "sidecar", status: "FAIL", message: "staged sidecar is not executable", remediation: "Restore the exec bit (rerun pnpm build:core)" };
+  }
+  return { id: "E1", category: "sidecar", status: "PASS", message: "staged sidecar is arm64 + executable" };
+}

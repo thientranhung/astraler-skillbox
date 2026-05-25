@@ -5,6 +5,8 @@ import {
   checkTooling,
   checkSigning,
   checkNotarization,
+  checkConfig,
+  checkSidecar,
 } from "./release-mac-check.lib.mjs";
 
 describe("isSet", () => {
@@ -149,5 +151,56 @@ describe("checkNotarization (C1)", () => {
     const rows = checkNotarization({ APPLE_KEYCHAIN_PROFILE: "prof" }, { cscLink: null, appleApiKey: null });
     expect(c1(rows).status).toBe("FAIL");
     expect(rows.some((r) => r.status === "INFO" && /APPLE_KEYCHAIN_PROFILE/.test(r.message))).toBe(true);
+  });
+});
+
+const GOOD_CONFIG = {
+  mac: {
+    hardenedRuntime: true,
+    notarize: true,
+    binaries: ["Contents/Resources/core/skillbox-core"],
+    target: [{ target: "dmg", arch: ["arm64"] }],
+  },
+};
+const GOOD_ENT = { mainExists: true, mainLintOk: true, inheritExists: true, inheritLintOk: true };
+
+describe("checkConfig (D1–D5)", () => {
+  const ids = (rows) => Object.fromEntries(rows.map((r) => [r.id, r.status]));
+  it("passes the committed signed-default shape", () => {
+    expect(ids(checkConfig(GOOD_CONFIG, GOOD_ENT))).toEqual({ D1: "PASS", D2: "PASS", D3: "PASS", D4: "PASS", D5: "PASS" });
+  });
+  it("fails D1 when hardenedRuntime is off", () => {
+    const cfg = { mac: { ...GOOD_CONFIG.mac, hardenedRuntime: false } };
+    expect(ids(checkConfig(cfg, GOOD_ENT)).D1).toBe("FAIL");
+  });
+  it("fails D2 when notarize is off", () => {
+    const cfg = { mac: { ...GOOD_CONFIG.mac, notarize: false } };
+    expect(ids(checkConfig(cfg, GOOD_ENT)).D2).toBe("FAIL");
+  });
+  it("fails D3 when an entitlement fails lint", () => {
+    expect(ids(checkConfig(GOOD_CONFIG, { ...GOOD_ENT, inheritLintOk: false })).D3).toBe("FAIL");
+  });
+  it("fails D4 when mac.binaries omits the sidecar path", () => {
+    const cfg = { mac: { ...GOOD_CONFIG.mac, binaries: [] } };
+    expect(ids(checkConfig(cfg, GOOD_ENT)).D4).toBe("FAIL");
+  });
+  it("fails D5 when no dmg/arm64 target", () => {
+    const cfg = { mac: { ...GOOD_CONFIG.mac, target: [{ target: "dmg", arch: ["x64"] }] } };
+    expect(ids(checkConfig(cfg, GOOD_ENT)).D5).toBe("FAIL");
+  });
+});
+
+describe("checkSidecar (E1)", () => {
+  it("warns when absent", () => {
+    expect(checkSidecar({ present: false, arch: null, executable: false }).status).toBe("WARN");
+  });
+  it("passes arm64 + executable", () => {
+    expect(checkSidecar({ present: true, arch: "arm64", executable: true }).status).toBe("PASS");
+  });
+  it("fails wrong arch", () => {
+    expect(checkSidecar({ present: true, arch: "x86_64", executable: true }).status).toBe("FAIL");
+  });
+  it("fails not executable", () => {
+    expect(checkSidecar({ present: true, arch: "arm64", executable: false }).status).toBe("FAIL");
   });
 });
