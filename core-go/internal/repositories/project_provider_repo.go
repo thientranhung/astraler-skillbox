@@ -96,4 +96,3 @@ func toProviderSummary(r projectProviderRow) domain.ProjectProviderSummary {
 		EntryCount:          r.entryCount,
 	}
 }
-
