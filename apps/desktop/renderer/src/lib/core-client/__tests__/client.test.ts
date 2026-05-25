@@ -68,6 +68,55 @@ describe("invoke", () => {
     expect(err.rpcCode).toBe(1001);
   });
 
+  it("maps Electron-prefixed JSON-RPC errors to AppClientError", async () => {
+    const rpcError = {
+      code: 1001,
+      message: "Invalid host folder path",
+      data: {
+        code: "validation_error",
+        rpcCode: 1001,
+        userMessage: "Invalid host folder path",
+        technicalMessage: "not_a_directory: path is not a directory",
+      },
+    };
+    (window as Window & typeof globalThis & { core: Window["core"] }).core = {
+      invoke: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(`Error invoking remote method 'core:invoke': Error: ${JSON.stringify(rpcError)}`),
+        ),
+      onEvent: vi.fn(),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err: any = await invoke("host.choose", { path: "/etc/hosts" }).catch((e) => e);
+    expect(err).toBeInstanceOf(AppClientError);
+    expect(err.code).toBe("validation_error");
+    expect(err.userMessage).toBe("Invalid host folder path");
+    expect(err.technicalMessage).toBe("not_a_directory: path is not a directory");
+    expect(err.rpcCode).toBe(1001);
+  });
+
+  it("maps structured preload errors to AppClientError", async () => {
+    (window as Window & typeof globalThis & { core: Window["core"] }).core = {
+      invoke: vi.fn().mockRejectedValue({
+        code: "validation_error",
+        rpcCode: 1001,
+        userMessage: "Invalid host folder path",
+        technicalMessage: "not_a_directory: path is not a directory",
+      }),
+      onEvent: vi.fn(),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err: any = await invoke("host.choose", { path: "/etc/hosts" }).catch((e) => e);
+    expect(err).toBeInstanceOf(AppClientError);
+    expect(err.code).toBe("validation_error");
+    expect(err.userMessage).toBe("Invalid host folder path");
+    expect(err.technicalMessage).toBe("not_a_directory: path is not a directory");
+    expect(err.rpcCode).toBe(1001);
+  });
+
   it("falls back to generic AppClientError for non-JSON errors", async () => {
     (window as Window & typeof globalThis & { core: Window["core"] }).core = {
       invoke: vi.fn().mockRejectedValue(new Error("connection refused")),
