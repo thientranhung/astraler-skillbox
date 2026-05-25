@@ -63,6 +63,8 @@ type ProjectService struct {
 	// install deps — nil until WithInstallDeps is called
 	installFS        InstallFilesystem
 	activeHostReader ActiveHostReader
+	// installSkillReader is separate from skillsByHostLister (scan) to avoid silent overwrite.
+	installSkillReader SkillsByHostLister
 }
 
 // NewProjectService constructs a ProjectService for read/add operations.
@@ -114,7 +116,7 @@ func (s *ProjectService) WithInstallDeps(
 ) *ProjectService {
 	s.installFS = installFS
 	s.activeHostReader = activeHostReader
-	s.skillsByHostLister = hostSkillReader
+	s.installSkillReader = hostSkillReader
 	return s
 }
 
