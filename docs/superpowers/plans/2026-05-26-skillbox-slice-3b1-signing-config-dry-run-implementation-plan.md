@@ -124,10 +124,12 @@ Notes:
 - `mac.binaries: [Contents/Resources/core/skillbox-core]` — relative to the built `.app` (per spec §3.1). Task 6 confirms electron-builder 26.8.1 actually signs the sidecar at this path; if the packed layout differs, adjust to the implementation-verified equivalent and re-run.
 - `notarize: true` is inert without credentials; the dry-run and unsigned commands both pass `-c.mac.notarize=false` to be explicit.
 
-- [ ] **Step 2: Validate YAML parses (no packing yet)**
+- [ ] **Step 2: Readability/sanity check (NOT a config validation)**
 
-Run: `(cd apps/desktop && node -e "import('js-yaml').then(y=>console.log('yaml-ok')).catch(()=>require('node:fs').readFileSync('electron-builder.yml','utf8')&&console.log('read-ok'))")` — or simply confirm the file reads. A definitive parse check happens when electron-builder runs in Task 6.
-Expected: file is well-formed YAML.
+This is a quick visual sanity check, not a validation — the **only** authoritative parse/config-load check is the electron-builder run in Task 6.
+
+Run: `git --no-pager diff apps/desktop/electron-builder.yml` and eyeball that the `mac:` block matches Step 1 (keys present, indentation consistent, `identity: null` removed). Optionally confirm indentation with `grep -n "  " apps/desktop/electron-builder.yml`.
+Expected: the diff reflects exactly the Step 1 changes and nothing else.
 
 - [ ] **Step 3: Commit**
 
@@ -185,9 +187,9 @@ git commit -m "feat(3b1): add signed package:mac, override unsigned path, bump v
 
 - [ ] **Step 1: Append a 3B1 dry-run section**
 
-After the existing "Packaged macOS DMG Smoke (Slice 3A)" section, append:
+After the existing "Packaged macOS DMG Smoke (Slice 3A)" section, append the block below (shown inside a four-backtick fence so its nested ```sh fences are unambiguous — insert only the inner Markdown, not the four-backtick wrapper):
 
-```markdown
+````markdown
 ## Signed Packaging Dry-Run (Slice 3B1)
 
 No Apple credentials required. Proves the signing config is valid, entitlements
@@ -223,11 +225,13 @@ electron-builder's **own** ad-hoc signing (not a manual rescue).
   rescue a `mac.binaries` misconfiguration and mask the exact failure this step exists to catch.
 - [ ] If the sidecar shows **no** signature, `mac.binaries` did not reach it — fix the
   path in `electron-builder.yml` (§3.1 of the spec) and re-run before proceeding.
-```
+````
 
 - [ ] **Step 2: Append a gated 3B2 section**
 
-```markdown
+Append the block below (four-backtick fence wraps the nested ```sh fence; insert only the inner Markdown):
+
+````markdown
 ## Signed + Notarized Smoke (Slice 3B2 — requires Apple Developer ID)
 
 DO NOT run in 3B1. Requires: Apple Developer Program, a Developer ID Application
@@ -261,7 +265,7 @@ osascript -e 'quit app "Astraler Skillbox"'
 rm -rf "$TMP"
 pgrep -fl skillbox-core                     # expect: nothing after quit
 ```
-```
+````
 
 - [ ] **Step 3: Commit**
 
@@ -324,7 +328,7 @@ No code changes — run every gate and the 3B1 dry-run. Commit nothing unless a 
 - [ ] **Step 1: Go tests** — `(cd core-go && go test ./...)` → all PASS (sanity; nothing Go changed).
 - [ ] **Step 2: Frontend typecheck** — `(cd apps/desktop && pnpm typecheck)` → PASS.
 - [ ] **Step 3: Frontend unit tests** — `(cd apps/desktop && pnpm test --run)` → PASS.
-- [ ] **Step 4: Contract drift** — `(cd apps/desktop && pnpm check:contracts-drift)` → PASS (no contract changes; if it reports drift, something out of scope changed — revert it).
+- [ ] **Step 4: Contract drift** — `(cd apps/desktop && pnpm check:contracts-drift)` → PASS (no contract changes). If it reports drift: **stop**, run `git diff` (and `git status`) to identify what changed. Only revert changes **this slice made** to contract/schema/generated files; if the drift looks pre-existing or unrelated to 3B1, do **not** revert — ask the lead whether it predates this slice.
 - [ ] **Step 5: electron-vite build** — `(cd apps/desktop && pnpm build)` → builds `out/main`, `out/preload`, `out/renderer`.
 - [ ] **Step 6: Entitlements lint** — `plutil -lint apps/desktop/build/entitlements.mac.plist apps/desktop/build/entitlements.mac.inherit.plist` → both `OK`.
 - [ ] **Step 7: Unsigned regression** — `(cd apps/desktop && pnpm package:mac:unsigned)` → produces `dist/Astraler Skillbox-0.1.0-arm64.dmg`.
@@ -368,7 +372,7 @@ No code changes — run every gate and the 3B1 dry-run. Commit nothing unless a 
 
 ## Notes for the Executing Agent
 
-- This slice changes **no** application code. If `pnpm check:contracts-drift` reports drift, you changed something out of scope — revert it.
+- This slice changes **no** application code. If `pnpm check:contracts-drift` reports drift, **stop** and inspect `git diff` / `git status`. Revert only the changes **this slice introduced**; never blanket-revert the worktree, since it may contain unrelated or pre-existing user changes. If the drift is not from this slice, ask the lead before touching it.
 - `mac.binaries` path is the single most likely thing to get wrong. Treat Task 6 Step 8 as the gate: the sidecar must be signed by electron-builder itself, observed **before** any manual `codesign`.
 - Do not "fix" a missing sidecar signature with `codesign -s - --deep --force` — that masks the real config bug. Fix the path instead.
 - Running the bare signed `pnpm package:mac` on a machine without a Developer ID cert is expected to fail and is **not** a gate. The 3B1 proof is the ad-hoc (`-c.mac.identity=-`) path only.
