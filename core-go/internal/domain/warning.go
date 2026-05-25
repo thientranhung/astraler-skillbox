@@ -5,9 +5,12 @@ import "time"
 type WarningScopeType string
 
 const (
-	WarningScopeApp              WarningScopeType = "app"
-	WarningScopeSkillHostFolder  WarningScopeType = "skill_host_folder"
-	WarningScopeSkill            WarningScopeType = "skill"
+	WarningScopeApp             WarningScopeType = "app"
+	WarningScopeSkillHostFolder WarningScopeType = "skill_host_folder"
+	WarningScopeSkill           WarningScopeType = "skill"
+	WarningScopeProject         WarningScopeType = "project"
+	WarningScopeProjectProvider WarningScopeType = "project_provider"
+	WarningScopeInstall         WarningScopeType = "install"
 )
 
 func (s WarningScopeType) String() string { return string(s) }

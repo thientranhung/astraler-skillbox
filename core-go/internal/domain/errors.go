@@ -84,6 +84,10 @@ func NewDatabaseError(userMsg, techMsg string) *AppError {
 	return &AppError{Code: CodeDatabase, UserMessage: userMsg, TechnicalMessage: techMsg}
 }
 
+func NewProviderError(userMsg, techMsg string) *AppError {
+	return &AppError{Code: CodeProvider, UserMessage: userMsg, TechnicalMessage: techMsg}
+}
+
 func NewConflictError(userMsg, techMsg string) *AppError {
 	return &AppError{Code: CodeConflict, UserMessage: userMsg, TechnicalMessage: techMsg}
 }

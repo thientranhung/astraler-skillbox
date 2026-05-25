@@ -1,0 +1,52 @@
+package domain
+
+import "time"
+
+type ProviderStatus string
+
+const (
+	ProviderStatusSupported    ProviderStatus = "supported"
+	ProviderStatusExperimental ProviderStatus = "experimental"
+	ProviderStatusUnsupported  ProviderStatus = "unsupported"
+	ProviderStatusDisabled     ProviderStatus = "disabled"
+)
+
+func (s ProviderStatus) String() string { return string(s) }
+
+type DetectionStatus string
+
+const (
+	DetectionStatusDetected         DetectionStatus = "detected"
+	DetectionStatusConfigured       DetectionStatus = "configured"
+	DetectionStatusMissing          DetectionStatus = "missing"
+	DetectionStatusUnsupported      DetectionStatus = "unsupported"
+	DetectionStatusInvalidStructure DetectionStatus = "invalid_structure"
+	DetectionStatusFormatUnknown    DetectionStatus = "format_unknown"
+)
+
+func (s DetectionStatus) String() string { return string(s) }
+
+type ProviderDefinition struct {
+	ID                 int64
+	Key                string
+	DisplayName        string
+	ProviderType       string
+	IconKey            *string
+	Status             ProviderStatus
+	CanCreateStructure bool
+	HasGlobalLevel     bool
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+type ProjectProvider struct {
+	ID                   int64
+	ProjectID            int64
+	ProviderDefinitionID int64
+	DetectedPath         *string
+	SkillsPath           *string
+	DetectionStatus      DetectionStatus
+	LastScannedAt        *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
