@@ -379,6 +379,24 @@ pgrep -fl skillbox-core                     # expect: nothing after quit
 
 ---
 
+## Release Preflight (Slice 3B2A)
+
+Read-only, offline credential/config doctor. No Apple credentials required; makes no
+network call, signs/notarizes/builds nothing, and never mutates the keychain.
+
+- [ ] Run the gate: `(cd apps/desktop && pnpm release:mac:check); echo "exit=$?"`
+- [ ] On a machine WITHOUT credentials: `Signing credentials` and `Notarization credentials`
+  are FAIL; the "Missing for a customer-ready notarized DMG" list contains exactly those
+  two items; `exit=1`. Platform/tooling and electron-builder config invariants are PASS.
+- [ ] No secret values/paths in output (targets real path/PEM indicators; variable names like `CSC_KEY_PASSWORD` are expected and fine):
+  ```sh
+  (cd apps/desktop && pnpm release:mac:check 2>&1 | grep -E '/Users/|-----BEGIN') || echo "clean"
+  ```
+  Expected: `clean`.
+- [ ] When credentials ARE present (3B2), the same command exits `0` — run it before `pnpm package:mac`.
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:
