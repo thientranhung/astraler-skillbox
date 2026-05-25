@@ -21,6 +21,7 @@
     { "input": "methods/project.remove.json",            "output": "methods/project-remove.ts" },
     { "input": "electron/dialog.openPath.json",          "output": "electron/dialog-open-path.ts" },
     { "input": "electron/dialog.openTerminal.json",      "output": "electron/dialog-open-terminal.ts" },
-    { "input": "methods/install.skill.json", "output": "methods/install-skill.ts" }
+    { "input": "methods/install.skill.json", "output": "methods/install-skill.ts" },
+    { "input": "methods/remove.skill.json", "output": "methods/remove-skill.ts" }
   ]
 }

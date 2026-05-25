@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemoveSkillMethod",
+  "description": "Contract for remove.skill JSON-RPC method. Removes one current symlink install from a project provider; runs asynchronously and reports progress via operation.progress notifications.",
+  "oneOf": [
+    { "$ref": "#/definitions/RemoveSkillRequest" },
+    { "$ref": "#/definitions/RemoveSkillResponse" }
+  ],
+  "definitions": {
+    "RemoveSkillRequest": {
+      "title": "RemoveSkillRequest",
+      "description": "Params for remove.skill.",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "integer",
+          "description": "ID of the project the install belongs to"
+        },
+        "installId": {
+          "type": "integer",
+          "description": "ID of the installed-skill row to remove (from project.get entries)"
+        }
+      },
+      "required": ["projectId", "installId"],
+      "additionalProperties": false
+    },
+    "RemoveSkillResponse": {
+      "title": "RemoveSkillResponse",
+      "description": "Immediate response — the removal runs asynchronously. Errors: validation_error (1001) project/install not found or not removable; conflict_error (1005) project busy or entry changed on disk; filesystem_error (1002) unlink failed.",
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "integer",
+          "description": "ID of the created remove operation; use with operation.progress notifications and operation.cancel"
+        }
+      },
+      "required": ["operationId"],
+      "additionalProperties": false
+    }
+  }
+}

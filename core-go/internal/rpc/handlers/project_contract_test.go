@@ -133,3 +133,9 @@ func TestContract_InstallSkill_Response(t *testing.T) {
 	resp := installSkillResponse{OperationID: 42}
 	validateAgainstSchema(t, schema, resp)
 }
+
+func TestContract_RemoveSkill_Response(t *testing.T) {
+	schema := loadSchema(t, "methods/remove.skill.json")
+	resp := removeSkillResponse{OperationID: 51}
+	validateAgainstSchema(t, schema, resp)
+}
