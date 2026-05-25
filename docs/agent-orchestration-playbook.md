@@ -17,10 +17,10 @@ Use this sequence for substantial work:
 3. Ask lead to review the spec.
 4. Ask user to approve the spec.
 5. Write the implementation plan.
-6. Use `/goal` only after the implementation plan is clear.
+6. Use `/goal` only for a planned milestone or work package with clear acceptance criteria.
 7. Implement, review, test, and smoke-test.
 
-Do not use `/goal` during brainstorming or sketching. Do not move to the next slice until the current slice is reviewed and explicitly closed.
+Do not use `/goal` during brainstorming, sketching, quick fixes, or small review follow-ups. Do not move to the next slice until the current slice is reviewed and explicitly closed.
 
 ## tmux Hygiene Checklist
 
@@ -57,6 +57,41 @@ Read /tmp/skillbox-agent-task.md and follow it exactly. Stop after the requested
 If the TUI shows pasted text and does not run, send Enter once more only after confirming it is waiting for submission. Do not spam Enter.
 
 Do not run heredoc commands or non-interactive review commands inside an agent pane, for example `codex review --commit ... <<EOF`. Those commands can drop the agent out of the TUI workflow and pollute the pane with shell state. If a non-interactive command is needed, run it from the orchestrator shell instead, not from `agent-tech-skillbox` or `agent-lead-skillbox`.
+
+## When To Use `/goal`
+
+Use `/goal` as a durable execution contract, not as the default way to ask an agent to do work. It is appropriate when the agent should keep working across multiple steps until a defined outcome is reached.
+
+Use `/goal` for:
+
+- a slice, milestone, or phase from an approved implementation plan,
+- a bounded work package that touches multiple files or layers,
+- a smoke-test-and-fix loop with a clear stop condition,
+- work that has explicit deliverables, verification commands, and a report/commit checkpoint.
+
+Do not use `/goal` for:
+
+- brainstorm/proposal work,
+- asking for status or clarification,
+- one-file or two-file quick edits,
+- narrow review findings,
+- reviewer prompts,
+- small follow-up commits after lead review.
+
+For narrow review findings, send a normal prompt to `agent-tech-skillbox`:
+
+```text
+Fix lead finding in commit abc123. Scope: file.go only. Run go test ./...
+Commit a small fix and report SHA. Do not touch CLAUDE.md.
+```
+
+For lead review, always use a normal prompt:
+
+```text
+Review commit abc123 only. Do not edit files. Findings first. Verify: [commands].
+```
+
+If a small finding expands into a larger design or cross-layer change, stop and create a new plan or planned milestone before using `/goal`.
 
 ## `/goal` Prompt Shape
 
