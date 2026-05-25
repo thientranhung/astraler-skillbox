@@ -44,6 +44,17 @@ func (r *InstallRepo) ListByProject(ctx context.Context, projectID int64) ([]dom
 	return installs, rows.Err()
 }
 
+// DeleteByID hard-deletes a single install row. It is the only hard delete of an
+// install row in the app. Idempotent: deleting an absent id affects 0 rows and
+// is not an error.
+func (r *InstallRepo) DeleteByID(ctx context.Context, installID int64) (int64, error) {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM installs WHERE id = ?`, installID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 func scanInstall(rows *sql.Rows) (domain.Install, error) {
 	var inst domain.Install
 	var skillID, installedFromHostFolderID sql.NullInt64

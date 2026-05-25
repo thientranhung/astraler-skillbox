@@ -111,3 +111,43 @@ func TestInstallRepo_ListByProject_OtherProjectIsolated(t *testing.T) {
 		t.Errorf("expected 0 installs for proj-2, got %d", len(installs))
 	}
 }
+
+func TestInstallRepo_DeleteByID_DeletesOneRow(t *testing.T) {
+	db := NewTestDB(t)
+	projRepo := NewProjectRepo(db)
+	repo := NewInstallRepo(db)
+	ctx := context.Background()
+
+	pid := seedProject(t, projRepo, "proj-a", "/tmp/proj-a")
+	defID := getGenericAgentsDefID(t, db)
+	ppID := seedProjectProvider(t, db, pid, defID)
+	idX := seedInstall(t, db, ppID, "skill-x", "/tmp/proj-a/.agents/skills/skill-x")
+	seedInstall(t, db, ppID, "skill-y", "/tmp/proj-a/.agents/skills/skill-y")
+
+	n, err := repo.DeleteByID(ctx, idX)
+	if err != nil {
+		t.Fatalf("DeleteByID: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("rowsAffected: got %d want 1", n)
+	}
+	installs, err := repo.ListByProject(ctx, pid)
+	if err != nil {
+		t.Fatalf("ListByProject: %v", err)
+	}
+	if len(installs) != 1 || installs[0].SkillName != "skill-y" {
+		t.Errorf("expected only skill-y to remain, got %+v", installs)
+	}
+}
+
+func TestInstallRepo_DeleteByID_AbsentIsNoOp(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewInstallRepo(db)
+	n, err := repo.DeleteByID(context.Background(), 99999)
+	if err != nil {
+		t.Fatalf("DeleteByID: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("rowsAffected: got %d want 0", n)
+	}
+}
