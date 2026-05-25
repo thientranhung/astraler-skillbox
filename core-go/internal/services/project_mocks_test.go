@@ -304,3 +304,45 @@ func (m *mockAdapter) Key() string { return m.key }
 func (m *mockAdapter) Detect(_ string, _ providers.FsReader) (providers.DetectResult, error) {
 	return m.result, m.err
 }
+
+// -- mock remove filesystem --
+
+type mockRemoveFS struct {
+	facts        filesystem.EntryFacts
+	resolveErr   error
+	removeErr    error
+	removeCalls  int
+	removedPaths []string
+}
+
+func (m *mockRemoveFS) ResolveEntry(_ string) (filesystem.EntryFacts, error) {
+	return m.facts, m.resolveErr
+}
+
+func (m *mockRemoveFS) RemoveSymlink(path string) error {
+	m.removeCalls++
+	if m.removeErr != nil {
+		return m.removeErr
+	}
+	m.removedPaths = append(m.removedPaths, path)
+	return nil
+}
+
+// -- mock install deleter --
+
+type mockInstallDeleter struct {
+	err        error
+	deletedIDs []int64
+	rows       int64
+}
+
+func (m *mockInstallDeleter) DeleteByID(_ context.Context, installID int64) (int64, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
+	m.deletedIDs = append(m.deletedIDs, installID)
+	if m.rows != 0 {
+		return m.rows, nil
+	}
+	return 1, nil
+}
