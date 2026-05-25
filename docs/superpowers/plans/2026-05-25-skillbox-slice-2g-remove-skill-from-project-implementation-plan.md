@@ -46,6 +46,7 @@ Approved design: `docs/superpowers/specs/2026-05-25-skillbox-slice-2g-remove-ski
 **Renderer (`apps/desktop/renderer/src/`):**
 - Modify `lib/core-client/methods.ts` — `removeSkill` wrapper.
 - Create `features/projects/use-remove-skill.ts` — mutation hook.
+- Create `features/projects/__tests__/use-remove-skill.test.tsx` — hook terminal/invalidation tests.
 - Create `features/projects/remove-skill-dialog.tsx` — confirmation dialog.
 - Modify `screens/project-detail-screen.tsx` — Actions column + dialog wiring.
 - Create `features/projects/__tests__/remove-skill-dialog.test.tsx` — dialog + gating tests.
@@ -528,6 +529,7 @@ import (
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
+	"github.com/astraler/skillbox/core-go/internal/operations"
 	"github.com/astraler/skillbox/core-go/internal/providers"
 )
 
@@ -714,7 +716,39 @@ func TestRemoveSkill_Sync_ProjectNotActive(t *testing.T) {
 	_, err := f.svc.RemoveSkill(context.Background(), 1, 1001)
 	assertAppErrorCode(t, err, domain.CodeValidation)
 }
+
+func TestRemoveSkill_Sync_PathEscapesRoot(t *testing.T) {
+	f := newRemoveFixture(t)
+
+	// A removable (symlink + current) install whose ProjectSkillPath is OUTSIDE
+	// the project root. The within-root guard must reject it synchronously,
+	// before the operation is ever queued — so no unlink/rescan/delete happens.
+	outside := filepath.Join(t.TempDir(), "outside-skill")
+	bad := f.install
+	bad.ProjectSkillPath = outside
+	f.svc.installRepo = &mockProjectInstallRepo{byProject: map[int64][]domain.Install{1: {bad}}}
+
+	// Spy runner: record whether Start is ever reached.
+	startCalled := false
+	spyRunner := &mockRunner{startFn: func(_ context.Context, _ operations.Target, _ domain.OperationType, _ operations.WorkFn) (int64, error) {
+		startCalled = true
+		return 1, nil
+	}}
+	f.svc.WithScanDeps(spyRunner, f.scanRepo)
+
+	_, err := f.svc.RemoveSkill(context.Background(), 1, 1001)
+	assertAppErrorCode(t, err, domain.CodeValidation)
+	if startCalled {
+		t.Errorf("RemoveSkill must reject before runner.Start; Start was called")
+	}
+	if f.removeFS.removeCalls != 0 || len(f.deleter.deletedIDs) != 0 || f.scanRepo.fullScanCallCount != 0 {
+		t.Errorf("no work should run on path-escape reject: remove=%d del=%v scan=%d",
+			f.removeFS.removeCalls, len(f.deleter.deletedIDs), f.scanRepo.fullScanCallCount)
+	}
+}
 ```
+
+The `/etc/hosts`-style "absolute path outside root" case is covered by `outside` here: it is an absolute path under a fresh `t.TempDir()` that is a sibling of (never inside) the project root, so `isWithin(root, outside)` is false. Using a temp path keeps the test hermetic and OS-portable instead of depending on `/etc`.
 
 Add this shared assertion helper at the bottom of the same new test file:
 
@@ -956,7 +990,7 @@ func (s *ProjectService) removeSkillInternal(
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `cd core-go && go test ./internal/services/ -run 'RemoveSkill' -v`
-Expected: PASS (9 tests).
+Expected: PASS (10 tests).
 
 - [ ] **Step 6: Run the service package with the race detector**
 
@@ -1369,8 +1403,200 @@ git commit -m "feat(2g): add removeSkill core-client wrapper"
 
 **Files:**
 - Create: `apps/desktop/renderer/src/features/projects/use-remove-skill.ts`
+- Test: `apps/desktop/renderer/src/features/projects/__tests__/use-remove-skill.test.tsx` (create)
 
-- [ ] **Step 1: Implement the hook**
+- [ ] **Step 1: Write the failing hook test**
+
+Create `apps/desktop/renderer/src/features/projects/__tests__/use-remove-skill.test.tsx` (mirrors `use-install-skill.test.tsx`: covers the buffered-terminal success/failure path, the subscribed-terminal success/failure path, invalidating both `projects.detail` and `projects.list` on terminal events, and NOT invalidating on intermediate running/queued events):
+
+```tsx
+// @vitest-environment happy-dom
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
+import type { OperationProgressNotification } from "@contracts/index.js";
+
+vi.mock("../../../lib/core-client/methods.js", () => ({
+  methods: { removeSkill: vi.fn() },
+}));
+
+vi.mock("../../../lib/core-client/progress.js", () => ({
+  subscribeOperationProgress: vi.fn(),
+  subscribeAllProgress: vi.fn(),
+}));
+
+vi.mock("sonner", () => ({
+  toast: {
+    loading: vi.fn().mockReturnValue("mock-toast-id"),
+    success: vi.fn(),
+    error: vi.fn(),
+    dismiss: vi.fn(),
+  },
+}));
+
+import { useRemoveSkill } from "../use-remove-skill.js";
+import { methods } from "../../../lib/core-client/methods.js";
+import { subscribeOperationProgress, subscribeAllProgress } from "../../../lib/core-client/progress.js";
+import { toast } from "sonner";
+
+const mockRemoveSkill = methods.removeSkill as ReturnType<typeof vi.fn>;
+const mockSubscribeOpProgress = subscribeOperationProgress as ReturnType<typeof vi.fn>;
+const mockSubscribeAllProgress = subscribeAllProgress as ReturnType<typeof vi.fn>;
+
+const REQ = { projectId: 5, installId: 88 };
+
+function makeWrapper() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return {
+    client,
+    Wrapper: function Wrapper({ children }: { children: React.ReactNode }) {
+      return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    },
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockSubscribeAllProgress.mockReturnValue(vi.fn());
+  mockSubscribeOpProgress.mockReturnValue(vi.fn());
+});
+
+describe("useRemoveSkill — subscribed terminal path", () => {
+  it("invalidates detail + list and shows success toast on terminal success", async () => {
+    mockRemoveSkill.mockResolvedValue({ operationId: 7 });
+    let progressCb: ((e: OperationProgressNotification) => void) | null = null;
+    mockSubscribeOpProgress.mockImplementation((_id, cb) => {
+      progressCb = cb;
+      return vi.fn();
+    });
+
+    const { client, Wrapper } = makeWrapper();
+    vi.spyOn(client, "invalidateQueries").mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRemoveSkill(), { wrapper: Wrapper });
+
+    await act(async () => { result.current.mutate(REQ); });
+    await waitFor(() => expect(result.current.operationId).toBe(7));
+
+    await act(async () => {
+      progressCb!({ operationId: 7, status: "success", phase: "done", processed: null, total: null, message: null, metadata: { skillName: "documentation-writer", providerKey: "generic_agents", alreadyAbsent: false } });
+    });
+
+    expect(toast.success).toHaveBeenCalledWith("Removed documentation-writer", expect.objectContaining({ id: "mock-toast-id" }));
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 5] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+    expect(result.current.operationId).toBeNull();
+  });
+
+  it("shows error toast and invalidates on terminal failed event", async () => {
+    mockRemoveSkill.mockResolvedValue({ operationId: 7 });
+    let progressCb: ((e: OperationProgressNotification) => void) | null = null;
+    mockSubscribeOpProgress.mockImplementation((_id, cb) => {
+      progressCb = cb;
+      return vi.fn();
+    });
+
+    const { client, Wrapper } = makeWrapper();
+    vi.spyOn(client, "invalidateQueries").mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRemoveSkill(), { wrapper: Wrapper });
+
+    await act(async () => { result.current.mutate(REQ); });
+    await waitFor(() => expect(result.current.operationId).toBe(7));
+
+    await act(async () => {
+      progressCb!({ operationId: 7, status: "failed", phase: "done", processed: null, total: null, message: "permission denied", metadata: null });
+    });
+
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining("permission denied"),
+      expect.objectContaining({ id: "mock-toast-id" }),
+    );
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 5] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+    expect(result.current.operationId).toBeNull();
+  });
+
+  it("does NOT invalidate on intermediate running/queued events", async () => {
+    mockRemoveSkill.mockResolvedValue({ operationId: 7 });
+    let progressCb: ((e: OperationProgressNotification) => void) | null = null;
+    mockSubscribeOpProgress.mockImplementation((_id, cb) => {
+      progressCb = cb;
+      return vi.fn();
+    });
+
+    const { client, Wrapper } = makeWrapper();
+    vi.spyOn(client, "invalidateQueries").mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRemoveSkill(), { wrapper: Wrapper });
+
+    await act(async () => { result.current.mutate(REQ); });
+    await waitFor(() => expect(result.current.operationId).toBe(7));
+
+    await act(async () => {
+      progressCb!({ operationId: 7, status: "queued", phase: "validating", processed: null, total: null, message: null });
+      progressCb!({ operationId: 7, status: "running", phase: "removing_symlink", processed: null, total: null, message: "removing_symlink" });
+    });
+
+    expect(client.invalidateQueries).not.toHaveBeenCalled();
+    expect(result.current.operationId).toBe(7);
+  });
+});
+
+describe("useRemoveSkill — buffered terminal path (event arrives before response)", () => {
+  it("shows success toast immediately when terminal success was buffered", async () => {
+    mockSubscribeAllProgress.mockImplementation((cb: (p: OperationProgressNotification) => void) => {
+      cb({ operationId: 99, status: "success", phase: "done", processed: null, total: null, message: null, metadata: { skillName: "adr-helper", providerKey: "generic_agents", alreadyAbsent: true } });
+      return vi.fn();
+    });
+    mockRemoveSkill.mockResolvedValue({ operationId: 99 });
+
+    const { client, Wrapper } = makeWrapper();
+    vi.spyOn(client, "invalidateQueries").mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRemoveSkill(), { wrapper: Wrapper });
+
+    await act(async () => { result.current.mutate(REQ); });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockSubscribeOpProgress).not.toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith("Removed adr-helper");
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 5] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+  });
+
+  it("shows error toast immediately when terminal failure was buffered", async () => {
+    mockSubscribeAllProgress.mockImplementation((cb: (p: OperationProgressNotification) => void) => {
+      cb({ operationId: 99, status: "failed", phase: "done", processed: null, total: null, message: "entry changed on disk", metadata: null });
+      return vi.fn();
+    });
+    mockRemoveSkill.mockResolvedValue({ operationId: 99 });
+
+    const { client, Wrapper } = makeWrapper();
+    vi.spyOn(client, "invalidateQueries").mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRemoveSkill(), { wrapper: Wrapper });
+
+    await act(async () => { result.current.mutate(REQ); });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockSubscribeOpProgress).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("entry changed on disk"));
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 5] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd apps/desktop && pnpm test -- use-remove-skill`
+Expected: FAIL — cannot resolve `../use-remove-skill.js`.
+
+- [ ] **Step 3: Implement the hook**
 
 Create `apps/desktop/renderer/src/features/projects/use-remove-skill.ts` (mirrors `use-install-skill.ts`: buffer progress during the call, check the buffer for an already-terminal event, otherwise subscribe; invalidate detail + list on the terminal result only):
 
@@ -1492,16 +1718,21 @@ export function useRemoveSkill() {
 }
 ```
 
-- [ ] **Step 2: Typecheck**
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd apps/desktop && pnpm test -- use-remove-skill`
+Expected: PASS (5 tests).
+
+- [ ] **Step 5: Typecheck**
 
 Run: `cd apps/desktop && pnpm typecheck`
 Expected: exits 0.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/desktop/renderer/src/features/projects/use-remove-skill.ts
-git commit -m "feat(2g): add useRemoveSkill hook"
+git add apps/desktop/renderer/src/features/projects/use-remove-skill.ts apps/desktop/renderer/src/features/projects/__tests__/use-remove-skill.test.tsx
+git commit -m "feat(2g): add useRemoveSkill hook with tests"
 ```
 
 ---
@@ -1838,8 +2069,9 @@ git commit -m "test(2g): verification fixups for remove skill slice"
 - Error mapping (validation/conflict/filesystem/database) → Task 5 (`domain.New*Error`) + Task 7 conflict→1005 test. ✓
 - Electron allowlist + preload path (allowlist is the gate; preload forwards allowlisted methods) → Task 9. ✓
 - Renderer core-client + hook + confirmation dialog (skill/provider/path; not-affected note) + disabled for non-removable → Tasks 10, 11, 12. ✓
-- Tests: gateway, repo, service (happy, already-absent, not-removable incl. old_host, not-found, not-active, divergence real-dir, divergence outside-host, unlink-failure), contract drift, renderer hook/dialog/gating → Tasks 2, 3, 5, 6, 10, 12. ✓
-- Path-escape rejection → Task 5 `RemoveSkill` sync check (`isWithin(root, path)`); covered by the within-root guard (the `removeFixture` paths are inside root; the guard is unit-exercised via the implementation and the divergence tests assert no unlink on stale state).
+- Tests: gateway, repo, service (happy, already-absent, not-removable incl. old_host, not-found, not-active, path-escape, divergence real-dir, divergence outside-host, unlink-failure), contract drift, renderer wrapper/hook/dialog/gating → Tasks 2, 3, 5, 6, 10, 11, 12. ✓
+- Path-escape rejection → Task 5 `RemoveSkill` sync check (`isWithin(root, path)`) with an explicit `TestRemoveSkill_Sync_PathEscapesRoot` test: a removable (symlink+current) install whose `ProjectSkillPath` is an absolute path outside the project root is rejected synchronously, asserting (via a spy runner) that `runner.Start` is never reached and no unlink/rescan/delete runs. ✓
+- Renderer terminal-only invalidation (both `projects.detail` and `projects.list`) on buffered + subscribed success/failure, and NO invalidation on intermediate running/queued events → Task 11 `use-remove-skill.test.tsx`. ✓
 - Manual UI smoke incl. the "changed on disk" conflict path → Task 13 Step 5. ✓
 
 **2. Placeholder scan:** No incomplete-work or "similar to above" placeholders. Every code step shows complete, paste-ready code, and the provider display name is resolved at the screen level (Task 12 Step 5e) rather than inside `EntryRow`.
