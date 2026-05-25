@@ -20,7 +20,8 @@
     "release:mac:verify": "node scripts/release-mac-verify.mjs",
     "release:mac:manifest": "node scripts/release-mac-manifest.mjs",
     "release:mac:full": "node scripts/release-mac-full.mjs",
-    "release:mac:dry-run": "node scripts/release-mac-dry-run.mjs"
+    "release:mac:dry-run": "node scripts/release-mac-dry-run.mjs",
+    "release:mac:launch-smoke": "node scripts/release-mac-launch-smoke.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
