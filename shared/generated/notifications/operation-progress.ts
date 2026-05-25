@@ -31,4 +31,8 @@ export interface OperationProgressNotification {
    * Optional human-readable status message for display in UI
    */
   message: string | null;
+  /**
+   * Optional result summary present only on terminal status events (success/failed/cancelled)
+   */
+  metadata?: {} | null;
 }

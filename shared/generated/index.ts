@@ -23,3 +23,4 @@ export * from './electron/dialog-open-project-folder.js';
 export * from './methods/project-remove.js';
 export * from './electron/dialog-open-path.js';
 export * from './electron/dialog-open-terminal.js';
+export * from './methods/install-skill.js';
