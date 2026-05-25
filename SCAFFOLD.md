@@ -279,6 +279,8 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
   `pnpm package:mac`. See SMOKE.md → "Release Artifact Verification (Slice 3B2B)".
 
 ### Release orchestrator — canonical customer-release command (Slice 3B2C)
+
+> **Customer release runbook**: see [`RELEASE.md`](RELEASE.md) for credential setup, preflight, artifact verification, and troubleshooting.
 - `pnpm release:mac:full` — composes `release:mac:check` → `package:mac` → `release:mac:verify <dmg>`
   → `release:mac:manifest <dmg>` in the only safe order. Fails fast at the first failed stage.
 - DMG selection: detects exactly one `.dmg` created or modified in `dist/` between before/after snapshots
