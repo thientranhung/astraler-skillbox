@@ -226,7 +226,7 @@ The restart counter only applies after Go has successfully reached the ready sta
 Each kill must happen after the restarted Go process has reached the ready state (wait for `[manager] Go core ready` between kills). Killing before ready is a startup timeout / fatal path, not the restart counter.
 
 - [ ] Kill the Go process 3 more times after each restart reaches ready (4 total crashes after the initial ready state). After the 4th crash, the restart counter is exhausted.
-- [ ] The terminal shows `[manager] Go core crashed too many times; giving up` and a **blocking startup error** dialog appears in the Electron window.
+- [ ] The terminal shows `[manager] FATAL: Go core crashed too many times; giving up` and a **blocking startup error** dialog appears in the Electron window.
 - [ ] No further automatic restarts occur.
 - [ ] Close and reopen the app to recover (a new `pnpm dev` session resets the counter).
 
