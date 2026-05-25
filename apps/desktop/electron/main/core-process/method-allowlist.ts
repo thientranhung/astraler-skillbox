@@ -13,6 +13,7 @@ export const ALLOWLIST = new Set([
   "project.scan",
   "project.remove",
   "install.skill",
+  "remove.skill",
   "dialog.openPath",
   "dialog.openTerminal",
 ]);
