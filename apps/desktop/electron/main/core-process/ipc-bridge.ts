@@ -1,4 +1,5 @@
 import { ipcMain, BrowserWindow, dialog, shell } from "electron";
+import { execFile } from "child_process";
 import { getGoClient } from "./manager.js";
 import { ALLOWLIST } from "./method-allowlist.js";
 
@@ -55,6 +56,31 @@ export function registerIpcBridge(win: BrowserWindow): void {
           }),
         );
       }
+      return { opened: true };
+    }
+
+    // Open Terminal at the given folder (macOS). Argument-array launch prevents injection.
+    if (method === "dialog.openTerminal") {
+      const { path } = params as { path: string };
+      await new Promise<void>((resolve, reject) => {
+        execFile("open", ["-a", "Terminal", path], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      }).catch((err: Error) => {
+        throw new Error(
+          JSON.stringify({
+            code: -1,
+            message: "Failed to open Terminal",
+            data: {
+              code: "unknown_error",
+              rpcCode: 1099,
+              userMessage: "Failed to open Terminal",
+              technicalMessage: `open -a Terminal: ${err.message}`,
+            },
+          }),
+        );
+      });
       return { opened: true };
     }
 

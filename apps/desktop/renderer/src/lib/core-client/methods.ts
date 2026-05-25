@@ -57,4 +57,7 @@ export const methods = {
 
   openPath: (path: string) =>
     invoke<{ opened: boolean }>("dialog.openPath", { path }),
+
+  openTerminal: (path: string) =>
+    invoke<{ opened: boolean }>("dialog.openTerminal", { path }),
 };

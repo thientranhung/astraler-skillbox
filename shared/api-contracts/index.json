@@ -19,6 +19,7 @@
     { "input": "methods/project.scan.json",              "output": "methods/project-scan.ts" },
     { "input": "electron/dialog.openProjectFolder.json", "output": "electron/dialog-open-project-folder.ts" },
     { "input": "methods/project.remove.json",            "output": "methods/project-remove.ts" },
-    { "input": "electron/dialog.openPath.json",          "output": "electron/dialog-open-path.ts" }
+    { "input": "electron/dialog.openPath.json",          "output": "electron/dialog-open-path.ts" },
+    { "input": "electron/dialog.openTerminal.json",      "output": "electron/dialog-open-terminal.ts" }
   ]
 }

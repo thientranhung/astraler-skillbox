@@ -1,9 +1,10 @@
 import React from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, RefreshCw, FolderOpen, Trash2, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { useProjectDetail } from "../features/projects/use-project-detail.js";
 import { useScanProject } from "../features/projects/use-scan-project.js";
 import { useOpenProjectFolder } from "../features/projects/use-open-project-folder.js";
+import { useOpenProjectTerminal } from "../features/projects/use-open-project-terminal.js";
 import { useRemoveProject } from "../features/projects/use-remove-project.js";
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
 import { ErrorDisplay } from "../components/error-display.js";
@@ -121,6 +122,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
   const scan = useScanProject();
   const isScanning = scan.operationId != null || scan.isPending;
   const openFolder = useOpenProjectFolder();
+  const openTerminal = useOpenProjectTerminal();
   const remove = useRemoveProject({ navigateAfter: true });
 
   function handleRemove(): void {
@@ -178,6 +180,15 @@ export function ProjectDetailScreen(): React.JSX.Element {
             >
               <FolderOpen size={12} />
               Open Folder
+            </button>
+            <button
+              onClick={() => openTerminal.mutate(data.project.path)}
+              disabled={openTerminal.isPending}
+              title="Open terminal"
+              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              <TerminalSquare size={12} />
+              Terminal
             </button>
             <button
               onClick={handleRemove}

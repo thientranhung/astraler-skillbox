@@ -1,9 +1,10 @@
 import React from "react";
-import { RefreshCw, AlertTriangle, FolderOpen, Trash2 } from "lucide-react";
+import { RefreshCw, AlertTriangle, FolderOpen, TerminalSquare, Trash2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ProjectListItem } from "@contracts/index.js";
 import { useScanProject } from "./use-scan-project.js";
 import { useOpenProjectFolder } from "./use-open-project-folder.js";
+import { useOpenProjectTerminal } from "./use-open-project-terminal.js";
 import { useRemoveProject } from "./use-remove-project.js";
 import { ProjectStatusBadge } from "./project-status-badge.js";
 import { ProjectProviderBadge } from "./project-provider-badge.js";
@@ -16,6 +17,7 @@ export function ProjectRow({ project }: ProjectRowProps): React.JSX.Element {
   const scan = useScanProject();
   const isScanning = scan.operationId != null || scan.isPending;
   const openFolder = useOpenProjectFolder();
+  const openTerminal = useOpenProjectTerminal();
   const remove = useRemoveProject();
   const navigate = useNavigate();
 
@@ -92,6 +94,14 @@ export function ProjectRow({ project }: ProjectRowProps): React.JSX.Element {
             className="rounded border border-zinc-300 p-1 text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
           >
             <FolderOpen size={12} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); openTerminal.mutate(project.path); }}
+            disabled={openTerminal.isPending}
+            title="Open terminal"
+            className="rounded border border-zinc-300 p-1 text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+          >
+            <TerminalSquare size={12} />
           </button>
           <button
             onClick={handleRemove}

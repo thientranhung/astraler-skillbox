@@ -110,3 +110,10 @@ describe("methods.openPath", () => {
     expect(mockInvoke).toHaveBeenCalledWith("dialog.openPath", { path: "/home/user/myproject" });
   });
 });
+
+describe("methods.openTerminal", () => {
+  it("calls dialog.openTerminal with path", async () => {
+    await methods.openTerminal("/home/user/myproject");
+    expect(mockInvoke).toHaveBeenCalledWith("dialog.openTerminal", { path: "/home/user/myproject" });
+  });
+});
