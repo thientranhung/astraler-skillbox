@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProjectRemoveMethod",
+  "description": "Contract for project.remove JSON-RPC method. Soft-removes a project by setting its status to removed; files on disk are never touched.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProjectRemoveRequest" },
+    { "$ref": "#/definitions/ProjectRemoveResponse" }
+  ],
+  "definitions": {
+    "ProjectRemoveRequest": {
+      "title": "ProjectRemoveRequest",
+      "description": "Params for project.remove.",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "ID of the project to remove"
+        }
+      },
+      "required": ["projectId"],
+      "additionalProperties": false
+    },
+    "ProjectRemoveResponse": {
+      "title": "ProjectRemoveResponse",
+      "description": "Result of project.remove. Errors: validation_error (1001) if the project does not exist or is already removed.",
+      "type": "object",
+      "properties": {
+        "removed": {
+          "type": "boolean",
+          "enum": [true],
+          "description": "Always true on success"
+        }
+      },
+      "required": ["removed"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DialogOpenPathMethod",
+  "description": "Contract for dialog.openPath. ELECTRON-HANDLED ONLY — opens a folder in the native file manager (Finder on macOS). Never forwarded to the Go core.",
+  "oneOf": [
+    { "$ref": "#/definitions/DialogOpenPathRequest" },
+    { "$ref": "#/definitions/DialogOpenPathResponse" }
+  ],
+  "definitions": {
+    "DialogOpenPathRequest": {
+      "title": "DialogOpenPathRequest",
+      "description": "Params for dialog.openPath.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path of the folder to reveal in Finder"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    },
+    "DialogOpenPathResponse": {
+      "title": "DialogOpenPathResponse",
+      "description": "Result of dialog.openPath. Errors: operation_error (1006) if Electron returns a non-empty error string.",
+      "type": "object",
+      "properties": {
+        "opened": {
+          "type": "boolean",
+          "enum": [true],
+          "description": "Always true on success"
+        }
+      },
+      "required": ["opened"],
+      "additionalProperties": false
+    }
+  }
+}
