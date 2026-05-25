@@ -9,6 +9,8 @@ import {
   checkSidecar,
   checkHygiene,
   checkVersion,
+  evaluate,
+  render,
 } from "./release-mac-check.lib.mjs";
 
 describe("isSet", () => {
@@ -228,5 +230,73 @@ describe("checkVersion (G1)", () => {
   });
   it("warns on 0.0.0", () => {
     expect(checkVersion("0.0.0").status).toBe("WARN");
+  });
+});
+
+function baseFacts(overrides = {}) {
+  return {
+    platform: "darwin",
+    tools: { notarytool: true, stapler: true, codesign: true, spctl: true, plutil: true },
+    identityNames: ["Developer ID Application: Acme (TEAMID)"],
+    env: { APPLE_API_KEY: "/SENTINEL/key.p8", APPLE_API_KEY_ID: "KID", APPLE_API_ISSUER: "ISS" },
+    fileProbes: { cscLink: null, appleApiKey: { exists: true, readable: true } },
+    config: GOOD_CONFIG,
+    entitlements: GOOD_ENT,
+    sidecar: { present: true, arch: "arm64", executable: true },
+    trackedArtifacts: [],
+    trackedSecretFiles: [],
+    version: "0.1.0",
+    ...overrides,
+  };
+}
+
+describe("evaluate", () => {
+  it("exits 0 when everything passes (WARN/INFO allowed)", () => {
+    expect(evaluate(baseFacts()).exitCode).toBe(0);
+  });
+
+  it("exits 1 and lists exactly signing + notarization when both are missing", () => {
+    const { exitCode, missing, results } = evaluate(
+      baseFacts({ identityNames: [], env: {}, fileProbes: { cscLink: null, appleApiKey: null } })
+    );
+    expect(exitCode).toBe(1);
+    expect(missing).toHaveLength(2);
+    const failIds = results.filter((r) => r.status === "FAIL").map((r) => r.id);
+    expect(failIds).toEqual(["B1", "C1"]);
+  });
+
+  it("WARN/INFO never force a non-zero exit", () => {
+    // sidecar absent → WARN, version 0.0.0 → WARN, profile-only INFO; still all hard checks pass
+    const facts = baseFacts({ sidecar: { present: false, arch: null, executable: false }, version: "0.0.0" });
+    expect(evaluate(facts).exitCode).toBe(0);
+  });
+});
+
+describe("render redaction", () => {
+  it("never prints any credential value or file path", () => {
+    const facts = baseFacts({
+      identityNames: [],
+      env: {
+        APPLE_API_KEY: "/Users/SENTINEL/key.p8",
+        APPLE_API_KEY_ID: "SENTINEL_KEY_ID",
+        APPLE_API_ISSUER: "SENTINEL_ISSUER",
+        APPLE_APP_SPECIFIC_PASSWORD: "SENTINEL_PW",
+        CSC_LINK: "/Users/SENTINEL/cert.p12",
+        CSC_KEY_PASSWORD: "SENTINEL_CSC_PW",
+      },
+      fileProbes: { cscLink: { isLocalPath: true, exists: true, readable: true }, appleApiKey: { exists: false, readable: false } },
+    });
+    const { results, missing } = evaluate(facts);
+    const text = render(results, missing);
+    for (const secret of [
+      "/Users/SENTINEL/key.p8",
+      "SENTINEL_KEY_ID",
+      "SENTINEL_ISSUER",
+      "SENTINEL_PW",
+      "/Users/SENTINEL/cert.p12",
+      "SENTINEL_CSC_PW",
+    ]) {
+      expect(text).not.toContain(secret);
+    }
   });
 });
