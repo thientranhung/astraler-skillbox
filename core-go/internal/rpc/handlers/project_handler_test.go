@@ -486,3 +486,60 @@ func TestInstallSkillHandler_ConflictError_MapsTo1005(t *testing.T) {
 		t.Errorf("payload code: got %q want conflict_error", we.ae.Code)
 	}
 }
+
+// --- remove.skill ---
+
+type stubRemoveSkill struct {
+	opID int64
+	err  error
+}
+
+func (s *stubRemoveSkill) RemoveSkill(_ context.Context, _ int64, _ int64) (int64, error) {
+	return s.opID, s.err
+}
+
+func TestRemoveSkillHandler_ReturnsOperationID(t *testing.T) {
+	svc := &stubRemoveSkill{opID: 51}
+	cli := startServer(t, handler.Map{"remove.skill": handlers.NewRemoveSkillHandler(svc)})
+
+	params := map[string]interface{}{"projectId": 1, "installId": 1001}
+	var resp struct {
+		OperationID int64 `json:"operationId"`
+	}
+	if err := cli.CallResult(context.Background(), "remove.skill", params, &resp); err != nil {
+		t.Fatalf("remove.skill: %v", err)
+	}
+	if resp.OperationID != 51 {
+		t.Errorf("operationId: got %d want 51", resp.OperationID)
+	}
+}
+
+func TestRemoveSkillHandler_BadParams_ReturnsValidationError(t *testing.T) {
+	svc := &stubRemoveSkill{}
+	cli := startServer(t, handler.Map{"remove.skill": handlers.NewRemoveSkillHandler(svc)})
+
+	err := cli.CallResult(context.Background(), "remove.skill", map[string]interface{}{
+		"projectId": "not-a-number",
+	}, nil)
+	if err == nil {
+		t.Fatal("expected error for bad params")
+	}
+}
+
+func TestRemoveSkillHandler_ConflictError_MapsTo1005(t *testing.T) {
+	svc := &stubRemoveSkill{err: domain.NewConflictError("project busy", "target locked")}
+	cli := startServer(t, handler.Map{"remove.skill": handlers.NewRemoveSkillHandler(svc)})
+
+	params := map[string]interface{}{"projectId": 1, "installId": 1001}
+	err := cli.CallResult(context.Background(), "remove.skill", params, nil)
+	if err == nil {
+		t.Fatal("expected conflict error")
+	}
+	if jerr, ok := err.(*jrpc2.Error); ok {
+		if jerr.Code != 1005 {
+			t.Errorf("code: got %d want 1005", jerr.Code)
+		}
+	} else {
+		t.Fatalf("expected *jrpc2.Error, got %T", err)
+	}
+}
