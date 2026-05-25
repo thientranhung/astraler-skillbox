@@ -71,7 +71,8 @@ func main() {
 	projectSvc := services.NewProjectService(projectRepo, ppRepo, warningRepo, installRepo, fs).
 		WithScanDeps(runner, projectScanRepo).
 		WithProviderDeps(providerRegistry, pdRepo, hostRepo, skillRepo).
-		WithInstallDeps(fs, hostRepo, skillRepo)
+		WithInstallDeps(fs, hostRepo, skillRepo).
+		WithRemoveDeps(fs, installRepo)
 
 	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc)
 
