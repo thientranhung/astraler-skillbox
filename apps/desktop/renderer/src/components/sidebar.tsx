@@ -1,9 +1,10 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Library, Settings } from "lucide-react";
+import { Library, FolderGit2, Settings } from "lucide-react";
 
 const NAV_ITEMS = [
   { to: "/skills", label: "Skills", icon: Library },
+  { to: "/projects", label: "Projects", icon: FolderGit2 },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
