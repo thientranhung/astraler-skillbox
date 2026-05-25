@@ -6,3 +6,5 @@ out/
 *.db-shm
 *.db-wal
 core-go/skillbox-core
+apps/desktop/dist/
+apps/desktop/resources/core/
