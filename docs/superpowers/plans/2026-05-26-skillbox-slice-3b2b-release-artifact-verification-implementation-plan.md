@@ -332,10 +332,11 @@ describe("evaluate — --allow-adhoc, ad-hoc artifact", () => {
     staplerApp: { stapled: false },
     staplerDmg: { stapled: false },
   });
-  it("PASSes verify/runtime/entitlements; soft checks INFO; exit 0", () => {
+  it("PASSes signature-class/verify/runtime/entitlements; soft checks INFO; exit 0", () => {
     const { results, exitCode } = evaluate(adhoc);
     expect(exitCode).toBe(0);
-    for (const id of ["APP1", "APP3", "SID2", "SID4", "ENT1", "ENT2"]) expect(status(results, id)).toBe("PASS");
+    // APP2/SID3 PASS in --allow-adhoc: ad-hoc is an accepted signature class (spec §6).
+    for (const id of ["APP1", "APP2", "APP3", "SID2", "SID3", "SID4", "ENT1", "ENT2"]) expect(status(results, id)).toBe("PASS");
     for (const id of ["GK1", "GK2", "ST1", "ST2", "APP4", "SID5", "TID1"]) expect(status(results, id)).toBe("INFO");
   });
 });
@@ -358,6 +359,16 @@ describe("evaluate — sidecar + runtime + entitlement failures", () => {
   it("extra entitlement keys still PASS (subset semantics)", () => {
     const r = evaluate(signals({ app: { parsed: { adhoc: false, developerId: true, teamId: "AB12CD34EF", hardenedRuntime: true }, verifyExit: 0, entitlementKeys: [...EXPECTED_ENT.app, "com.apple.security.network.client"] } }));
     expect(status(r.results, "ENT1")).toBe("PASS");
+  });
+  it("empty expected app entitlements FAIL ENT1 (no vacuous pass) — finding 3", () => {
+    const r = evaluate(signals({ expectedEntitlements: { app: [], sidecar: EXPECTED_ENT.sidecar } }));
+    expect(status(r.results, "ENT1")).toBe("FAIL");
+    expect(r.exitCode).toBe(1);
+  });
+  it("empty expected sidecar entitlements FAIL ENT2 — finding 3", () => {
+    const r = evaluate(signals({ expectedEntitlements: { app: EXPECTED_ENT.app, sidecar: [] } }));
+    expect(status(r.results, "ENT2")).toBe("FAIL");
+    expect(r.exitCode).toBe(1);
   });
 });
 
@@ -461,7 +472,8 @@ export function evaluate(s) {
   if (a.developerId && !a.adhoc)
     push({ id: "APP2", category: "app", status: "PASS", message: "Developer ID Application signature" });
   else if (!release && a.adhoc)
-    push({ id: "APP2", category: "app", status: "INFO", message: "ad-hoc signature (dry-run)" });
+    // --allow-adhoc: an ad-hoc signature is an accepted signature class (spec §6: PASS when ad-hoc OR Developer ID).
+    push({ id: "APP2", category: "app", status: "PASS", message: "ad-hoc signature accepted (dry-run)" });
   else
     push({ id: "APP2", category: "app", status: "FAIL", message: a.adhoc ? "signature is ad-hoc, expected Developer ID Application" : "no Developer ID Application signature", remediation: "App and sidecar must be signed with a Developer ID Application identity (not ad-hoc)" });
 
@@ -478,12 +490,19 @@ export function evaluate(s) {
   );
 
   {
-    const miss = missingKeys(s.expectedEntitlements.app, s.app.entitlementKeys);
-    push(
-      miss.length === 0
-        ? { id: "ENT1", category: "app", status: "PASS", message: `entitlements include ${s.expectedEntitlements.app.map(shortKey).join(", ")}` }
-        : { id: "ENT1", category: "app", status: "FAIL", message: `entitlements missing ${miss.map(shortKey).join(", ")}`, remediation: "App must embed every key from build/entitlements.mac.plist" }
-    );
+    const expApp = s.expectedEntitlements.app ?? [];
+    if (expApp.length === 0)
+      // An empty expected set would make the subset check vacuously pass and silently weaken
+      // the gate, so treat it as a hard failure (the shell also refuses to run — see Task 3).
+      push({ id: "ENT1", category: "app", status: "FAIL", message: "expected app entitlements unavailable (build/entitlements.mac.plist missing or empty)", remediation: "Restore build/entitlements.mac.plist with the expected entitlement keys" });
+    else {
+      const miss = missingKeys(expApp, s.app.entitlementKeys);
+      push(
+        miss.length === 0
+          ? { id: "ENT1", category: "app", status: "PASS", message: `entitlements include ${expApp.map(shortKey).join(", ")}` }
+          : { id: "ENT1", category: "app", status: "FAIL", message: `entitlements missing ${miss.map(shortKey).join(", ")}`, remediation: "App must embed every key from build/entitlements.mac.plist" }
+      );
+    }
   }
 
   push(
@@ -504,7 +523,8 @@ export function evaluate(s) {
     if (d.developerId && !d.adhoc)
       push({ id: "SID3", category: "sidecar", status: "PASS", message: "Developer ID Application signature" });
     else if (!release && d.adhoc)
-      push({ id: "SID3", category: "sidecar", status: "INFO", message: "ad-hoc signature (dry-run)" });
+      // --allow-adhoc: ad-hoc is an accepted signature class (spec §6).
+      push({ id: "SID3", category: "sidecar", status: "PASS", message: "ad-hoc signature accepted (dry-run)" });
     else
       push({ id: "SID3", category: "sidecar", status: "FAIL", message: d.adhoc ? "signature is ad-hoc, expected Developer ID Application" : "no Developer ID Application signature", remediation: "App and sidecar must be signed with a Developer ID Application identity (not ad-hoc)" });
 
@@ -520,12 +540,17 @@ export function evaluate(s) {
         : { id: "SID5", category: "sidecar", status: soft, message: release ? "sidecar has no TeamIdentifier" : "sidecar has no TeamIdentifier (ad-hoc)", ...(release ? { remediation: "Sign the sidecar with a Developer ID identity that carries a Team ID" } : {}) }
     );
 
-    const miss = missingKeys(s.expectedEntitlements.sidecar, s.sidecar.entitlementKeys);
-    push(
-      miss.length === 0
-        ? { id: "ENT2", category: "sidecar", status: "PASS", message: `entitlements include ${s.expectedEntitlements.sidecar.map(shortKey).join(", ")}` }
-        : { id: "ENT2", category: "sidecar", status: "FAIL", message: `entitlements missing ${miss.map(shortKey).join(", ")}`, remediation: "Sidecar must embed every key from build/entitlements.mac.inherit.plist" }
-    );
+    const expSide = s.expectedEntitlements.sidecar ?? [];
+    if (expSide.length === 0)
+      push({ id: "ENT2", category: "sidecar", status: "FAIL", message: "expected sidecar entitlements unavailable (build/entitlements.mac.inherit.plist missing or empty)", remediation: "Restore build/entitlements.mac.inherit.plist with the expected entitlement keys" });
+    else {
+      const miss = missingKeys(expSide, s.sidecar.entitlementKeys);
+      push(
+        miss.length === 0
+          ? { id: "ENT2", category: "sidecar", status: "PASS", message: `entitlements include ${expSide.map(shortKey).join(", ")}` }
+          : { id: "ENT2", category: "sidecar", status: "FAIL", message: `entitlements missing ${miss.map(shortKey).join(", ")}`, remediation: "Sidecar must embed every key from build/entitlements.mac.inherit.plist" }
+      );
+    }
   }
 
   // TID1 — app and sidecar Team ID present + equal (+ match expected env if set)
@@ -666,7 +691,7 @@ Create `apps/desktop/scripts/release-mac-verify.mjs`:
  * Optional: SKILLBOX_EXPECTED_TEAM_ID=ABCDE12345 pins both app + sidecar to that team.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, statSync, readFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -695,17 +720,29 @@ function run(cmd, args) {
   return { text: `${r.stdout ?? ""}\n${r.stderr ?? ""}`, code: typeof r.status === "number" ? r.status : 1 };
 }
 
-let mountPoint = null;
+let mountPoint = null; // set ONLY after a successful attach
+let detachFailed = false;
 function detach() {
   if (!mountPoint) return;
   let r = run("/usr/bin/hdiutil", ["detach", mountPoint]);
   if (r.code !== 0) r = run("/usr/bin/hdiutil", ["detach", "-force", mountPoint]);
+  if (r.code !== 0) {
+    // The volume may STILL be mounted. Do NOT rmSync the mountpoint (that could delete into a
+    // live volume) and do NOT clear mountPoint. Record the failure so the process exits non-zero
+    // — a mount must never be leaked silently (spec §3 / §10: internal error => non-zero).
+    detachFailed = true;
+    console.error(
+      `ERROR: failed to detach ${mountPoint} (hdiutil detach exit ${r.code}); the volume may still be mounted. ` +
+        `Detach it manually:  hdiutil detach -force "${mountPoint}"`
+    );
+    return;
+  }
+  // Detach succeeded: hdiutil removes the mountpoint dir; rmSync only cleans a stray empty dir.
   try {
     rmSync(mountPoint, { recursive: true, force: true });
   } catch {
-    /* mountpoint dir removed by detach */
+    /* already gone */
   }
-  if (r.code !== 0) console.error(`WARNING: failed to detach ${mountPoint}; detach it manually.`);
   mountPoint = null;
 }
 
@@ -716,9 +753,18 @@ function failInput(message) {
   process.exit(1);
 }
 
+/**
+ * Read the EXPECTED entitlement keys from a committed plist. A missing or key-less plist is an
+ * internal/config error (it would make the ENT subset check vacuously pass), so throw — never
+ * return an empty expected set. The throw propagates past the `finally` (which still detaches),
+ * yielding a clear message + non-zero exit.
+ */
 function expectedKeysFrom(rel) {
   const p = path.join(desktop, rel);
-  return existsSync(p) ? parseEntitlementKeys(readFileSync(p, "utf8")) : [];
+  if (!existsSync(p)) throw new Error(`expected entitlements file missing: ${rel} — cannot verify entitlements`);
+  const keys = parseEntitlementKeys(readFileSync(p, "utf8"));
+  if (keys.length === 0) throw new Error(`expected entitlements file has no <key> entries: ${rel}`);
+  return keys;
 }
 
 function gatherSigning(target, deep) {
@@ -741,9 +787,11 @@ if (pathArg) {
   const abs = path.resolve(process.cwd(), pathArg);
   if (!existsSync(abs)) failInput(`input path does not exist: ${pathArg}`);
   if (abs.endsWith(".app")) {
+    if (!statSync(abs).isDirectory()) failInput(`.app input must be a directory (app bundle): ${pathArg}`);
     appPath = abs;
     appName = path.basename(abs);
   } else if (abs.endsWith(".dmg")) {
+    if (!statSync(abs).isFile()) failInput(`.dmg input must be a regular file: ${pathArg}`);
     dmgPath = abs;
     dmgName = path.basename(abs);
   } else {
@@ -759,9 +807,19 @@ if (pathArg) {
 
 try {
   if (dmgPath) {
-    mountPoint = mkdtempSync(path.join(tmpdir(), "skillbox-verify-"));
-    const att = run("/usr/bin/hdiutil", ["attach", "-readonly", "-nobrowse", "-mountpoint", mountPoint, dmgPath]);
-    if (att.code !== 0) failInput(`failed to mount DMG read-only (hdiutil attach exit ${att.code})`);
+    const mp = mkdtempSync(path.join(tmpdir(), "skillbox-verify-"));
+    const att = run("/usr/bin/hdiutil", ["attach", "-readonly", "-nobrowse", "-mountpoint", mp, dmgPath]);
+    if (att.code !== 0) {
+      // Nothing mounted — remove the empty temp dir and fail. Do NOT set mountPoint, so detach()
+      // never runs a misleading detach against an unmounted path.
+      try {
+        rmSync(mp, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+      failInput(`failed to mount DMG read-only (hdiutil attach exit ${att.code})`);
+    }
+    mountPoint = mp; // only now is a real mount present
     const pick = pickTopLevelApp(readdirSync(mountPoint)); // non-recursive: ignores nested helper apps
     if (pick.error) failInput(pick.error);
     appPath = path.join(mountPoint, pick.app);
@@ -806,6 +864,12 @@ try {
 } finally {
   detach();
 }
+
+// A failed detach must never resolve as success. Surface it AFTER the verify report has printed,
+// as a non-zero internal error (spec §3 / §10) — never leak a mounted volume silently.
+if (detachFailed) {
+  throw new Error("DMG detach failed; the read-only mount was not cleaned up (see ERROR above).");
+}
 ```
 
 - [ ] **Step 2: Add the npm script** — edit `apps/desktop/package.json`, in `"scripts"`, after the `"release:mac:check"` line add:
@@ -816,10 +880,19 @@ try {
 
 (Ensure the preceding line ends with a comma. Do not change any other script.)
 
-- [ ] **Step 3: Smoke the shell wiring with a bogus path (no real artifact needed)**
+- [ ] **Step 3: Smoke input validation (no real artifact needed) — covers S1 + finding 4**
 
-Run: `cd apps/desktop && pnpm release:mac:verify /tmp/does-not-exist.app; echo "exit=$?"`
-Expected: prints `Input` + a `FAIL  input path does not exist: …` line and `exit=1`.
+```bash
+cd apps/desktop
+pnpm release:mac:verify /tmp/does-not-exist.app; echo "exit=$?"   # -> FAIL input path does not exist, exit=1
+# .app must be a DIRECTORY: a regular file named *.app is rejected
+touch /tmp/notdir.app && pnpm release:mac:verify /tmp/notdir.app; echo "exit=$?"   # -> FAIL .app must be a directory, exit=1
+rm -f /tmp/notdir.app
+# .dmg must be a FILE: a directory named *.dmg is rejected
+mkdir -p /tmp/notfile.dmg && pnpm release:mac:verify /tmp/notfile.dmg; echo "exit=$?"   # -> FAIL .dmg must be a regular file, exit=1
+rmdir /tmp/notfile.dmg
+```
+Expected: each prints an `Input` group with the matching `FAIL` line and `exit=1`.
 
 - [ ] **Step 4: Smoke auto-discovery with an empty dist (no DMG present)**
 
@@ -866,7 +939,7 @@ the network, or mutates the keychain.
 ### Dry-run against the 3B1 ad-hoc bundle
 - [ ] Build the ad-hoc bundle (see "Signed Packaging Dry-Run (Slice 3B1)") so a `.dmg` exists under `apps/desktop/dist/`.
 - [ ] `(cd apps/desktop && pnpm release:mac:verify --allow-adhoc); echo "exit=$?"`
-  Expected: `exit=0`. App + sidecar `codesign --verify` / hardened-runtime / **entitlements (ENT1/ENT2)** are PASS; Gatekeeper/stapling/Team-ID lines are INFO.
+  Expected: `exit=0`. App + sidecar signature-class (APP2/SID3, ad-hoc accepted) / `codesign --verify` / hardened-runtime / **entitlements (ENT1/ENT2)** are PASS; Gatekeeper/stapling/Team-ID lines are INFO.
 - [ ] Release mode against the same artifact: `(cd apps/desktop && pnpm release:mac:verify); echo "exit=$?"`
   Expected: `exit=1`, FAILing on Developer ID signature, Team-ID equality, Gatekeeper (app + dmg), and stapling. The "Missing for a customer-ready release:" list is non-empty.
 - [ ] No leftover mount after either run: `hdiutil info | grep -i skillbox-verify || echo "clean"` → `clean`.
@@ -955,11 +1028,27 @@ Expected: `exit=1`; FAILs on Developer ID (APP2/SID3), TID1, GK1, GK2, ST1, ST2;
 Run: `hdiutil info | grep -i "skillbox-verify" || echo "clean"`
 Expected: `clean` (no leaked read-only mount from Steps 7–8).
 
-- [ ] **Step 10: No forbidden side effects (review)**
+- [ ] **Step 10: Missing expected-entitlements plist is a hard error (finding 3)**
+
+Temporarily hide the committed app plist and confirm the verifier refuses to run with a clear, non-zero error (never a vacuous PASS):
+```bash
+cd apps/desktop
+mv build/entitlements.mac.plist /tmp/ent-backup.plist
+pnpm release:mac:verify --allow-adhoc; echo "exit=$?"   # -> throws "expected entitlements file missing…", exit nonzero
+mv /tmp/ent-backup.plist build/entitlements.mac.plist
+git status --porcelain build/   # -> clean (plist restored)
+```
+Expected: non-zero exit with the "expected entitlements file missing: build/entitlements.mac.plist" message; the plist is restored and `git status` is clean.
+
+- [ ] **Step 11: Detach-failure handling (finding 1, review)**
+
+Confirm by reading `detach()` in `release-mac-verify.mjs`: when both `hdiutil detach` and `hdiutil detach -force` fail, it sets `detachFailed`, prints an `ERROR` naming the mountpoint, and does **not** `rmSync` the (possibly still-mounted) mountpoint; the trailing `if (detachFailed) throw` then makes the process exit non-zero after the verify report. Also confirm `mountPoint` is assigned **only after** a successful `hdiutil attach` (so an attach failure cleans its temp dir and never triggers a misleading detach).
+
+- [ ] **Step 12: No forbidden side effects (review)**
 
 Confirm by reading `release-mac-verify.mjs`: it spawns only `codesign`, `spctl`, `xcrun stapler`, and `hdiutil attach/detach`; there is **no** `codesign -s`, `notarytool`, `stapler staple`, `electron-builder`, `security`, network call, or any write outside the temp mountpoint.
 
-- [ ] **Step 11: Final working tree is clean**
+- [ ] **Step 13: Final working tree is clean**
 
 Run: `git status --porcelain` (and remove the built `dist/` artifact if your checkout tracks artifact hygiene — `dist/` is gitignored, so this should already be clean of tracked changes).
 Expected: no uncommitted tracked changes; all plan work is committed across Tasks 1–4.
@@ -984,3 +1073,9 @@ Expected: no uncommitted tracked changes; all plan work is committed across Task
 - §8 Team ID equality + `SKILLBOX_EXPECTED_TEAM_ID` → Task 2 TID1 + tests; Task 3 env read.
 - §11 every fixture/case → Task 1 + Task 2 tests.
 - §10 docs → Task 4. §12 acceptance → Task 5 gates.
+
+### Lead review round 2 — findings addressed
+- **Finding 1 (detach):** `detach()` no longer `rmSync`es or clears `mountPoint` on failure; it records `detachFailed`, prints an `ERROR`, and the trailing `if (detachFailed) throw` forces a non-zero exit so a mount is never leaked silently. `mountPoint` is set only after a successful attach (Task 3); reviewed in Task 5 Step 11.
+- **Finding 2 (ad-hoc signature class):** APP2/SID3 now **PASS** (not INFO) in `--allow-adhoc`; release mode still FAILs for ad-hoc. Tests assert APP2/SID3 PASS in the allow-adhoc case (Task 2).
+- **Finding 3 (missing expected entitlements):** the shell `expectedKeysFrom` **throws** on a missing/empty committed plist (non-zero), and the evaluator FAILs ENT1/ENT2 on an empty expected set as defense-in-depth — unit-tested (Task 2) and verified by hiding the plist (Task 5 Step 10).
+- **Finding 4 (input type):** explicit `.app` must be a directory and `.dmg` a regular file (`statSync`), smoked in Task 3 Step 3.
