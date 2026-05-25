@@ -39,7 +39,21 @@ export function registerIpcBridge(win: BrowserWindow): void {
       const { path } = params as { path: string };
       const errMsg = await shell.openPath(path);
       if (errMsg !== "") {
-        throw new Error(`Failed to open path: ${errMsg}`);
+        // Throw a JSON-encoded envelope that the preload's toStructuredError
+        // can parse, so the renderer gets AppClientError("unknown_error", ...)
+        // instead of a generic client_error.
+        throw new Error(
+          JSON.stringify({
+            code: -1,
+            message: "Failed to open folder",
+            data: {
+              code: "unknown_error",
+              rpcCode: 1099,
+              userMessage: "Failed to open project folder",
+              technicalMessage: `shell.openPath: ${errMsg}`,
+            },
+          }),
+        );
       }
       return { opened: true };
     }

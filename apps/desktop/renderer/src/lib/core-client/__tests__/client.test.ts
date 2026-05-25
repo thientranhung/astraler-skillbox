@@ -128,6 +128,28 @@ describe("invoke", () => {
     expect(err.code).toBe("client_error");
   });
 
+  it("maps dialog.openPath shell failure to unknown_error AppClientError", async () => {
+    // Simulates what toStructuredError in preload produces after parsing the
+    // JSON envelope thrown by ipc-bridge.ts when shell.openPath returns an error.
+    (window as Window & typeof globalThis & { core: Window["core"] }).core = {
+      invoke: vi.fn().mockRejectedValue({
+        code: "unknown_error",
+        rpcCode: 1099,
+        userMessage: "Failed to open project folder",
+        technicalMessage: "shell.openPath: No such file or directory",
+      }),
+      onEvent: vi.fn(),
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err: any = await invoke("dialog.openPath", { path: "/bad/path" }).catch((e) => e);
+    expect(err).toBeInstanceOf(AppClientError);
+    expect(err.code).toBe("unknown_error");
+    expect(err.rpcCode).toBe(1099);
+    expect(err.userMessage).toBe("Failed to open project folder");
+    expect(err.technicalMessage).toBe("shell.openPath: No such file or directory");
+  });
+
   it("falls back for RPC error without data field", async () => {
     const rpcError = { code: -32601, message: "method not found" };
     (window as Window & typeof globalThis & { core: Window["core"] }).core = {
