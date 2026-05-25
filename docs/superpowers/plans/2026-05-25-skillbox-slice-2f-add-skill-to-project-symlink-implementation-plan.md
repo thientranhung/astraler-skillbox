@@ -37,7 +37,10 @@
 
 ### Task 3: Runner persists metadata on failure
 - Modify: `core-go/internal/operations/runner.go` — in `run()`, marshal returned `meta` once and pass it to `UpdateStatus` on BOTH the error and success paths (currently nil on error). Keep existing behavior when `meta == nil`.
-- Test: `core-go/internal/operations/runner_test.go` — a WorkFn returning `(someStruct, err)` results in a FAILED op whose stored `MetadataJSON` is non-nil and contains the struct fields. Add/extend a fake OperationRepo capturing the metadata arg.
+- Test: `core-go/internal/operations/runner_test.go` — add explicit tests for both shared paths:
+  1. WorkFn returns `(someStruct, nil)` → SUCCESS stores metadata.
+  2. WorkFn returns `(someStruct, err)` → FAILED stores the same metadata.
+  The second case is the Slice 2F partial-failure path: install returns metadata and a non-nil `filesystem_error` or `rescanErr`. Add/extend a fake OperationRepo capturing the metadata arg for both `UpdateStatus` calls.
 - [ ] Failing test → impl → `go test -race ./internal/operations/...` → commit: `fix(operations): persist work metadata on failed operations`.
 
 ---
@@ -49,11 +52,14 @@
 - Test: `core-go/internal/services/install_validation_test.go` — table test: accept `documentation-writer`; reject `""`, `.`, `..`, `/abs`, `a/b`, `a/../b`, `./a`, `a/`, "a\x00b". isWithin true for root child, false for `/etc`.
 - [ ] Failing test → impl → `go test ./internal/services/...` → commit: `feat(services): add install skill-name validation helpers`.
 
-### Task 5: InstallFilesystem dep + InstallSkills entrypoint
+### Task 5: Install deps + InstallSkills entrypoint
 - Modify: `core-go/internal/services/interfaces.go` — add `InstallFilesystem` interface (`LstatExists`, `EnsureDir`, `CreateSymlink`).
-- Modify: `core-go/internal/services/project_service.go` — add field `installFS InstallFilesystem` + builder `WithInstallDeps(installFS) *ProjectService`.
+- Modify: `core-go/internal/services/interfaces.go` — add narrow read interfaces if not already present:
+  - `ActiveHostReader` with `GetActive(ctx) (*domain.SkillHostFolder, error)`; `SkillHostFolderRepo` already exposes this, so use it directly rather than re-filtering `ListAll`.
+  - `HostSkillReader` with `ListByHost(ctx, hostID int64) ([]domain.Skill, error)`.
+- Modify: `core-go/internal/services/project_service.go` — add fields `installFS InstallFilesystem`, `activeHostReader ActiveHostReader`, and `hostSkillReader HostSkillReader`; builder `WithInstallDeps(installFS, activeHostReader, hostSkillReader) *ProjectService`.
 - Create: `core-go/internal/services/project_install_service.go` — `InstallSkills(ctx, projectID int64, providerKey string, skillIDs []int64) (int64, error)`: synchronous shape validation (non-empty + unique positive `skillIDs`; `providers.InstallTargetByProviderKey` known); load project, must exist + `status=active`; then `runner.Start` with `Target{Type:"project", ID:projectID}`, `OperationTypeInstallSkill`, closure → `installSkillsInternal`. Pass through `*domain.AppError` (e.g. runner conflict) unchanged.
-- Test: extend `core-go/internal/services/project_service_test.go` (reuse `mockRunner`, `newMockProjectRepo`): empty skillIDs → validation_error; duplicate ids → validation_error; unknown providerKey → validation_error; missing/removed project → validation_error; happy shape → returns runner opID; runner conflict surfaces as `conflict_error`.
+- Test: extend `core-go/internal/services/project_service_test.go` (reuse `mockRunner`, `newMockProjectRepo`): empty skillIDs → validation_error; duplicate ids → validation_error; unknown providerKey → validation_error; missing/removed project → validation_error; missing install deps → validation_error/config error if called in tests; happy shape → returns runner opID; runner conflict surfaces as `conflict_error`.
 - [ ] Failing test → impl → `go test ./internal/services/...` → commit: `feat(services): add InstallSkills entrypoint and InstallFilesystem dep`.
 
 ### Task 6: installSkillsInternal worker (full implementation, happy path)
@@ -61,14 +67,14 @@
   1. `progress("validating",…)`; resolve `InstallTarget`; load provider def via `providerDefRepo.GetByKey` (nil → validation_error; status not supported/experimental → provider_error).
   2. `ppRepo.ListByProject`; find summary with `ProviderKey==providerKey` (absent → validation_error; `DetectionStatus` not detected/configured → validation_error).
   3. `skillsPath = fs.NormalizeAbs(filepath.Join(project.Path, target.RelativeSkillsPath))`; `root = fs.NormalizeAbs(project.Path)`; `isWithin(root, skillsPath)` else validation_error.
-  4. Active host: `hostLister.ListAll` → first `Status==active` (none → validation_error); `skillsByHostLister.ListByHost`; map by id; for each requested id resolve skill (missing → validation_error; `Status!=available` → validation_error). Preserve request order.
+  4. Active host: call the injected `ActiveHostReader.GetActive(ctx)`, then call `HostSkillReader.ListByHost(ctx, activeHost.ID)`; map by id; for each requested id resolve skill (missing → validation_error; `Status!=available` → validation_error). Preserve request order. Do not duplicate "first active host" filtering in the install service.
   5. For each skill: `validateSkillSegment(name)`; `linkPath=filepath.Join(skillsPath,name)`; require `filepath.Dir(linkPath)==skillsPath` else validation_error.
   6. Conflict (fail-fast, pre-write): `installFS.LstatExists(linkPath)` (err → filesystem_error); collect existing names; any → `conflict_error` listing names.
   7. Ensure dir: `fs.PathInfo(skillsPath)`; if absent and `!pd.CanCreateStructure` → provider_error; else `installFS.EnsureDir`.
   8. `progress("creating_symlinks",0,requested,"")`; loop `installFS.CreateSymlink(skill.AbsolutePath, linkPath)`; on first error break, keep `createErr`, `created` counts successes.
-  9. Always `scanProjectInternal(ctx, project, progress)` (keep `rescanErr`).
-  10. `failed := requested - created`; build `installMetadata{requested,created,failed,providerKey}`; return `(meta, createErr)` if createErr; else `(meta, rescanErr)`; else `(meta, nil)`.
-- Test: `core-go/internal/services/project_install_service_test.go` happy path — real `filesystem.NewGateway()` for both `fs` and `installFS`, real `providers.NewGenericAgentsAdapter()` in registry, temp project dir with existing `.agents/skills`, temp host dir with skill folders, `mockHostLister` active host (real SkillsPath), `mockSkillsByHostLister` (skills with real AbsolutePath), `mockProviderDefRepo` (`generic_agents`: supported, CanCreateStructure true), `mockProjectProviderRepo` (detected summary), `mockProjectScanCommitter` capturing installs. Assert: symlink created on disk; captured install `InstallMode=symlink`, `InstallStatus=current`; returned meta `{created:1,failed:0}`.
+  9. Run `scanProjectInternal(ctx, project, progress)` only after the code reaches the symlink-write phase (including zero-created filesystem failure after `EnsureDir`). Do not rescan for validation/provider/conflict errors that happen before writes.
+  10. `failed := requested - created`; build `installMetadata{requested,created,failed,providerKey}` where `failed` includes the errored skill and all unattempted remaining skills. Return `(meta, createErr)` if createErr; else `(meta, rescanErr)`; else `(meta, nil)`.
+- Test: `core-go/internal/services/project_install_service_test.go` happy path — real `filesystem.NewGateway()` for both `fs` and `installFS`, real `providers.NewGenericAgentsAdapter()` in registry, temp project dir with existing `.agents/skills`, temp host dir with skill folders, `mockActiveHostReader` active host (real SkillsPath), `mockSkillsByHostLister` (skills with real AbsolutePath), `mockProviderDefRepo` (`generic_agents`: supported, CanCreateStructure true), `mockProjectProviderRepo` (detected summary), `mockProjectScanCommitter` capturing installs. Assert: symlink created on disk; captured install `InstallMode=symlink`, `InstallStatus=current`; returned meta `{created:1,failed:0}`.
 - [ ] Failing test → impl → `go test -race ./internal/services/...` → commit: `feat(services): implement install symlink worker with inline rescan`.
 
 ### Task 7: Auto-create skills dir (generic_agents)
@@ -76,7 +82,7 @@
 - [ ] Add test → run → passes (impl from Task 6) → commit: `test(services): cover install auto-create of shared agents skills dir`.
 
 ### Task 8: Claude no-scaffold block
-- Test: `claude` provider def (experimental, CanCreateStructure false), `.claude/skills` absent → `provider_error`, no writes (assert dir still absent), scan committer not called with claude installs.
+- Test: `claude` provider def (experimental, CanCreateStructure false), `.claude/skills` absent → `provider_error`, no writes (assert dir still absent), and `scanProjectInternal`/scan committer is not called at all because the provider error happens before the write phase.
 - [ ] Add test → run → passes → commit: `test(services): cover claude no-scaffold provider_error`.
 
 ### Task 9: Conflict abort (atomic)
@@ -89,7 +95,8 @@
 
 ### Task 11: Multi-skill partial filesystem failure
 - Test: define a `flakyInstallFS` in the test file wrapping real os behavior — `CreateSymlink` succeeds on call 1 (actually creates), returns error on call 2; `LstatExists`/`EnsureDir` delegate to real os. Two skills selected. Assert: loop stops after first error; `scanProjectInternal` still ran (committer called once); the first symlink is classified `current`; returned error is `filesystem_error`; returned meta `{requested:2, created:1, failed:1}`.
-- [ ] Failing test → (impl already supports; add flaky fake) → `go test -race ./internal/services/...` → commit: `test(services): cover multi-skill partial failure and rescan`.
+- Add second test: auto-create path succeeds via `EnsureDir`, first `CreateSymlink` fails, no symlink lands, rescan still runs, operation completes FAILED with `{requested:1, created:0, failed:1}`.
+- [ ] Failing tests → (impl already supports; add flaky fake) → `go test -race ./internal/services/...` → commit: `test(services): cover install partial failures and rescan`.
 
 ---
 
@@ -104,12 +111,14 @@
 
 ### Task 13: Contract schema + drift type
 - Create: `shared/api-contracts/methods/install.skill.json` — draft-07 oneOf Request/Response, mirroring `project.scan.json`. Request: `projectId` integer, `providerKey` string enum `["generic_agents","claude"]`, `skillIds` array of integer `minItems:1` `uniqueItems:true`, all required, `additionalProperties:false`. Response: `operationId` integer required.
+- Modify: `shared/api-contracts/notifications/operation.progress.json` — add nullable `metadata` object so terminal operation events can carry parsed summary data. Keep it nullable for existing scan/host operations and all non-terminal events.
+- Modify: `core-go/internal/operations/progress.go` and `runner.go` — add `Metadata map[string]any` (or equivalent JSON-object field) to `ProgressEvent` and include parsed metadata on terminal success/failed/cancelled emits after `UpdateStatus`; tests should assert terminal events can include metadata when WorkFn returns it with either nil or non-nil error.
 - Modify: `shared/api-contracts/index.json` — add `{ "input": "methods/install.skill.json", "output": "methods/install-skill.ts" }`.
 - Test: add `TestContract_InstallSkill_Response` to `core-go/internal/rpc/handlers/project_contract_test.go` validating `installSkillResponse{OperationID:1}`.
 - [ ] Failing test → impl → `go test ./internal/rpc/...` → commit: `feat(contracts): add install.skill schema`.
 
 ### Task 14: Composition root + Electron allowlist
-- Modify: `core-go/cmd/skillbox-core/main.go` — append `.WithInstallDeps(fs)` to the `projectSvc` builder chain (same `fs` gateway instance).
+- Modify: `core-go/cmd/skillbox-core/main.go` — append `.WithInstallDeps(fs, hostRepo, skillRepo)` to the `projectSvc` builder chain (same `fs` gateway instance; exact repo names should match the existing composition root). If `SkillHostFolderRepo` lacks `GetActive`, add it in `core-go/internal/repositories/skill_host_folder_repo.go` and cover it in `skill_host_folder_repo_test.go`.
 - Modify: `apps/desktop/electron/main/core-process/method-allowlist.ts` — add `"install.skill"`.
 - [ ] `cd core-go && go build ./...`; `cd apps/desktop && pnpm typecheck` → commit: `feat: wire install.skill into core and electron allowlist`.
 
@@ -126,8 +135,8 @@
 - [ ] Failing test → impl → `cd apps/desktop && pnpm test` → commit: `feat(renderer): add installSkill core-client method`.
 
 ### Task 17: useInstallSkill hook
-- Create: `apps/desktop/renderer/src/features/projects/use-install-skill.ts` — mirror `use-scan-project.ts`: subscribe-all before RPC, handle buffered terminal, subscribe per-op; on terminal success toast "Installed N skill(s)", on failed toast `Install failed: ${message}` (message carries created/failed from worker error), on cancelled dismiss; invalidate `queryKeys.projects.detail(projectId)` + `queryKeys.projects.list()` ONLY on terminal event. Mutation input `{ projectId, providerKey, skillIds }`.
-- Test: `apps/desktop/renderer/src/features/projects/__tests__/use-install-skill.test.tsx` — mirror scan hook test: sets operationId; invalidates detail+list on terminal success; error toast + invalidate on terminal failed; no invalidate on intermediate `running` event.
+- Create: `apps/desktop/renderer/src/features/projects/use-install-skill.ts` — mirror `use-scan-project.ts`: subscribe-all before RPC, handle buffered terminal, subscribe per-op; on terminal success toast "Installed N skill(s)" from terminal operation metadata `created`; on failed toast uses terminal operation metadata first (`created`/`failed`) and appends the error message second. Do not rely on the raw OS error string as the primary user message. Invalidate `queryKeys.projects.detail(projectId)` + `queryKeys.projects.list()` ONLY on terminal event. Mutation input `{ projectId, providerKey, skillIds }`.
+- Test: `apps/desktop/renderer/src/features/projects/__tests__/use-install-skill.test.tsx` — mirror scan hook test: sets operationId; invalidates detail+list on terminal success; failed terminal event with metadata `{created:1,failed:1}` shows a created/failed summary and invalidates; no invalidate on intermediate `running` event.
 - [ ] Failing test → impl → `pnpm test` → commit: `feat(renderer): add useInstallSkill hook`.
 
 ### Task 18: Add Skill wizard component
@@ -136,7 +145,9 @@
 - [ ] Failing test → impl → `pnpm test` → commit: `feat(renderer): add minimal Add Skill wizard`.
 
 ### Task 19: Wire wizard into Project Detail
-- Modify: `apps/desktop/renderer/src/screens/project-detail-screen.tsx` — `[Add Skill]` button toggles wizard open; pass `providers` + project id from `useProjectDetail`, and active-host `skills` (fetch via existing `methods.getSettings` → active host id → `methods.listSkills`; reuse any existing skills hook if present). No new screen-level test required.
+- Create: `apps/desktop/renderer/src/features/skills/use-active-host-skills.ts` — one hook owns the parent-side data resolution: call `methods.getSettings`, if `activeHost` is null return `{skills: [], reason: "No active Skill Host configured"}`, otherwise call `methods.listSkills({hostId: activeHost.hostId})`. Expose loading/error state and only return available skills to the wizard.
+- Modify: `apps/desktop/renderer/src/screens/project-detail-screen.tsx` — `[Add Skill]` button toggles wizard open; pass `providers` + project id from `useProjectDetail`, and active-host skills/loading/error from `useActiveHostSkills`. Do not inline ad hoc `getSettings → listSkills` calls in the screen.
+- Test: add a focused hook/component test covering no active host (wizard opens with disabled Install/reason), loading state, and list error state if existing renderer test utilities make this practical. If not practical, document the gap in the final verification notes and keep Task 18 wizard tests as the behavioral guard.
 - [ ] `pnpm typecheck && pnpm test` → commit: `feat(renderer): open Add Skill wizard from project detail`.
 
 ---
@@ -153,6 +164,8 @@
 - Symlink-only; rsync/copy, remove, relink, switch-mode, global, replace-on-conflict NOT implemented (out of scope).
 - `failed = requested - created` enforced in Task 6/11 metadata.
 - Partial failure → FAILED op + persisted metadata (Tasks 3, 6, 11); rescan always runs.
+- Validation/provider/conflict errors happen before the write phase and do not trigger rescan; filesystem failures after `EnsureDir` or after any symlink attempt do trigger rescan.
 - Skill-name + within-root validation (Tasks 4, 6, 10); conflict atomic pre-write (Task 9).
 - Claude `can_create_structure=0` block (Task 8); static-capability read only.
 - Renderer installable predicate is coarse (no `can_create_structure` on client); server authoritative — documented in Task 18.
+- Active-host skill resolution has one renderer hook and one backend dependency path; no duplicate "first active host" logic should be introduced in screen or service code.
