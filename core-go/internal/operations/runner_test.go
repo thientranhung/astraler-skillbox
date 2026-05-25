@@ -262,6 +262,81 @@ func TestRunner_LockReleasedAfterCompletion(t *testing.T) {
 	waitStatus(t, repo, id2, domain.OperationStatusSuccess)
 }
 
+// TestRunner_SuccessStoresMetadata verifies that metadata returned alongside a
+// nil error is persisted in the SUCCESS path.
+func TestRunner_SuccessStoresMetadata(t *testing.T) {
+	r, _ := newRunner()
+	repo := r.repo.(*fakeOpRepo)
+	target := Target{Type: "skill_host_folder", ID: 42}
+
+	type installMeta struct {
+		Requested int `json:"requested"`
+		Created   int `json:"created"`
+		Failed    int `json:"failed"`
+	}
+
+	done := make(chan struct{})
+	id, err := r.Start(context.Background(), target, domain.OperationTypeScan,
+		func(ctx context.Context, _ ProgressFn) (any, error) {
+			close(done)
+			return installMeta{Requested: 2, Created: 2, Failed: 0}, nil
+		})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	<-done
+	waitStatus(t, repo, id, domain.OperationStatusSuccess)
+
+	meta := repo.getMeta(id)
+	if meta == nil {
+		t.Fatal("expected metadataJSON to be non-nil on success, got nil")
+	}
+	want := `{"requested":2,"created":2,"failed":0}`
+	if *meta != want {
+		t.Errorf("metadataJSON mismatch:\n  got  %s\n  want %s", *meta, want)
+	}
+}
+
+// TestRunner_FailedPathStoresMetadata verifies that metadata returned alongside
+// a non-nil error (partial-failure path, e.g. Slice 2F install) is also
+// persisted when the operation is marked FAILED.
+func TestRunner_FailedPathStoresMetadata(t *testing.T) {
+	r, _ := newRunner()
+	repo := r.repo.(*fakeOpRepo)
+	target := Target{Type: "project", ID: 7}
+
+	type installMeta struct {
+		Requested int `json:"requested"`
+		Created   int `json:"created"`
+		Failed    int `json:"failed"`
+	}
+
+	done := make(chan struct{})
+	id, err := r.Start(context.Background(), target, domain.OperationTypeScan,
+		func(ctx context.Context, _ ProgressFn) (any, error) {
+			close(done)
+			// Return BOTH metadata and a non-nil error — the partial-failure case.
+			return installMeta{Requested: 2, Created: 1, Failed: 1},
+				errors.New("filesystem_error: one symlink failed")
+		})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	<-done
+	waitStatus(t, repo, id, domain.OperationStatusFailed)
+
+	meta := repo.getMeta(id)
+	if meta == nil {
+		t.Fatal("expected metadataJSON to be non-nil on failure with returned metadata, got nil")
+	}
+	want := `{"requested":2,"created":1,"failed":1}`
+	if *meta != want {
+		t.Errorf("metadataJSON mismatch on failed path:\n  got  %s\n  want %s", *meta, want)
+	}
+}
+
 func TestRunner_ProgressEvents(t *testing.T) {
 	r, ch := newRunner()
 	target := Target{Type: "skill_host_folder", ID: 1}

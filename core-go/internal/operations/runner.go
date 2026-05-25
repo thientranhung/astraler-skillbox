@@ -105,6 +105,16 @@ func (r *Runner) run(ctx context.Context, opID int64, lockKey string, fn WorkFn)
 
 	meta, err := fn(ctx, progressFn)
 
+	// Marshal metadata once; used on both success and failure paths so that
+	// partial-failure operations (returning metadata AND a non-nil error) still
+	// persist their progress summary.
+	var metaStr *string
+	if meta != nil {
+		b, _ := json.Marshal(meta)
+		s := string(b)
+		metaStr = &s
+	}
+
 	now := time.Now()
 	if err != nil {
 		errMsg := err.Error()
@@ -114,17 +124,11 @@ func (r *Runner) run(ctx context.Context, opID int64, lockKey string, fn WorkFn)
 		} else {
 			status = domain.OperationStatusFailed
 		}
-		_ = r.repo.UpdateStatus(context.Background(), opID, status, &errMsg, nil, &now)
+		_ = r.repo.UpdateStatus(context.Background(), opID, status, &errMsg, metaStr, &now)
 		r.emit(opID, string(status), "done", nil, nil, &errMsg)
 		return
 	}
 
-	var metaStr *string
-	if meta != nil {
-		b, _ := json.Marshal(meta)
-		s := string(b)
-		metaStr = &s
-	}
 	_ = r.repo.UpdateStatus(context.Background(), opID, domain.OperationStatusSuccess, nil, metaStr, &now)
 	r.emit(opID, "success", "done", nil, nil, nil)
 }
