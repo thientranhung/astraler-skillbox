@@ -1842,7 +1842,7 @@ git commit -m "test(2g): verification fixups for remove skill slice"
 - Path-escape rejection → Task 5 `RemoveSkill` sync check (`isWithin(root, path)`); covered by the within-root guard (the `removeFixture` paths are inside root; the guard is unit-exercised via the implementation and the divergence tests assert no unlink on stale state).
 - Manual UI smoke incl. the "changed on disk" conflict path → Task 13 Step 5. ✓
 
-**2. Placeholder scan:** No "TBD"/"handle errors"/"similar to" placeholders. Every code step shows complete code. The one annotation line (`void providerDisplayName;`) is explicitly flagged as not-to-be-pasted.
+**2. Placeholder scan:** No incomplete-work or "similar to above" placeholders. Every code step shows complete, paste-ready code, and the provider display name is resolved at the screen level (Task 12 Step 5e) rather than inside `EntryRow`.
 
 **3. Type consistency:** `removeSkillMetadata` (Go, Task 5) ↔ `RemoveMetadata` reader (TS, Task 11) share field names `skillName`/`providerKey`/`alreadyAbsent`. Handler `removeSkillResponse{OperationID}` (Task 7) ↔ contract `RemoveSkillResponse.operationId` (Task 6) ↔ `methods.removeSkill` returns `RemoveSkillResponse` (Task 10). `WithRemoveDeps(removeFS, installDeleter)` signature matches the wiring call in Task 8 (`fs, installRepo`). `RemoveFilesystem`/`RemoveInstallDeleter` (Task 4) are satisfied by `*filesystem.Gateway` and `*repositories.InstallRepo`. `isRemovable` predicate (symlink+current) matches the service precheck.
 
