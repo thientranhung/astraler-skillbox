@@ -261,6 +261,37 @@ func (m *mockSkillsByHostLister) ListByHost(_ context.Context, hostID int64) ([]
 	return m.skills[hostID], nil
 }
 
+// -- mock install filesystem --
+
+type mockInstallFS struct {
+	lstatErr    error
+	ensureDirErr error
+	symlinkErr  error
+}
+
+func (m *mockInstallFS) LstatExists(_ string) (bool, error) {
+	return false, m.lstatErr
+}
+
+func (m *mockInstallFS) EnsureDir(_ string) error {
+	return m.ensureDirErr
+}
+
+func (m *mockInstallFS) CreateSymlink(_, _ string) error {
+	return m.symlinkErr
+}
+
+// -- mock active host reader --
+
+type mockActiveHostReader struct {
+	host *domain.SkillHostFolder
+	err  error
+}
+
+func (m *mockActiveHostReader) GetActive(_ context.Context) (*domain.SkillHostFolder, error) {
+	return m.host, m.err
+}
+
 // -- mock provider adapter --
 
 type mockAdapter struct {

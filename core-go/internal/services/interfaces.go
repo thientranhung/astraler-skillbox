@@ -129,3 +129,19 @@ type SkillHostLister interface {
 type SkillsByHostLister interface {
 	ListByHost(ctx context.Context, hostID int64) ([]domain.Skill, error)
 }
+
+// InstallFilesystem provides the filesystem operations needed for skill installation.
+type InstallFilesystem interface {
+	// LstatExists reports whether path exists (does not follow symlinks).
+	LstatExists(path string) (bool, error)
+	// EnsureDir creates path and all parents if they do not exist.
+	EnsureDir(path string) error
+	// CreateSymlink creates a symlink at linkPath pointing to targetPath.
+	CreateSymlink(targetPath, linkPath string) error
+}
+
+// ActiveHostReader reads the currently active skill host folder.
+// *repositories.SkillHostFolderRepo satisfies this interface.
+type ActiveHostReader interface {
+	GetActive(ctx context.Context) (*domain.SkillHostFolder, error)
+}

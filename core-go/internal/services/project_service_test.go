@@ -7,6 +7,7 @@ import (
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
+	"github.com/astraler/skillbox/core-go/internal/operations"
 )
 
 func newProjectSvc(fs *mockProjectFS, projRepo *mockProjectRepo) *ProjectService {
@@ -321,6 +322,84 @@ func TestAddProject_AfterRemove_RevivesProject(t *testing.T) {
 	if r2.Status != domain.ProjectStatusActive {
 		t.Errorf("status: got %q want active", r2.Status)
 	}
+}
+
+// --- InstallSkills ---
+
+func newInstallSvc(projRepo *mockProjectRepo, runner *mockRunner) *ProjectService {
+	svc := newProjectSvc(&mockProjectFS{}, projRepo)
+	svc.WithScanDeps(runner, &mockProjectScanCommitter{})
+	svc.WithInstallDeps(&mockInstallFS{}, &mockActiveHostReader{}, &mockSkillsByHostLister{})
+	return svc
+}
+
+func TestInstallSkills_EmptySkillIDs(t *testing.T) {
+	svc := newInstallSvc(newMockProjectRepo(), &mockRunner{})
+	_, err := svc.InstallSkills(context.Background(), 1, "generic_agents", []int64{})
+	requireAppError(t, err, domain.CodeValidation)
+}
+
+func TestInstallSkills_DuplicateSkillIDs(t *testing.T) {
+	svc := newInstallSvc(newMockProjectRepo(), &mockRunner{})
+	_, err := svc.InstallSkills(context.Background(), 1, "generic_agents", []int64{1, 1})
+	requireAppError(t, err, domain.CodeValidation)
+}
+
+func TestInstallSkills_UnknownProviderKey(t *testing.T) {
+	svc := newInstallSvc(newMockProjectRepo(), &mockRunner{})
+	_, err := svc.InstallSkills(context.Background(), 1, "unknown_provider", []int64{1, 2})
+	requireAppError(t, err, domain.CodeValidation)
+}
+
+func TestInstallSkills_ProjectNotFound(t *testing.T) {
+	svc := newInstallSvc(newMockProjectRepo(), &mockRunner{})
+	// project 999 does not exist
+	_, err := svc.InstallSkills(context.Background(), 999, "generic_agents", []int64{1, 2})
+	requireAppError(t, err, domain.CodeValidation)
+}
+
+func TestInstallSkills_ProjectRemoved(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
+	projRepo.MarkRemoved(ctx, 1)                         //nolint:errcheck
+
+	svc := newInstallSvc(projRepo, &mockRunner{})
+	_, err := svc.InstallSkills(ctx, 1, "generic_agents", []int64{1, 2})
+	requireAppError(t, err, domain.CodeValidation)
+}
+
+func TestInstallSkills_HappyPath(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
+
+	runner := &mockRunner{}
+	svc := newInstallSvc(projRepo, runner)
+
+	opID, err := svc.InstallSkills(ctx, 1, "generic_agents", []int64{1, 2})
+	if err != nil {
+		t.Fatalf("InstallSkills: %v", err)
+	}
+	if opID != 1 {
+		t.Errorf("opID: got %d want 1", opID)
+	}
+}
+
+func TestInstallSkills_RunnerConflict(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
+
+	runner := &mockRunner{
+		startFn: func(_ context.Context, _ operations.Target, _ domain.OperationType, _ operations.WorkFn) (int64, error) {
+			return 0, domain.NewConflictError("operation already running", "target busy")
+		},
+	}
+	svc := newInstallSvc(projRepo, runner)
+
+	_, err := svc.InstallSkills(ctx, 1, "generic_agents", []int64{1, 2})
+	requireAppError(t, err, domain.CodeConflict)
 }
 
 // --- helpers ---
