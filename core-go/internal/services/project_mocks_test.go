@@ -7,17 +7,21 @@ import (
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
+	"github.com/astraler/skillbox/core-go/internal/providers"
+	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
 // -- mock project filesystem --
 
 type mockProjectFS struct {
-	validateErr    error
-	normalizedPath string
-	normalizeErr   error
+	validateErr        error
+	normalizedPath     string
+	normalizeErr       error
 	// pathInfoResult overrides the default (readable dir). nil = readable dir.
-	pathInfoResult *filesystem.PathInfo
-	pathInfoErr    error
+	pathInfoResult     *filesystem.PathInfo
+	pathInfoErr        error
+	listEntriesResult  []filesystem.ProjectEntry
+	listEntriesErr     error
 }
 
 func (m *mockProjectFS) ValidateProjectPath(_ string) error { return m.validateErr }
@@ -40,6 +44,10 @@ func (m *mockProjectFS) PathInfo(_ string) (filesystem.PathInfo, error) {
 		return *m.pathInfoResult, nil
 	}
 	return filesystem.PathInfo{Exists: true, IsDir: true, Readable: true}, nil
+}
+
+func (m *mockProjectFS) ListSkillEntries(_ string) ([]filesystem.ProjectEntry, error) {
+	return m.listEntriesResult, m.listEntriesErr
 }
 
 // -- mock project repo --
@@ -148,11 +156,16 @@ func (m *mockProjectInstallRepo) ListByProject(_ context.Context, projectID int6
 // -- mock project scan committer --
 
 type mockProjectScanCommitter struct {
-	terminalErr            error
-	terminalCallCount      int
-	lastTerminalProjectID  int64
-	lastTerminalStatus     domain.ProjectStatus
-	lastTerminalWarning    *domain.Warning
+	terminalErr           error
+	terminalCallCount     int
+	lastTerminalProjectID int64
+	lastTerminalStatus    domain.ProjectStatus
+	lastTerminalWarning   *domain.Warning
+
+	fullScanErr         error
+	fullScanCallCount   int
+	lastProviders       []repositories.ProviderScanResult
+	lastProjectWarnings []domain.Warning
 }
 
 func (m *mockProjectScanCommitter) CommitProjectTerminal(
@@ -167,4 +180,77 @@ func (m *mockProjectScanCommitter) CommitProjectTerminal(
 	m.lastTerminalStatus = status
 	m.lastTerminalWarning = warning
 	return m.terminalErr
+}
+
+func (m *mockProjectScanCommitter) CommitProjectScan(
+	_ context.Context,
+	_ int64,
+	provs []repositories.ProviderScanResult,
+	projectWarnings []domain.Warning,
+	_ time.Time,
+) error {
+	m.fullScanCallCount++
+	m.lastProviders = provs
+	m.lastProjectWarnings = projectWarnings
+	return m.fullScanErr
+}
+
+// -- mock provider registry --
+
+type mockProviderRegistry struct {
+	adapters []providers.ProviderAdapter
+}
+
+func (m *mockProviderRegistry) All() []providers.ProviderAdapter { return m.adapters }
+
+// -- mock provider definition repo --
+
+type mockProviderDefRepo struct {
+	defs map[string]*domain.ProviderDefinition
+	err  error
+}
+
+func (m *mockProviderDefRepo) GetByKey(_ context.Context, key string) (*domain.ProviderDefinition, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.defs[key], nil
+}
+
+// -- mock host lister --
+
+type mockHostLister struct {
+	hosts []domain.SkillHostFolder
+	err   error
+}
+
+func (m *mockHostLister) ListAll(_ context.Context) ([]domain.SkillHostFolder, error) {
+	return m.hosts, m.err
+}
+
+// -- mock skills-by-host lister --
+
+type mockSkillsByHostLister struct {
+	skills map[int64][]domain.Skill
+	err    error
+}
+
+func (m *mockSkillsByHostLister) ListByHost(_ context.Context, hostID int64) ([]domain.Skill, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.skills[hostID], nil
+}
+
+// -- mock provider adapter --
+
+type mockAdapter struct {
+	key    string
+	result providers.DetectResult
+	err    error
+}
+
+func (m *mockAdapter) Key() string { return m.key }
+func (m *mockAdapter) Detect(_ string, _ providers.FsReader) (providers.DetectResult, error) {
+	return m.result, m.err
 }

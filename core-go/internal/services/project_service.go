@@ -9,6 +9,7 @@ import (
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
 	"github.com/astraler/skillbox/core-go/internal/operations"
+	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
 // AddProjectResult is returned by AddProject.
@@ -49,6 +50,11 @@ type ProjectService struct {
 	// scan dependencies — nil until WithScanDeps is called
 	runner   OperationRunner
 	scanRepo ProjectScanCommitter
+	// provider-detection scan deps — nil until WithProviderDeps is called
+	providerRegistry   ProviderRegistry
+	providerDefRepo    ProviderDefinitionRepo
+	hostLister         SkillHostLister
+	skillsByHostLister SkillsByHostLister
 }
 
 // NewProjectService constructs a ProjectService for read/add operations.
@@ -68,11 +74,26 @@ func NewProjectService(
 	}
 }
 
-// WithScanDeps attaches the dependencies required for ScanProject.
-// Returns the receiver to allow chaining with NewProjectService.
+// WithScanDeps attaches the operation runner and scan committer required for ScanProject.
+// Returns the receiver to allow chaining.
 func (s *ProjectService) WithScanDeps(runner OperationRunner, scanRepo ProjectScanCommitter) *ProjectService {
 	s.runner = runner
 	s.scanRepo = scanRepo
+	return s
+}
+
+// WithProviderDeps attaches the provider-detection dependencies required for full project scans.
+// Returns the receiver to allow chaining.
+func (s *ProjectService) WithProviderDeps(
+	registry ProviderRegistry,
+	pdRepo ProviderDefinitionRepo,
+	hostLister SkillHostLister,
+	skillsByHostLister SkillsByHostLister,
+) *ProjectService {
+	s.providerRegistry = registry
+	s.providerDefRepo = pdRepo
+	s.hostLister = hostLister
+	s.skillsByHostLister = skillsByHostLister
 	return s
 }
 
@@ -239,8 +260,122 @@ func (s *ProjectService) scanProjectInternal(
 			"Project folder is not readable: "+project.Path)
 	}
 
-	// M3c2b2: provider detection, classification, commit scan — not yet implemented.
+	// M3c2b2: provider detection, entry classification, full scan commit.
+	progress("detecting_providers", 0, 0, "")
+
+	hosts, err := s.hostLister.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load skill host folders", err.Error())
+	}
+	hostSummaries, err := s.buildHostSummaries(ctx, hosts)
+	if err != nil {
+		return nil, err
+	}
+
+	adapters := s.providerRegistry.All()
+	providerResults := make([]repositories.ProviderScanResult, 0, len(adapters))
+	var projectWarnings []domain.Warning
+
+	for _, adapter := range adapters {
+		result, detectErr := adapter.Detect(project.Path, s.fs)
+		if detectErr != nil {
+			continue // non-fatal: skip this provider
+		}
+
+		pd, err := s.providerDefRepo.GetByKey(ctx, adapter.Key())
+		if err != nil {
+			return nil, domain.NewDatabaseError("Could not look up provider definition", err.Error())
+		}
+		if pd == nil {
+			continue // provider not seeded in DB; skip
+		}
+
+		progress("classifying_entries", 0, 0, "")
+
+		installs := make([]repositories.InstallScanResult, 0, len(result.Entries))
+		for _, entry := range result.Entries {
+			classified := ClassifyAdapterEntry(entry, hostSummaries)
+			installs = append(installs, repositories.InstallScanResult{
+				SkillID:                   classified.SkillID,
+				SkillName:                 entry.Name,
+				InstallMode:               classified.Mode,
+				InstallStatus:             classified.Status,
+				ProjectSkillPath:          entry.Path,
+				SourceSkillPath:           classified.SourceSkillPath,
+				SymlinkTargetPath:         classified.SymlinkTargetPath,
+				InstalledFromHostFolderID: classified.InstalledFromHostFolderID,
+			})
+		}
+
+		rescan := "rescan"
+		var providerWarnings []domain.Warning
+		for _, aw := range result.Warnings {
+			w := domain.Warning{
+				ScopeType: aw.ScopeType,
+				Severity:  aw.Severity,
+				Code:      aw.Code,
+				Message:   aw.Message,
+				ActionKey: &rescan,
+			}
+			if aw.ScopeType == domain.WarningScopeProject {
+				projectWarnings = append(projectWarnings, w)
+			} else {
+				providerWarnings = append(providerWarnings, w)
+			}
+		}
+
+		var detectedPath *string
+		if result.DetectedPath != "" {
+			dp := result.DetectedPath
+			detectedPath = &dp
+		}
+		var skillsPathPtr *string
+		if result.SkillsPath != "" {
+			sp := result.SkillsPath
+			skillsPathPtr = &sp
+		}
+
+		providerResults = append(providerResults, repositories.ProviderScanResult{
+			ProviderDefinitionID: pd.ID,
+			DetectedPath:         detectedPath,
+			SkillsPath:           skillsPathPtr,
+			DetectionStatus:      result.DetectionStatus,
+			Installs:             installs,
+			Warnings:             providerWarnings,
+		})
+	}
+
+	if err := s.scanRepo.CommitProjectScan(ctx, project.ID, providerResults, projectWarnings, time.Now()); err != nil {
+		return nil, domain.NewDatabaseError("Could not commit project scan", err.Error())
+	}
+
+	progress("done", 0, 0, "")
 	return nil, nil
+}
+
+// buildHostSummaries loads skills for each host and returns HostSummary slices
+// with active hosts first (so ClassifyAdapterEntry resolves active before inactive).
+func (s *ProjectService) buildHostSummaries(ctx context.Context, hosts []domain.SkillHostFolder) ([]HostSummary, error) {
+	summaries := make([]HostSummary, 0, len(hosts))
+	for _, active := range []bool{true, false} {
+		for _, h := range hosts {
+			isActive := h.Status == domain.SkillHostStatusActive
+			if isActive != active {
+				continue
+			}
+			skills, err := s.skillsByHostLister.ListByHost(ctx, h.ID)
+			if err != nil {
+				return nil, domain.NewDatabaseError("Could not load skills for host", err.Error())
+			}
+			summaries = append(summaries, HostSummary{
+				ID:         h.ID,
+				SkillsPath: h.SkillsPath,
+				IsActive:   isActive,
+				Skills:     skills,
+			})
+		}
+	}
+	return summaries, nil
 }
 
 func (s *ProjectService) commitTerminalPath(ctx context.Context, project *domain.Project, pathErr error) (any, error) {

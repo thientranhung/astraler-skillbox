@@ -24,7 +24,13 @@ func newProjectScanSvc(
 		&mockProjectWarningRepo{},
 		&mockProjectInstallRepo{},
 		fs,
-	).WithScanDeps(runner, scanRepo)
+	).WithScanDeps(runner, scanRepo).
+		WithProviderDeps(
+			&mockProviderRegistry{},
+			&mockProviderDefRepo{defs: make(map[string]*domain.ProviderDefinition)},
+			&mockHostLister{},
+			&mockSkillsByHostLister{},
+		)
 }
 
 // --- ScanProject boundary tests ---

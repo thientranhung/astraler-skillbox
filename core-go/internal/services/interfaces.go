@@ -7,6 +7,8 @@ import (
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
 	"github.com/astraler/skillbox/core-go/internal/operations"
+	"github.com/astraler/skillbox/core-go/internal/providers"
+	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
 // Filesystem abstracts the gateway for testability.
@@ -68,12 +70,16 @@ type ProjectRepo interface {
 }
 
 // ProjectFilesystem provides the read-only filesystem operations needed by the project service.
+// filesystem.Gateway satisfies this interface and also satisfies providers.FsReader, so the
+// gateway can be passed directly to adapter.Detect.
 type ProjectFilesystem interface {
 	ValidateProjectPath(path string) error
 	NormalizeAbs(path string) (string, error)
 	// PathInfo returns existence and readability facts for path (follows symlinks).
 	// Used by ScanProject to detect unreadable directories that os.Stat alone misses.
 	PathInfo(path string) (filesystem.PathInfo, error)
+	// ListSkillEntries lists top-level entries in a skills directory (read-only).
+	ListSkillEntries(skillsPath string) ([]filesystem.ProjectEntry, error)
 }
 
 // ProjectProviderRepo reads project_providers joined with definitions and entry counts.
@@ -93,8 +99,29 @@ type ProjectInstallRepo interface {
 	ListByProject(ctx context.Context, projectID int64) ([]domain.Install, error)
 }
 
-// ProjectScanCommitter writes project scan terminal states atomically.
-// *repositories.ProjectScanRepo satisfies this interface.
+// ProjectScanCommitter writes project scan states atomically.
+// *repositories.ProjectScanRepo satisfies both methods.
 type ProjectScanCommitter interface {
 	CommitProjectTerminal(ctx context.Context, projectID int64, status domain.ProjectStatus, warning *domain.Warning, now time.Time) error
+	CommitProjectScan(ctx context.Context, projectID int64, provs []repositories.ProviderScanResult, projectWarnings []domain.Warning, now time.Time) error
+}
+
+// ProviderDefinitionRepo looks up provider definitions by key.
+type ProviderDefinitionRepo interface {
+	GetByKey(ctx context.Context, key string) (*domain.ProviderDefinition, error)
+}
+
+// ProviderRegistry returns all registered provider adapters.
+type ProviderRegistry interface {
+	All() []providers.ProviderAdapter
+}
+
+// SkillHostLister lists all skill host folders regardless of status.
+type SkillHostLister interface {
+	ListAll(ctx context.Context) ([]domain.SkillHostFolder, error)
+}
+
+// SkillsByHostLister reads skills for a given skill host folder.
+type SkillsByHostLister interface {
+	ListByHost(ctx context.Context, hostID int64) ([]domain.Skill, error)
 }
