@@ -9,7 +9,8 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "generate:contracts": "node scripts/generate-contracts.mjs",
-    "check:contracts-drift": "node scripts/generate-contracts.mjs --check"
+    "check:contracts-drift": "node scripts/generate-contracts.mjs --check",
+    "build:core": "node scripts/build-core.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
