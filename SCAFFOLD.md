@@ -293,6 +293,22 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 - On a machine without Apple credentials: exits non-zero at preflight; `package:mac` is never invoked.
 - See SMOKE.md → "Release Orchestrator (Slice 3B2C)".
 
+### Release dry-run — no-credential end-to-end chain (Slice 3E)
+
+> **NON-DISTRIBUTABLE — AD-HOC SIGNED — NOT NOTARIZED**
+
+- `pnpm release:mac:dry-run` — validates the local build → ad-hoc sign → verify → manifest/checksum
+  chain without Apple credentials. Runs: `build:core` → `build` → `electron-builder --mac dmg
+  -c.mac.identity=- -c.mac.notarize=false` (hardened runtime **remains enabled**) → `release:mac:verify
+  --allow-adhoc <dmg>` → `release:mac:manifest <dmg>` → `shasum -a 256 -c` (selected line only).
+- Does **not** invoke `release:mac:check`, `package:mac`, `package:mac:unsigned`, notarization,
+  keychain, or credentials. Never sets `-c.mac.hardenedRuntime=false`.
+- Selects the produced DMG by before/after `dist/*.dmg` metadata (same algorithm as `release:mac:full`).
+  Fails clearly on zero or multiple changed DMGs.
+- Output artifact is for local chain validation only; Gatekeeper/customer distribution requires real
+  signing + notarization via `release:mac:full`.
+- See SMOKE.md → "Release Dry-Run (Slice 3E)".
+
 ### Release manifest + checksums (Slice 3C)
 - `pnpm release:mac:manifest <path-to-dmg>` — credential-free artifact integrity generator.
   Given the **exact** path to a built `.dmg`, computes its SHA-256 and emits:
