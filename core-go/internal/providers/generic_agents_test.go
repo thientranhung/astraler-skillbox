@@ -111,11 +111,15 @@ func TestGenericAgentsAdapter_AgentsIsFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
-	if result.Present {
-		t.Error("Present: want false for file .agents")
+	// .agents was found (Present=true); structure is invalid.
+	if !result.Present {
+		t.Error("Present: want true (.agents exists even if it is a file)")
 	}
 	if result.DetectionStatus != domain.DetectionStatusInvalidStructure {
 		t.Errorf("DetectionStatus: got %q want invalid_structure", result.DetectionStatus)
+	}
+	if result.DetectedPath != "/project/.agents" {
+		t.Errorf("DetectedPath: got %q want /project/.agents", result.DetectedPath)
 	}
 	if len(result.Warnings) == 0 {
 		t.Fatal("expected at least one warning")
@@ -134,8 +138,9 @@ func TestGenericAgentsAdapter_AgentsUnreadable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
-	if result.Present {
-		t.Error("Present: want false for unreadable .agents")
+	// .agents was found (Present=true); unreadable dir is invalid_structure.
+	if !result.Present {
+		t.Error("Present: want true (.agents exists even if unreadable)")
 	}
 	if result.DetectionStatus != domain.DetectionStatusInvalidStructure {
 		t.Errorf("DetectionStatus: got %q want invalid_structure", result.DetectionStatus)
