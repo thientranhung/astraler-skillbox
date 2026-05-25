@@ -145,3 +145,19 @@ type InstallFilesystem interface {
 type ActiveHostReader interface {
 	GetActive(ctx context.Context) (*domain.SkillHostFolder, error)
 }
+
+// RemoveFilesystem provides the filesystem operations needed to remove a symlink
+// install: re-verify the on-disk entry and unlink it. *filesystem.Gateway
+// satisfies this interface.
+type RemoveFilesystem interface {
+	// ResolveEntry returns lstat + symlink-resolution facts for path.
+	ResolveEntry(path string) (filesystem.EntryFacts, error)
+	// RemoveSymlink unlinks the entry at path (os.Remove; non-recursive).
+	RemoveSymlink(path string) error
+}
+
+// RemoveInstallDeleter hard-deletes a single install row by id.
+// *repositories.InstallRepo satisfies this interface.
+type RemoveInstallDeleter interface {
+	DeleteByID(ctx context.Context, installID int64) (int64, error)
+}
