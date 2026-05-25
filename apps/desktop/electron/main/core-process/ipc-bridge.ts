@@ -13,12 +13,16 @@ export function registerIpcBridge(win: BrowserWindow): void {
       throw new Error(`method_not_allowed: ${method}`);
     }
 
-    // Electron-native dialog — handled in main process, not forwarded to Go.
-    if (method === "dialog.openHostFolder") {
+    // Electron-native dialogs — handled in main process, not forwarded to Go.
+    if (method === "dialog.openHostFolder" || method === "dialog.openProjectFolder") {
       const parentWin = BrowserWindow.fromWebContents(event.sender);
+      const title =
+        method === "dialog.openProjectFolder"
+          ? "Choose Project Folder"
+          : "Choose Skill Host Folder";
       const opts: Electron.OpenDialogOptions = {
         properties: ["openDirectory"],
-        title: "Choose Skill Host Folder",
+        title,
       };
       const result = parentWin
         ? await dialog.showOpenDialog(parentWin, opts)

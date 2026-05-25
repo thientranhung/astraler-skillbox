@@ -7,11 +7,21 @@ import type {
   SkillListRequest,
   SkillListResponse,
   SettingsGetResponse,
+  ProjectAddRequest,
+  ProjectAddResponse,
+  ProjectListResponse,
+  ProjectGetRequest,
+  ProjectGetResponse,
+  ProjectScanRequest,
+  ProjectScanResponse,
 } from "@contracts/index.js";
 
 export const methods = {
   openHostFolder: () =>
     invoke<{ path: string | null }>("dialog.openHostFolder", {}),
+
+  openProjectFolder: () =>
+    invoke<{ path: string | null }>("dialog.openProjectFolder", {}),
 
   chooseHost: (req: HostChooseRequest) =>
     invoke<HostChooseResponse>("host.choose", req),
@@ -27,4 +37,16 @@ export const methods = {
 
   getSettings: () =>
     invoke<SettingsGetResponse>("settings.get", {}),
+
+  addProject: (req: ProjectAddRequest) =>
+    invoke<ProjectAddResponse>("project.add", req),
+
+  listProjects: () =>
+    invoke<ProjectListResponse>("project.list", {}),
+
+  getProject: (req: ProjectGetRequest) =>
+    invoke<ProjectGetResponse>("project.get", req),
+
+  scanProject: (req: ProjectScanRequest) =>
+    invoke<ProjectScanResponse>("project.scan", req),
 };
