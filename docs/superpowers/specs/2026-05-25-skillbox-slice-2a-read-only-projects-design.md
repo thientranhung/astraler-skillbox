@@ -245,7 +245,7 @@ Resolve target qua canonicalize/realpath, rồi so với tập **known hosts** =
 Chỉ set `installs.skill_id` khi **đồng thời**:
 
 1. Symlink resolve vào trong một known host (`current` hoặc `old_host`), và
-2. Target đã canonicalize khớp một skill đã scan trong host đó bằng cùng một dạng path canonical: hoặc `canonical(resolved_target) == canonical(skills.absolute_path)`, hoặc `rel(canonical(resolved_target), canonical(matched_host.path)) == skills.relative_path`. KHÔNG so `rel(resolved_target, host.skills_path)` với `skills.relative_path`, vì `skills.relative_path` được lưu relative từ Skill Host Folder.
+2. Target map tới **đúng một** skill đã scan trong host đó theo identity path: ưu tiên `rel(canonical(resolved_target), canonical(matched_host.path)) == skills.relative_path`; nếu không tính được relative path vì host được chọn qua symlink/non-canonical alias, fallback sang `canonical(resolved_target) == canonical(skills.absolute_path)` nhưng chỉ khi kết quả unique. Nếu nhiều `skills` rows canonicalize tới cùng target (ví dụ alias symlink trong host), để `skill_id = null`. KHÔNG so `rel(resolved_target, host.skills_path)` với `skills.relative_path`, vì `skills.relative_path` được lưu relative từ Skill Host Folder.
 
 Ngược lại `skill_id = null`, giữ `skill_name` (= tên entry trên disk). KHÔNG match theo tên-gần-đúng. Không có "management semantics" suy ra từ tên.
 
@@ -539,7 +539,7 @@ Blocking errors dừng action, **không** mutate state cũ (giữ metadata lần
 
 - `GenericAgentsAdapter`: `.agents` missing / present / `.agents` is file / `.agents/skills` empty / permission denied — dùng `t.TempDir()` fixtures + symlinks.
 - Classification: symlink → active host (`current`), → inactive host (`old_host`), → outside (`external_symlink`), broken (`broken_symlink`), folder thường (`direct`), file thường (`error`), symlink loop (`error`).
-- skill_id match: exact relative path match → set; tên trùng nhưng path khác → null; target ngoài host → null.
+- skill_id match: exact host-relative identity match → set; tên trùng nhưng path khác → null; target ngoài host hoặc canonical alias ambiguous → null.
 - Reconcile: entry biến mất → `missing` (không hard delete); rescan idempotent.
 - Project missing path → status `missing` + warning, bỏ qua provider scan, không crash.
 - Lock: 2 `project.scan` cùng project → `conflict_error`.
@@ -618,7 +618,7 @@ Quyết định product/UX cần chốt trước hoặc trong slice sau, **khôn
 [ ] project.scan là read-only: entries của project KHÔNG bị app sửa (verify inode/mtime).
 [ ] generic_agents detection đúng cho: present / missing / .agents-is-file / empty-skills.
 [ ] Classification đúng: current / old_host / external_symlink / broken_symlink / direct / error.
-[ ] skill_id chỉ set khi exact relative-path match trong known host; ngược lại null.
+[ ] skill_id chỉ set khi exact host-relative identity match trong known host và unique; ambiguous canonical aliases -> null.
 [ ] old_host vs external dựa trên active + inactive known skill_host_folders.
 [ ] Empty .agents/skills -> provider detected, zero entries, không error.
 [ ] Marker provider khác (.claude) bị ignore, không sinh warning/row.
