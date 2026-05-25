@@ -27,7 +27,7 @@ Land everything needed for a signed + notarized macOS customer release **except 
 ## 2. Why 3B1 Is Valuable Without Apple Credentials
 
 - **Isolates the real blocker.** Only notarization and Developer ID signing need an Apple account. Everything else (config shape, entitlements, sidecar-signing wiring, scripts, docs) can be authored and verified now, so 3B2 becomes a short, low-risk slice.
-- **De-risks the #1 technical hazard early.** A nested binary bundled via `extraResources` is the most likely cause of a notarization rejection (any unsigned Mach-O fails notarization). 3B1 proves — via a **local ad-hoc signature** (`codesign -s -`) — that `mac.binaries` actually reaches `resources/core/skillbox-core`, without needing a Developer ID cert.
+- **De-risks the #1 technical hazard early.** A nested binary bundled via `extraResources` is the most likely cause of a notarization rejection (any unsigned Mach-O fails notarization). 3B1 proves — via electron-builder's **own ad-hoc signing path** (`-c.mac.identity=-`) — that `mac.binaries` actually reaches `Contents/Resources/core/skillbox-core` in the packed bundle, without needing a Developer ID cert.
 - **Keeps the unsigned spike alive.** 3B1 makes signing the default config while preserving a working `package:mac:unsigned`, so the team retains a buildable artifact throughout.
 - **Reviewable in isolation.** Config + entitlements + dry-run is a small, self-contained diff a lead can fully assess without an Apple account on the review machine.
 
