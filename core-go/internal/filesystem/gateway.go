@@ -28,3 +28,19 @@ func (g *Gateway) ScanHostFolder(skillsPath string) ([]HostEntry, error) {
 func (g *Gateway) NormalizeAbs(path string) (string, error) {
 	return NormalizeAbs(path)
 }
+
+// ValidateProjectPath delegates to the package-level function.
+// Unlike ValidateHostPath it does NOT require the path to be writable.
+func (g *Gateway) ValidateProjectPath(path string) error {
+	return ValidateProjectPath(path)
+}
+
+// PathInfo delegates to StatPathInfo.
+func (g *Gateway) PathInfo(path string) (PathInfo, error) {
+	return StatPathInfo(path)
+}
+
+// ListSkillEntries delegates to ScanProjectSkills.
+func (g *Gateway) ListSkillEntries(skillsPath string) ([]ProjectEntry, error) {
+	return ScanProjectSkills(skillsPath)
+}
