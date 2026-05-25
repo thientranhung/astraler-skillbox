@@ -96,3 +96,17 @@ describe("methods.scanProject", () => {
     expect(mockInvoke).toHaveBeenCalledWith("project.scan", { projectId: 3 });
   });
 });
+
+describe("methods.removeProject", () => {
+  it("calls project.remove with projectId", async () => {
+    await methods.removeProject({ projectId: 7 });
+    expect(mockInvoke).toHaveBeenCalledWith("project.remove", { projectId: 7 });
+  });
+});
+
+describe("methods.openPath", () => {
+  it("calls dialog.openPath with path", async () => {
+    await methods.openPath("/home/user/myproject");
+    expect(mockInvoke).toHaveBeenCalledWith("dialog.openPath", { path: "/home/user/myproject" });
+  });
+});

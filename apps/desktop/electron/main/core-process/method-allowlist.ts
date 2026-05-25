@@ -11,4 +11,6 @@ export const ALLOWLIST = new Set([
   "project.list",
   "project.get",
   "project.scan",
+  "project.remove",
+  "dialog.openPath",
 ]);

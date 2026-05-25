@@ -1,8 +1,10 @@
 import React from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, RefreshCw, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { ArrowLeft, RefreshCw, FolderOpen, Trash2, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { useProjectDetail } from "../features/projects/use-project-detail.js";
 import { useScanProject } from "../features/projects/use-scan-project.js";
+import { useOpenProjectFolder } from "../features/projects/use-open-project-folder.js";
+import { useRemoveProject } from "../features/projects/use-remove-project.js";
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import type { ProjectGetEntry, ProjectGetWarning, ProjectGetProvider } from "@contracts/index.js";
@@ -118,6 +120,14 @@ export function ProjectDetailScreen(): React.JSX.Element {
   const { data, isPending, isError, error } = useProjectDetail(validId);
   const scan = useScanProject();
   const isScanning = scan.operationId != null || scan.isPending;
+  const openFolder = useOpenProjectFolder();
+  const remove = useRemoveProject({ navigateAfter: true });
+
+  function handleRemove(): void {
+    if (window.confirm("Remove this project from Skillbox? Files on disk will not be deleted.")) {
+      remove.mutate(validId!);
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -145,7 +155,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
           )}
         </div>
         {data != null && (
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             {data.project.lastScannedAt != null && (
               <span className="hidden text-xs text-zinc-400 sm:block">
                 Scanned {new Date(data.project.lastScannedAt).toLocaleString()}
@@ -154,10 +164,29 @@ export function ProjectDetailScreen(): React.JSX.Element {
             <button
               onClick={() => scan.mutate(validId!)}
               disabled={isScanning}
+              title="Scan project"
               className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
             >
               <RefreshCw size={12} className={isScanning ? "animate-spin" : ""} />
               {isScanning ? "Scanning…" : "Scan"}
+            </button>
+            <button
+              onClick={() => openFolder.mutate(data.project.path)}
+              disabled={openFolder.isPending}
+              title="Open folder"
+              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              <FolderOpen size={12} />
+              Open Folder
+            </button>
+            <button
+              onClick={handleRemove}
+              disabled={remove.isPending}
+              title="Remove project"
+              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+            >
+              <Trash2 size={12} />
+              Remove
             </button>
           </div>
         )}

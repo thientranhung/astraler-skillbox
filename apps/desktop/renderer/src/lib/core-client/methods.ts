@@ -14,6 +14,8 @@ import type {
   ProjectGetResponse,
   ProjectScanRequest,
   ProjectScanResponse,
+  ProjectRemoveRequest,
+  ProjectRemoveResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -49,4 +51,10 @@ export const methods = {
 
   scanProject: (req: ProjectScanRequest) =>
     invoke<ProjectScanResponse>("project.scan", req),
+
+  removeProject: (req: ProjectRemoveRequest) =>
+    invoke<ProjectRemoveResponse>("project.remove", req),
+
+  openPath: (path: string) =>
+    invoke<{ opened: boolean }>("dialog.openPath", { path }),
 };
