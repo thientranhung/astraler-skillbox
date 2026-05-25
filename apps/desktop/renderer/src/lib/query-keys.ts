@@ -9,4 +9,7 @@ export const queryKeys = {
     list: () => ["projects", "list"] as const,
     detail: (projectId: number) => ["projects", "detail", projectId] as const,
   },
+  dashboard: {
+    root: () => ["dashboard"] as const,
+  },
 };
