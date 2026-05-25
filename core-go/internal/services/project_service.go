@@ -290,23 +290,7 @@ func (s *ProjectService) scanProjectInternal(
 			continue // provider not seeded in DB; skip
 		}
 
-		progress("classifying_entries", 0, 0, "")
-
-		installs := make([]repositories.InstallScanResult, 0, len(result.Entries))
-		for _, entry := range result.Entries {
-			classified := ClassifyAdapterEntry(entry, hostSummaries)
-			installs = append(installs, repositories.InstallScanResult{
-				SkillID:                   classified.SkillID,
-				SkillName:                 entry.Name,
-				InstallMode:               classified.Mode,
-				InstallStatus:             classified.Status,
-				ProjectSkillPath:          entry.Path,
-				SourceSkillPath:           classified.SourceSkillPath,
-				SymlinkTargetPath:         classified.SymlinkTargetPath,
-				InstalledFromHostFolderID: classified.InstalledFromHostFolderID,
-			})
-		}
-
+		// Collect warnings first so project-scope ones are captured even when not present.
 		rescan := "rescan"
 		var providerWarnings []domain.Warning
 		for _, aw := range result.Warnings {
@@ -322,6 +306,28 @@ func (s *ProjectService) scanProjectInternal(
 			} else {
 				providerWarnings = append(providerWarnings, w)
 			}
+		}
+
+		// Provider not detected: record warnings but do not create a ProviderScanResult.
+		if !result.Present {
+			continue
+		}
+
+		progress("classifying_entries", 0, 0, "")
+
+		installs := make([]repositories.InstallScanResult, 0, len(result.Entries))
+		for _, entry := range result.Entries {
+			classified := ClassifyAdapterEntry(entry, hostSummaries)
+			installs = append(installs, repositories.InstallScanResult{
+				SkillID:                   classified.SkillID,
+				SkillName:                 entry.Name,
+				InstallMode:               classified.Mode,
+				InstallStatus:             classified.Status,
+				ProjectSkillPath:          entry.Path,
+				SourceSkillPath:           classified.SourceSkillPath,
+				SymlinkTargetPath:         classified.SymlinkTargetPath,
+				InstalledFromHostFolderID: classified.InstalledFromHostFolderID,
+			})
 		}
 
 		var detectedPath *string
