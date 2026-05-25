@@ -323,8 +323,10 @@ func TestWarningRepo_ExcludeRemovedProject(t *testing.T) {
 	if len(list) != 5 {
 		t.Errorf("ListActive len: got %d want 5", len(list))
 	}
-	if len(list) > 0 && list[0].ID < list[len(list)-1].ID {
-		t.Errorf("ListActive not in id-DESC order: first=%d last=%d", list[0].ID, list[len(list)-1].ID)
+	for i := 1; i < len(list); i++ {
+		if list[i].ID >= list[i-1].ID {
+			t.Errorf("ListActive not in DESC order at index %d: id %d >= %d", i, list[i].ID, list[i-1].ID)
+		}
 	}
 }
 
