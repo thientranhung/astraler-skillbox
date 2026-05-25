@@ -327,6 +327,7 @@ func (s *ProjectService) scanProjectInternal(
 				SourceSkillPath:           classified.SourceSkillPath,
 				SymlinkTargetPath:         classified.SymlinkTargetPath,
 				InstalledFromHostFolderID: classified.InstalledFromHostFolderID,
+				Warning:                   installWarning(classified.Status),
 			})
 		}
 
@@ -382,6 +383,36 @@ func (s *ProjectService) buildHostSummaries(ctx context.Context, hosts []domain.
 		}
 	}
 	return summaries, nil
+}
+
+// installWarning returns a Warning for install entries that need user attention,
+// or nil for healthy entries (current, missing — missing is handled by reconcile).
+func installWarning(status domain.InstallStatus) *domain.Warning {
+	type rule struct {
+		code     string
+		severity domain.WarningSeverity
+		action   string
+	}
+	var r rule
+	switch status {
+	case domain.InstallStatusBrokenSymlink:
+		r = rule{"broken_symlink", domain.WarningSeverityWarning, "rescan"}
+	case domain.InstallStatusExternalSymlink:
+		r = rule{"external_symlink", domain.WarningSeverityWarning, "open_folder"}
+	case domain.InstallStatusOldHost:
+		r = rule{"old_host_symlink", domain.WarningSeverityWarning, "rescan"}
+	case domain.InstallStatusError:
+		r = rule{"entry_error", domain.WarningSeverityInfo, "open_folder"}
+	default:
+		return nil
+	}
+	action := r.action
+	return &domain.Warning{
+		ScopeType: domain.WarningScopeInstall,
+		Severity:  r.severity,
+		Code:      r.code,
+		ActionKey: &action,
+	}
 }
 
 func (s *ProjectService) commitTerminalPath(ctx context.Context, project *domain.Project, pathErr error) (any, error) {

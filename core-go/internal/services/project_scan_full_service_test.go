@@ -6,6 +6,7 @@ import (
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/providers"
+	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
 // newFullScanSvc wires a ProjectService with all provider-scan deps for full-scan tests.
@@ -112,6 +113,186 @@ func TestScanProjectInternal_ProviderDetected_PlainDirEntry_CommitsFullScan(t *t
 	}
 	if inst.ProjectSkillPath != "/tmp/myproject/.agents/skills/my-tool" {
 		t.Errorf("ProjectSkillPath: got %q want /tmp/myproject/.agents/skills/my-tool", inst.ProjectSkillPath)
+	}
+}
+
+// --- install warning tests ---
+
+// svcWithEntries returns a ProjectService whose fake adapter reports Present=true
+// with the given entries under /tmp/p/.agents/skills. No skill hosts registered.
+func svcWithEntries(entries []providers.AdapterEntry) (*ProjectService, *mockProjectRepo, *mockProjectScanCommitter) {
+	projRepo := newMockProjectRepo()
+	projRepo.UpsertByPath(context.Background(), "p", "/tmp/p") //nolint:errcheck
+
+	adapter := &mockAdapter{
+		key: "generic_agents",
+		result: providers.DetectResult{
+			Present:         true,
+			DetectedPath:    "/tmp/p/.agents",
+			SkillsPath:      "/tmp/p/.agents/skills",
+			DetectionStatus: domain.DetectionStatusDetected,
+			Entries:         entries,
+		},
+	}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{adapter}}
+	pdRepo := &mockProviderDefRepo{
+		defs: map[string]*domain.ProviderDefinition{
+			"generic_agents": {ID: 1, Key: "generic_agents"},
+		},
+	}
+	scanRepo := &mockProjectScanCommitter{}
+	svc := newFullScanSvc(
+		projRepo, &mockProjectFS{}, &mockRunner{}, scanRepo,
+		registry, pdRepo, &mockHostLister{}, &mockSkillsByHostLister{},
+	)
+	return svc, projRepo, scanRepo
+}
+
+func firstInstall(t *testing.T, scanRepo *mockProjectScanCommitter) *repositories.InstallScanResult {
+	t.Helper()
+	if len(scanRepo.lastProviders) == 0 || len(scanRepo.lastProviders[0].Installs) == 0 {
+		t.Fatal("expected at least one committed install")
+	}
+	inst := scanRepo.lastProviders[0].Installs[0]
+	return &inst
+}
+
+func TestScanProjectInternal_BrokenSymlink_InstallHasRescanWarning(t *testing.T) {
+	svc, projRepo, scanRepo := svcWithEntries([]providers.AdapterEntry{
+		{Name: "sk", Path: "/tmp/p/.agents/skills/sk", IsSymlink: true, Broken: true, SymlinkTargetRaw: "/missing"},
+	})
+	project, _ := projRepo.GetByID(context.Background(), 1)
+	if _, err := svc.scanProjectInternal(context.Background(), project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+	inst := firstInstall(t, scanRepo)
+	if inst.Warning == nil {
+		t.Fatal("expected warning for broken_symlink install, got nil")
+	}
+	if inst.Warning.Code != "broken_symlink" {
+		t.Errorf("code: got %q want broken_symlink", inst.Warning.Code)
+	}
+	if inst.Warning.Severity != domain.WarningSeverityWarning {
+		t.Errorf("severity: got %q want warning", inst.Warning.Severity)
+	}
+	if inst.Warning.ActionKey == nil || *inst.Warning.ActionKey != "rescan" {
+		t.Errorf("actionKey: got %v want rescan", inst.Warning.ActionKey)
+	}
+	if inst.Warning.ScopeType != domain.WarningScopeInstall {
+		t.Errorf("scopeType: got %q want install", inst.Warning.ScopeType)
+	}
+}
+
+func TestScanProjectInternal_ExternalSymlink_InstallHasOpenFolderWarning(t *testing.T) {
+	svc, projRepo, scanRepo := svcWithEntries([]providers.AdapterEntry{
+		{Name: "sk", Path: "/tmp/p/.agents/skills/sk", IsSymlink: true, ResolvedTarget: "/outside/path/sk"},
+	})
+	project, _ := projRepo.GetByID(context.Background(), 1)
+	if _, err := svc.scanProjectInternal(context.Background(), project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+	inst := firstInstall(t, scanRepo)
+	if inst.Warning == nil {
+		t.Fatal("expected warning for external_symlink install, got nil")
+	}
+	if inst.Warning.Code != "external_symlink" {
+		t.Errorf("code: got %q want external_symlink", inst.Warning.Code)
+	}
+	if inst.Warning.ActionKey == nil || *inst.Warning.ActionKey != "open_folder" {
+		t.Errorf("actionKey: got %v want open_folder", inst.Warning.ActionKey)
+	}
+}
+
+func TestScanProjectInternal_OldHostSymlink_InstallHasRescanWarning(t *testing.T) {
+	inactiveHost := domain.SkillHostFolder{
+		ID: 5, SkillsPath: "/hosts/old/.agents/skills",
+		Status: domain.SkillHostStatusInactive,
+	}
+	projRepo := newMockProjectRepo()
+	projRepo.UpsertByPath(context.Background(), "p", "/tmp/p") //nolint:errcheck
+
+	adapter := &mockAdapter{
+		key: "generic_agents",
+		result: providers.DetectResult{
+			Present:         true,
+			DetectedPath:    "/tmp/p/.agents",
+			SkillsPath:      "/tmp/p/.agents/skills",
+			DetectionStatus: domain.DetectionStatusDetected,
+			Entries: []providers.AdapterEntry{
+				{
+					Name:           "sk",
+					Path:           "/tmp/p/.agents/skills/sk",
+					IsSymlink:      true,
+					ResolvedTarget: "/hosts/old/.agents/skills/sk",
+				},
+			},
+		},
+	}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{adapter}}
+	pdRepo := &mockProviderDefRepo{
+		defs: map[string]*domain.ProviderDefinition{
+			"generic_agents": {ID: 1, Key: "generic_agents"},
+		},
+	}
+	scanRepo := &mockProjectScanCommitter{}
+	svc := newFullScanSvc(
+		projRepo, &mockProjectFS{}, &mockRunner{}, scanRepo,
+		registry, pdRepo,
+		&mockHostLister{hosts: []domain.SkillHostFolder{inactiveHost}},
+		&mockSkillsByHostLister{},
+	)
+
+	project, _ := projRepo.GetByID(context.Background(), 1)
+	if _, err := svc.scanProjectInternal(context.Background(), project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+	inst := firstInstall(t, scanRepo)
+	if inst.Warning == nil {
+		t.Fatal("expected warning for old_host install, got nil")
+	}
+	if inst.Warning.Code != "old_host_symlink" {
+		t.Errorf("code: got %q want old_host_symlink", inst.Warning.Code)
+	}
+	if inst.Warning.ActionKey == nil || *inst.Warning.ActionKey != "rescan" {
+		t.Errorf("actionKey: got %v want rescan", inst.Warning.ActionKey)
+	}
+}
+
+func TestScanProjectInternal_ErrorEntry_InstallHasInfoWarning(t *testing.T) {
+	svc, projRepo, scanRepo := svcWithEntries([]providers.AdapterEntry{
+		// Regular file (not dir, not symlink) → direct/error
+		{Name: "bad-file", Path: "/tmp/p/.agents/skills/bad-file", IsDir: false, IsSymlink: false},
+	})
+	project, _ := projRepo.GetByID(context.Background(), 1)
+	if _, err := svc.scanProjectInternal(context.Background(), project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+	inst := firstInstall(t, scanRepo)
+	if inst.Warning == nil {
+		t.Fatal("expected warning for error install, got nil")
+	}
+	if inst.Warning.Code != "entry_error" {
+		t.Errorf("code: got %q want entry_error", inst.Warning.Code)
+	}
+	if inst.Warning.Severity != domain.WarningSeverityInfo {
+		t.Errorf("severity: got %q want info", inst.Warning.Severity)
+	}
+	if inst.Warning.ActionKey == nil || *inst.Warning.ActionKey != "open_folder" {
+		t.Errorf("actionKey: got %v want open_folder", inst.Warning.ActionKey)
+	}
+}
+
+func TestScanProjectInternal_DirectCurrentEntry_NoInstallWarning(t *testing.T) {
+	svc, projRepo, scanRepo := svcWithEntries([]providers.AdapterEntry{
+		{Name: "tool", Path: "/tmp/p/.agents/skills/tool", IsDir: true},
+	})
+	project, _ := projRepo.GetByID(context.Background(), 1)
+	if _, err := svc.scanProjectInternal(context.Background(), project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+	inst := firstInstall(t, scanRepo)
+	if inst.Warning != nil {
+		t.Errorf("expected nil warning for direct/current install, got %+v", inst.Warning)
 	}
 }
 
