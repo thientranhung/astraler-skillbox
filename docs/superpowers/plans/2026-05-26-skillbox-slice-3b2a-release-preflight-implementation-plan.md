@@ -1165,15 +1165,15 @@ No code changes. Run every gate and the live preflight; commit nothing unless a 
   done
 
   # Cleanup — fully unstage and delete every probe, then verify clean state.
+  # NOTE: cwd is still apps/desktop here, so use cwd-relative pathspecs (NOT
+  # apps/desktop/...) — otherwise the pathspecs resolve to apps/desktop/apps/desktop/...
+  # and the status would falsely report "clean", masking leftover probes.
   git rm --cached -f __preflight_probe__.p8 __preflight_probe__.p12 dist/__preflight_probe__.txt
   rm -f __preflight_probe__.p8 __preflight_probe__.p12 dist/__preflight_probe__.txt
-  git status --porcelain -- \
-    apps/desktop/__preflight_probe__.p8 \
-    apps/desktop/__preflight_probe__.p12 \
-    apps/desktop/dist/__preflight_probe__.txt   # expect: empty (fully cleaned up)
+  git status --porcelain -- __preflight_probe__.p8 __preflight_probe__.p12 dist/__preflight_probe__.txt   # expect: empty (fully cleaned up)
   ```
 
-  Expected: three `detected:` lines (no `FAIL:` line) — F2 names both `apps/desktop/__preflight_probe__.p8` and `apps/desktop/__preflight_probe__.p12`, and F1 names `apps/desktop/dist/__preflight_probe__.txt` — and the final `git status` is empty. If any `FAIL: NOT detected` line prints, the IO shell's git commands are not running from `repoRoot` — fix per Task 7 Step 3 before proceeding.
+  Expected: three `detected:` lines (no `FAIL:` line) — F2 names both `apps/desktop/__preflight_probe__.p8` and `apps/desktop/__preflight_probe__.p12`, and F1 names `apps/desktop/dist/__preflight_probe__.txt` — and the final `git status` (run with cwd-relative pathspecs from `apps/desktop`) prints nothing, confirming all probes are fully removed. If any `FAIL: NOT detected` line prints, the IO shell's git commands are not running from `repoRoot` — fix per Task 7 Step 3 before proceeding.
 
 ---
 
