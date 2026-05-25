@@ -188,7 +188,7 @@ func (s *ProjectService) installSkillsInternal(
 			"no active host folder is configured; configure one in Settings first",
 		)
 	}
-	hostSkills, err := s.skillsByHostLister.ListByHost(ctx, activeHost.ID)
+	hostSkills, err := s.installSkillReader.ListByHost(ctx, activeHost.ID)
 	if err != nil {
 		return nil, domain.NewDatabaseError("Could not load host skills", err.Error())
 	}
