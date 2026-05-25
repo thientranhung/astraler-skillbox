@@ -44,3 +44,18 @@ func (g *Gateway) PathInfo(path string) (PathInfo, error) {
 func (g *Gateway) ListSkillEntries(skillsPath string) ([]ProjectEntry, error) {
 	return ScanProjectSkills(skillsPath)
 }
+
+// LstatExists delegates to the package-level function.
+func (g *Gateway) LstatExists(path string) (bool, error) {
+	return LstatExists(path)
+}
+
+// EnsureDir delegates to the package-level function.
+func (g *Gateway) EnsureDir(path string) error {
+	return EnsureDir(path)
+}
+
+// CreateSymlink delegates to the package-level function.
+func (g *Gateway) CreateSymlink(source, linkPath string) error {
+	return CreateSymlink(source, linkPath)
+}
