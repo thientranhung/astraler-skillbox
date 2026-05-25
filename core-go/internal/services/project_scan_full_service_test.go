@@ -114,3 +114,63 @@ func TestScanProjectInternal_ProviderDetected_PlainDirEntry_CommitsFullScan(t *t
 		t.Errorf("ProjectSkillPath: got %q want /tmp/myproject/.agents/skills/my-tool", inst.ProjectSkillPath)
 	}
 }
+
+// TestScanProjectInternal_ProviderNotPresent_ZeroProviderResults verifies that when the
+// adapter reports Present=false (no .agents directory found), CommitProjectScan receives
+// zero ProviderScanResults and one project-scoped no_provider_detected warning.
+func TestScanProjectInternal_ProviderNotPresent_ZeroProviderResults(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "myproject", "/tmp/myproject") //nolint:errcheck
+
+	adapter := &mockAdapter{
+		key: "generic_agents",
+		result: providers.DetectResult{
+			Present:         false,
+			DetectionStatus: domain.DetectionStatusMissing,
+			Warnings: []providers.AdapterWarning{
+				{
+					Code:      "no_provider_detected",
+					Message:   "No generic agents provider detected (.agents directory not found)",
+					Severity:  domain.WarningSeverityWarning,
+					ScopeType: domain.WarningScopeProject,
+				},
+			},
+		},
+	}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{adapter}}
+	pdRepo := &mockProviderDefRepo{
+		defs: map[string]*domain.ProviderDefinition{
+			"generic_agents": {ID: 42, Key: "generic_agents"},
+		},
+	}
+	scanRepo := &mockProjectScanCommitter{}
+
+	svc := newFullScanSvc(
+		projRepo, &mockProjectFS{}, &mockRunner{}, scanRepo,
+		registry, pdRepo, &mockHostLister{}, &mockSkillsByHostLister{},
+	)
+
+	project, _ := projRepo.GetByID(ctx, 1)
+	_, err := svc.scanProjectInternal(ctx, project, func(string, int, int, string) {})
+	if err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+
+	if scanRepo.fullScanCallCount != 1 {
+		t.Fatalf("CommitProjectScan calls: got %d want 1", scanRepo.fullScanCallCount)
+	}
+	if len(scanRepo.lastProviders) != 0 {
+		t.Errorf("provider results: got %d want 0 (provider not present)", len(scanRepo.lastProviders))
+	}
+	if len(scanRepo.lastProjectWarnings) != 1 {
+		t.Fatalf("project warnings: got %d want 1", len(scanRepo.lastProjectWarnings))
+	}
+	w := scanRepo.lastProjectWarnings[0]
+	if w.Code != "no_provider_detected" {
+		t.Errorf("warning code: got %q want no_provider_detected", w.Code)
+	}
+	if w.ScopeType != domain.WarningScopeProject {
+		t.Errorf("warning scope: got %q want project", w.ScopeType)
+	}
+}
