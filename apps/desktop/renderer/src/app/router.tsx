@@ -10,6 +10,7 @@ import {
 import { useAppSettings } from "../features/app-settings/use-app-settings.js";
 import { AppShell } from "../components/app-shell.js";
 import { SetupScreen } from "../screens/setup-screen.js";
+import { DashboardScreen } from "../screens/dashboard-screen.js";
 import { SkillsLibraryScreen } from "../screens/skills-library-screen.js";
 import { SettingsScreen } from "../screens/settings-screen.js";
 import { ProjectsScreen } from "../screens/projects-screen.js";
@@ -21,7 +22,7 @@ function RootLayout(): React.JSX.Element {
 }
 
 // Index route: read settings and redirect
-function IndexRedirector(): React.JSX.Element {
+export function IndexRedirector(): React.JSX.Element {
   const { data, isPending, isError } = useAppSettings();
   const navigate = useNavigate();
 
@@ -30,7 +31,7 @@ function IndexRedirector(): React.JSX.Element {
     if (isError || data?.activeHost == null) {
       navigate({ to: "/setup", replace: true });
     } else {
-      navigate({ to: "/skills", replace: true });
+      navigate({ to: "/dashboard", replace: true });
     }
   }, [isPending, isError, data, navigate]);
 
@@ -62,6 +63,12 @@ const shellRoute = createRoute({
   component: AppShell,
 });
 
+const dashboardRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/dashboard",
+  component: DashboardScreen,
+});
+
 const skillsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/skills",
@@ -89,7 +96,7 @@ const settingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   setupRoute,
-  shellRoute.addChildren([skillsRoute, projectsRoute, projectDetailRoute, settingsRoute]),
+  shellRoute.addChildren([dashboardRoute, skillsRoute, projectsRoute, projectDetailRoute, settingsRoute]),
 ]);
 
 export const router = createRouter({

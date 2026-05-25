@@ -1,8 +1,9 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Library, FolderGit2, Settings } from "lucide-react";
+import { LayoutDashboard, Library, FolderGit2, Settings } from "lucide-react";
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/skills", label: "Skills", icon: Library },
   { to: "/projects", label: "Projects", icon: FolderGit2 },
   { to: "/settings", label: "Settings", icon: Settings },
