@@ -20,6 +20,7 @@
     { "input": "electron/dialog.openProjectFolder.json", "output": "electron/dialog-open-project-folder.ts" },
     { "input": "methods/project.remove.json",            "output": "methods/project-remove.ts" },
     { "input": "electron/dialog.openPath.json",          "output": "electron/dialog-open-path.ts" },
-    { "input": "electron/dialog.openTerminal.json",      "output": "electron/dialog-open-terminal.ts" }
+    { "input": "electron/dialog.openTerminal.json",      "output": "electron/dialog-open-terminal.ts" },
+    { "input": "methods/install.skill.json", "output": "methods/install-skill.ts" }
   ]
 }

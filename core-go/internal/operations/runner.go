@@ -97,10 +97,10 @@ func (r *Runner) run(ctx context.Context, opID int64, lockKey string, fn WorkFn)
 	}()
 
 	_ = r.repo.MarkStarted(ctx, opID)
-	r.emit(opID, "running", "", nil, nil, nil)
+	r.emit(opID, "running", "", nil, nil, nil, nil)
 
 	progressFn := func(phase string, processed, total int, msg string) {
-		r.emit(opID, "running", phase, &processed, &total, &msg)
+		r.emit(opID, "running", phase, &processed, &total, &msg, nil)
 	}
 
 	meta, err := fn(ctx, progressFn)
@@ -109,8 +109,10 @@ func (r *Runner) run(ctx context.Context, opID int64, lockKey string, fn WorkFn)
 	// partial-failure operations (returning metadata AND a non-nil error) still
 	// persist their progress summary.
 	var metaStr *string
+	var metaJSON json.RawMessage
 	if meta != nil {
 		if b, jerr := json.Marshal(meta); jerr == nil {
+			metaJSON = b
 			s := string(b)
 			metaStr = &s
 		} else {
@@ -128,15 +130,15 @@ func (r *Runner) run(ctx context.Context, opID int64, lockKey string, fn WorkFn)
 			status = domain.OperationStatusFailed
 		}
 		_ = r.repo.UpdateStatus(context.Background(), opID, status, &errMsg, metaStr, &now)
-		r.emit(opID, string(status), "done", nil, nil, &errMsg)
+		r.emit(opID, string(status), "done", nil, nil, &errMsg, metaJSON)
 		return
 	}
 
 	_ = r.repo.UpdateStatus(context.Background(), opID, domain.OperationStatusSuccess, nil, metaStr, &now)
-	r.emit(opID, "success", "done", nil, nil, nil)
+	r.emit(opID, "success", "done", nil, nil, nil, metaJSON)
 }
 
-func (r *Runner) emit(opID int64, status, phase string, processed, total *int, msg *string) {
+func (r *Runner) emit(opID int64, status, phase string, processed, total *int, msg *string, metadata json.RawMessage) {
 	if r.progressCh == nil {
 		return
 	}
@@ -148,6 +150,7 @@ func (r *Runner) emit(opID int64, status, phase string, processed, total *int, m
 		Processed:   processed,
 		Total:       total,
 		Message:     msg,
+		Metadata:    metadata,
 	}:
 	default:
 		// Never block the operation goroutine.
