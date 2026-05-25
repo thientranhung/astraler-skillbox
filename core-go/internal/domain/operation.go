@@ -18,6 +18,7 @@ type OperationType string
 const (
 	OperationTypeScan                  OperationType = "scan"
 	OperationTypeChangeSkillHostFolder OperationType = "change_skill_host_folder"
+	OperationTypeInstallSkill          OperationType = "install_skill"
 )
 
 type Operation struct {
