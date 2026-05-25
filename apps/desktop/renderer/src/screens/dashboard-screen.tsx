@@ -140,8 +140,8 @@ export function DashboardScreen(): React.JSX.Element {
             <p className="text-sm text-zinc-500">No active warnings</p>
           ) : (
             <div className="divide-y divide-zinc-100 rounded border border-zinc-200">
-              {data.warnings.map((w, i) => (
-                <div key={i} className="px-4 py-3">
+              {data.warnings.map((w) => (
+                <div key={`${w.scopeType}-${String(w.scopeId)}-${w.code}`} className="px-4 py-3">
                   {w.scopeType === "project" && w.scopeId != null ? (
                     <button
                       onClick={() =>
