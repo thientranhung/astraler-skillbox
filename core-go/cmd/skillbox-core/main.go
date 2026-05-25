@@ -70,7 +70,8 @@ func main() {
 	providerRegistry := providers.NewDefaultRegistry()
 	projectSvc := services.NewProjectService(projectRepo, ppRepo, warningRepo, installRepo, fs).
 		WithScanDeps(runner, projectScanRepo).
-		WithProviderDeps(providerRegistry, pdRepo, hostRepo, skillRepo)
+		WithProviderDeps(providerRegistry, pdRepo, hostRepo, skillRepo).
+		WithInstallDeps(fs, hostRepo, skillRepo)
 
 	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc)
 
@@ -83,7 +84,7 @@ func main() {
 	if err := srv.Notify(sigCtx, "server.ready", map[string]interface{}{
 		"version":      "0.1.0-m3",
 		"pid":          os.Getpid(),
-		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel", "project.add", "project.list", "project.get", "project.scan", "project.remove"},
+		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel", "project.add", "project.list", "project.get", "project.scan", "project.remove", "install.skill"},
 	}); err != nil {
 		slog.Error("failed to send server.ready", "err", err)
 		os.Exit(1)
