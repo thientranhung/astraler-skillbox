@@ -1,6 +1,6 @@
 {
   "name": "astraler-skillbox-desktop",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Astraler Skillbox desktop app",
   "author": "Astraler",
   "private": true,
@@ -14,7 +14,8 @@
     "generate:contracts": "node scripts/generate-contracts.mjs",
     "check:contracts-drift": "node scripts/generate-contracts.mjs --check",
     "build:core": "node scripts/build-core.mjs",
-    "package:mac:unsigned": "pnpm build:core && pnpm build && electron-builder --mac dmg"
+    "package:mac": "pnpm build:core && pnpm build && electron-builder --mac dmg",
+    "package:mac:unsigned": "pnpm build:core && pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
