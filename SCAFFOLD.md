@@ -255,6 +255,16 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 - `.dmg`-only distribution → no Developer ID **Installer** cert / `.pkg` needed.
 - Running `pnpm package:mac` without these credentials is expected to fail; that is not a 3B1 gate.
 
+### Release preflight (Slice 3B2A)
+- `pnpm release:mac:check` — read-only, offline gate. Reports signing-credential readiness
+  (keychain Developer ID Application identity OR `CSC_LINK` + `CSC_KEY_PASSWORD`), notarization
+  credential groups (API key, or Apple ID + app password + Team ID), electron-builder config
+  invariants (hardened runtime, notarize, entitlements, `mac.binaries`, dmg/arm64), staged-sidecar
+  sanity, and artifact/secret hygiene. Exits non-zero when a hard blocker is present.
+- Run it BEFORE `pnpm package:mac` to surface credential/config gaps in <1s instead of minutes
+  into a build. It never signs, notarizes, builds, calls Apple, mutates the keychain, or prints
+  any secret value or path. See SMOKE.md → "Release Preflight (Slice 3B2A)".
+
 ---
 
 ## Release Tag
