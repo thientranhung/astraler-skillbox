@@ -110,9 +110,12 @@ func (r *Runner) run(ctx context.Context, opID int64, lockKey string, fn WorkFn)
 	// persist their progress summary.
 	var metaStr *string
 	if meta != nil {
-		b, _ := json.Marshal(meta)
-		s := string(b)
-		metaStr = &s
+		if b, jerr := json.Marshal(meta); jerr == nil {
+			s := string(b)
+			metaStr = &s
+		} else {
+			slog.Error("operation metadata marshal failed", "operationId", opID, "error", jerr)
+		}
 	}
 
 	now := time.Now()
