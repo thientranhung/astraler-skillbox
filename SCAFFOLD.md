@@ -230,6 +230,16 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 
 ---
 
+## Packaging (Slice 3A — unsigned macOS DMG)
+
+- `pnpm build:core` — compiles `core-go` to `apps/desktop/resources/core/skillbox-core` (darwin/arm64, CGO off).
+- `pnpm package:mac:unsigned` — runs `build:core`, then `electron-vite build`, then `electron-builder --mac dmg`.
+- Output: `apps/desktop/dist/Astraler Skillbox-<version>-arm64.dmg` (unsigned).
+- The sidecar is bundled via `extraResources` at `Contents/Resources/core/skillbox-core` (outside ASAR).
+- Signing/notarization is deferred to Slice 3B.
+
+---
+
 ## Release Tag
 
 The tag `slice-1-skills-library` is **deferred**. Do not create or push it until the owner explicitly approves the release checkpoint. Implementation agents must not self-publish release artifacts.

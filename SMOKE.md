@@ -263,6 +263,48 @@ The Settings "Change" button and the Setup "Choose Skill Host Folder" button bot
 
 ---
 
+## Packaged macOS DMG Smoke (Slice 3A)
+
+Run from the repo root. Produces and verifies an unsigned arm64 `.dmg`.
+
+### Build
+- [ ] `(cd apps/desktop && pnpm package:mac:unsigned)`
+- [ ] Confirm artifact exists: `ls "apps/desktop/dist/Astraler Skillbox-0.0.0-arm64.dmg"`
+
+### Install
+- [ ] Open the `.dmg`, drag **Astraler Skillbox** to `/Applications`, eject the volume.
+- [ ] Clear quarantine (unsigned build): `xattr -dr com.apple.quarantine "/Applications/Astraler Skillbox.app"`
+
+### Launch with observable evidence
+- [ ] Launch from a **neutral, non-repo cwd** (e.g. `/tmp`) with stderr captured, to strengthen the "no repo dependency" claim (cwd is inherited by the child, so this proves the sidecar does not rely on being run from the checkout):
+  ```sh
+  (cd /tmp && "/Applications/Astraler Skillbox.app/Contents/MacOS/Astraler Skillbox" 2> /tmp/skillbox-packaged.log)
+  ```
+- [ ] `grep "spawning Go core" /tmp/skillbox-packaged.log` shows a path under
+  `…/Astraler Skillbox.app/Contents/Resources/core/skillbox-core` (NOT `go run` / a repo path).
+- [ ] `grep "Go core ready" /tmp/skillbox-packaged.log` is present (server.ready from the bundled sidecar).
+- [ ] Sidecar location/exec bit: `test -x "/Applications/Astraler Skillbox.app/Contents/Resources/core/skillbox-core" && echo OK`
+- [ ] **Installed** binary is arm64 (check the bundle, not just the staged artifact):
+  ```sh
+  file "/Applications/Astraler Skillbox.app/Contents/Resources/core/skillbox-core"
+  ```
+  Expected: `Mach-O 64-bit executable arm64`.
+- [ ] Sidecar is outside ASAR: the path above is a real file, not inside `app.asar`.
+- [ ] Live process is the bundled one: `pgrep -fl skillbox-core` shows the in-bundle Resources path.
+
+### Functional smoke (packaged app)
+- [ ] DB created under Application Support: `ls ~/Library/Application\ Support/Astraler\ Skillbox/skillbox.db`
+- [ ] Host scan succeeds; Skills Library lists host skills.
+- [ ] Add a project; project scan succeeds.
+- [ ] Install a skill to the project via symlink; then remove it (filesystem + DB reflect both).
+- [ ] Dashboard renders aggregated state.
+
+### Shutdown
+- [ ] Quit the app (Cmd+Q).
+- [ ] No orphaned sidecar: `pgrep -fl skillbox-core` returns nothing.
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:
