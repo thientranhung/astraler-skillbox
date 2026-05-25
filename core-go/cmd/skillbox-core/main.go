@@ -11,6 +11,7 @@ import (
 	"github.com/astraler/skillbox/core-go/internal/app"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
 	"github.com/astraler/skillbox/core-go/internal/operations"
+	"github.com/astraler/skillbox/core-go/internal/providers"
 	"github.com/astraler/skillbox/core-go/internal/repositories"
 	corerpc "github.com/astraler/skillbox/core-go/internal/rpc"
 	"github.com/astraler/skillbox/core-go/internal/rpc/notifications"
@@ -47,6 +48,11 @@ func main() {
 	appSettingsRepo := repositories.NewAppSettingsRepo(db)
 	operationRepo := repositories.NewOperationRepo(db)
 	scanWriter := repositories.NewScanRepo(db)
+	projectRepo := repositories.NewProjectRepo(db)
+	ppRepo := repositories.NewProjectProviderRepo(db)
+	installRepo := repositories.NewInstallRepo(db)
+	projectScanRepo := repositories.NewProjectScanRepo(db)
+	pdRepo := repositories.NewProviderDefinitionRepo(db)
 
 	progressCh := make(chan operations.ProgressEvent, 64)
 	runner := operations.NewRunner(operationRepo, progressCh)
@@ -61,7 +67,12 @@ func main() {
 	libSvc := services.NewSkillLibraryService(skillRepo, hostRepo, warningRepo)
 	settingsSvc := services.NewSettingsService(appSettingsRepo, hostRepo)
 
-	a := app.New(hostSvc, libSvc, settingsSvc, runner)
+	providerRegistry := providers.NewRegistry(providers.NewGenericAgentsAdapter())
+	projectSvc := services.NewProjectService(projectRepo, ppRepo, warningRepo, installRepo, fs).
+		WithScanDeps(runner, projectScanRepo).
+		WithProviderDeps(providerRegistry, pdRepo, hostRepo, skillRepo)
+
+	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc)
 
 	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
@@ -72,7 +83,7 @@ func main() {
 	if err := srv.Notify(sigCtx, "server.ready", map[string]interface{}{
 		"version":      "0.1.0-m3",
 		"pid":          os.Getpid(),
-		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel"},
+		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel", "project.add", "project.list", "project.get", "project.scan"},
 	}); err != nil {
 		slog.Error("failed to send server.ready", "err", err)
 		os.Exit(1)
