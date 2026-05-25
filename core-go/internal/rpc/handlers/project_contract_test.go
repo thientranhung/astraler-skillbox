@@ -127,3 +127,9 @@ func TestContract_ProjectRemove_Response(t *testing.T) {
 	resp := projectRemoveResponse{Removed: true}
 	validateAgainstSchema(t, schema, resp)
 }
+
+func TestContract_InstallSkill_Response(t *testing.T) {
+	schema := loadSchema(t, "methods/install.skill.json")
+	resp := installSkillResponse{OperationID: 42}
+	validateAgainstSchema(t, schema, resp)
+}

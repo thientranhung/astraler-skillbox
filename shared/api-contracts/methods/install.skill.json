@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstallSkillMethod",
+  "description": "Contract for install.skill JSON-RPC method. Installs one or more skills from the Skill Host Folder into a project; runs asynchronously and reports progress via operation.progress notifications.",
+  "oneOf": [
+    { "$ref": "#/definitions/InstallSkillRequest" },
+    { "$ref": "#/definitions/InstallSkillResponse" }
+  ],
+  "definitions": {
+    "InstallSkillRequest": {
+      "title": "InstallSkillRequest",
+      "description": "Params for install.skill.",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "integer",
+          "description": "ID of the project to install skills into"
+        },
+        "providerKey": {
+          "type": "string",
+          "enum": ["generic_agents"],
+          "description": "Provider target for the installation"
+        },
+        "skillIds": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "IDs of skills to install"
+        }
+      },
+      "required": ["projectId", "providerKey", "skillIds"],
+      "additionalProperties": false
+    },
+    "InstallSkillResponse": {
+      "title": "InstallSkillResponse",
+      "description": "Immediate response — the installation runs asynchronously. Errors: validation_error (1001) projectId or skillIds not found; conflict_error (1005) project already has an active operation.",
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "integer",
+          "description": "ID of the created install operation; use with operation.progress notifications and operation.cancel"
+        }
+      },
+      "required": ["operationId"],
+      "additionalProperties": false
+    }
+  }
+}
