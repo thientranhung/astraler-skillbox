@@ -31,11 +31,15 @@ export function checkSigning({ identityNames, env, fileProbes }) {
 
   let pathB = false;
   let pathBProblem = null;
+  let localPathMissing = false;
   if (cscLinkSet && cscPwSet) {
     const p = fileProbes.cscLink;
     if (p && p.isLocalPath) {
       if (p.exists && p.readable) pathB = true;
-      else pathBProblem = "CSC_LINK points to a local file that is missing or unreadable";
+      else {
+        pathBProblem = "CSC_LINK points to a local file that is missing or unreadable";
+        localPathMissing = true;
+      }
     } else {
       pathB = true; // URL/base64 form — presence is sufficient; never fetched/decoded
     }
@@ -43,6 +47,19 @@ export function checkSigning({ identityNames, env, fileProbes }) {
     pathBProblem = "CSC_LINK is set but CSC_KEY_PASSWORD is missing";
   } else if (!cscLinkSet && cscPwSet) {
     pathBProblem = "CSC_KEY_PASSWORD is set but CSC_LINK is missing";
+  }
+
+  // A broken local .p12 is an explicit configuration error that must FAIL even when a
+  // keychain identity is present — the missing/unreadable file cannot be silently ignored.
+  if (localPathMissing) {
+    return {
+      id: "B1",
+      category: "signing",
+      status: "FAIL",
+      message: `no signing credential (${pathBProblem})`,
+      remediation:
+        "Signing credential: a Developer ID Application identity in the login keychain, OR CSC_LINK + CSC_KEY_PASSWORD",
+    };
   }
 
   if (hasKeychain) {

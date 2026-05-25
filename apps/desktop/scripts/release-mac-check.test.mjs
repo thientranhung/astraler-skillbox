@@ -119,6 +119,17 @@ describe("checkSigning (B1)", () => {
     expect(r.message).toMatch(/missing or unreadable/);
     expect(r.message).not.toContain("cert.p12");
   });
+
+  it("fails for missing local CSC_LINK even when a keychain identity is present — regression: local broken file must not be masked", () => {
+    const r = checkSigning({
+      identityNames: ["Developer ID Application: Acme (TEAMID)"],
+      env: { CSC_LINK: "cert.p12", CSC_KEY_PASSWORD: "pw" },
+      fileProbes: { cscLink: { isLocalPath: true, exists: false, readable: false }, appleApiKey: null },
+    });
+    expect(r.status).toBe("FAIL");
+    expect(r.message).toMatch(/missing or unreadable/);
+    expect(r.message).not.toContain("cert.p12");
+  });
 });
 
 describe("checkNotarization (C1)", () => {
