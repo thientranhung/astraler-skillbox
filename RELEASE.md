@@ -109,8 +109,8 @@ After a successful run, `apps/desktop/dist/` contains:
 
 | File | Description |
 |------|-------------|
-| `Astraler Skillbox-<version>-arm64.dmg` | Installable DMG |
-| `Astraler Skillbox-<version>-arm64.dmg.manifest.json` | Build metadata: version, arch, file size, checksum |
+| `astraler-skillbox-<version>-arm64.dmg` | Installable DMG |
+| `astraler-skillbox-<version>-arm64.dmg.manifest.json` | Build metadata: version, arch, file size, checksum |
 | `SHA256SUMS` | Canonical checksums for all release artifacts |
 
 ---
@@ -131,7 +131,7 @@ cd dist && sha256sum -c SHA256SUMS
 
 ```sh
 cd apps/desktop
-pnpm release:mac:verify dist/Astraler\ Skillbox-<version>-arm64.dmg
+pnpm release:mac:verify dist/astraler-skillbox-<version>-arm64.dmg
 ```
 
 ### Gatekeeper basics (requires signing + notarization)

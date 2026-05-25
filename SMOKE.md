@@ -269,7 +269,7 @@ Run from the repo root. Produces and verifies an unsigned arm64 `.dmg`.
 
 ### Build
 - [ ] `(cd apps/desktop && pnpm package:mac:unsigned)`
-- [ ] Confirm artifact exists: `ls "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg"`
+- [ ] Confirm artifact exists: `ls "apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg"`
 
 ### Install
 - [ ] Open the `.dmg`, drag **Astraler Skillbox** to `/Applications`, eject the volume.
@@ -317,7 +317,7 @@ electron-builder's **own** ad-hoc signing (not a manual rescue).
 
 ### Unsigned path regression (3A must still work)
 - [ ] `(cd apps/desktop && pnpm package:mac:unsigned)`
-- [ ] Artifact exists: `ls "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg"`
+- [ ] Artifact exists: `ls "apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg"`
 - [ ] (Optional) re-run the "Packaged macOS DMG Smoke (Slice 3A)" functional steps against this DMG.
 
 ### mac.binaries proof via electron-builder ad-hoc signing
@@ -353,7 +353,7 @@ path (altool retired 2023-11-01).
 ```sh
 APP="/Applications/Astraler Skillbox.app"
 SIDE="$APP/Contents/Resources/core/skillbox-core"
-DMG="apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg"
+DMG="apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg"
 
 # Developer ID signature + hardened runtime (expect Authority=Developer ID Application + flags=...(runtime))
 codesign -dvvv "$APP"
@@ -413,7 +413,7 @@ the network, or mutates the keychain.
 - [ ] No leftover mount after either run: `hdiutil info | grep -i skillbox-verify || echo "clean"` → `clean`.
 
 ### Release mode against a real notarized DMG (Slice 3B2 — needs credentials)
-- [ ] After a real `pnpm package:mac`, run `(cd apps/desktop && pnpm release:mac:verify dist/"Astraler Skillbox-0.1.0-arm64.dmg"); echo "exit=$?"` → `exit=0`, all checks PASS.
+- [ ] After a real `pnpm package:mac`, run `(cd apps/desktop && pnpm release:mac:verify dist/"astraler-skillbox-0.1.0-arm64.dmg"); echo "exit=$?"` → `exit=0`, all checks PASS.
 - [ ] (Optional) pin the team: `SKILLBOX_EXPECTED_TEAM_ID=<TEAMID> pnpm release:mac:verify …`.
 
 ---
@@ -455,13 +455,13 @@ Use the existing unsigned/ad-hoc DMG built from Slice 3A/3B1.
 
 - [ ] Run manifest against the existing DMG (adjust basename if needed):
   ```sh
-  (cd apps/desktop && pnpm release:mac:manifest "dist/Astraler Skillbox-0.1.0-arm64.dmg")
+  (cd apps/desktop && pnpm release:mac:manifest "dist/astraler-skillbox-0.1.0-arm64.dmg")
   ```
   Expected: exits `0`. Output shows `artifact`, `byteSize`, `sha256`, `manifest`, and `sums` lines.
 
 - [ ] Inspect the manifest — must contain exactly eight fields in order:
   ```sh
-  cat "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg.manifest.json"
+  cat "apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg.manifest.json"
   ```
   Expected fields: `appId`, `productName`, `version`, `artifact`, `arch`, `byteSize`, `sha256`, `buildTimestamp`.
   - `appId` = `com.astraler.skillbox`
@@ -476,7 +476,7 @@ Use the existing unsigned/ad-hoc DMG built from Slice 3A/3B1.
   ```sh
   cd apps/desktop/dist && shasum -a 256 -c SHA256SUMS && echo "shasum OK"
   ```
-  Expected: `Astraler Skillbox-0.1.0-arm64.dmg: OK` and `shasum OK`.
+  Expected: `astraler-skillbox-0.1.0-arm64.dmg: OK` and `shasum OK`.
   ```sh
   # Also run with sha256sum when available (e.g. via Homebrew coreutils):
   cd apps/desktop/dist && sha256sum -c SHA256SUMS && echo "sha256sum OK"
@@ -484,14 +484,14 @@ Use the existing unsigned/ad-hoc DMG built from Slice 3A/3B1.
 
 - [ ] Idempotency — re-run must not add a duplicate line:
   ```sh
-  (cd apps/desktop && pnpm release:mac:manifest "dist/Astraler Skillbox-0.1.0-arm64.dmg")
+  (cd apps/desktop && pnpm release:mac:manifest "dist/astraler-skillbox-0.1.0-arm64.dmg")
   wc -l apps/desktop/dist/SHA256SUMS
   ```
   Expected: same line count as before the second run (no stale duplicate for the same artifact).
 
 - [ ] Confirm no secrets in output:
   ```sh
-  (cd apps/desktop && pnpm release:mac:manifest "dist/Astraler Skillbox-0.1.0-arm64.dmg" 2>&1 | grep -E '/[^[:space:]]+\.(p8|p12|pem)|-----BEGIN') || echo "clean"
+  (cd apps/desktop && pnpm release:mac:manifest "dist/astraler-skillbox-0.1.0-arm64.dmg" 2>&1 | grep -E '/[^[:space:]]+\.(p8|p12|pem)|-----BEGIN') || echo "clean"
   ```
   Expected: `clean`.
 
@@ -565,10 +565,10 @@ Expected: `exit=0`. Output includes:
 
 ```sh
 # DMG exists
-ls "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg"
+ls "apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg"
 
 # Manifest exists and has eight fields
-cat "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg.manifest.json"
+cat "apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg.manifest.json"
 
 # SHA256SUMS line was written/upserted
 cat apps/desktop/dist/SHA256SUMS
@@ -659,7 +659,7 @@ Does **not** prove Developer ID signing, notarization, stapling, or Gatekeeper a
 When multiple DMGs exist in `dist/`, pass the path explicitly:
 
 ```sh
-(cd apps/desktop && pnpm release:mac:dmg-smoke "dist/Astraler Skillbox-<version>-arm64.dmg"); echo "exit=$?"
+(cd apps/desktop && pnpm release:mac:dmg-smoke "dist/astraler-skillbox-<version>-arm64.dmg"); echo "exit=$?"
 ```
 
 Expected for `release:mac:dmg-smoke`:
@@ -685,7 +685,7 @@ All three lines should print the "no ..." message.
 ### Confirm no Apple services are called
 
 ```sh
-(cd apps/desktop && pnpm release:mac:dmg-smoke "dist/Astraler Skillbox-<version>-arm64.dmg" 2>&1 | \
+(cd apps/desktop && pnpm release:mac:dmg-smoke "dist/astraler-skillbox-<version>-arm64.dmg" 2>&1 | \
   grep -E "release:mac:check|release:mac:full|notarization|keychain") || echo "clean"
 ```
 
