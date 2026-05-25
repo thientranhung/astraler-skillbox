@@ -112,8 +112,8 @@ function EntryRow({ entry }: { entry: ProjectGetEntry }): React.JSX.Element {
 
 export function ProjectDetailScreen(): React.JSX.Element {
   const { projectId: projectIdStr } = useParams({ from: "/projects/$projectId" });
-  const parsed = parseInt(projectIdStr, 10);
-  const validId: number | null = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  const validId: number | null =
+    /^\d+$/.test(projectIdStr) && Number(projectIdStr) > 0 ? Number(projectIdStr) : null;
   const navigate = useNavigate();
   const { data, isPending, isError, error } = useProjectDetail(validId);
   const scan = useScanProject();
