@@ -111,7 +111,7 @@ function EntryRow({ entry }: { entry: ProjectGetEntry }): React.JSX.Element {
 }
 
 export function ProjectDetailScreen(): React.JSX.Element {
-  const { projectId: projectIdStr } = useParams({ from: "/projects/$projectId" });
+  const { projectId: projectIdStr = "" } = useParams({ strict: false });
   const validId: number | null =
     /^\d+$/.test(projectIdStr) && Number(projectIdStr) > 0 ? Number(projectIdStr) : null;
   const navigate = useNavigate();
