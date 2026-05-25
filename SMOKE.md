@@ -269,7 +269,7 @@ Run from the repo root. Produces and verifies an unsigned arm64 `.dmg`.
 
 ### Build
 - [ ] `(cd apps/desktop && pnpm package:mac:unsigned)`
-- [ ] Confirm artifact exists: `ls "apps/desktop/dist/Astraler Skillbox-0.0.0-arm64.dmg"`
+- [ ] Confirm artifact exists: `ls "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg"`
 
 ### Install
 - [ ] Open the `.dmg`, drag **Astraler Skillbox** to `/Applications`, eject the volume.
