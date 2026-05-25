@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "child_process";
 import { app } from "electron";
 import { JsonRpcStdioClient } from "./json-rpc-client.js";
-import { resolveCoreGoPath } from "./core-go-path.js";
+import { resolveCoreSpawn } from "./core-go-path.js";
 
 const READY_TIMEOUT_MS = 10_000;
 const MAX_RESTARTS = 3;
@@ -29,11 +29,17 @@ function fatal(message: string): void {
 
 export function spawnGoCore(): Promise<JsonRpcStdioClient> {
   return new Promise((resolve, reject) => {
-    const cwd = resolveCoreGoPath(__dirname);
-    process.stderr.write(`[manager] spawning Go core from ${cwd}\n`);
+    const spec = resolveCoreSpawn({
+      isPackaged: app.isPackaged,
+      baseDir: __dirname,
+      resourcesPath: process.resourcesPath,
+    });
+    process.stderr.write(
+      `[manager] spawning Go core: ${spec.command} ${spec.args.join(" ")} (cwd=${spec.cwd})\n`
+    );
 
-    const child = spawn("go", ["run", "./cmd/skillbox-core"], {
-      cwd,
+    const child = spawn(spec.command, spec.args, {
+      cwd: spec.cwd,
       stdio: ["pipe", "pipe", "pipe"],
     });
     activeChild = child;
