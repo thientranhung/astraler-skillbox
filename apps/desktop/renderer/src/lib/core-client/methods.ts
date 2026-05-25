@@ -20,6 +20,7 @@ import type {
   InstallSkillResponse,
   RemoveSkillRequest,
   RemoveSkillResponse,
+  DashboardGetResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -70,4 +71,6 @@ export const methods = {
 
   openTerminal: (path: string) =>
     invoke<{ opened: boolean }>("dialog.openTerminal", { path }),
+
+  getDashboard: () => invoke<DashboardGetResponse>("dashboard.get", {}),
 };

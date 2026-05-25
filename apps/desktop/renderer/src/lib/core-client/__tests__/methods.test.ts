@@ -128,3 +128,10 @@ describe("methods.installSkill", () => {
     });
   });
 });
+
+describe("methods.getDashboard", () => {
+  it("calls dashboard.get with empty params", async () => {
+    await methods.getDashboard();
+    expect(mockInvoke).toHaveBeenCalledWith("dashboard.get", {});
+  });
+});
