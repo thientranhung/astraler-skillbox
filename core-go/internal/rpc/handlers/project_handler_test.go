@@ -135,7 +135,7 @@ func TestProjectListHandler_WithProjects(t *testing.T) {
 				{
 					ProjectProviderID:   10,
 					ProviderKey:         "generic_agents",
-					ProviderDisplayName: "Generic Agents",
+					ProviderDisplayName: "Shared Agent Skills (.agents)",
 					ProviderStatus:      domain.ProviderStatusSupported,
 					DetectionStatus:     domain.DetectionStatusDetected,
 				},
@@ -153,6 +153,10 @@ func TestProjectListHandler_WithProjects(t *testing.T) {
 			Name         string `json:"name"`
 			SkillCount   int    `json:"skillCount"`
 			WarningCount int    `json:"warningCount"`
+			Providers    []struct {
+				Key         string `json:"key"`
+				DisplayName string `json:"displayName"`
+			} `json:"providers"`
 		} `json:"projects"`
 	}
 	if err := cli.CallResult(context.Background(), "project.list", map[string]interface{}{}, &resp); err != nil {
@@ -169,6 +173,12 @@ func TestProjectListHandler_WithProjects(t *testing.T) {
 	}
 	if resp.Projects[0].WarningCount != 1 {
 		t.Errorf("warningCount: got %d want 1", resp.Projects[0].WarningCount)
+	}
+	if resp.Projects[0].Providers[0].Key != "generic_agents" {
+		t.Errorf("provider key: got %q want generic_agents", resp.Projects[0].Providers[0].Key)
+	}
+	if resp.Projects[0].Providers[0].DisplayName != "Shared Agent Skills (.agents)" {
+		t.Errorf("provider displayName: got %q", resp.Projects[0].Providers[0].DisplayName)
 	}
 }
 
@@ -188,7 +198,7 @@ func TestProjectGetHandler_Success(t *testing.T) {
 			{
 				ProjectProviderID:   20,
 				ProviderKey:         "generic_agents",
-				ProviderDisplayName: "Generic Agents",
+				ProviderDisplayName: "Shared Agent Skills (.agents)",
 				ProviderStatus:      domain.ProviderStatusSupported,
 				DetectionStatus:     domain.DetectionStatusDetected,
 			},
@@ -203,9 +213,12 @@ func TestProjectGetHandler_Success(t *testing.T) {
 			ID   int64  `json:"id"`
 			Name string `json:"name"`
 		} `json:"project"`
-		Providers []interface{} `json:"providers"`
-		Entries   []interface{} `json:"entries"`
-		Warnings  []interface{} `json:"warnings"`
+		Providers []struct {
+			ProviderKey string `json:"providerKey"`
+			DisplayName string `json:"displayName"`
+		} `json:"providers"`
+		Entries  []interface{} `json:"entries"`
+		Warnings []interface{} `json:"warnings"`
 	}
 	if err := cli.CallResult(context.Background(), "project.get", map[string]int64{"projectId": 5}, &resp); err != nil {
 		t.Fatalf("project.get: %v", err)
@@ -218,6 +231,12 @@ func TestProjectGetHandler_Success(t *testing.T) {
 	}
 	if len(resp.Providers) != 1 {
 		t.Errorf("providers: got %d want 1", len(resp.Providers))
+	}
+	if resp.Providers[0].ProviderKey != "generic_agents" {
+		t.Errorf("provider key: got %q want generic_agents", resp.Providers[0].ProviderKey)
+	}
+	if resp.Providers[0].DisplayName != "Shared Agent Skills (.agents)" {
+		t.Errorf("provider displayName: got %q", resp.Providers[0].DisplayName)
 	}
 }
 

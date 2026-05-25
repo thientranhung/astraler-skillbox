@@ -152,13 +152,13 @@ Actions
 
 Projects Using This Skill
   Project              Provider          Mode        Status
-  project-a            Generic Agents    symlink     current
+  project-a            Shared Agent Skills (.agents)    symlink     current
   project-b            Claude            rsync/copy  needs sync
-  project-c            Generic Agents    direct      current
+  project-c            Shared Agent Skills (.agents)    direct      current
 
 Global Usage
   Provider          Location               Mode        Status
-  Generic Agents    User Global            direct      current
+  Shared Agent Skills (.agents)    User Global            direct      current
   Claude            Claude Global          symlink     external symlink
 ```
 
@@ -181,13 +181,13 @@ Global Skills
 
 Global Locations
   Provider          Path                         Status          Entries
-  Generic Agents    ~/.agents/skills             active          4
+  Shared Agent Skills (.agents)    ~/.agents/skills             active          4
   Claude            ~/.claude/...                not configured  0
 
 Global Entries
   Provider          Skill/Entry             Mode        Status             Actions
-  Generic Agents    research-writer         direct      current            [Open]
-  Generic Agents    adr-helper              symlink     current            [Relink] [Remove]
+  Shared Agent Skills (.agents)    research-writer         direct      current            [Open]
+  Shared Agent Skills (.agents)    adr-helper              symlink     current            [Relink] [Remove]
   Claude            old-command             symlink     broken symlink     [Relink] [Remove]
 ```
 
@@ -221,14 +221,14 @@ Projects
 [Add Project] [Scan All]
 
 Filters
-  Provider: all / Generic Agents / Claude / unsupported
+  Provider: all / Shared Agent Skills (.agents) / Claude / unsupported
   Status: all / active / missing / warnings
   Search: __________________
 
 Table
   Project        Path                    Providers                 Skills  Warnings
-  skillbox       /repo/skillbox          Generic Agents            3       0
-  content-lab    /repo/content-lab       Claude, Generic Agents    8       1
+  skillbox       /repo/skillbox          Shared Agent Skills (.agents)            3       0
+  content-lab    /repo/content-lab       Claude, Shared Agent Skills (.agents)    8       1
   old-project    /repo/old-project       -                         0       missing
 ```
 
@@ -252,7 +252,7 @@ Path: /repo/content-lab
 Status: active
 
 Providers
-  [Generic Agents] supported    .agents/skills     5 skills
+  [Shared Agent Skills (.agents)] supported    .agents/skills     5 skills
   [Claude]         experimental .claude/...        3 skills
 
 Actions
@@ -260,8 +260,8 @@ Actions
 
 Installed Skills
   Provider          Skill                 Mode        Status            Actions
-  Generic Agents    documentation-writer  symlink     current           [Switch] [Remove]
-  Generic Agents    adr-helper            rsync/copy  needs sync        [Sync] [Switch] [Remove]
+  Shared Agent Skills (.agents)    documentation-writer  symlink     current           [Switch] [Remove]
+  Shared Agent Skills (.agents)    adr-helper            rsync/copy  needs sync        [Sync] [Switch] [Remove]
   Claude            old-skill             symlink     broken symlink    [Relink] [Remove]
   Claude            manual-note           direct      current           [Open]
 ```
@@ -295,7 +295,7 @@ Step 1: Select Skills
   [ ] browser-automation
 
 Step 2: Select Provider
-  ( ) Generic Agents   supported      .agents/skills
+  ( ) Shared Agent Skills (.agents)   supported      .agents/skills
   ( ) Claude           experimental   .claude/...
 
 Step 3: Select Mode
@@ -303,7 +303,7 @@ Step 3: Select Mode
   ( ) rsync/copy
 
 Step 4: Confirm
-  Install 2 skills into content-lab / Generic Agents using symlink.
+  Install 2 skills into content-lab / Shared Agent Skills (.agents) using symlink.
   Existing conflicts: none
   Affected paths:
     /repo/content-lab/.agents/skills/documentation-writer
@@ -337,13 +337,13 @@ Available Updates
 
 Affected Projects: adr-helper
   Project       Provider          Mode        Result after host update
-  project-a     Generic Agents    symlink     updates immediately
-  project-b     Generic Agents    rsync/copy  needs sync
+  project-a     Shared Agent Skills (.agents)    symlink     updates immediately
+  project-b     Shared Agent Skills (.agents)    rsync/copy  needs sync
   project-c     Claude            direct      unaffected
 
 Affected Global Installs
   Location              Provider          Mode        Result after host update
-  User Global           Generic Agents    symlink     updates immediately
+  User Global           Shared Agent Skills (.agents)    symlink     updates immediately
   Claude Global         Claude            rsync/copy  needs sync
 
 Actions
@@ -380,7 +380,7 @@ Default Install Mode
 
 Providers
   Provider          Status          Create Structure   Icon
-  Generic Agents    supported       yes                agents
+  Shared Agent Skills (.agents)    supported       yes                agents
   Claude            experimental    no                 claude
   Codex             experimental    yes                codex
   opencode          experimental    yes                opencode
@@ -388,7 +388,7 @@ Providers
 
 Global Provider Locations
   Provider          Path                         Status          Actions
-  Generic Agents    ~/.agents/skills             active          [Change] [Scan]
+  Shared Agent Skills (.agents)    ~/.agents/skills             active          [Change] [Scan]
   Claude            -                            not configured  [Configure]
 
 Credentials
@@ -532,7 +532,7 @@ Direct installs unaffected:
   project-e
 
 Global symlink installs updated immediately:
-  User Global (Generic Agents)
+  User Global (Shared Agent Skills (.agents))
 
 Global rsync/copy installs needing sync:
   Claude Global
