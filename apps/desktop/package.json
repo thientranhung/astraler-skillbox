@@ -15,7 +15,8 @@
     "check:contracts-drift": "node scripts/generate-contracts.mjs --check",
     "build:core": "node scripts/build-core.mjs",
     "package:mac": "pnpm build:core && pnpm build && electron-builder --mac dmg",
-    "package:mac:unsigned": "pnpm build:core && pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false"
+    "package:mac:unsigned": "pnpm build:core && pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false",
+    "release:mac:check": "node scripts/release-mac-check.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -42,6 +43,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "happy-dom": "^20.9.0",
+    "js-yaml": "^4.1.0",
     "json-schema-to-typescript": "latest",
     "tailwindcss": "^4.3.0",
     "typescript": "latest",
