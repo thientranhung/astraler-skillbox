@@ -7,6 +7,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
+        external: ["electron"],
         input: {
           index: "electron/main/index.ts",
         },
@@ -16,8 +17,12 @@ export default defineConfig({
   preload: {
     build: {
       rollupOptions: {
+        external: ["electron"],
         input: {
           index: "electron/preload/index.ts",
+        },
+        output: {
+          format: "cjs",
         },
       },
     },
