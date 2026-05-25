@@ -65,6 +65,9 @@ type ProjectService struct {
 	activeHostReader ActiveHostReader
 	// installSkillReader is separate from skillsByHostLister (scan) to avoid silent overwrite.
 	installSkillReader SkillsByHostLister
+	// remove deps — nil until WithRemoveDeps is called
+	removeFS       RemoveFilesystem
+	installDeleter RemoveInstallDeleter
 }
 
 // NewProjectService constructs a ProjectService for read/add operations.
@@ -117,6 +120,17 @@ func (s *ProjectService) WithInstallDeps(
 	s.installFS = installFS
 	s.activeHostReader = activeHostReader
 	s.installSkillReader = hostSkillReader
+	return s
+}
+
+// WithRemoveDeps attaches the filesystem and install-row deleter required for
+// RemoveSkill. Returns the receiver to allow chaining.
+func (s *ProjectService) WithRemoveDeps(
+	removeFS RemoveFilesystem,
+	installDeleter RemoveInstallDeleter,
+) *ProjectService {
+	s.removeFS = removeFS
+	s.installDeleter = installDeleter
 	return s
 }
 
