@@ -16,7 +16,8 @@
     "build:core": "node scripts/build-core.mjs",
     "package:mac": "pnpm build:core && pnpm build && electron-builder --mac dmg",
     "package:mac:unsigned": "pnpm build:core && pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false",
-    "release:mac:check": "node scripts/release-mac-check.mjs"
+    "release:mac:check": "node scripts/release-mac-check.mjs",
+    "release:mac:verify": "node scripts/release-mac-verify.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
