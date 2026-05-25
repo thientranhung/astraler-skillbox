@@ -142,6 +142,10 @@ Contract notes:
   `install_mode = 'rsync_copy'`.
 - `warnings[]` is capped (50) to keep the payload bounded; `summary.warnings`
   and `warningsBySeverity` are full counts, so the UI can show "showing 50 of N".
+- All three of `summary.warnings`, `warningsBySeverity`, and `warnings[]`
+  **exclude** warnings owned by a removed project (project/provider/install scope
+  whose project is `status = 'removed'`). Non-project-scoped warnings are always
+  included. See the repo predicate under Backend Shape.
 - All enums reuse existing domain enum string values; no new enum is introduced.
 - Errors: database failures map to `database_error`. No `validation_error` path
   exists because the method takes no params.
@@ -164,14 +168,59 @@ exclude `projects.status = 'removed'` where a project is in the join path.
   p.status <> 'removed' GROUP BY install_mode`. Service maps rows into the fixed
   `{symlink, rsyncCopy, direct}` struct (unknown modes ignored defensively).
 - `WarningRepo.CountActiveBySeverity(ctx) (domain.WarningSeverityCounts, error)`
-  — `SELECT severity, COUNT(*) FROM warnings WHERE is_resolved = 0 GROUP BY
-  severity`.
+  — `SELECT severity, COUNT(*) FROM warnings WHERE is_resolved = 0 AND <not
+  owned by a removed project>` ... `GROUP BY severity`.
 - `WarningRepo.ListActive(ctx, limit int) ([]domain.Warning, error)` — active
-  warnings across all scopes, `ORDER BY id DESC LIMIT ?`, reusing the existing
-  `scanWarning` helper.
+  warnings, same removed-project exclusion as above, `ORDER BY id DESC LIMIT ?`,
+  reusing the existing `scanWarning` helper.
+
+**Removed-project warning exclusion (required).** Both dashboard warning queries
+must exclude warnings that belong to a project whose `projects.status =
+'removed'`. A soft-removed project's files are untouched on disk, but its stale
+warnings must not inflate the Dashboard. Apply the exclusion per scope:
+
+- `scope_type = 'project'`: exclude when `scope_id` is a removed project.
+- `scope_type = 'project_provider'`: exclude when `scope_id`'s
+  `project_providers.project_id` is a removed project.
+- `scope_type = 'install'`: exclude when `scope_id`'s install →
+  `project_providers.project_id` is a removed project.
+- All other scope types (`app`, `skill_host_folder`, `skill`,
+  `global_provider_location`, `global_install`, `source`, `database`) are not
+  project-owned and are always included.
+
+Concrete predicate (shared by both queries):
+
+```sql
+WHERE is_resolved = 0
+  AND NOT (
+        (scope_type = 'project'
+           AND scope_id IN (SELECT id FROM projects WHERE status = 'removed'))
+     OR (scope_type = 'project_provider'
+           AND scope_id IN (
+                SELECT pp.id FROM project_providers pp
+                JOIN projects p ON p.id = pp.project_id
+                WHERE p.status = 'removed'))
+     OR (scope_type = 'install'
+           AND scope_id IN (
+                SELECT i.id FROM installs i
+                JOIN project_providers pp ON pp.id = i.project_provider_id
+                JOIN projects p ON p.id = pp.project_id
+                WHERE p.status = 'removed'))
+  )
+```
+
+A `NULL` `scope_id` cannot match any `IN (...)` subquery, so app/database-scoped
+warnings with no `scope_id` pass through unaffected.
 
 `summary.warnings` total = sum of `warningsBySeverity` (one count query is
-enough; service sums it, no separate total query required).
+enough; service sums it, no separate total query required). Because both queries
+share the same predicate, the total and the list stay consistent — the list is
+just the same population capped and ordered.
+
+Defensive note: any warning row whose `severity` is not one of the recognized
+values (`info`, `warning`, `error`, `blocking`) is ignored by
+`CountActiveBySeverity` (not bucketed into a recognized severity, so it does not
+distort counts); the row may still appear in `ListActive`.
 
 ### Service
 
@@ -191,7 +240,9 @@ enough; service sums it, no separate total query required).
      `SettingsService.Get`).
   2. `skills` count: `0` if no active host, else `CountByHost`.
   3. `projects` count, `installsByMode`, `warningsBySeverity`, active warnings
-     list — independent of host.
+     list — independent of host. The two warning queries already exclude
+     removed-project-owned warnings at the repo layer, so the service does no
+     extra filtering; it sums the severity buckets for `summary.warnings`.
   4. Any repo error → `domain.NewDatabaseError(...)`.
 
 ### Handler
@@ -293,11 +344,25 @@ Query hook mirroring `use-app-settings`, keyed `["dashboard"]`, calling
     absent modes read `0`; unknown mode ignored.
   - severity counts and `summary.warnings` total agree; warnings list capped at
     limit.
+  - removed-project warnings are excluded: a mock returning severity counts and
+    a warnings list that already omit removed-project rows flows through
+    unchanged, and `summary.warnings` equals the (already-filtered) severity sum
+    (confirms the service adds no second filter and double-counts nothing).
   - repo error → `database_error`.
 - Repo tests (temp SQLite + fixtures, existing pattern): `CountByHost`,
   `CountActive` excludes `removed`, `CountByModeActive` excludes installs of
   removed projects, `CountActiveBySeverity` and `ListActive` ignore resolved
   warnings and order by id desc.
+- Removed-project warning exclusion (required): seed warnings on a removed
+  project across all three scopes (`project`, `project_provider`, `install`) plus
+  a non-project-scoped warning (e.g. `skill_host_folder` or `app`). Assert
+  `CountActiveBySeverity` and `ListActive` omit the three removed-project
+  warnings and retain the non-project-scoped one. Include a control case where
+  the same warnings on an `active` project are counted/listed. Cover a
+  `NULL`-`scope_id` app/database warning to confirm it is never excluded.
+- Defensive severity: seed a warning with an unrecognized `severity` value and
+  assert `CountActiveBySeverity` does not bucket it into any recognized severity
+  (totals unaffected).
 - Handler contract test (`dashboard_get`) asserting the response JSON matches
   `methods/dashboard.get.json` and that `globalSkills` / `updatesAvailable` are
   absent.
@@ -328,9 +393,11 @@ Full-stack (`pnpm dev`, real Go sidecar):
 4. If a warning exists (e.g. a broken symlink from a prior scan), it appears in
    the warnings list with correct severity; a project-scoped row navigates to
    that Project Detail.
-5. Soft-remove a project from the Projects screen, return to Dashboard (or
-   refetch) → project count and any install-mode counts drop accordingly; removed
-   project's data is excluded.
+5. Soft-remove a project that has at least one active warning (e.g. a broken
+   symlink). Return to Dashboard (or refetch) → project count and any
+   install-mode counts drop accordingly, AND the removed project's warning
+   disappears from the warnings list, the `Warnings` summary count, and the
+   severity breakdown. A warning on a still-active project remains visible.
 6. Stop the Go sidecar mid-session → Dashboard shows the error state with Retry,
    shell remains navigable.
 
@@ -340,7 +407,9 @@ Full-stack (`pnpm dev`, real Go sidecar):
   contract; the response omits global/updates fields.
 - Post-setup and boot-with-host both land on `/dashboard`; `/setup` still wins
   when no host.
-- Counts exclude removed projects everywhere they appear.
+- Counts exclude removed projects everywhere they appear, including all warning
+  aggregates and the warnings list (project/provider/install-scoped warnings of a
+  removed project are filtered out; non-project-scoped warnings are retained).
 - Install-mode aggregate is present and correct (symlink populated, rsync-copy
   `0`, direct as applicable).
 - Deferred metrics are shown as muted placeholders, never fake zeroes.
