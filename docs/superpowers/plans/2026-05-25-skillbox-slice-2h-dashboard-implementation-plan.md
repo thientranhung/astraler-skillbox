@@ -64,7 +64,7 @@ Dedicated `dashboard.get`; backend omits global-skills & updates counts (UI mute
 - [ ] `cd apps/desktop && pnpm generate:contracts`; commit schema + generated `DashboardGetResponse` etc.
 
 ### Task 5 — Handler + wiring + allowlist
-- [ ] `dashboard_get.go`: narrow `dashboardService{Get(ctx)(*services.DashboardView,error)}`; response structs camelCase json tags mirroring contract (`lastScanAt` via `formatTimePtr`); init `warnings` as `make([]…,0,len)` so JSON emits `[]`; map enums via `string(...)`; `wrapError` on error. `NewDashboardGetHandler`.
+- [ ] `dashboard_get.go`: narrow `dashboardService{Get(ctx)(*services.DashboardView,error)}`; response structs camelCase json tags mirroring contract; assign `lastScanAt` directly from `view.ActiveHost.LastScannedAt` (already `*string`, formatted in the service — consistent with `settings_get.go`; no `formatTimePtr`); init `warnings` as `make([]…,0,len)` so JSON emits `[]`; map enums via `string(...)`; `wrapError` on error. `NewDashboardGetHandler`.
 - [ ] `contract_test.go`: add `TestContract_DashboardGet_Response` (populated + empty-warnings) validating against schema; assert struct round-trips (no global/update fields exist on struct).
 - [ ] `wire.go`: register `"dashboard.get": rpchandlers.NewDashboardGetHandler(dashboardSvc)`; add `dashboardSvc *services.DashboardService` as new last param to `New(...)`.
 - [ ] `wire_test.go`: `New(nil,nil,nil,nil,nil,nil)`; add `"dashboard.get"` to expected set.
