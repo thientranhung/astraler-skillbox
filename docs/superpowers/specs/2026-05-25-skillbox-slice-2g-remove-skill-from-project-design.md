@@ -98,7 +98,14 @@ installs are ever hard-deleted.
   a future slice with a stronger "delete N files" confirmation).
 - Force-deleting a real directory or file at the install path.
 - Removing `external_symlink` or `broken_symlink` entries (the wireframe
-  `[Relink]/[Remove]` remediation actions) — future remediation slice.
+  `[Relink]/[Remove]` remediation actions) — future remediation slice. Note the
+  `broken_symlink` case is excluded by construction, not just by policy: this
+  slice's safety gate requires the on-disk entry to be a symlink **resolving
+  inside the active host**, and a broken symlink resolves nowhere, so it can never
+  pass re-verification. Unlinking a dangling link is in fact safe, but enabling it
+  requires a distinct safe-unlink policy (e.g. "lstat says symlink, target
+  unresolvable ⇒ unlink the link only") rather than the resolve-into-active-host
+  check, so it is deferred to the remediation follow-up.
 - Relink.
 - Global / user-level remove (Global Skills `[Remove]`).
 - Bulk / multi-select remove.
@@ -191,13 +198,22 @@ Failure points and resulting state:
   the rescan and row delete are skipped. Nothing changed on disk or in the DB —
   the entry stays exactly as it was. Safe to retry.
 - **Rescan fails** after a successful unlink (DB error): operation FAILED with
-  `database_error`. The symlink is gone but the install row was not deleted, so
-  it lingers (as `current`) until the next manual scan tombstones it.
-  Rare; accepted and documented. Recovery: rescan the project.
+  `database_error`. The symlink is gone but the row was never re-classified, so it
+  still reads `current` (its pre-remove status). It keeps showing as a healthy
+  install until the next scan tombstones it. Recovery: rescan the project — that
+  reconciles the row to `missing`, after which the follow-up below applies. Note
+  the row is **not** recoverable via a retried `remove.skill`: the on-disk entry
+  is already gone, so re-verification takes the idempotent already-absent path
+  only if the row is still selectable, but a stale `current` row whose symlink is
+  missing is exactly the state the rescan fixes — prefer rescan, not remove.
 - **Row delete fails** after a successful unlink + rescan (DB error): operation
-  FAILED with `database_error`. The row is currently `missing` (tombstoned by the
-  rescan) and shows as a "Missing" badge until the next scan or a retried remove
-  clears it. Rare; accepted and documented.
+  FAILED with `database_error`. The rescan already tombstoned the row to
+  `missing`, so it shows as a "Missing" badge. Because its status is no longer
+  `current`, the retry path is **not** `remove.skill` (which only accepts
+  `current` symlink installs and would reject this row with `validation_error`).
+  The correct follow-up is the rescan / clear-missing remediation (see "Open
+  Questions" #2) — i.e. the same path that clears any externally-`missing` row.
+  Rare; accepted and documented.
 
 The terminal operation result (success or failed) is emitted **only after** the
 rescan and targeted delete complete — both run inside the same work function — so
@@ -388,11 +404,24 @@ disabled for non-removable entry types.
 
 - **Stale classification vs disk.** The DB classification can lag disk. Mitigated
   by re-verifying on disk before unlinking and refusing (`conflict_error`) when
-  the entry is no longer a known-host symlink — so remove can never delete real
+  the entry is no longer an active-host symlink — so remove can never delete real
   content based on stale state. The operation lock serializes Skillbox operations
   but not external processes; a change racing between re-verify and unlink is the
-  residual window, and `os.Remove`'s refusal to recurse into a real directory is
-  the backstop.
+  residual window.
+- **Residual lstat-then-`os.Remove` race.** The re-verification (`lstat` + resolve)
+  and the unlink (`os.Remove`) are two separate syscalls; the slice does not hold
+  an OS-level lock across them. An external process could, in that window, delete
+  the verified symlink and replace it with a real entry at the same path, so
+  `os.Remove` acts on something other than what was verified. The bounded worst
+  case is an **empty real directory** appearing there: `os.Remove` removes an empty
+  directory, so a remove could delete an empty dir that briefly occupied the path.
+  The damage is bounded and accepted because (a) the `lstat` gate ensures we only
+  ever *intend* to unlink a verified active-host symlink, and (b) `os.Remove` is
+  non-recursive — on a **non-empty** real directory it returns `ENOTEMPTY` rather
+  than deleting content, and on a regular file the loss is a single externally
+  created file, never managed skill content. This is the accepted mitigation for
+  the slice; an `openat`/`O_NOFOLLOW`-style atomic check-and-unlink is a possible
+  future hardening but is out of scope here.
 - **Targeted hard delete diverges from the pure-rescan model.** Unlike 2F, remove
   hard-deletes one row. Justified because `CommitProjectScan` only tombstones
   (`missing`) and the UI renders tombstones; the delete is scoped to the single
@@ -417,8 +446,12 @@ disabled for non-removable entry types.
    with no action. Out of scope here, but a future "Clear missing entry" action
    or a UI filter is the natural follow-up. Which?
 3. **`broken_symlink` remove.** The wireframe offers `[Remove]` on broken
-   symlinks; unlinking a dangling link is safe. Deferred here for conservatism —
-   confirm that's acceptable, or fold broken-symlink removal into this slice.
+   symlinks; unlinking a dangling link is safe, but it is excluded from this slice
+   by construction — a broken symlink resolves nowhere and so cannot pass the
+   resolve-into-active-host safety gate (see Out Of Scope). The follow-up needs a
+   distinct safe-unlink policy ("symlink whose target is unresolvable ⇒ unlink the
+   link only"). Should that land with the broken/external remediation slice, or
+   sooner as a small standalone addition?
 4. **Confirmation UI.** This spec recommends a small custom dialog (so it can show
    the path + provider the wireframe requires); the existing project-remove flow
    uses `window.confirm`. Confirm the custom dialog is preferred.
