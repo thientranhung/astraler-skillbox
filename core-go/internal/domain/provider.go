@@ -50,3 +50,16 @@ type ProjectProvider struct {
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }
+
+// ProjectProviderSummary is a read-only view of a project_provider row joined with
+// provider_definitions and an install entry count. Used by list and detail queries.
+type ProjectProviderSummary struct {
+	ProjectProviderID   int64
+	ProviderKey         string
+	ProviderDisplayName string
+	ProviderStatus      ProviderStatus
+	DetectionStatus     DetectionStatus
+	DetectedPath        *string
+	SkillsPath          *string
+	EntryCount          int
+}
