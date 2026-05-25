@@ -123,6 +123,27 @@ func (r *SkillHostFolderRepo) UpdateStatus(ctx context.Context, id int64, status
 	return err
 }
 
+// ListAll returns all skill host folders regardless of status, ordered by id.
+func (r *SkillHostFolderRepo) ListAll(ctx context.Context) ([]domain.SkillHostFolder, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, name, path, skills_path, status, last_scanned_at, created_at, updated_at
+		   FROM skill_host_folders ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var hosts []domain.SkillHostFolder
+	for rows.Next() {
+		h, err := scanHostRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		hosts = append(hosts, h)
+	}
+	return hosts, rows.Err()
+}
+
 func (r *SkillHostFolderRepo) UpdateLastScannedAt(ctx context.Context, id int64, t time.Time) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE skill_host_folders SET last_scanned_at=?,
@@ -141,6 +162,29 @@ func scanHost(row *sql.Row) (*domain.SkillHostFolder, error) {
 		&lastScanned, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
+	}
+	if name.Valid {
+		h.Name = name.String
+	}
+	if lastScanned.Valid {
+		t, _ := time.Parse(time.RFC3339, lastScanned.String)
+		h.LastScannedAt = &t
+	}
+	h.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+	h.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	return h, nil
+}
+
+func scanHostRows(rows *sql.Rows) (domain.SkillHostFolder, error) {
+	var h domain.SkillHostFolder
+	var name sql.NullString
+	var lastScanned sql.NullString
+	var createdAt, updatedAt string
+
+	err := rows.Scan(&h.ID, &name, &h.Path, &h.SkillsPath, &h.Status,
+		&lastScanned, &createdAt, &updatedAt)
+	if err != nil {
+		return h, err
 	}
 	if name.Valid {
 		h.Name = name.String

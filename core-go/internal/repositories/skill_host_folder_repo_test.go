@@ -99,3 +99,44 @@ func TestSkillHostFolderRepo_UpdateStatus(t *testing.T) {
 		t.Errorf("status: got %q want missing", h.Status)
 	}
 }
+
+func TestSkillHostFolderRepo_ListAll_IncludesActiveAndInactive(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewSkillHostFolderRepo(db)
+	ctx := context.Background()
+
+	// Insert two hosts; second activation makes host1 inactive.
+	_, _, _ = repo.UpsertAndActivate(ctx, "host1", "/tmp/host1", "/tmp/host1/.agents/skills")
+	_, _, _ = repo.UpsertAndActivate(ctx, "host2", "/tmp/host2", "/tmp/host2/.agents/skills")
+
+	all, err := repo.ListAll(ctx)
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if len(all) != 2 {
+		t.Errorf("expected 2 hosts, got %d", len(all))
+	}
+
+	statusByPath := make(map[string]domain.SkillHostStatus)
+	for _, h := range all {
+		statusByPath[h.Path] = h.Status
+	}
+	if statusByPath["/tmp/host1"] != domain.SkillHostStatusInactive {
+		t.Errorf("host1 status: got %q want inactive", statusByPath["/tmp/host1"])
+	}
+	if statusByPath["/tmp/host2"] != domain.SkillHostStatusActive {
+		t.Errorf("host2 status: got %q want active", statusByPath["/tmp/host2"])
+	}
+}
+
+func TestSkillHostFolderRepo_ListAll_Empty(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewSkillHostFolderRepo(db)
+	all, err := repo.ListAll(context.Background())
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if len(all) != 0 {
+		t.Errorf("expected 0 hosts, got %d", len(all))
+	}
+}

@@ -56,6 +56,61 @@ func (r *WarningRepo) ListByScope(ctx context.Context, scopeType domain.WarningS
 	return warnings, rows.Err()
 }
 
+// CountActiveForProject returns the count of active warnings for a project across
+// all three scopes: project, project_provider, and install.
+func (r *WarningRepo) CountActiveForProject(ctx context.Context, projectID int64) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM warnings
+		WHERE is_resolved = 0 AND (
+			(scope_type = 'project' AND scope_id = ?)
+			OR (scope_type = 'project_provider' AND scope_id IN (
+				SELECT id FROM project_providers WHERE project_id = ?
+			))
+			OR (scope_type = 'install' AND scope_id IN (
+				SELECT i.id FROM installs i
+				JOIN project_providers pp ON pp.id = i.project_provider_id
+				WHERE pp.project_id = ?
+			))
+		)`, projectID, projectID, projectID).Scan(&count)
+	return count, err
+}
+
+// ListActiveForProject returns all active warnings for a project across
+// project, project_provider, and install scopes, ordered by id.
+func (r *WarningRepo) ListActiveForProject(ctx context.Context, projectID int64) ([]domain.Warning, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, scope_type, scope_id, severity, code, message, action_key,
+		       source_operation_id, is_resolved, created_at, updated_at, resolved_at
+		  FROM warnings
+		 WHERE is_resolved = 0 AND (
+			(scope_type = 'project' AND scope_id = ?)
+			OR (scope_type = 'project_provider' AND scope_id IN (
+				SELECT id FROM project_providers WHERE project_id = ?
+			))
+			OR (scope_type = 'install' AND scope_id IN (
+				SELECT i.id FROM installs i
+				JOIN project_providers pp ON pp.id = i.project_provider_id
+				WHERE pp.project_id = ?
+			))
+		 )
+		 ORDER BY id`, projectID, projectID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var warnings []domain.Warning
+	for rows.Next() {
+		w, err := scanWarning(rows)
+		if err != nil {
+			return nil, err
+		}
+		warnings = append(warnings, w)
+	}
+	return warnings, rows.Err()
+}
+
 // ClearByScope marks all active warnings for the scope as resolved.
 func (r *WarningRepo) ClearByScope(ctx context.Context, scopeType domain.WarningScopeType, scopeID int64) error {
 	_, err := r.db.ExecContext(ctx,
