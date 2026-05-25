@@ -144,3 +144,181 @@ func TestInstallSkillsInternal_HappyPath(t *testing.T) {
 		t.Fatalf("metadata ProviderKey: got %q want %q", im.ProviderKey, providers.GenericAgentsKey)
 	}
 }
+
+// installSvcFixture bundles the inputs and observable collaborators needed to
+// exercise installSkillsInternal against the real filesystem gateway.
+type installSvcFixture struct {
+	svc       *ProjectService
+	project   *domain.Project
+	scanRepo  *mockProjectScanCommitter
+	ppRepo    *mockProjectProviderRepo
+	pdRepo    *mockProviderDefRepo
+	hostReader *mockActiveHostReader
+	skillLister *mockSkillsByHostLister
+	installFS InstallFilesystem
+}
+
+// installFixtureOpts tunes the generic_agents install fixture for a single test.
+type installFixtureOpts struct {
+	// createProjectSkillsDir pre-creates .agents/skills under the project root.
+	createProjectSkillsDir bool
+	// skills are the host skills available on the active host (ID 1).
+	skills []domain.Skill
+	// installFS overrides the InstallFilesystem; nil uses the real gateway.
+	installFS InstallFilesystem
+}
+
+// newGenericInstallFixture wires a generic_agents install scenario backed by the
+// real filesystem gateway. The active host lives in a temp dir and each requested
+// host skill must point at a real folder beneath it.
+func newGenericInstallFixture(t *testing.T, opts installFixtureOpts) installSvcFixture {
+	t.Helper()
+
+	projectDir := t.TempDir()
+	if opts.createProjectSkillsDir {
+		if err := os.MkdirAll(filepath.Join(projectDir, ".agents", "skills"), 0o755); err != nil {
+			t.Fatalf("mkdir project skills: %v", err)
+		}
+	}
+
+	gw := filesystem.NewGateway()
+
+	project := &domain.Project{
+		ID:     1,
+		Name:   "myproject",
+		Path:   projectDir,
+		Status: domain.ProjectStatusActive,
+	}
+	projRepo := newMockProjectRepo()
+	projRepo.projects[1] = project
+
+	ppRepo := &mockProjectProviderRepo{
+		byProject: map[int64][]domain.ProjectProviderSummary{
+			1: {{ProviderKey: providers.GenericAgentsKey, DetectionStatus: domain.DetectionStatusDetected}},
+		},
+	}
+	pdRepo := &mockProviderDefRepo{
+		defs: map[string]*domain.ProviderDefinition{
+			providers.GenericAgentsKey: {
+				ID:                 10,
+				Key:                providers.GenericAgentsKey,
+				Status:             domain.ProviderStatusSupported,
+				CanCreateStructure: true,
+			},
+		},
+	}
+
+	activeHost := &domain.SkillHostFolder{ID: 1, SkillsPath: t.TempDir(), Status: domain.SkillHostStatusActive}
+	hostReader := &mockActiveHostReader{host: activeHost}
+	skillLister := &mockSkillsByHostLister{skills: map[int64][]domain.Skill{1: opts.skills}}
+
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{providers.NewGenericAgentsAdapter()}}
+	hostLister := &mockHostLister{hosts: []domain.SkillHostFolder{*activeHost}}
+	scanRepo := &mockProjectScanCommitter{}
+	runner := &mockRunner{}
+
+	var installFS InstallFilesystem = gw
+	if opts.installFS != nil {
+		installFS = opts.installFS
+	}
+
+	svc := NewProjectService(
+		projRepo,
+		ppRepo,
+		&mockProjectWarningRepo{},
+		&mockProjectInstallRepo{},
+		gw,
+	).WithScanDeps(runner, scanRepo).
+		WithProviderDeps(registry, pdRepo, hostLister, skillLister).
+		WithInstallDeps(installFS, hostReader, skillLister)
+
+	return installSvcFixture{
+		svc:         svc,
+		project:     project,
+		scanRepo:    scanRepo,
+		ppRepo:      ppRepo,
+		pdRepo:      pdRepo,
+		hostReader:  hostReader,
+		skillLister: skillLister,
+		installFS:   installFS,
+	}
+}
+
+// makeHostSkill creates a real folder under the active host and returns a skill
+// pointing at it. id 0 leaves the skill unmade on disk (caller supplies path).
+func makeHostSkill(t *testing.T, hostSkillsDir string, id int64, name string, status domain.SkillStatus) domain.Skill {
+	t.Helper()
+	abs := filepath.Join(hostSkillsDir, name)
+	if err := os.MkdirAll(abs, 0o755); err != nil {
+		t.Fatalf("mkdir host skill %q: %v", name, err)
+	}
+	return domain.Skill{ID: id, Name: name, AbsolutePath: abs, Status: status}
+}
+
+func mustAppErr(t *testing.T, err error) *domain.AppError {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected an error, got nil")
+	}
+	ae, ok := err.(*domain.AppError)
+	if !ok {
+		t.Fatalf("error type: got %T want *domain.AppError (%v)", err, err)
+	}
+	return ae
+}
+
+// --- Task 7: auto-create skills dir (generic_agents) ---
+
+// TestInstallSkillsInternal_AutoCreateSkillsDir verifies that when .agents/skills
+// does not exist, the generic_agents provider (CanCreateStructure=true) creates it,
+// the symlink lands inside, and the install is classified current.
+func TestInstallSkillsInternal_AutoCreateSkillsDir(t *testing.T) {
+	ctx := context.Background()
+
+	fx := newGenericInstallFixture(t, installFixtureOpts{
+		createProjectSkillsDir: false, // do NOT pre-create
+	})
+	sk := makeHostSkill(t, fx.hostReader.host.SkillsPath, 1, "documentation-writer", domain.SkillStatusAvailable)
+	fx.skillLister.skills[1] = []domain.Skill{sk}
+
+	skillsDir := filepath.Join(fx.project.Path, ".agents", "skills")
+	if _, err := os.Lstat(skillsDir); !os.IsNotExist(err) {
+		t.Fatalf("precondition: skills dir should be absent, got err=%v", err)
+	}
+
+	meta, err := fx.svc.installSkillsInternal(ctx, fx.project, providers.GenericAgentsKey, []int64{1}, noopProgress)
+	if err != nil {
+		t.Fatalf("installSkillsInternal returned error: %v", err)
+	}
+
+	// Skills dir was created on disk.
+	di, derr := os.Stat(skillsDir)
+	if derr != nil {
+		t.Fatalf("expected skills dir created at %q: %v", skillsDir, derr)
+	}
+	if !di.IsDir() {
+		t.Fatalf("expected %q to be a directory", skillsDir)
+	}
+
+	// Symlink exists inside it.
+	linkPath := filepath.Join(skillsDir, "documentation-writer")
+	fi, lerr := os.Lstat(linkPath)
+	if lerr != nil {
+		t.Fatalf("expected symlink at %q: %v", linkPath, lerr)
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected %q to be a symlink, got mode %v", linkPath, fi.Mode())
+	}
+
+	if fx.scanRepo.fullScanCallCount != 1 {
+		t.Fatalf("fullScanCallCount: got %d want 1", fx.scanRepo.fullScanCallCount)
+	}
+
+	im, ok := meta.(installMetadata)
+	if !ok {
+		t.Fatalf("metadata type: got %T want installMetadata", meta)
+	}
+	if im.Requested != 1 || im.Created != 1 || im.Failed != 0 {
+		t.Fatalf("metadata: got %+v want Requested=1 Created=1 Failed=0", im)
+	}
+}
