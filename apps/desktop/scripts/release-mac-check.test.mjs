@@ -4,6 +4,7 @@ import {
   checkPlatform,
   checkTooling,
   checkSigning,
+  checkNotarization,
 } from "./release-mac-check.lib.mjs";
 
 describe("isSet", () => {
@@ -98,5 +99,55 @@ describe("checkSigning (B1)", () => {
       fileProbes: { cscLink: { isLocalPath: true, exists: true, readable: true }, appleApiKey: null },
     });
     expect(r.status).toBe("PASS");
+  });
+});
+
+describe("checkNotarization (C1)", () => {
+  const probesOk = { cscLink: null, appleApiKey: { exists: true, readable: true } };
+  const g1 = { APPLE_API_KEY: "/SENTINEL/key.p8", APPLE_API_KEY_ID: "KID", APPLE_API_ISSUER: "ISS" };
+  const g2 = { APPLE_ID: "a@b.c", APPLE_APP_SPECIFIC_PASSWORD: "pw", APPLE_TEAM_ID: "TEAMID" };
+  const c1 = (rows) => rows.find((r) => r.id === "C1");
+
+  it("fails with no group", () => {
+    expect(c1(checkNotarization({}, { cscLink: null, appleApiKey: null })).status).toBe("FAIL");
+  });
+  it("fails a partial Group 1, naming the missing var", () => {
+    const rows = checkNotarization({ APPLE_API_KEY: "/x.p8", APPLE_API_KEY_ID: "KID" }, probesOk);
+    const r = c1(rows);
+    expect(r.status).toBe("FAIL");
+    expect(r.message).toMatch(/APPLE_API_ISSUER/);
+  });
+  it("fails Group 1 when the .p8 file is missing/unreadable", () => {
+    const rows = checkNotarization(g1, { cscLink: null, appleApiKey: { exists: false, readable: false } });
+    expect(c1(rows).status).toBe("FAIL");
+    expect(c1(rows).message).toMatch(/\.p8 file is missing or unreadable/);
+  });
+  it("surfaces a bad APPLE_API_KEY .p8 even when other Group 1 vars are missing (no path printed)", () => {
+    const rows = checkNotarization(
+      { APPLE_API_KEY: "/SENTINEL/key.p8" }, // only the key path set, and it is bad
+      { cscLink: null, appleApiKey: { exists: false, readable: false } }
+    );
+    const r = c1(rows);
+    expect(r.status).toBe("FAIL");
+    expect(r.message).toMatch(/\.p8 file is missing or unreadable/);
+    expect(r.message).toMatch(/also missing APPLE_API_KEY_ID, APPLE_API_ISSUER/);
+    expect(r.message).not.toContain("/SENTINEL/key.p8");
+  });
+  it("passes complete Group 1", () => {
+    expect(c1(checkNotarization(g1, probesOk)).status).toBe("PASS");
+  });
+  it("passes complete Group 2", () => {
+    expect(c1(checkNotarization(g2, { cscLink: null, appleApiKey: null })).status).toBe("PASS");
+  });
+  it("passes with a WARN (never FAIL) when both groups are complete", () => {
+    const rows = checkNotarization({ ...g1, ...g2 }, probesOk);
+    expect(c1(rows).status).toBe("PASS");
+    expect(rows.some((r) => r.status === "WARN" && /preferred/.test(r.message))).toBe(true);
+    expect(rows.some((r) => r.status === "FAIL")).toBe(false);
+  });
+  it("emits INFO and still FAILs for keychain-profile-only", () => {
+    const rows = checkNotarization({ APPLE_KEYCHAIN_PROFILE: "prof" }, { cscLink: null, appleApiKey: null });
+    expect(c1(rows).status).toBe("FAIL");
+    expect(rows.some((r) => r.status === "INFO" && /APPLE_KEYCHAIN_PROFILE/.test(r.message))).toBe(true);
   });
 });
