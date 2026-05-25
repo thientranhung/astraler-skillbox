@@ -134,6 +134,12 @@ Kết quả review Tech Stack And Scaffold Decisions. Review này chốt các th
 cần làm trước scaffold như SQLite PRAGMAs, JSON-RPC framing/library, startup
 timeout, Electron security defaults, app data path, và dependency deferral.
 
+[agent-orchestration-playbook.md](agent-orchestration-playbook.md)
+
+Playbook hardening cho điều phối `agent-tech-skillbox` và
+`agent-lead-skillbox`: tmux hygiene, prompt dài qua file, phase gates, review
+loop, và recovery khi TUI input bị kẹt hoặc trôi sang shell.
+
 ## Suggested Reading Flow
 
 ```text
@@ -175,3 +181,4 @@ README.md
 - Technical architecture brainstorm result: [review-results/technical-architecture-brainstorm.md](review-results/technical-architecture-brainstorm.md)
 - Transport decision brainstorm result: [review-results/transport-decision-brainstorm.md](review-results/transport-decision-brainstorm.md)
 - Tech stack scaffold review result: [review-results/tech-stack-scaffold-review.md](review-results/tech-stack-scaffold-review.md)
+- Agent orchestration playbook: [agent-orchestration-playbook.md](agent-orchestration-playbook.md)
