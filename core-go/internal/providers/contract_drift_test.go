@@ -80,12 +80,10 @@ func TestContractDrift_AdapterStatusesAreContractAllowed(t *testing.T) {
 }
 
 // TestContractDrift_RegisteredAdapterKeys verifies that each registered adapter key
-// has a corresponding exported key constant. This catches typos before runtime.
+// has a corresponding exported key constant. Uses NewDefaultRegistry so this test
+// and main.go always reflect the same adapter set.
 func TestContractDrift_RegisteredAdapterKeys(t *testing.T) {
-	reg := providers.NewRegistry(
-		providers.NewGenericAgentsAdapter(),
-		providers.NewClaudeAdapter(),
-	)
+	reg := providers.NewDefaultRegistry()
 	wantKeys := map[string]bool{
 		providers.GenericAgentsKey: true,
 		providers.ClaudeKey:        true,

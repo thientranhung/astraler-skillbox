@@ -5,6 +5,15 @@ type Registry struct {
 	adapters map[string]ProviderAdapter
 }
 
+// NewDefaultRegistry returns a registry pre-populated with all production adapters.
+// Use this in main and in registry-vs-seed tests so both always stay in sync.
+func NewDefaultRegistry() *Registry {
+	return NewRegistry(
+		NewGenericAgentsAdapter(),
+		NewClaudeAdapter(),
+	)
+}
+
 // NewRegistry creates a registry pre-populated with the given adapters.
 func NewRegistry(adapters ...ProviderAdapter) *Registry {
 	r := &Registry{adapters: make(map[string]ProviderAdapter, len(adapters))}
