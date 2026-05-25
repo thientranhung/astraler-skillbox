@@ -418,6 +418,32 @@ the network, or mutates the keychain.
 
 ---
 
+## Release Orchestrator (Slice 3B2C)
+
+Canonical customer-release command. Composes `release:mac:check` → `package:mac` → `release:mac:verify <selected-dmg>` in the only safe order. Never uses `--allow-adhoc`. Never invokes `package:mac:unsigned`. Selects the DMG artifact by detecting exactly one created-or-modified `.dmg` in `dist/` using path+size+mtime metadata.
+
+### Credential-less fail-fast check (no Apple credentials required)
+
+On any machine without signing/notarization credentials, the orchestrator must exit non-zero at preflight without touching `dist/`.
+
+- [ ] Snapshot dist before: `ls apps/desktop/dist/*.dmg 2>/dev/null || echo "(empty)"`
+- [ ] Run: `(cd apps/desktop && pnpm release:mac:full); echo "exit=$?"`
+  Expected: exits non-zero (`exit=1`). Output contains `[release:mac:check]` prefixed lines and `STOPPED: preflight (release:mac:check) failed`.
+- [ ] Confirm `package:mac` was NOT invoked: no `[package:mac]` prefixed lines appear in the output.
+- [ ] Confirm dist is unchanged: `ls apps/desktop/dist/*.dmg 2>/dev/null || echo "(empty)"` matches the before snapshot.
+- [ ] No secret values in output:
+  ```sh
+  (cd apps/desktop && pnpm release:mac:full 2>&1 | grep -E -e '-----BEGIN' -e '/[^[:space:]]+\.(p12|p8)([[:space:]]|$)') || echo "clean"
+  ```
+  Expected: `clean` (no certificate/key paths or PEM blobs). Credential variable names in remediation text are okay.
+
+### Signed/notarized release (needs Apple credentials)
+- [ ] On a machine with credentials, run: `(cd apps/desktop && pnpm release:mac:full); echo "exit=$?"`
+  Expected: `exit=0`. Output shows `[release:mac:check]` PASS, `[package:mac]` build output, `[release:mac:verify]` PASS, and `OK: all stages passed`.
+- [ ] Confirm `dist/` contains exactly one new or overwritten `.dmg` matching what was verified.
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:
