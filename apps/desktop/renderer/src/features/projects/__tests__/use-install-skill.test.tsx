@@ -95,12 +95,13 @@ describe("useInstallSkill — normal flow", () => {
     await waitFor(() => expect(result.current.operationId).toBe(7));
 
     await act(async () => {
-      progressCb!({ operationId: 7, status: "success", phase: "done", processed: 2, total: 2, message: null });
+      progressCb!({ operationId: 7, status: "success", phase: "done", processed: 2, total: 2, message: null, metadata: { created: 2, requested: 2, failed: 0 } });
     });
 
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 5] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
     expect(result.current.operationId).toBeNull();
-    expect(toast.success).toHaveBeenCalledWith("Skills installed", expect.objectContaining({ id: "mock-toast-id" }));
+    expect(toast.success).toHaveBeenCalledWith("Skills installed (2)", expect.objectContaining({ id: "mock-toast-id" }));
   });
 
   it("shows error toast and invalidates on terminal failed event", async () => {
@@ -120,14 +121,19 @@ describe("useInstallSkill — normal flow", () => {
     await waitFor(() => expect(result.current.operationId).toBe(7));
 
     await act(async () => {
-      progressCb!({ operationId: 7, status: "failed", phase: "done", processed: null, total: null, message: "disk error" });
+      progressCb!({ operationId: 7, status: "failed", phase: "done", processed: null, total: null, message: "disk error", metadata: { created: 1, requested: 2, failed: 1 } });
     });
 
     expect(toast.error).toHaveBeenCalledWith(
       expect.stringContaining("disk error"),
       expect.objectContaining({ id: "mock-toast-id" }),
     );
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining("1/2 installed"),
+      expect.objectContaining({ id: "mock-toast-id" }),
+    );
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 5] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
     expect(result.current.operationId).toBeNull();
   });
 
@@ -176,6 +182,7 @@ describe("useInstallSkill — race condition: terminal event arrives before resp
     expect(result.current.operationId).toBeNull();
     expect(mockSubscribeOpProgress).not.toHaveBeenCalled();
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 5] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
     expect(toast.success).toHaveBeenCalledWith("Skills installed");
   });
 });

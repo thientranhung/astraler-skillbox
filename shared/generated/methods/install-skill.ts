@@ -19,7 +19,7 @@ export interface InstallSkillRequest {
   /**
    * Provider target for the installation
    */
-  providerKey: 'generic_agents';
+  providerKey: 'generic_agents' | 'claude';
   /**
    * IDs of skills to install
    *

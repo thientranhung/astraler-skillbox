@@ -18,7 +18,7 @@
         },
         "providerKey": {
           "type": "string",
-          "enum": ["generic_agents"],
+          "enum": ["generic_agents", "claude"],
           "description": "Provider target for the installation"
         },
         "skillIds": {

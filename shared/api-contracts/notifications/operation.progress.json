@@ -10,7 +10,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["queued", "running", "success", "failed", "cancelled", "partial"],
+      "enum": ["queued", "running", "success", "failed", "cancelled"],
       "description": "Current operation lifecycle state"
     },
     "phase": {

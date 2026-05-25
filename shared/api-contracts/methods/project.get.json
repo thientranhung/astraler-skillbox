@@ -65,7 +65,7 @@
         },
         "detectionStatus": {
           "type": "string",
-          "enum": ["detected", "missing", "invalid_structure"],
+          "enum": ["detected", "configured", "missing", "invalid_structure"],
           "description": "Detection status for this provider"
         },
         "detectedPath": {

@@ -6,8 +6,33 @@ import { subscribeOperationProgress, subscribeAllProgress } from "../../lib/core
 import { queryKeys } from "../../lib/query-keys.js";
 import type { InstallSkillRequest, OperationProgressNotification } from "@contracts/index.js";
 
+interface InstallMetadata {
+  created?: number;
+  failed?: number;
+  requested?: number;
+}
+
 function isTerminal(status: OperationProgressNotification["status"]): boolean {
   return status === "success" || status === "failed" || status === "cancelled";
+}
+
+function extractMeta(event: OperationProgressNotification): InstallMetadata | null {
+  if (event.metadata == null || typeof event.metadata !== "object") return null;
+  return event.metadata as InstallMetadata;
+}
+
+function successMessage(meta: InstallMetadata | null): string {
+  if (meta?.created != null) return `Skills installed (${meta.created})`;
+  return "Skills installed";
+}
+
+function failedMessage(meta: InstallMetadata | null, rawMessage: string | null): string {
+  const parts: string[] = [];
+  if (meta?.created != null && meta?.requested != null) {
+    parts.push(`${meta.created}/${meta.requested} installed`);
+  }
+  if (rawMessage) parts.push(rawMessage);
+  return parts.length > 0 ? `Skill install failed: ${parts.join(". ")}` : "Skill install failed";
 }
 
 export function useInstallSkill() {
@@ -40,27 +65,25 @@ export function useInstallSkill() {
         .find((e) => e.operationId === opId && isTerminal(e.status));
 
       if (terminalInBuffer != null) {
+        const meta = extractMeta(terminalInBuffer);
         if (terminalInBuffer.status === "success") {
-          toast.success("Skills installed");
+          toast.success(successMessage(meta));
         } else if (terminalInBuffer.status === "failed") {
-          toast.error(
-            `Skill install failed${terminalInBuffer.message ? `: ${terminalInBuffer.message}` : ""}`,
-          );
+          toast.error(failedMessage(meta, terminalInBuffer.message));
         }
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.projects.list() });
         return;
       }
 
       const toastId = toast.loading("Installing skills…");
 
       const unsub = subscribeOperationProgress(opId, (event) => {
+        const meta = extractMeta(event);
         if (event.status === "success") {
-          toast.success("Skills installed", { id: toastId });
+          toast.success(successMessage(meta), { id: toastId });
         } else if (event.status === "failed") {
-          toast.error(
-            `Skill install failed${event.message ? `: ${event.message}` : ""}`,
-            { id: toastId },
-          );
+          toast.error(failedMessage(meta, event.message), { id: toastId });
         } else if (event.status === "cancelled") {
           toast.dismiss(toastId);
         } else {
@@ -71,6 +94,7 @@ export function useInstallSkill() {
 
         if (isTerminal(event.status)) {
           void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.projects.list() });
           setOperationId(null);
           unsub();
           unsubRef.current = null;

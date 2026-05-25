@@ -74,6 +74,33 @@ describe("AddSkillWizard", () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 
+  it("provider with detectionStatus configured is included as installable", () => {
+    const mutate = vi.fn();
+    mockUseInstallSkill.mockReturnValue({ mutate, isPending: false });
+
+    const providers: ProjectGetProvider[] = [
+      makeProvider({ providerKey: "generic_agents", detectionStatus: "configured" }),
+    ];
+    const skills: SkillListSkill[] = [makeSkill({ id: 5, name: "Skill C" })];
+
+    render(
+      <AddSkillWizard
+        projectId={7}
+        providers={providers}
+        skills={skills}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: /Skill C/i });
+    fireEvent.click(checkbox);
+
+    const installButton = screen.getByRole("button", { name: /^install$/i });
+    expect((installButton as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(installButton);
+    expect(mutate).toHaveBeenCalledWith({ projectId: 7, providerKey: "generic_agents", skillIds: [5] });
+  });
+
   it("one installable provider + skills selected: Install calls mutate with correct args", () => {
     const mutate = vi.fn();
     mockUseInstallSkill.mockReturnValue({ mutate, isPending: false });
