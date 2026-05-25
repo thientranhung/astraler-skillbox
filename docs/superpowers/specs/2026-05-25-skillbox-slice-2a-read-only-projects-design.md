@@ -245,7 +245,7 @@ Resolve target qua canonicalize/realpath, rồi so với tập **known hosts** =
 Chỉ set `installs.skill_id` khi **đồng thời**:
 
 1. Symlink resolve vào trong một known host (`current` hoặc `old_host`), và
-2. Target đã canonicalize khớp một skill đã scan trong host đó: hoặc `resolved_target == skills.absolute_path`, hoặc `rel(resolved_target, matched_host.path) == skills.relative_path`. KHÔNG so `rel(resolved_target, host.skills_path)` với `skills.relative_path`, vì `skills.relative_path` được lưu relative từ Skill Host Folder.
+2. Target đã canonicalize khớp một skill đã scan trong host đó bằng cùng một dạng path canonical: hoặc `canonical(resolved_target) == canonical(skills.absolute_path)`, hoặc `rel(canonical(resolved_target), canonical(matched_host.path)) == skills.relative_path`. KHÔNG so `rel(resolved_target, host.skills_path)` với `skills.relative_path`, vì `skills.relative_path` được lưu relative từ Skill Host Folder.
 
 Ngược lại `skill_id = null`, giữ `skill_name` (= tên entry trên disk). KHÔNG match theo tên-gần-đúng. Không có "management semantics" suy ra từ tên.
 
