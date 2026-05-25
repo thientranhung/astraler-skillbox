@@ -237,7 +237,7 @@ describe("runReleaseMacFull — verify failure", () => {
 });
 
 describe("runReleaseMacFull — success with new DMG", () => {
-  it("calls verify with the selected DMG path and returns exitCode 0", async () => {
+  it("calls verify then manifest with the selected DMG path and returns exitCode 0", async () => {
     let callCount = 0;
     const snapshotDist = vi.fn().mockImplementation(() => {
       callCount++;
@@ -247,24 +247,31 @@ describe("runReleaseMacFull — success with new DMG", () => {
     const runStage = vi.fn()
       .mockResolvedValueOnce({ code: 0 }) // preflight
       .mockResolvedValueOnce({ code: 0 }) // package
-      .mockResolvedValueOnce({ code: 0 }); // verify
+      .mockResolvedValueOnce({ code: 0 }) // verify
+      .mockResolvedValueOnce({ code: 0, manifestPath: "/dist/App-1.0-arm64.dmg.manifest.json", sha256sumsPath: "/dist/SHA256SUMS" }); // manifest
 
     const result = await runReleaseMacFull({ runStage, snapshotDist, now: () => 500 });
 
     expect(result.exitCode).toBe(0);
     expect(result.dmgPath).toBe("/dist/App-1.0-arm64.dmg");
     expect(result.dmgReason).toBe("created");
+    expect(result.manifestPath).toBe("/dist/App-1.0-arm64.dmg.manifest.json");
+    expect(result.sha256sumsPath).toBe("/dist/SHA256SUMS");
 
     const verifyCall = runStage.mock.calls[2];
     expect(verifyCall[1][0]).toBe("release:mac:verify");
     expect(verifyCall[1][1]).toBe("/dist/App-1.0-arm64.dmg");
     // Must not include --allow-adhoc
     expect(verifyCall[1]).not.toContain("--allow-adhoc");
+
+    const manifestCall = runStage.mock.calls[3];
+    expect(manifestCall[1][0]).toBe("release:mac:manifest");
+    expect(manifestCall[1][1]).toBe("/dist/App-1.0-arm64.dmg");
   });
 });
 
 describe("runReleaseMacFull — success with same-name overwrite (modified)", () => {
-  it("calls verify with the overwritten DMG and returns exitCode 0", async () => {
+  it("calls verify then manifest with the overwritten DMG and returns exitCode 0", async () => {
     let callCount = 0;
     const snapshotDist = vi.fn().mockImplementation(() => {
       callCount++;
@@ -276,7 +283,8 @@ describe("runReleaseMacFull — success with same-name overwrite (modified)", ()
     const runStage = vi.fn()
       .mockResolvedValueOnce({ code: 0 })
       .mockResolvedValueOnce({ code: 0 })
-      .mockResolvedValueOnce({ code: 0 });
+      .mockResolvedValueOnce({ code: 0 }) // verify ok
+      .mockResolvedValueOnce({ code: 0 }); // manifest ok
 
     const result = await runReleaseMacFull({ runStage, snapshotDist, now: () => 500 });
 
@@ -287,6 +295,10 @@ describe("runReleaseMacFull — success with same-name overwrite (modified)", ()
     const verifyCall = runStage.mock.calls[2];
     expect(verifyCall[1][1]).toBe("/dist/App.dmg");
     expect(verifyCall[1]).not.toContain("--allow-adhoc");
+
+    const manifestCall = runStage.mock.calls[3];
+    expect(manifestCall[1][0]).toBe("release:mac:manifest");
+    expect(manifestCall[1][1]).toBe("/dist/App.dmg");
   });
 });
 
@@ -299,12 +311,95 @@ describe("runReleaseMacFull — stage command names", () => {
   });
 
   it("calls package with package:mac", async () => {
-    let callCount = 0;
     const snapshotDist = vi.fn().mockResolvedValue([]);
     const runStage = vi.fn()
       .mockResolvedValueOnce({ code: 0 }) // preflight ok
       .mockResolvedValueOnce({ code: 1 }); // package fails - stop
     await runReleaseMacFull({ runStage, snapshotDist, now: () => 0 });
     expect(runStage.mock.calls[1][1]).toContain("package:mac");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// runReleaseMacFull — manifest stage orchestration
+// ---------------------------------------------------------------------------
+
+function makeSnapshotWithOneDmg(dmgPath) {
+  let callCount = 0;
+  return vi.fn().mockImplementation(() => {
+    callCount++;
+    if (callCount === 1) return Promise.resolve([]);
+    return Promise.resolve([dmg(dmgPath)]);
+  });
+}
+
+describe("runReleaseMacFull — manifest stage: success triggers manifest with selected DMG path", () => {
+  it("invokes manifest after successful verify using the exact selected DMG path", async () => {
+    const snapshotDist = makeSnapshotWithOneDmg("/dist/App-1.0-arm64.dmg");
+    const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // preflight
+      .mockResolvedValueOnce({ code: 0 }) // package
+      .mockResolvedValueOnce({ code: 0 }) // verify
+      .mockResolvedValueOnce({ code: 0, manifestPath: "/dist/App-1.0-arm64.dmg.manifest.json", sha256sumsPath: "/dist/SHA256SUMS" }); // manifest
+
+    const result = await runReleaseMacFull({ runStage, snapshotDist, now: () => 500 });
+
+    expect(result.exitCode).toBe(0);
+    expect(runStage).toHaveBeenCalledTimes(4);
+
+    const manifestCall = runStage.mock.calls[3];
+    expect(manifestCall[1][0]).toBe("release:mac:manifest");
+    expect(manifestCall[1][1]).toBe("/dist/App-1.0-arm64.dmg");
+  });
+});
+
+describe("runReleaseMacFull — manifest stage: verify failure skips manifest", () => {
+  it("does not call manifest when verify fails", async () => {
+    const snapshotDist = makeSnapshotWithOneDmg("/dist/App-1.0-arm64.dmg");
+    const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // preflight
+      .mockResolvedValueOnce({ code: 0 }) // package
+      .mockResolvedValueOnce({ code: 1 }); // verify fails
+
+    const result = await runReleaseMacFull({ runStage, snapshotDist, now: () => 500 });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.failedStage).toBe("verify");
+    expect(runStage).toHaveBeenCalledTimes(3);
+    const calledCmds = runStage.mock.calls.map((c) => c[1][0]);
+    expect(calledCmds).not.toContain("release:mac:manifest");
+  });
+});
+
+describe("runReleaseMacFull — manifest stage: manifest failure fails orchestrator", () => {
+  it("returns failedStage=manifest and non-zero exit when manifest fails", async () => {
+    const snapshotDist = makeSnapshotWithOneDmg("/dist/App-1.0-arm64.dmg");
+    const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // preflight
+      .mockResolvedValueOnce({ code: 0 }) // package
+      .mockResolvedValueOnce({ code: 0 }) // verify ok
+      .mockResolvedValueOnce({ code: 1 }); // manifest fails
+
+    const result = await runReleaseMacFull({ runStage, snapshotDist, now: () => 500 });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.failedStage).toBe("manifest");
+  });
+});
+
+describe("runReleaseMacFull — manifest stage: --allow-adhoc never passed", () => {
+  it("manifest is never invoked with --allow-adhoc", async () => {
+    const snapshotDist = makeSnapshotWithOneDmg("/dist/App-1.0-arm64.dmg");
+    const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 })
+      .mockResolvedValueOnce({ code: 0 })
+      .mockResolvedValueOnce({ code: 0 })
+      .mockResolvedValueOnce({ code: 0 });
+
+    await runReleaseMacFull({ runStage, snapshotDist, now: () => 500 });
+
+    for (const call of runStage.mock.calls) {
+      expect(call[1]).not.toContain("--allow-adhoc");
+    }
   });
 });

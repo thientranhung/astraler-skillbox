@@ -18,6 +18,7 @@
     "package:mac:unsigned": "pnpm build:core && pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false",
     "release:mac:check": "node scripts/release-mac-check.mjs",
     "release:mac:verify": "node scripts/release-mac-verify.mjs",
+    "release:mac:manifest": "node scripts/release-mac-manifest.mjs",
     "release:mac:full": "node scripts/release-mac-full.mjs"
   },
   "dependencies": {
