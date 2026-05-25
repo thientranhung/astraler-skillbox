@@ -42,7 +42,7 @@ Slice 2A mở rộng các layer này, **không refactor** chúng. Mọi thứ th
 - `projects.status = missing` + warning khi project path biến mất; bỏ qua provider scan trong trường hợp này.
 - Empty `.agents/skills`: provider `detected` với zero entries, không phải error.
 - Reuse operation lock per-project, `operation.progress`, `operation.cancel`.
-- Seed `provider_definitions` + `provider_path_candidates` cho `generic_agents` (và các provider khác seed làm metadata nhưng không có adapter/không detect).
+- Seed `provider_definitions` + `provider_path_candidates` cho `generic_agents`; provider khác chỉ được seed nếu Settings metadata hiện có cần, không có adapter và không ảnh hưởng Projects.
 
 ### Out (tường minh, defer 2B+)
 
@@ -153,7 +153,7 @@ No provider detected in this project.
 
 - Loading: skeleton rows cho list và detail; scan chạy → `OperationProgressToast` (reuse Slice 1) hiển thị phases (`reading_project`, `detecting_providers`, `classifying_entries`, `done`).
 - Query error (core unavailable / DB): `ErrorDisplay` với `userMessage` + Retry.
-- Warning vs blocking: warning (broken/external/old_host/no_provider/project_missing) hiển thị non-blocking; blocking error (project unreadable do permission, DB lỗi) dừng action liên quan, không mutate state cũ.
+- Warning vs blocking: warning (broken/external/old_host/no_provider/project_missing/project_unreadable) hiển thị non-blocking; DB/core error dừng action liên quan, không mutate state cũ.
 
 ## 5. Domain / Data Model
 
@@ -162,7 +162,7 @@ Migration mới (đề xuất `000002_projects.up.sql`). Tất cả bảng và f
 ### Bảng activate trong 2A
 
 - **`projects`** — `id, name, path (UNIQUE), status (active|missing|unreadable|removed), last_scanned_at, created_at, updated_at`. 2A dùng `active`, `missing`, `unreadable`. `removed` không dùng (project.remove deferred).
-- **`provider_definitions`** — seed data. 2A chỉ `generic_agents` có adapter/được detect. Seed các provider khác (claude/codex/opencode/antigravity_cli) làm metadata UI nhưng **không** detect/scan.
+- **`provider_definitions`** — seed data. 2A bắt buộc seed `generic_agents` và chỉ `generic_agents` có adapter/được detect trong Projects. Seed provider khác chỉ được phép nếu đã cần cho metadata Settings hiện có; dữ liệu đó **không** được ảnh hưởng Projects scan/UI.
 - **`provider_path_candidates`** — seed cho `generic_agents`: `(purpose=detect, relative_path=.agents, priority=10)`, `(purpose=skills, relative_path=.agents/skills, priority=10)`.
 - **`project_providers`** — `project_id, provider_definition_id, detected_path, skills_path, detection_status (detected|missing|invalid_structure), last_scanned_at, …`. 2A dùng `detected`, `missing`, `invalid_structure`. KHÔNG dùng `configured` (cần manual config UI, defer), `unsupported`/`format_unknown` (không phát sinh với generic_agents-only).
 - **`installs` — dùng như "observed entries", KHÔNG phải Skillbox-managed installs.**
@@ -176,7 +176,7 @@ Trong 2A, mỗi row `installs` đại diện cho **một entry quan sát đượ
 - `install_mode` lưu **cơ chế quan sát**: `symlink` (entry là symlink) hoặc `direct` (folder thường). 2A **không bao giờ** ghi `rsync_copy` vì không có managed-copy record nào do app tạo.
 - `install_status` lưu **trạng thái phát hiện**: `current | old_host | external_symlink | broken_symlink | missing | error`. (`outdated`, `needs_sync`, `conflict` không phát sinh trong read-only 2A.)
 - `installed_from_host_folder_id` chỉ được set khi symlink resolve vào một known host (xem §7). Với `direct`/`external` để `null`.
-- `source_skill_path` chỉ set khi target nằm trong active host skills_path; `symlink_target_path` set raw cho mọi symlink (kể cả broken/external) để chẩn đoán.
+- `source_skill_path` set khi target nằm trong bất kỳ known host `skills_path` (`current` hoặc `old_host`). `install_status` mới thể hiện active-vs-old distinction. `symlink_target_path` set raw cho mọi symlink (kể cả broken/external) để chẩn đoán.
 - `skill_id` chỉ set theo rule chặt ở §7 (exact relative path match trong known host); ngược lại `null` và giữ `skill_name`.
 
 Hệ quả thiết kế cần truyền đạt cho user: vì không có managed metadata, **mọi folder thường = `direct`**, và một symlink do user tạo tay trỏ vào active host vẫn hiện `current` (app không phân biệt "ai tạo"). Điều này nhất quán với `docs/08-provider-model.md`.
@@ -245,7 +245,7 @@ Resolve target qua canonicalize/realpath, rồi so với tập **known hosts** =
 Chỉ set `installs.skill_id` khi **đồng thời**:
 
 1. Symlink resolve vào trong một known host (`current` hoặc `old_host`), và
-2. Relative path của target tính từ host `skills_path` **khớp chính xác** `relative_path` của một row `skills` thuộc host đó.
+2. Target đã canonicalize khớp một skill đã scan trong host đó: hoặc `resolved_target == skills.absolute_path`, hoặc `rel(resolved_target, matched_host.path) == skills.relative_path`. KHÔNG so `rel(resolved_target, host.skills_path)` với `skills.relative_path`, vì `skills.relative_path` được lưu relative từ Skill Host Folder.
 
 Ngược lại `skill_id = null`, giữ `skill_name` (= tên entry trên disk). KHÔNG match theo tên-gần-đúng. Không có "management semantics" suy ra từ tên.
 
@@ -263,10 +263,15 @@ Không phân loại an toàn được → `install_status = error` + warning (in
 - Row `installs` cũ trong DB mà entry đã biến mất trên disk → `install_status = missing` (không hard delete — hard delete chỉ dành cho user-initiated remove ở 2B).
 - Warnings regenerate theo scope sau mỗi scan (clear active rồi insert lại) — nhất quán Slice 1.
 - `project_providers.last_scanned_at`, `projects.last_scanned_at` cập nhật.
+- Clear/insert warnings và upsert/reconcile rows chỉ xảy ra trong **final DB transaction** sau khi classification hoàn tất, để cancel/failure không làm UI mất trạng thái cũ giữa chừng. Ngoại lệ duy nhất là terminal state có chủ ý: project root `missing` hoặc `unreadable`, khi service cập nhật `projects.status` + warning tương ứng và bỏ qua provider/entry mutation.
 
 ### Project path missing
 
 Nếu project root không tồn tại lúc scan → `projects.status=missing` + warning `project_missing` (scope `project`, action_key `rescan`). **Bỏ qua** provider detection/entry classification. Không mutate provider/install rows cũ ngoài việc giữ nguyên (chúng phản ánh lần scan trước).
+
+### Project path unreadable
+
+`project.add` chỉ yêu cầu path tồn tại và là directory; không yêu cầu đọc sâu toàn bộ cây. Nếu `project.scan` thấy root tồn tại nhưng không đọc được, set `projects.status=unreadable` + warning `project_unreadable` (scope `project`, action_key `open_folder` hoặc `rescan`) và bỏ qua provider detection/entry classification. Khi scan sau đọc được root, status quay lại `active` trong final transaction.
 
 ## 8. API / RPC Contract Sketch (conceptual)
 
@@ -299,7 +304,11 @@ project.list
 project.get
   Request:  { projectId: number }
   Response: {
-    project: { id, name, path, status, lastScannedAt },
+    project: {
+      id, name, path,
+      status: "active" | "missing" | "unreadable",  // same enum as project.list
+      lastScannedAt
+    },
     providers: Array<{
       projectProviderId, providerKey, displayName,
       providerStatus: "supported" | "experimental" | "unsupported" | "disabled",
@@ -327,9 +336,11 @@ project.get
 project.add
   Request:  { path: string }            // absolute, từ dialog.openProjectFolder
   Response: { projectId, name, path, status }
-  Behavior: idempotent theo path (UNIQUE) — path đã có thì trả project hiện hữu
+  Behavior: normalize to an absolute clean path before storage; idempotent by that
+            normalized path (UNIQUE). Do not use realpath for uniqueness in 2A,
+            so symlinked project roots are preserved as user-selected paths.
   Errors:   validation_error (không absolute / không tồn tại / không phải dir),
-            filesystem_error (không đọc được), database_error
+            database_error
 
 project.scan
   Request:  { projectId: number }
@@ -482,7 +493,7 @@ Không có form ghi (Add Skill wizard) — defer 2B.
 ### Errors (typed, taxonomy Slice 1)
 
 - `validation_error` — projectId/path không hợp lệ.
-- `filesystem_error` — không đọc được project/`.agents` (permission, IO).
+- `filesystem_error` — lỗi IO bất thường khi scan; root unreadable dự kiến được hạ thành `projects.status=unreadable` + warning.
 - `provider_error` — adapter resolve thất bại bất thường (lần đầu dùng code 1003).
 - `conflict_error` — scan trùng target.
 - `database_error` — DB unavailable.
@@ -496,6 +507,7 @@ Blocking errors dừng action, **không** mutate state cũ (giữ metadata lần
 |---|---|---|---|
 | `no_provider_detected` | project | warning | rescan |
 | `project_missing` | project | warning | rescan |
+| `project_unreadable` | project | warning | open_folder/rescan |
 | `broken_symlink` | install | warning | rescan |
 | `external_symlink` | install | info/warning | open_folder |
 | `old_host_symlink` | install | info/warning | rescan |
@@ -508,6 +520,7 @@ Blocking errors dừng action, **không** mutate state cũ (giữ metadata lần
 
 - **Read-only guarantee enforced ở gateway surface**: trong 2A, filesystem gateway **không expose** bất kỳ method ghi nào liên quan project (no create symlink, no copy, no remove). Không có code path nào trong services/adapters có thể ghi vào project folder. Đây là invariant chính của slice.
 - **Canonicalize trước khi so sánh**: mọi so sánh "target nằm trong host?" dùng realpath/canonicalize cả target lẫn host skills_path để tránh nhầm do symlink trung gian / `..` / trailing slash.
+- **Project path identity**: `project.add` lưu normalized absolute clean path và dùng chính path đó để idempotency/UNIQUE. Không realpath project root trong 2A, để app không đổi path user chọn và không merge hai path symlink khác nhau ngoài ý muốn. Realpath chỉ dùng cho symlink target/host comparison.
 - **Symlink resolution an toàn**: guard symlink loop và độ sâu resolve; lỗi → `error` status, không panic.
 - **Absolute paths trong DB** (nguyên tắc docs/06). `relative_path`-named fields là ngoại lệ.
 - **Electron security defaults** giữ nguyên Slice 1 (contextIsolation, sandbox, CSP, method allowlist). Method mới (`project.*`, `dialog.openProjectFolder`) phải thêm vào allowlist; `dialog.openProjectFolder` Electron-handled, không forward Go.
@@ -570,6 +583,11 @@ Project missing:
 Concurrency:
   [ ] Trigger scan 2 lần liên tiếp cùng project -> lần 2 conflict_error
 
+Cancel:
+  [ ] Start scan rồi cancel qua operation.cancel
+  [ ] operation cancelled; previous visible project/provider/entry state vẫn nhất quán,
+      không bị clear warnings/entries giữa chừng
+
 Regression:
   [ ] go test -race ./... xanh; pnpm test xanh
   [ ] Skills Library (Slice 1) vẫn hoạt động
@@ -609,6 +627,7 @@ Quyết định product/UX cần chốt trước hoặc trong slice sau, **khôn
 [ ] Scan summary trong operations.metadata_json; UI/API không phụ thuộc scan_results.
 [ ] Warnings chỉ kèm read-only action_key (rescan/open_folder).
 [ ] Per-project scan lock -> conflict_error khi trùng.
+[ ] operation.cancel cho project.scan không làm mất previous visible state giữa chừng.
 [ ] go test -race ./... xanh; pnpm test xanh; smoke checklist pass trên macOS.
 [ ] KHÔNG có filesystem write method nào cho project trong gateway (read-only invariant).
 ```
