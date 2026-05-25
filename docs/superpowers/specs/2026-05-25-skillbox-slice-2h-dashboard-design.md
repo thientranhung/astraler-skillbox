@@ -220,7 +220,9 @@ just the same population capped and ordered.
 Defensive note: any warning row whose `severity` is not one of the recognized
 values (`info`, `warning`, `error`, `blocking`) is ignored by
 `CountActiveBySeverity` (not bucketed into a recognized severity, so it does not
-distort counts); the row may still appear in `ListActive`.
+distort counts) and is excluded from `ListActive` by a SQL `severity IN (...)`
+filter — preserving the outbound `dashboard.get` contract which only allows
+those four values.
 
 ### Service
 
@@ -362,7 +364,8 @@ Query hook mirroring `use-app-settings`, keyed `["dashboard"]`, calling
   `NULL`-`scope_id` app/database warning to confirm it is never excluded.
 - Defensive severity: seed a warning with an unrecognized `severity` value and
   assert `CountActiveBySeverity` does not bucket it into any recognized severity
-  (totals unaffected).
+  (totals unaffected) and `ListActive` does not return it (unrecognized severities
+  are excluded by SQL filter to preserve the outbound contract).
 - Handler contract test (`dashboard_get`) asserting the response JSON matches
   `methods/dashboard.get.json` and that `globalSkills` / `updatesAvailable` are
   absent.

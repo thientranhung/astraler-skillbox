@@ -174,14 +174,17 @@ func (r *WarningRepo) CountActiveBySeverity(ctx context.Context) (domain.Warning
 	return counts, rows.Err()
 }
 
-// ListActive returns up to limit active non-removed-project warnings ordered by
-// id DESC. Returns nil (not an error) on empty result.
+// ListActive returns up to limit active non-removed-project warnings with
+// recognized severities, ordered by id DESC. Unrecognized severities are
+// excluded to preserve the outbound dashboard contract.
+// Returns nil (not an error) on empty result.
 func (r *WarningRepo) ListActive(ctx context.Context, limit int) ([]domain.Warning, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, scope_type, scope_id, severity, code, message, action_key,
 		        source_operation_id, is_resolved, created_at, updated_at, resolved_at
 		   FROM warnings
 		  WHERE `+activeWarningPredicate+`
+		    AND severity IN ('info', 'warning', 'error', 'blocking')
 		  ORDER BY id DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
