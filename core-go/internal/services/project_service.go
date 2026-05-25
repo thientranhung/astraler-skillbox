@@ -60,6 +60,9 @@ type ProjectService struct {
 	providerDefRepo    ProviderDefinitionRepo
 	hostLister         SkillHostLister
 	skillsByHostLister SkillsByHostLister
+	// install deps — nil until WithInstallDeps is called
+	installFS        InstallFilesystem
+	activeHostReader ActiveHostReader
 }
 
 // NewProjectService constructs a ProjectService for read/add operations.
@@ -99,6 +102,19 @@ func (s *ProjectService) WithProviderDeps(
 	s.providerDefRepo = pdRepo
 	s.hostLister = hostLister
 	s.skillsByHostLister = skillsByHostLister
+	return s
+}
+
+// WithInstallDeps attaches the filesystem, active host reader, and host skill reader
+// required for InstallSkills. Returns the receiver to allow chaining.
+func (s *ProjectService) WithInstallDeps(
+	installFS InstallFilesystem,
+	activeHostReader ActiveHostReader,
+	hostSkillReader SkillsByHostLister,
+) *ProjectService {
+	s.installFS = installFS
+	s.activeHostReader = activeHostReader
+	s.skillsByHostLister = hostSkillReader
 	return s
 }
 
