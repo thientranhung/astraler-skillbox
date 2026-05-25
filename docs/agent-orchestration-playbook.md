@@ -95,7 +95,23 @@ If a small finding expands into a larger design or cross-layer change, stop and 
 
 ## `/goal` Prompt Shape
 
-Treat `/goal` prompts as scoped execution contracts, not full brainstorm documents. Use the long template from Obsidian as a thinking checklist, then compress it before sending to the agent.
+Treat `/goal` prompts as scoped execution contracts, not full brainstorm documents. Use the Obsidian template as the canonical checklist, then compress it before sending to the agent:
+
+```text
+/Users/tranthien/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/40-Collection/References/Slash goal prompt template.md
+```
+
+Do not rely on memory when writing an important goal. Re-read the template first, especially before large slice work, migrations, smoke-test-and-fix loops, or long autonomous runs.
+
+Use the full template structure when creating a task brief file for a large run:
+
+- context,
+- success criteria,
+- operating rules,
+- quality bar,
+- final deliverable.
+
+Use a compressed version when sending directly to tmux. Direct TUI goal prompts must stay short enough to avoid input/paste failures.
 
 A good `/goal` includes:
 
