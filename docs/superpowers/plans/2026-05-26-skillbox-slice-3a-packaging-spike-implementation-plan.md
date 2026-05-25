@@ -23,7 +23,7 @@
 - `SMOKE.md` — **Modify.** Add a "Packaged macOS DMG smoke" section.
 - `SCAFFOLD.md` — **Modify.** Document the packaging build commands and output path.
 
-The `resources/core/skillbox-core` artifact is build output — it MUST NOT be committed (covered in Task 4 via `.gitignore`).
+The `resources/core/skillbox-core` artifact is build output — it MUST NOT be committed. `.gitignore` is updated in Task 3, Step 1, **before** the binary is ever produced.
 
 ---
 
@@ -189,9 +189,24 @@ git commit -m "feat(3a): spawn sidecar via resolver and log resolved path"
 ### Task 3: Build script for the bundled sidecar
 
 **Files:**
+- Modify: `.gitignore` (repo root)
 - Create: `apps/desktop/scripts/build-core.mjs`
 
-- [ ] **Step 1: Write the build script**
+- [ ] **Step 1: Ignore build artifacts FIRST (before any binary is produced)**
+
+This step MUST land before `pnpm build:core` runs in this task, so the generated `skillbox-core` binary can never be staged or committed. Add to the repo-root `.gitignore` (skip any line already present):
+
+```
+apps/desktop/dist/
+apps/desktop/resources/core/
+```
+
+Then verify the ignore is effective immediately:
+
+Run: `git check-ignore apps/desktop/resources/core/skillbox-core apps/desktop/dist`
+Expected: both paths echoed back (proves they are ignored before the binary exists).
+
+- [ ] **Step 2: Write the build script**
 
 ```js
 import { execFileSync } from "node:child_process";
@@ -219,7 +234,7 @@ chmodSync(outBin, 0o755);
 console.log(`[build:core] built ${outBin}`);
 ```
 
-- [ ] **Step 2: Add the `build:core` script to package.json**
+- [ ] **Step 3: Add the `build:core` script to package.json**
 
 In `apps/desktop/package.json` `"scripts"`, add:
 
@@ -227,16 +242,17 @@ In `apps/desktop/package.json` `"scripts"`, add:
     "build:core": "node scripts/build-core.mjs",
 ```
 
-- [ ] **Step 3: Run it and verify the artifact**
+- [ ] **Step 4: Run it and verify the artifact**
 
 Run: `(cd apps/desktop && pnpm build:core)`
 Then: `file apps/desktop/resources/core/skillbox-core && test -x apps/desktop/resources/core/skillbox-core && echo EXECUTABLE`
 Expected: `Mach-O 64-bit executable arm64` and `EXECUTABLE`.
+Then confirm it is still ignored (nothing to stage): `git status --porcelain apps/desktop/resources/` returns no output.
 
-- [ ] **Step 4: Commit (script only, not the binary)**
+- [ ] **Step 5: Commit (gitignore + script only, never the binary)**
 
 ```bash
-git add apps/desktop/scripts/build-core.mjs apps/desktop/package.json
+git add .gitignore apps/desktop/scripts/build-core.mjs apps/desktop/package.json
 git commit -m "feat(3a): add build:core script for bundled darwin/arm64 sidecar"
 ```
 
@@ -247,7 +263,8 @@ git commit -m "feat(3a): add build:core script for bundled darwin/arm64 sidecar"
 **Files:**
 - Create: `apps/desktop/electron-builder.yml`
 - Modify: `apps/desktop/package.json`
-- Modify: `.gitignore` (repo root)
+
+(Build-artifact `.gitignore` entries were already added in Task 3, Step 1.)
 
 - [ ] **Step 1: Write `apps/desktop/electron-builder.yml`**
 
@@ -296,25 +313,16 @@ Add to `"devDependencies"`:
 
 Order: `build:core` (sidecar staged) → `build` (electron-vite renderer/main bundle) → `electron-builder` packs. electron-builder MUST NOT run before the binary exists.
 
-- [ ] **Step 3: Ignore build artifacts**
-
-Add to the repo-root `.gitignore` (skip any line already present):
-
-```
-apps/desktop/dist/
-apps/desktop/resources/core/
-```
-
-- [ ] **Step 4: Install the new devDependency**
+- [ ] **Step 3: Install the new devDependency**
 
 Run: `(cd apps/desktop && pnpm install)`
 Expected: `electron-builder` resolves and installs with no error.
 
-- [ ] **Step 5: Commit (config only)**
+- [ ] **Step 4: Commit (config only)**
 
 ```bash
 git add apps/desktop/electron-builder.yml apps/desktop/package.json \
-        apps/desktop/pnpm-lock.yaml .gitignore
+        apps/desktop/pnpm-lock.yaml
 git commit -m "feat(3a): add unsigned macOS dmg packaging config and script"
 ```
 
@@ -344,14 +352,19 @@ Run from the repo root. Produces and verifies an unsigned arm64 `.dmg`.
 - [ ] Clear quarantine (unsigned build): `xattr -dr com.apple.quarantine "/Applications/Astraler Skillbox.app"`
 
 ### Launch with observable evidence
-- [ ] Launch from a terminal with stderr captured (proves no `go`/repo/dev-PATH dependency):
+- [ ] Launch from a **neutral, non-repo cwd** (e.g. `/tmp`) with stderr captured, to strengthen the "no repo dependency" claim (cwd is inherited by the child, so this proves the sidecar does not rely on being run from the checkout):
   ```sh
-  "/Applications/Astraler Skillbox.app/Contents/MacOS/Astraler Skillbox" 2> /tmp/skillbox-packaged.log
+  (cd /tmp && "/Applications/Astraler Skillbox.app/Contents/MacOS/Astraler Skillbox" 2> /tmp/skillbox-packaged.log)
   ```
 - [ ] `grep "spawning Go core" /tmp/skillbox-packaged.log` shows a path under
   `…/Astraler Skillbox.app/Contents/Resources/core/skillbox-core` (NOT `go run` / a repo path).
 - [ ] `grep "Go core ready" /tmp/skillbox-packaged.log` is present (server.ready from the bundled sidecar).
 - [ ] Sidecar location/exec bit: `test -x "/Applications/Astraler Skillbox.app/Contents/Resources/core/skillbox-core" && echo OK`
+- [ ] **Installed** binary is arm64 (check the bundle, not just the staged artifact):
+  ```sh
+  file "/Applications/Astraler Skillbox.app/Contents/Resources/core/skillbox-core"
+  ```
+  Expected: `Mach-O 64-bit executable arm64`.
 - [ ] Sidecar is outside ASAR: the path above is a real file, not inside `app.asar`.
 - [ ] Live process is the bundled one: `pgrep -fl skillbox-core` shows the in-bundle Resources path.
 
@@ -446,6 +459,6 @@ Execute the "Packaged macOS DMG Smoke (Slice 3A)" checklist in `SMOKE.md` end to
 
 - This slice changes **no** JSON-RPC contracts, schema, or product features. If `pnpm check:contracts-drift` reports drift, you changed something out of scope — revert it.
 - `resolveCoreGoPath` stays as-is; `resolveCoreSpawn` is additive and is the only decision point. Do not duplicate the dev/packaged branch in `manager.ts`.
-- Never commit `apps/desktop/resources/core/skillbox-core` or `apps/desktop/dist/` — they are build outputs (gitignored in Task 4).
+- Never commit `apps/desktop/resources/core/skillbox-core` or `apps/desktop/dist/` — they are build outputs (gitignored in Task 3, Step 1, before the binary is built).
 - The DB path is already correct in `core-go/cmd/skillbox-core/main.go` (`resolveDBPath` via `os.UserHomeDir()`); do not modify it.
 - Signing, notarization, stapling, auto-update, universal binary, Windows/Linux, and CI release automation are explicitly **out of scope** (Slice 3B and later).
