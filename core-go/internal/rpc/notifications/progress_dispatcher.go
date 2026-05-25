@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 
 	"github.com/creachadair/jrpc2"
@@ -11,12 +12,13 @@ import (
 
 // ProgressParams is the JSON payload for operation.progress notifications.
 type ProgressParams struct {
-	OperationID int64   `json:"operationId"`
-	Status      string  `json:"status"`
-	Phase       string  `json:"phase"`
-	Processed   *int    `json:"processed"`
-	Total       *int    `json:"total"`
-	Message     *string `json:"message"`
+	OperationID int64           `json:"operationId"`
+	Status      string          `json:"status"`
+	Phase       string          `json:"phase"`
+	Processed   *int            `json:"processed"`
+	Total       *int            `json:"total"`
+	Message     *string         `json:"message"`
+	Metadata    json.RawMessage `json:"metadata"`
 }
 
 // StartDispatcher reads ProgressEvents from ch and pushes operation.progress
@@ -36,6 +38,7 @@ func StartDispatcher(ctx context.Context, srv *jrpc2.Server, ch <-chan operation
 					Processed:   evt.Processed,
 					Total:       evt.Total,
 					Message:     evt.Message,
+					Metadata:    evt.Metadata,
 				}
 				if err := srv.Notify(ctx, "operation.progress", params); err != nil {
 					slog.Warn("progress notification failed", "operationId", evt.OperationID, "err", err)
