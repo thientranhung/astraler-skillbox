@@ -59,3 +59,13 @@ func (g *Gateway) EnsureDir(path string) error {
 func (g *Gateway) CreateSymlink(source, linkPath string) error {
 	return CreateSymlink(source, linkPath)
 }
+
+// ResolveEntry delegates to the package-level function.
+func (g *Gateway) ResolveEntry(path string) (EntryFacts, error) {
+	return ResolveEntry(path)
+}
+
+// RemoveSymlink delegates to the package-level function.
+func (g *Gateway) RemoveSymlink(path string) error {
+	return RemoveSymlink(path)
+}
