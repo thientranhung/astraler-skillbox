@@ -4,7 +4,7 @@
 
 **Goal:** Replace user-facing `Generic Agents` wording with `Shared Agent Skills (.agents)` while keeping `generic_agents` as the stable internal provider key, and add read-only install target metadata for the next symlink slice.
 
-**Architecture:** Provider definitions remain the persisted detection source. Install targets are non-persisted metadata derived in code so the future install flow can choose `.agents/skills` or `.claude/skills` without renaming providers or writing files in this slice.
+**Architecture:** Provider definitions remain the persisted detection source. Install targets are non-persisted, core-only metadata derived in code so the future install flow can choose `.agents/skills` or `.claude/skills` without renaming providers, changing JSON-RPC contracts, or writing files in this slice.
 
 **Tech Stack:** Go core, SQLite migrations, JSON-RPC contract tests, React renderer tests where labels are asserted.
 
@@ -15,7 +15,7 @@
 - `core-go/migrations/000004_shared_agent_display_names.up.sql`: update provider display names and database version.
 - `core-go/migrations/000004_shared_agent_display_names.down.sql`: restore previous display names and database version.
 - `core-go/internal/repositories/migration_000004_test.go`: verify display-name seed and stable provider keys.
-- `core-go/internal/providers/install_targets.go`: read-only install target metadata.
+- `core-go/internal/providers/install_targets.go`: read-only core install target metadata, not exposed through JSON-RPC in 2E.
 - `core-go/internal/providers/install_targets_test.go`: verify target IDs, provider keys, paths, and compatible labels.
 - `core-go/internal/rpc/handlers/project_contract_test.go`: update display-name fixtures while keeping `generic_agents`.
 - `core-go/internal/rpc/handlers/project_handler_test.go`: assert list/detail responses expose shared display name and stable key.
@@ -79,11 +79,11 @@ Create `core-go/migrations/000004_shared_agent_display_names.up.sql`:
 -- 000004_shared_agent_display_names.up.sql
 UPDATE provider_definitions
 SET display_name = 'Shared Agent Skills (.agents)', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-WHERE key = 'generic_agents';
+WHERE key = 'generic_agents' AND display_name = 'Generic Agents';
 
 UPDATE provider_definitions
 SET display_name = 'Claude (.claude)', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-WHERE key = 'claude';
+WHERE key = 'claude' AND display_name = 'Claude';
 
 UPDATE app_settings SET database_version = 4, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = 1;
 ```
@@ -94,11 +94,11 @@ Create `core-go/migrations/000004_shared_agent_display_names.down.sql`:
 -- 000004_shared_agent_display_names.down.sql
 UPDATE provider_definitions
 SET display_name = 'Generic Agents', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-WHERE key = 'generic_agents';
+WHERE key = 'generic_agents' AND display_name = 'Shared Agent Skills (.agents)';
 
 UPDATE provider_definitions
 SET display_name = 'Claude', updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
-WHERE key = 'claude';
+WHERE key = 'claude' AND display_name = 'Claude (.claude)';
 
 UPDATE app_settings SET database_version = 3, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = 1;
 ```
@@ -207,8 +207,8 @@ Create `core-go/internal/providers/install_targets.go`:
 ```go
 package providers
 
-// InstallTarget is read-only metadata for future install flows.
-// It is not persisted and must not replace provider keys in Slice 2E.
+// InstallTarget is read-only core metadata for future install flows.
+// It is not persisted, not exposed through JSON-RPC in Slice 2E, and must not replace provider keys.
 type InstallTarget struct {
 	ID                 string
 	ProviderKey        string
@@ -312,7 +312,36 @@ cd core-go && go test ./internal/rpc/handlers -count=1
 
 Expected: PASS.
 
-## Task 4: Final Verification And Commit
+## Task 4: Renderer And Wording Verification
+
+**Files:**
+- No required code files unless the search finds active renderer-visible `Generic Agents` text.
+
+- [ ] **Step 1: Search active renderer text**
+
+Run:
+
+```bash
+rg "Generic Agents" apps/desktop/renderer core-go/internal/rpc core-go/internal/services core-go/internal/domain
+```
+
+Expected: only migration down SQL and intentional legacy assertions should contain `Generic Agents`; renderer-visible source should not.
+
+- [ ] **Step 2: Search current architecture docs with scoped exceptions**
+
+Run:
+
+```bash
+rg "Generic Agents" docs/09-ui-wireframes.md docs/superpowers/specs docs/superpowers/plans
+```
+
+Expected: older historical slice docs may still mention `Generic Agents`; the new 2E spec/plan should only mention it when describing the term being replaced or legacy migration behavior.
+
+- [ ] **Step 3: Update active UI docs if needed**
+
+If `docs/09-ui-wireframes.md` still presents current/future UI labels as `Generic Agents`, replace those user-facing examples with `Shared Agent Skills (.agents)`. Do not rewrite historical Slice 2A/2D specs.
+
+## Task 5: Final Verification And Commit
 
 **Files:**
 - All files touched above.
