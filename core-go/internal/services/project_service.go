@@ -357,7 +357,33 @@ func (s *ProjectService) scanProjectInternal(
 	}
 
 	progress("done", 0, 0, "")
-	return nil, nil
+	return buildScanSummary(providerResults, projectWarnings), nil
+}
+
+// projectScanSummary is returned by scanProjectInternal and stored in operations.metadata_json.
+type projectScanSummary struct {
+	ProvidersFound    int `json:"providersFound"`
+	EntriesClassified int `json:"entriesClassified"`
+	WarningsCreated   int `json:"warningsCreated"`
+}
+
+func buildScanSummary(provs []repositories.ProviderScanResult, projectWarnings []domain.Warning) *projectScanSummary {
+	entries := 0
+	warnings := len(projectWarnings)
+	for _, p := range provs {
+		entries += len(p.Installs)
+		warnings += len(p.Warnings)
+		for _, inst := range p.Installs {
+			if inst.Warning != nil {
+				warnings++
+			}
+		}
+	}
+	return &projectScanSummary{
+		ProvidersFound:    len(provs),
+		EntriesClassified: entries,
+		WarningsCreated:   warnings,
+	}
 }
 
 // buildHostSummaries loads skills for each host and returns HostSummary slices
