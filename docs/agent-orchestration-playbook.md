@@ -1,0 +1,94 @@
+# Agent Orchestration Playbook
+
+This playbook hardens the multi-agent workflow used for Astraler Skillbox. It exists to prevent repeated tmux/TUI failures, stale prompts, and uncontrolled phase changes.
+
+## Roles
+
+- `agent-tech-skillbox`: senior developer and implementor. Use for scoped drafting, specs, plans, and implementation.
+- `agent-lead-skillbox`: reviewer, QA, and tester. Use for code review, spec review, risk review, and smoke-test validation.
+- Orchestrator: coordinates work, owns scope control, decides when to advance phases, and prevents agents from editing the same file at the same time.
+
+## Phase Gates
+
+Use this sequence for substantial work:
+
+1. Brainstorm and scope the next slice.
+2. Produce or revise the design spec.
+3. Ask lead to review the spec.
+4. Ask user to approve the spec.
+5. Write the implementation plan.
+6. Use `/goal` only after the implementation plan is clear.
+7. Implement, review, test, and smoke-test.
+
+Do not use `/goal` during brainstorming or sketching. Do not move to the next slice until the current slice is reviewed and explicitly closed.
+
+## tmux Hygiene Checklist
+
+Before sending any task:
+
+```sh
+tmux capture-pane -t agent-tech-skillbox -p | tail -80
+tmux capture-pane -t agent-lead-skillbox -p | tail -80
+git status --short
+```
+
+Confirm the target pane is in the expected app, not a shell. Confirm there is no stale prompt in the input area. If the agent is in a shell, start the TUI first and verify it loaded before sending work.
+
+## Prompt Delivery Rules
+
+Do not paste long prompts directly into TUI input. For long instructions, write a task brief file:
+
+```sh
+/tmp/skillbox-agent-task.md
+```
+
+Then send only a short TUI prompt:
+
+```text
+Read /tmp/skillbox-agent-task.md and follow it exactly. Stop after the requested checkpoint.
+```
+
+If the TUI shows pasted text and does not run, send Enter once more only after confirming it is waiting for submission. Do not spam Enter.
+
+Do not run heredoc commands or non-interactive review commands inside an agent pane, for example `codex review --commit ... <<EOF`. Those commands can drop the agent out of the TUI workflow and pollute the pane with shell state. If a non-interactive command is needed, run it from the orchestrator shell instead, not from `agent-tech-skillbox` or `agent-lead-skillbox`.
+
+## Editing Ownership
+
+Only one actor may edit a file at a time. If `agent-tech-skillbox` is editing a file, the orchestrator must not edit that same file unless the tech task has been interrupted and the pane is idle.
+
+For reviewer work, `agent-lead-skillbox` must not edit files unless explicitly asked. Review prompts should include `Do not edit files`.
+
+## Recovery Procedures
+
+If a TUI prompt is stale or wrong:
+
+1. Capture the pane.
+2. Send `C-c` once.
+3. Capture again.
+4. If still unsafe, send `C-c C-c` to exit the TUI.
+5. Restart the TUI cleanly and verify an empty prompt before continuing.
+
+If a prompt is accidentally sent to the shell, stop immediately. Do not try to continue from mixed shell/TUI state; restart the agent TUI.
+
+If the pane shows a suggestion or placeholder such as `Summarize recent commits`, treat it as unsafe until verified. Clear or exit before sending a real task.
+
+## Review Loop
+
+Lead reviews must be scoped to a commit or file and must start with findings. Example:
+
+```text
+Review commit abc123 only. Do not edit files. Findings first. Approve or block.
+```
+
+When the lead finds an issue, send it to tech as a small scoped task. After the fix commit, ask lead to review only the follow-up commit.
+
+## Hardening Notes
+
+Every orchestration failure should become a rule here. Typical hardening updates include:
+
+- stale prompt prevention,
+- long-prompt delivery via file,
+- phase-gate enforcement,
+- review-only guardrails,
+- recovery steps for shell/TUI drift,
+- ownership rules for shared files.
