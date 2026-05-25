@@ -1,5 +1,6 @@
 import React from "react";
 import { RefreshCw, AlertTriangle } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import type { ProjectListItem } from "@contracts/index.js";
 import { useScanProject } from "./use-scan-project.js";
 import { ProjectStatusBadge } from "./project-status-badge.js";
@@ -12,12 +13,22 @@ interface ProjectRowProps {
 export function ProjectRow({ project }: ProjectRowProps): React.JSX.Element {
   const scan = useScanProject();
   const isScanning = scan.operationId != null || scan.isPending;
+  const navigate = useNavigate();
+
+  function handleRowClick(): void {
+    void navigate({ to: "/projects/$projectId", params: { projectId: String(project.id) } });
+  }
 
   return (
     <tr className="border-b border-zinc-100 hover:bg-zinc-50">
       <td className="px-3 py-2">
-        <div className="text-sm font-medium text-zinc-900">{project.name}</div>
-        <div className="font-mono text-xs text-zinc-400">{project.path}</div>
+        <button
+          onClick={handleRowClick}
+          className="block w-full text-left"
+        >
+          <div className="text-sm font-medium text-zinc-900 hover:underline">{project.name}</div>
+          <div className="font-mono text-xs text-zinc-400">{project.path}</div>
+        </button>
       </td>
       <td className="px-3 py-2">
         <ProjectStatusBadge status={project.status} />

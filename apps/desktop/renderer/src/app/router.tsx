@@ -13,6 +13,7 @@ import { SetupScreen } from "../screens/setup-screen.js";
 import { SkillsLibraryScreen } from "../screens/skills-library-screen.js";
 import { SettingsScreen } from "../screens/settings-screen.js";
 import { ProjectsScreen } from "../screens/projects-screen.js";
+import { ProjectDetailScreen } from "../screens/project-detail-screen.js";
 
 // Root — bare layout with no shell
 function RootLayout(): React.JSX.Element {
@@ -73,6 +74,12 @@ const projectsRoute = createRoute({
   component: ProjectsScreen,
 });
 
+const projectDetailRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/projects/$projectId",
+  component: ProjectDetailScreen,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/settings",
@@ -82,7 +89,7 @@ const settingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   setupRoute,
-  shellRoute.addChildren([skillsRoute, projectsRoute, settingsRoute]),
+  shellRoute.addChildren([skillsRoute, projectsRoute, projectDetailRoute, settingsRoute]),
 ]);
 
 export const router = createRouter({
