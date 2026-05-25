@@ -215,6 +215,36 @@ export function checkConfig(config, entitlements) {
   return out;
 }
 
+const EXPECTED_ARTIFACT_NAME = "astraler-skillbox-${version}-${arch}.${ext}";
+const EXPECTED_COPYRIGHT = "Copyright (c) 2026 Astraler";
+
+/** @param {any} config */
+export function checkBundleMetadata(config) {
+  const out = [];
+  const artifactName = config && config.artifactName;
+  const copyright = config && config.copyright;
+
+  if (!isSet(artifactName)) {
+    out.push({ id: "D6", category: "config", status: "FAIL", message: "artifactName is not set", remediation: `Set artifactName: ${EXPECTED_ARTIFACT_NAME} in electron-builder.yml` });
+  } else if (/\s/.test(artifactName)) {
+    out.push({ id: "D6", category: "config", status: "FAIL", message: `artifactName contains whitespace (got ${JSON.stringify(artifactName)})`, remediation: `Set artifactName: ${EXPECTED_ARTIFACT_NAME} (no spaces) in electron-builder.yml` });
+  } else if (artifactName !== EXPECTED_ARTIFACT_NAME) {
+    out.push({ id: "D6", category: "config", status: "FAIL", message: `artifactName is ${JSON.stringify(artifactName)}, expected ${EXPECTED_ARTIFACT_NAME}`, remediation: `Set artifactName: ${EXPECTED_ARTIFACT_NAME} in electron-builder.yml` });
+  } else {
+    out.push({ id: "D6", category: "config", status: "PASS", message: `artifactName: ${EXPECTED_ARTIFACT_NAME}` });
+  }
+
+  if (!isSet(copyright)) {
+    out.push({ id: "D7", category: "config", status: "FAIL", message: "copyright is not set", remediation: `Set copyright: ${EXPECTED_COPYRIGHT} in electron-builder.yml` });
+  } else if (copyright !== EXPECTED_COPYRIGHT) {
+    out.push({ id: "D7", category: "config", status: "FAIL", message: `copyright is ${JSON.stringify(copyright)}, expected ${JSON.stringify(EXPECTED_COPYRIGHT)}`, remediation: `Set copyright to exactly "${EXPECTED_COPYRIGHT}" in electron-builder.yml` });
+  } else {
+    out.push({ id: "D7", category: "config", status: "PASS", message: `copyright: ${EXPECTED_COPYRIGHT}` });
+  }
+
+  return out;
+}
+
 /** @param {{present:boolean,arch:string|null,executable:boolean}} sidecar */
 export function checkSidecar(sidecar) {
   if (!sidecar || !sidecar.present) {
@@ -260,6 +290,7 @@ export function evaluate(facts) {
     checkSigning(facts),
     ...checkNotarization(facts.env, facts.fileProbes),
     ...checkConfig(facts.config, facts.entitlements),
+    ...checkBundleMetadata(facts.config),
     checkSidecar(facts.sidecar),
     ...checkHygiene(facts),
     checkVersion(facts.version),

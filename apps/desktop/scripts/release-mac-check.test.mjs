@@ -6,6 +6,7 @@ import {
   checkSigning,
   checkNotarization,
   checkConfig,
+  checkBundleMetadata,
   checkSidecar,
   checkHygiene,
   checkVersion,
@@ -183,6 +184,8 @@ describe("checkNotarization (C1)", () => {
 });
 
 const GOOD_CONFIG = {
+  artifactName: "astraler-skillbox-${version}-${arch}.${ext}",
+  copyright: "Copyright (c) 2026 Astraler",
   mac: {
     hardenedRuntime: true,
     notarize: true,
@@ -215,6 +218,39 @@ describe("checkConfig (D1–D5)", () => {
   it("fails D5 when no dmg/arm64 target", () => {
     const cfg = { mac: { ...GOOD_CONFIG.mac, target: [{ target: "dmg", arch: ["x64"] }] } };
     expect(ids(checkConfig(cfg, GOOD_ENT)).D5).toBe("FAIL");
+  });
+});
+
+describe("checkBundleMetadata (D6/D7)", () => {
+  const ids = (rows) => Object.fromEntries(rows.map((r) => [r.id, r.status]));
+
+  it("passes the pinned artifactName + copyright", () => {
+    expect(ids(checkBundleMetadata(GOOD_CONFIG))).toEqual({ D6: "PASS", D7: "PASS" });
+  });
+
+  it("fails D6 when artifactName is missing", () => {
+    const cfg = { ...GOOD_CONFIG, artifactName: undefined };
+    expect(ids(checkBundleMetadata(cfg)).D6).toBe("FAIL");
+  });
+
+  it("fails D6 when artifactName contains whitespace", () => {
+    const cfg = { ...GOOD_CONFIG, artifactName: "Astraler Skillbox-${version}-${arch}.${ext}" };
+    expect(ids(checkBundleMetadata(cfg)).D6).toBe("FAIL");
+  });
+
+  it("fails D6 when artifactName is not the exact pinned template", () => {
+    const cfg = { ...GOOD_CONFIG, artifactName: "skillbox-${version}.${ext}" };
+    expect(ids(checkBundleMetadata(cfg)).D6).toBe("FAIL");
+  });
+
+  it("fails D7 when copyright is missing", () => {
+    const cfg = { ...GOOD_CONFIG, copyright: undefined };
+    expect(ids(checkBundleMetadata(cfg)).D7).toBe("FAIL");
+  });
+
+  it("fails D7 when copyright is not the exact pinned string", () => {
+    const cfg = { ...GOOD_CONFIG, copyright: "Copyright 2026 Astraler" };
+    expect(ids(checkBundleMetadata(cfg)).D7).toBe("FAIL");
   });
 });
 

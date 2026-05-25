@@ -1,5 +1,7 @@
 appId: com.astraler.skillbox
 productName: Astraler Skillbox
+copyright: Copyright (c) 2026 Astraler
+artifactName: astraler-skillbox-${version}-${arch}.${ext}
 directories:
   output: dist
 files:

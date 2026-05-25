@@ -235,7 +235,7 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 ### Unsigned (Slice 3A)
 - `pnpm package:mac:unsigned` — `build:core` → `electron-vite build` → `electron-builder --mac dmg`
   with signing and hardened runtime disabled (`identity=null`, `hardenedRuntime=false`, `notarize=false`).
-- Output: `apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg` (unsigned). Launching requires a
+- Output: `apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg` (unsigned). Launching requires a
   Gatekeeper override (`xattr -dr com.apple.quarantine …`).
 
 ### Signed config + dry-run (Slice 3B1)
