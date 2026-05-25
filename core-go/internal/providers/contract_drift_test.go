@@ -1,9 +1,11 @@
 package providers_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
+	"github.com/astraler/skillbox/core-go/internal/filesystem"
 	"github.com/astraler/skillbox/core-go/internal/providers"
 )
 
@@ -16,65 +18,41 @@ var contractAllowedStatuses = map[domain.DetectionStatus]bool{
 	domain.DetectionStatusInvalidStructure: true,
 }
 
-// adapterScenarios lists representative detect results from each registered adapter.
-// Add a scenario whenever a new adapter is registered.
-var adapterScenarios = []struct {
-	name   string
-	result providers.DetectResult
-}{
-	// GenericAgents
-	{
-		name: "generic_agents/missing",
-		result: providers.DetectResult{
-			Present:         false,
-			DetectionStatus: domain.DetectionStatusMissing,
-		},
-	},
-	{
-		name: "generic_agents/detected",
-		result: providers.DetectResult{
-			Present:         true,
-			DetectionStatus: domain.DetectionStatusDetected,
-		},
-	},
-	{
-		name: "generic_agents/invalid_structure",
-		result: providers.DetectResult{
-			Present:         true,
-			DetectionStatus: domain.DetectionStatusInvalidStructure,
-		},
-	},
-	// Claude
-	{
-		name: "claude/missing",
-		result: providers.DetectResult{
-			Present:         false,
-			DetectionStatus: domain.DetectionStatusMissing,
-		},
-	},
-	{
-		name: "claude/detected",
-		result: providers.DetectResult{
-			Present:         true,
-			DetectionStatus: domain.DetectionStatusDetected,
-		},
-	},
-	{
-		name: "claude/invalid_structure",
-		result: providers.DetectResult{
-			Present:         true,
-			DetectionStatus: domain.DetectionStatusInvalidStructure,
-		},
-	},
+// uniformFS is a minimal FsReader that returns the same PathInfo for every path.
+// ListSkillEntries always returns an empty list.
+type uniformFS struct {
+	pi filesystem.PathInfo
 }
 
-// TestContractDrift_AdapterStatusesAreContractAllowed verifies that every DetectionStatus
-// value emitted by registered adapters is present in the contract enum. If this test fails,
-// either the JSON Schema contract or this list needs updating.
+func (f *uniformFS) PathInfo(_ string) (filesystem.PathInfo, error) { return f.pi, nil }
+func (f *uniformFS) ListSkillEntries(_ string) ([]filesystem.ProjectEntry, error) {
+	return nil, nil
+}
+
+var fixtureFS = map[string]*uniformFS{
+	"missing":  {pi: filesystem.PathInfo{Exists: false}},
+	"detected": {pi: filesystem.PathInfo{Exists: true, IsDir: true, Readable: true}},
+	"invalid":  {pi: filesystem.PathInfo{Exists: true, IsDir: false, Readable: true}},
+}
+
+// TestContractDrift_AdapterStatusesAreContractAllowed invokes every adapter in
+// NewDefaultRegistry() against missing/detected/invalid filesystem fixtures and
+// asserts that each returned DetectionStatus is present in the contract enum.
+// Adding a new adapter to NewDefaultRegistry() automatically extends coverage.
 func TestContractDrift_AdapterStatusesAreContractAllowed(t *testing.T) {
-	for _, s := range adapterScenarios {
-		if !contractAllowedStatuses[s.result.DetectionStatus] {
-			t.Errorf("scenario %q emits DetectionStatus %q which is not in the contract enum", s.name, s.result.DetectionStatus)
+	reg := providers.NewDefaultRegistry()
+
+	for _, adapter := range reg.All() {
+		for fixtureName, fs := range fixtureFS {
+			name := fmt.Sprintf("%s/%s", adapter.Key(), fixtureName)
+			result, err := adapter.Detect("/project", fs)
+			if err != nil {
+				t.Errorf("%s: Detect returned error: %v", name, err)
+				continue
+			}
+			if !contractAllowedStatuses[result.DetectionStatus] {
+				t.Errorf("%s: DetectionStatus %q is not in the contract enum", name, result.DetectionStatus)
+			}
 		}
 	}
 }
@@ -93,8 +71,7 @@ func TestContractDrift_RegisteredAdapterKeys(t *testing.T) {
 			t.Errorf("adapter key %q not found in registry", key)
 		}
 	}
-	all := reg.All()
-	if len(all) != len(wantKeys) {
-		t.Errorf("registry has %d adapters, want %d", len(all), len(wantKeys))
+	if len(reg.All()) != len(wantKeys) {
+		t.Errorf("registry has %d adapters, want %d", len(reg.All()), len(wantKeys))
 	}
 }

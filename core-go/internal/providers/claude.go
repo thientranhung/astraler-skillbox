@@ -16,13 +16,17 @@ const ClaudeSkillsPath = ".claude/skills"
 // ClaudeAdapter detects the Claude provider by looking for
 // <root>/.claude (detect candidate) and <root>/.claude/skills (skills path).
 //
-// Detection rules mirror GenericAgentsAdapter:
-//  1. .claude missing              → Present=false, DetectionStatus=missing
-//  2. .claude dir                  → Present=true, detected; read .claude/skills for entries
-//  3. .claude/skills missing       → detected, 0 entries, no error
-//  4. .claude unreadable dir       → Present=true, invalid_structure + warning
-//  5. .claude is a file            → Present=true, invalid_structure + warning
+// Detection rules:
+//  1. .claude missing         → Present=false, DetectionStatus=missing, no warning
+//                               (differs from GenericAgents: service aggregates the
+//                               project-level no_provider_detected warning after all
+//                               adapters run, so adapters must not emit it themselves)
+//  2. .claude dir             → Present=true, detected; read .claude/skills for entries
+//  3. .claude/skills missing  → detected, 0 entries, no error
+//  4. .claude unreadable dir  → Present=true, invalid_structure + provider warning
+//  5. .claude is a file       → Present=true, invalid_structure + provider warning
 //
+// Rules 2-5 mirror GenericAgentsAdapter semantics.
 // Adapter is read-only: no writes to filesystem or database.
 type ClaudeAdapter struct{}
 
