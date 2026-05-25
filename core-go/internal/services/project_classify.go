@@ -41,9 +41,16 @@ func ClassifyAdapterEntry(entry providers.AdapterEntry, hosts []HostSummary) Cla
 	if entry.IsSymlink {
 		return classifySymlinkEntry(entry, hosts)
 	}
+	if entry.IsDir {
+		return ClassifiedEntry{
+			Mode:   domain.InstallModeDirect,
+			Status: domain.InstallStatusCurrent,
+		}
+	}
+	// Regular files are not valid skill entries and cannot be safely classified.
 	return ClassifiedEntry{
 		Mode:   domain.InstallModeDirect,
-		Status: domain.InstallStatusCurrent,
+		Status: domain.InstallStatusError,
 	}
 }
 

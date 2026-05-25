@@ -251,7 +251,9 @@ func TestClassifyAdapterEntry_DirectDir_DirectCurrent(t *testing.T) {
 	}
 }
 
-func TestClassifyAdapterEntry_DirectFile_DirectCurrent(t *testing.T) {
+func TestClassifyAdapterEntry_DirectFile_DirectError(t *testing.T) {
+	// Regular files in a skills directory are not valid skill entries;
+	// they cannot be safely classified, so status is error.
 	entry := providers.AdapterEntry{
 		IsDir:     false,
 		IsSymlink: false,
@@ -260,7 +262,7 @@ func TestClassifyAdapterEntry_DirectFile_DirectCurrent(t *testing.T) {
 	if got.Mode != domain.InstallModeDirect {
 		t.Errorf("mode: got %q want direct", got.Mode)
 	}
-	if got.Status != domain.InstallStatusCurrent {
-		t.Errorf("status: got %q want current", got.Status)
+	if got.Status != domain.InstallStatusError {
+		t.Errorf("status: got %q want error", got.Status)
 	}
 }
