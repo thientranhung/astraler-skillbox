@@ -290,7 +290,7 @@ func TestWarningRepo_ExcludeRemovedProject(t *testing.T) {
 	seedWarningDirect(t, db, "app", nil, "info", "w6", 0)                    // 6 KEEP (NULL scope_id)
 	sid7 := activeInstall
 	seedWarningDirect(t, db, "install", &sid7, "blocking", "w7", 0)          // 7 KEEP (install of active)
-	seedWarningDirect(t, db, "app", nil, "critical", "w8", 0)                // 8 KEEP in ListActive, NOT bucketed in Count
+	seedWarningDirect(t, db, "app", nil, "critical", "w8", 0)                // 8 EXCLUDE from ListActive (unrecognized severity), NOT bucketed in Count
 	sid9 := activeProj
 	seedWarningDirect(t, db, "project", &sid9, "warning", "w9", 1)           // 9 EXCLUDE (resolved)
 
@@ -315,13 +315,13 @@ func TestWarningRepo_ExcludeRemovedProject(t *testing.T) {
 		t.Errorf("Total: got %d want 4", total)
 	}
 
-	// ListActive(50): 5 rows (1,5,6,7,8), id-DESC order
+	// ListActive(50): 4 rows (1,5,6,7) — row 8 (critical) excluded by severity filter
 	list, err := repo.ListActive(ctx, 50)
 	if err != nil {
 		t.Fatalf("ListActive: %v", err)
 	}
-	if len(list) != 5 {
-		t.Errorf("ListActive len: got %d want 5", len(list))
+	if len(list) != 4 {
+		t.Errorf("ListActive len: got %d want 4", len(list))
 	}
 	for i := 1; i < len(list); i++ {
 		if list[i].ID >= list[i-1].ID {
