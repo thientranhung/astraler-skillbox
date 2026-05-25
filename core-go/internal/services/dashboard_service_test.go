@@ -184,6 +184,9 @@ func TestDashboardService_SummaryWarningsEqualsTotal(t *testing.T) {
 		t.Errorf("Summary.Warnings=%d != WarningsBySeverity.Total()=%d",
 			view.Summary.Warnings, view.WarningsBySeverity.Total())
 	}
+	if view.Summary.Warnings != 11 {
+		t.Errorf("Summary.Warnings: got %d want 11", view.Summary.Warnings)
+	}
 }
 
 func TestDashboardService_ListActiveCalledWithLimit50(t *testing.T) {
@@ -216,5 +219,33 @@ func TestDashboardService_SettingsError(t *testing.T) {
 	}
 	if appErr.Code != domain.CodeDatabase {
 		t.Errorf("code: got %s want %s", appErr.Code, domain.CodeDatabase)
+	}
+}
+
+func TestDashboardService_RepoErrorsPropagated(t *testing.T) {
+	dbErr := errors.New("db fail")
+	cases := []struct {
+		name  string
+		setup func(*dashFake)
+	}{
+		{"projectCountErr", func(f *dashFake) { f.projectCountErr = dbErr }},
+		{"installCountsErr", func(f *dashFake) { f.installCountsErr = dbErr }},
+		{"warnCountsErr", func(f *dashFake) { f.warnCountsErr = dbErr }},
+		{"warningsErr", func(f *dashFake) { f.warningsErr = dbErr }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := defaultFake()
+			tc.setup(f)
+			svc := newDashSvc(f)
+			view, err := svc.Get(context.Background())
+			if view != nil {
+				t.Errorf("expected nil view, got non-nil")
+			}
+			var appErr *domain.AppError
+			if !errors.As(err, &appErr) || appErr.Code != domain.CodeDatabase {
+				t.Errorf("expected database AppError, got %v", err)
+			}
+		})
 	}
 }
