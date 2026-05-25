@@ -1,5 +1,6 @@
 {
   "name": "astraler-skillbox-desktop",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "main": "out/main/index.js",
@@ -10,7 +11,8 @@
     "typecheck": "tsc -b --noEmit",
     "generate:contracts": "node scripts/generate-contracts.mjs",
     "check:contracts-drift": "node scripts/generate-contracts.mjs --check",
-    "build:core": "node scripts/build-core.mjs"
+    "build:core": "node scripts/build-core.mjs",
+    "package:mac:unsigned": "pnpm build:core && pnpm build && electron-builder --mac dmg"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -43,6 +45,7 @@
     "tailwindcss": "^4.3.0",
     "typescript": "latest",
     "vite": "latest",
-    "vitest": "latest"
+    "vitest": "latest",
+    "electron-builder": "latest"
   }
 }
