@@ -32,7 +32,7 @@ const mockInstallSkill = methods.installSkill as ReturnType<typeof vi.fn>;
 const mockSubscribeOpProgress = subscribeOperationProgress as ReturnType<typeof vi.fn>;
 const mockSubscribeAllProgress = subscribeAllProgress as ReturnType<typeof vi.fn>;
 
-const REQ = { projectId: 5, providerKey: "generic_agents" as const, skillIds: [1, 2] };
+const REQ = { projectId: 5, providerKey: "generic_agents" as const, skillIds: [1, 2] as [number, ...number[]] };
 
 function makeWrapper() {
   const client = new QueryClient({
