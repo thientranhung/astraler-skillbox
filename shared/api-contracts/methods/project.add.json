@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProjectAddMethod",
+  "description": "Contract for project.add JSON-RPC method. Persists a project folder; idempotent by normalized absolute path.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProjectAddRequest" },
+    { "$ref": "#/definitions/ProjectAddResponse" }
+  ],
+  "definitions": {
+    "ProjectAddRequest": {
+      "title": "ProjectAddRequest",
+      "description": "Params for project.add. Path must be absolute; obtained from dialog.openProjectFolder before calling.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute filesystem path of the project folder chosen by the user"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    },
+    "ProjectAddResponse": {
+      "title": "ProjectAddResponse",
+      "description": "Result of project.add. Errors: validation_error (1001) if path is not absolute, does not exist, or is not a directory; database_error (1004) on persistence failure.",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "integer",
+          "description": "Persisted projects row ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Project display name derived from the folder name"
+        },
+        "path": {
+          "type": "string",
+          "description": "Normalised absolute path as stored"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "missing", "unreadable"],
+          "description": "Computed project status"
+        }
+      },
+      "required": ["projectId", "name", "path", "status"],
+      "additionalProperties": false
+    }
+  }
+}

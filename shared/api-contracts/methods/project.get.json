@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProjectGetMethod",
+  "description": "Contract for project.get JSON-RPC method. Returns full project detail: providers, observed entries, and warnings.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProjectGetRequest" },
+    { "$ref": "#/definitions/ProjectGetResponse" }
+  ],
+  "definitions": {
+    "ProjectGetRequest": {
+      "title": "ProjectGetRequest",
+      "description": "Params for project.get.",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "integer",
+          "description": "ID of the projects row to retrieve"
+        }
+      },
+      "required": ["projectId"],
+      "additionalProperties": false
+    },
+    "ProjectGetProject": {
+      "title": "ProjectGetProject",
+      "description": "Core project fields in the detail view",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "path": { "type": "string", "description": "Normalised absolute path" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "missing", "unreadable"],
+          "description": "Project status"
+        },
+        "lastScannedAt": {
+          "type": ["string", "null"],
+          "description": "ISO 8601 timestamp of the most recent completed scan, or null"
+        }
+      },
+      "required": ["id", "name", "path", "status", "lastScannedAt"],
+      "additionalProperties": false
+    },
+    "ProjectGetProvider": {
+      "title": "ProjectGetProvider",
+      "description": "Provider detail for the project detail view",
+      "type": "object",
+      "properties": {
+        "projectProviderId": {
+          "type": "integer",
+          "description": "project_providers row ID"
+        },
+        "providerKey": {
+          "type": "string",
+          "description": "Provider definition key (e.g. generic_agents)"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Human-readable provider name"
+        },
+        "providerStatus": {
+          "type": "string",
+          "enum": ["supported", "experimental", "unsupported", "disabled"],
+          "description": "Provider definition status"
+        },
+        "detectionStatus": {
+          "type": "string",
+          "enum": ["detected", "missing", "invalid_structure"],
+          "description": "Detection status for this provider"
+        },
+        "detectedPath": {
+          "type": ["string", "null"],
+          "description": "Absolute path where the provider was detected (e.g. <root>/.agents)"
+        },
+        "skillsPath": {
+          "type": ["string", "null"],
+          "description": "Absolute path of the provider's skills directory (e.g. <root>/.agents/skills)"
+        },
+        "entryCount": {
+          "type": "integer",
+          "description": "Number of observed entries under this provider"
+        }
+      },
+      "required": ["projectProviderId", "providerKey", "displayName", "providerStatus", "detectionStatus", "detectedPath", "skillsPath", "entryCount"],
+      "additionalProperties": false
+    },
+    "ProjectGetEntry": {
+      "title": "ProjectGetEntry",
+      "description": "A single observed install entry (installs-as-observed-entries)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "installs row ID"
+        },
+        "projectProviderId": {
+          "type": "integer",
+          "description": "project_providers row ID this entry belongs to"
+        },
+        "providerKey": {
+          "type": "string",
+          "description": "Provider key for grouping in the UI"
+        },
+        "name": {
+          "type": "string",
+          "description": "Skill name as observed on disk (skill_name)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["symlink", "direct"],
+          "description": "Filesystem mechanism: symlink or plain directory"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["current", "old_host", "external_symlink", "broken_symlink", "missing", "error"],
+          "description": "Observed status of the entry"
+        },
+        "projectSkillPath": {
+          "type": "string",
+          "description": "Absolute path of this entry within the project's skills directory"
+        },
+        "symlinkTargetPath": {
+          "type": ["string", "null"],
+          "description": "Raw symlink target path (set for all symlinks including broken/external), or null for direct entries"
+        },
+        "skillId": {
+          "type": ["integer", "null"],
+          "description": "skills row ID if an exact host-relative identity match was found, otherwise null"
+        }
+      },
+      "required": ["id", "projectProviderId", "providerKey", "name", "mode", "status", "projectSkillPath", "symlinkTargetPath", "skillId"],
+      "additionalProperties": false
+    },
+    "ProjectGetWarning": {
+      "title": "ProjectGetWarning",
+      "description": "Active warning for this project (project, project_provider, or install scope)",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Machine-readable warning code"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error"],
+          "description": "Warning severity level"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable warning message"
+        },
+        "scopeType": {
+          "type": "string",
+          "enum": ["project", "project_provider", "install"],
+          "description": "Scope type of the warning"
+        },
+        "scopeRef": {
+          "type": ["string", "null"],
+          "description": "Optional reference to the affected entity (e.g. entry name)"
+        },
+        "actionKey": {
+          "type": ["string", "null"],
+          "description": "Read-only action key for the UI (rescan or open_folder only in 2A)"
+        }
+      },
+      "required": ["code", "severity", "message", "scopeType", "scopeRef", "actionKey"],
+      "additionalProperties": false
+    },
+    "ProjectGetResponse": {
+      "title": "ProjectGetResponse",
+      "description": "Full project detail view model. Errors: validation_error (1001) if projectId not found.",
+      "type": "object",
+      "properties": {
+        "project": {
+          "$ref": "#/definitions/ProjectGetProject"
+        },
+        "providers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProjectGetProvider" },
+          "description": "Detected providers for this project"
+        },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProjectGetEntry" },
+          "description": "All observed skill entries, grouped by provider in the UI"
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProjectGetWarning" },
+          "description": "Active warnings across project, provider, and install scopes"
+        }
+      },
+      "required": ["project", "providers", "entries", "warnings"],
+      "additionalProperties": false
+    }
+  }
+}

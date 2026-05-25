@@ -15,3 +15,8 @@ export * from './methods/settings-get.js';
 export * from './notifications/server-ready.js';
 export * from './notifications/operation-progress.js';
 export * from './electron/dialog-open-host-folder.js';
+export * from './methods/project-add.js';
+export * from './methods/project-list.js';
+export * from './methods/project-get.js';
+export * from './methods/project-scan.js';
+export * from './electron/dialog-open-project-folder.js';

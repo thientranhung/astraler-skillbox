@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DialogOpenProjectFolderMethod",
+  "description": "Contract for dialog.openProjectFolder. ELECTRON-HANDLED ONLY — this method is intercepted by Electron main and never forwarded to the Go core. It opens the native macOS/Windows folder picker for selecting a project directory.",
+  "oneOf": [
+    { "$ref": "#/definitions/DialogOpenProjectFolderRequest" },
+    { "$ref": "#/definitions/DialogOpenProjectFolderResponse" }
+  ],
+  "definitions": {
+    "DialogOpenProjectFolderRequest": {
+      "title": "DialogOpenProjectFolderRequest",
+      "description": "No params needed for the dialog.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DialogOpenProjectFolderResponse": {
+      "title": "DialogOpenProjectFolderResponse",
+      "description": "The selected folder path, or null if the user dismissed the dialog.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": ["string", "null"],
+          "description": "Absolute path chosen by the user, or null if cancelled"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    }
+  }
+}
