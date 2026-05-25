@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
@@ -402,5 +403,89 @@ func TestInstallSkillsInternal_ClaudeNoScaffold(t *testing.T) {
 	// The provider_error is raised before the write phase, so rescan never runs.
 	if scanRepo.fullScanCallCount != 0 {
 		t.Fatalf("fullScanCallCount: got %d want 0", scanRepo.fullScanCallCount)
+	}
+}
+
+// --- Task 9: conflict abort (atomic) ---
+
+// TestInstallSkillsInternal_ConflictAbort verifies that a pre-existing entry where
+// the symlink would go aborts the whole install with conflict_error (naming the
+// skill), leaves the filesystem untouched, and never reaches the rescan. Both a real
+// directory and a broken symlink count as conflicts because the check uses Lstat.
+func TestInstallSkillsInternal_ConflictAbort(t *testing.T) {
+	cases := []struct {
+		name string
+		// seed creates the pre-existing entry at linkPath; returns a fingerprint to
+		// later assert the filesystem is unchanged.
+		seed func(t *testing.T, linkPath string)
+	}{
+		{
+			name: "real directory",
+			seed: func(t *testing.T, linkPath string) {
+				if err := os.MkdirAll(linkPath, 0o755); err != nil {
+					t.Fatalf("seed dir: %v", err)
+				}
+			},
+		},
+		{
+			name: "broken symlink",
+			seed: func(t *testing.T, linkPath string) {
+				// Point at a target that does not exist -> broken symlink.
+				if err := os.Symlink(filepath.Join(t.TempDir(), "does-not-exist"), linkPath); err != nil {
+					t.Fatalf("seed broken symlink: %v", err)
+				}
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			fx := newGenericInstallFixture(t, installFixtureOpts{createProjectSkillsDir: true})
+			sk := makeHostSkill(t, fx.hostReader.host.SkillsPath, 1, "documentation-writer", domain.SkillStatusAvailable)
+			fx.skillLister.skills[1] = []domain.Skill{sk}
+
+			skillsDir := filepath.Join(fx.project.Path, ".agents", "skills")
+			linkPath := filepath.Join(skillsDir, "documentation-writer")
+			tc.seed(t, linkPath)
+
+			// Capture the entry mode before the call so we can prove it is unchanged.
+			before, berr := os.Lstat(linkPath)
+			if berr != nil {
+				t.Fatalf("lstat seeded entry: %v", berr)
+			}
+
+			_, err := fx.svc.installSkillsInternal(ctx, fx.project, providers.GenericAgentsKey, []int64{1}, noopProgress)
+			ae := mustAppErr(t, err)
+			if ae.Code != domain.CodeConflict {
+				t.Fatalf("error code: got %q want %q", ae.Code, domain.CodeConflict)
+			}
+			if !strings.Contains(ae.TechnicalMessage, "documentation-writer") {
+				t.Fatalf("conflict error should name the skill, got %q", ae.TechnicalMessage)
+			}
+
+			// Filesystem unchanged: the seeded entry retains its original mode and no
+			// extra symlink was created (still exactly one entry in the dir).
+			after, aerr := os.Lstat(linkPath)
+			if aerr != nil {
+				t.Fatalf("lstat after: %v", aerr)
+			}
+			if before.Mode() != after.Mode() {
+				t.Fatalf("entry mode changed: before=%v after=%v", before.Mode(), after.Mode())
+			}
+			entries, derr := os.ReadDir(skillsDir)
+			if derr != nil {
+				t.Fatalf("readdir: %v", derr)
+			}
+			if len(entries) != 1 {
+				t.Fatalf("skills dir should contain only the seeded entry, got %d entries", len(entries))
+			}
+
+			// Conflict is pre-write, so the rescan never runs.
+			if fx.scanRepo.fullScanCallCount != 0 {
+				t.Fatalf("fullScanCallCount: got %d want 0", fx.scanRepo.fullScanCallCount)
+			}
+		})
 	}
 }
