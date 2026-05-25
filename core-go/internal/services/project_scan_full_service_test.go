@@ -114,4 +114,3 @@ func TestScanProjectInternal_ProviderDetected_PlainDirEntry_CommitsFullScan(t *t
 		t.Errorf("ProjectSkillPath: got %q want /tmp/myproject/.agents/skills/my-tool", inst.ProjectSkillPath)
 	}
 }
-
