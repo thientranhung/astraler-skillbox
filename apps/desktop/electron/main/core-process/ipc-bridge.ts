@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog } from "electron";
+import { ipcMain, BrowserWindow, dialog, shell } from "electron";
 import { getGoClient } from "./manager.js";
 import { ALLOWLIST } from "./method-allowlist.js";
 
@@ -32,6 +32,16 @@ export function registerIpcBridge(win: BrowserWindow): void {
           ? null
           : result.filePaths[0];
       return { path };
+    }
+
+    // Open a folder in the native file manager (Finder on macOS).
+    if (method === "dialog.openPath") {
+      const { path } = params as { path: string };
+      const errMsg = await shell.openPath(path);
+      if (errMsg !== "") {
+        throw new Error(`Failed to open path: ${errMsg}`);
+      }
+      return { opened: true };
     }
 
     return getGoClient().call(method, params);
