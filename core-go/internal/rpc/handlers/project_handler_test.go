@@ -325,3 +325,57 @@ func TestProjectScanHandler_NotFound_ReturnsValidationError(t *testing.T) {
 		t.Errorf("payload code: got %q want validation_error", we.ae.Code)
 	}
 }
+
+// --- project.remove ---
+
+type stubProjectRemove struct {
+	result *services.ProjectRemoveResult
+	err    error
+}
+
+func (s *stubProjectRemove) RemoveProject(_ context.Context, _ int64) (*services.ProjectRemoveResult, error) {
+	return s.result, s.err
+}
+
+func TestProjectRemoveHandler_Success(t *testing.T) {
+	svc := &stubProjectRemove{result: &services.ProjectRemoveResult{Removed: true}}
+	cli := startServer(t, handler.Map{"project.remove": handlers.NewProjectRemoveHandler(svc)})
+
+	var resp struct {
+		Removed bool `json:"removed"`
+	}
+	if err := cli.CallResult(context.Background(), "project.remove", map[string]int64{"projectId": 1}, &resp); err != nil {
+		t.Fatalf("project.remove: %v", err)
+	}
+	if !resp.Removed {
+		t.Error("expected removed=true")
+	}
+}
+
+func TestProjectRemoveHandler_ZeroID_ReturnsValidationError(t *testing.T) {
+	svc := &stubProjectRemove{}
+	cli := startServer(t, handler.Map{"project.remove": handlers.NewProjectRemoveHandler(svc)})
+
+	err := cli.CallResult(context.Background(), "project.remove", map[string]int64{"projectId": 0}, nil)
+	if err == nil {
+		t.Fatal("expected error for projectId=0")
+	}
+	we := extractWireError(t, err, jrpc2.Code(1001))
+	if we.ae.Code != domain.CodeValidation {
+		t.Errorf("payload code: got %q want validation_error", we.ae.Code)
+	}
+}
+
+func TestProjectRemoveHandler_NotFound_ReturnsValidationError(t *testing.T) {
+	svc := &stubProjectRemove{err: domain.NewValidationError("Project not found", "projectId 99 does not exist or is already removed")}
+	cli := startServer(t, handler.Map{"project.remove": handlers.NewProjectRemoveHandler(svc)})
+
+	err := cli.CallResult(context.Background(), "project.remove", map[string]int64{"projectId": 99}, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	we := extractWireError(t, err, jrpc2.Code(1001))
+	if we.ae.Code != domain.CodeValidation {
+		t.Errorf("payload code: got %q want validation_error", we.ae.Code)
+	}
+}

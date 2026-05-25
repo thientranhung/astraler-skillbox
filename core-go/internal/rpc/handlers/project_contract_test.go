@@ -121,3 +121,9 @@ func TestContract_ProjectScan_Response(t *testing.T) {
 	resp := projectScanResponse{OperationID: 1}
 	validateAgainstSchema(t, schema, resp)
 }
+
+func TestContract_ProjectRemove_Response(t *testing.T) {
+	schema := loadSchema(t, "methods/project.remove.json")
+	resp := projectRemoveResponse{Removed: true}
+	validateAgainstSchema(t, schema, resp)
+}

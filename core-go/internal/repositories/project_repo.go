@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
@@ -17,14 +18,26 @@ func NewProjectRepo(db *sql.DB) *ProjectRepo {
 }
 
 // UpsertByPath inserts a new project or returns the existing one for that path.
+// If a removed row exists for the path, it is revived to active with an updated name.
 // Returns (id, isNew, err). isNew=true means the row was INSERTed.
 func (r *ProjectRepo) UpsertByPath(ctx context.Context, name, path string) (int64, bool, error) {
-	var existing sql.NullInt64
-	_ = r.db.QueryRowContext(ctx,
-		`SELECT id FROM projects WHERE path = ?`, path).Scan(&existing)
+	var existingID sql.NullInt64
+	var existingStatus sql.NullString
+	row := r.db.QueryRowContext(ctx,
+		`SELECT id, status FROM projects WHERE path = ?`, path)
+	_ = row.Scan(&existingID, &existingStatus)
 
-	if existing.Valid {
-		return existing.Int64, false, nil
+	if existingID.Valid {
+		if existingStatus.String == string(domain.ProjectStatusRemoved) {
+			_, err := r.db.ExecContext(ctx,
+				`UPDATE projects SET status='active', name=?,
+				 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`,
+				name, existingID.Int64)
+			if err != nil {
+				return 0, false, err
+			}
+		}
+		return existingID.Int64, false, nil
 	}
 
 	res, err := r.db.ExecContext(ctx,
@@ -39,7 +52,7 @@ func (r *ProjectRepo) UpsertByPath(ctx context.Context, name, path string) (int6
 func (r *ProjectRepo) GetByID(ctx context.Context, id int64) (*domain.Project, error) {
 	row := r.db.QueryRowContext(ctx,
 		`SELECT id, name, path, status, last_scanned_at, created_at, updated_at
-		   FROM projects WHERE id = ?`, id)
+		   FROM projects WHERE id = ? AND status <> 'removed'`, id)
 	p, err := scanProject(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -50,7 +63,7 @@ func (r *ProjectRepo) GetByID(ctx context.Context, id int64) (*domain.Project, e
 func (r *ProjectRepo) List(ctx context.Context) ([]domain.Project, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, name, path, status, last_scanned_at, created_at, updated_at
-		   FROM projects ORDER BY id`)
+		   FROM projects WHERE status <> 'removed' ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +85,26 @@ func (r *ProjectRepo) UpdateStatus(ctx context.Context, id int64, status domain.
 		`UPDATE projects SET status=?,
 		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`, string(status), id)
 	return err
+}
+
+// MarkRemoved sets a project's status to removed.
+// Returns validation_error if the project does not exist or is already removed.
+func (r *ProjectRepo) MarkRemoved(ctx context.Context, id int64) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE projects SET status='removed',
+		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
+		 WHERE id=? AND status <> 'removed'`, id)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return errors.New("project not found or already removed")
+	}
+	return nil
 }
 
 func (r *ProjectRepo) UpdateLastScannedAt(ctx context.Context, id int64, t time.Time) error {

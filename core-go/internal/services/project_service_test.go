@@ -255,6 +255,63 @@ func TestGetProject_FreshProject_EmptyProviders(t *testing.T) {
 	}
 }
 
+// --- RemoveProject ---
+
+func TestRemoveProject_HappyPath(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
+
+	svc := newProjectSvc(&mockProjectFS{}, projRepo)
+	result, err := svc.RemoveProject(ctx, 1)
+	if err != nil {
+		t.Fatalf("RemoveProject: %v", err)
+	}
+	if !result.Removed {
+		t.Error("expected Removed=true")
+	}
+}
+
+func TestRemoveProject_NotFound_ValidationError(t *testing.T) {
+	svc := newProjectSvc(&mockProjectFS{}, newMockProjectRepo())
+	_, err := svc.RemoveProject(context.Background(), 999)
+	requireAppError(t, err, domain.CodeValidation)
+}
+
+func TestRemoveProject_AlreadyRemoved_ValidationError(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
+
+	svc := newProjectSvc(&mockProjectFS{}, projRepo)
+	if _, err := svc.RemoveProject(ctx, 1); err != nil {
+		t.Fatalf("first RemoveProject: %v", err)
+	}
+
+	_, err := svc.RemoveProject(ctx, 1)
+	requireAppError(t, err, domain.CodeValidation)
+}
+
+func TestAddProject_AfterRemove_RevivesProject(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+
+	svc := newProjectSvc(&mockProjectFS{}, projRepo)
+	r1, _ := svc.AddProject(ctx, "/tmp/proj-a")
+	svc.RemoveProject(ctx, r1.ProjectID) //nolint:errcheck
+
+	r2, err := svc.AddProject(ctx, "/tmp/proj-a")
+	if err != nil {
+		t.Fatalf("AddProject after remove: %v", err)
+	}
+	if r2.ProjectID != r1.ProjectID {
+		t.Errorf("expected same project ID on revival: got %d want %d", r2.ProjectID, r1.ProjectID)
+	}
+	if r2.Status != domain.ProjectStatusActive {
+		t.Errorf("status: got %q want active", r2.Status)
+	}
+}
+
 // --- helpers ---
 
 func requireAppError(t *testing.T, err error, wantCode string) {

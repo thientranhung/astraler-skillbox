@@ -12,6 +12,11 @@ import (
 	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
+// ProjectRemoveResult is returned by RemoveProject.
+type ProjectRemoveResult struct {
+	Removed bool
+}
+
 // AddProjectResult is returned by AddProject.
 type AddProjectResult struct {
 	ProjectID int64
@@ -210,6 +215,27 @@ func (s *ProjectService) GetProject(ctx context.Context, projectID int64) (*Proj
 		Entries:   entries,
 		Warnings:  warnings,
 	}, nil
+}
+
+// RemoveProject soft-removes a project by setting its status to removed.
+// Returns validation_error if the project does not exist or is already removed.
+func (s *ProjectService) RemoveProject(ctx context.Context, projectID int64) (*ProjectRemoveResult, error) {
+	existing, err := s.projectRepo.GetByID(ctx, projectID)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not fetch project", err.Error())
+	}
+	if existing == nil {
+		return nil, domain.NewValidationError(
+			"Project not found",
+			fmt.Sprintf("projectId %d does not exist or is already removed", projectID),
+		)
+	}
+
+	if err := s.projectRepo.MarkRemoved(ctx, projectID); err != nil {
+		return nil, domain.NewValidationError("Could not remove project", err.Error())
+	}
+
+	return &ProjectRemoveResult{Removed: true}, nil
 }
 
 // ScanProject queues an async scan operation for the given project.

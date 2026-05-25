@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"time"
 
@@ -53,12 +54,13 @@ func (m *mockProjectFS) ListSkillEntries(_ string) ([]filesystem.ProjectEntry, e
 // -- mock project repo --
 
 type mockProjectRepo struct {
-	projects  map[int64]*domain.Project
-	byPath    map[string]*domain.Project
-	nextID    int64
-	upsertErr error
-	getErr    error
-	listErr   error
+	projects        map[int64]*domain.Project
+	byPath          map[string]*domain.Project
+	nextID          int64
+	upsertErr       error
+	getErr          error
+	listErr         error
+	markRemovedErr  error
 }
 
 func newMockProjectRepo() *mockProjectRepo {
@@ -74,6 +76,10 @@ func (m *mockProjectRepo) UpsertByPath(_ context.Context, name, path string) (in
 		return 0, false, m.upsertErr
 	}
 	if p, ok := m.byPath[path]; ok {
+		if p.Status == domain.ProjectStatusRemoved {
+			p.Status = domain.ProjectStatusActive
+			p.Name = name
+		}
 		return p.ID, false, nil
 	}
 	id := m.nextID
@@ -97,9 +103,23 @@ func (m *mockProjectRepo) List(_ context.Context) ([]domain.Project, error) {
 	}
 	result := make([]domain.Project, 0, len(m.projects))
 	for _, p := range m.projects {
-		result = append(result, *p)
+		if p.Status != domain.ProjectStatusRemoved {
+			result = append(result, *p)
+		}
 	}
 	return result, nil
+}
+
+func (m *mockProjectRepo) MarkRemoved(_ context.Context, id int64) error {
+	if m.markRemovedErr != nil {
+		return m.markRemovedErr
+	}
+	p, ok := m.projects[id]
+	if !ok || p.Status == domain.ProjectStatusRemoved {
+		return errors.New("project not found or already removed")
+	}
+	p.Status = domain.ProjectStatusRemoved
+	return nil
 }
 
 // -- mock project provider repo --
