@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
 	"time"
 
@@ -110,16 +109,16 @@ func (m *mockProjectRepo) List(_ context.Context) ([]domain.Project, error) {
 	return result, nil
 }
 
-func (m *mockProjectRepo) MarkRemoved(_ context.Context, id int64) error {
+func (m *mockProjectRepo) MarkRemoved(_ context.Context, id int64) (bool, error) {
 	if m.markRemovedErr != nil {
-		return m.markRemovedErr
+		return false, m.markRemovedErr
 	}
 	p, ok := m.projects[id]
 	if !ok || p.Status == domain.ProjectStatusRemoved {
-		return errors.New("project not found or already removed")
+		return false, nil
 	}
 	p.Status = domain.ProjectStatusRemoved
-	return nil
+	return true, nil
 }
 
 // -- mock project provider repo --

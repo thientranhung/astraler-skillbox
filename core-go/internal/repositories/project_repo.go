@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
@@ -88,23 +87,21 @@ func (r *ProjectRepo) UpdateStatus(ctx context.Context, id int64, status domain.
 }
 
 // MarkRemoved sets a project's status to removed.
-// Returns validation_error if the project does not exist or is already removed.
-func (r *ProjectRepo) MarkRemoved(ctx context.Context, id int64) error {
+// Returns (true, nil) on success, (false, nil) if no row matched (not found or already removed),
+// and (false, err) on a real database failure.
+func (r *ProjectRepo) MarkRemoved(ctx context.Context, id int64) (bool, error) {
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE projects SET status='removed',
 		 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
 		 WHERE id=? AND status <> 'removed'`, id)
 	if err != nil {
-		return err
+		return false, err
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		return err
+		return false, err
 	}
-	if n == 0 {
-		return errors.New("project not found or already removed")
-	}
-	return nil
+	return n > 0, nil
 }
 
 func (r *ProjectRepo) UpdateLastScannedAt(ctx context.Context, id int64, t time.Time) error {
