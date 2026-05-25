@@ -32,3 +32,12 @@ func EnsureDir(path string) error {
 func CreateSymlink(source, linkPath string) error {
 	return os.Symlink(source, linkPath)
 }
+
+// RemoveSymlink unlinks the entry at path using os.Remove. On a symlink it
+// removes the link itself WITHOUT following it (the target is untouched). On a
+// non-empty real directory os.Remove returns an error rather than recursing —
+// defense in depth so a regression in the caller's checks cannot destroy real
+// content.
+func RemoveSymlink(path string) error {
+	return os.Remove(path)
+}

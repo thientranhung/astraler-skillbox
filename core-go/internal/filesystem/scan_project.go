@@ -121,3 +121,41 @@ func ScanProjectSkills(skillsPath string) ([]ProjectEntry, error) {
 	}
 	return result, nil
 }
+
+// EntryFacts captures lstat + symlink-resolution facts for a single path, used
+// by remove's on-disk re-verification. It mirrors the per-entry logic of
+// ScanProjectSkills for one path. A missing path returns Exists=false (not an
+// error).
+type EntryFacts struct {
+	Exists         bool
+	IsSymlink      bool
+	Broken         bool   // symlink whose target does not resolve
+	ResolvedTarget string // canonical target via EvalSymlinks; empty unless a resolving symlink
+}
+
+// ResolveEntry returns lstat + resolution facts for path without following the
+// symlink at lstat time. ENOENT is not an error.
+func ResolveEntry(path string) (EntryFacts, error) {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return EntryFacts{Exists: false}, nil
+		}
+		return EntryFacts{}, err
+	}
+	facts := EntryFacts{Exists: true}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		return facts, nil // exists, not a symlink
+	}
+	facts.IsSymlink = true
+	resolved, evalErr := filepath.EvalSymlinks(path)
+	if evalErr != nil {
+		if errors.Is(evalErr, fs.ErrNotExist) {
+			facts.Broken = true
+			return facts, nil
+		}
+		return facts, evalErr // loop/IO error
+	}
+	facts.ResolvedTarget = resolved
+	return facts, nil
+}
