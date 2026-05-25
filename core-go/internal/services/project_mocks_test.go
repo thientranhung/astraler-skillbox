@@ -82,11 +82,11 @@ func (m *mockProjectRepo) List(_ context.Context) ([]domain.Project, error) {
 // -- mock project provider repo --
 
 type mockProjectProviderRepo struct {
-	byProject map[int64][]ProjectProviderSummary
+	byProject map[int64][]domain.ProjectProviderSummary
 	err       error
 }
 
-func (m *mockProjectProviderRepo) ListByProject(_ context.Context, projectID int64) ([]ProjectProviderSummary, error) {
+func (m *mockProjectProviderRepo) ListByProject(_ context.Context, projectID int64) ([]domain.ProjectProviderSummary, error) {
 	if m.err != nil {
 		return nil, m.err
 	}

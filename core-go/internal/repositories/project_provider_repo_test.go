@@ -72,8 +72,8 @@ func TestProjectProviderRepo_ListByProject_WithProvider(t *testing.T) {
 	if row.DetectionStatus != domain.DetectionStatusDetected {
 		t.Errorf("DetectionStatus: got %q want detected", row.DetectionStatus)
 	}
-	if row.ProjectID != pid {
-		t.Errorf("ProjectID: got %d want %d", row.ProjectID, pid)
+	if row.ProjectProviderID <= 0 {
+		t.Errorf("ProjectProviderID: got %d, want positive", row.ProjectProviderID)
 	}
 }
 

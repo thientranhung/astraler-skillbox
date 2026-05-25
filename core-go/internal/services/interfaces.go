@@ -60,18 +60,6 @@ type OperationRunner interface {
 	Cancel(ctx context.Context, operationID int64) (bool, error)
 }
 
-// ProjectProviderSummary is a per-provider view used by project list and detail queries.
-type ProjectProviderSummary struct {
-	ProjectProviderID   int64
-	ProviderKey         string
-	ProviderDisplayName string
-	ProviderStatus      domain.ProviderStatus
-	DetectionStatus     domain.DetectionStatus
-	DetectedPath        *string
-	SkillsPath          *string
-	EntryCount          int
-}
-
 // ProjectRepo is the minimal repository interface for projects.
 type ProjectRepo interface {
 	UpsertByPath(ctx context.Context, name, path string) (int64, bool, error)
@@ -86,8 +74,9 @@ type ProjectFilesystem interface {
 }
 
 // ProjectProviderRepo reads project_providers joined with definitions and entry counts.
+// *repositories.ProjectProviderRepo satisfies this interface.
 type ProjectProviderRepo interface {
-	ListByProject(ctx context.Context, projectID int64) ([]ProjectProviderSummary, error)
+	ListByProject(ctx context.Context, projectID int64) ([]domain.ProjectProviderSummary, error)
 }
 
 // ProjectWarningRepo reads warnings across project, project_provider, and install scopes.

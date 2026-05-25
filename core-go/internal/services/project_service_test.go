@@ -12,7 +12,7 @@ import (
 func newProjectSvc(fs *mockProjectFS, projRepo *mockProjectRepo) *ProjectService {
 	return NewProjectService(
 		projRepo,
-		&mockProjectProviderRepo{byProject: make(map[int64][]ProjectProviderSummary)},
+		&mockProjectProviderRepo{byProject: make(map[int64][]domain.ProjectProviderSummary)},
 		&mockProjectWarningRepo{},
 		&mockProjectInstallRepo{},
 		fs,
@@ -124,7 +124,7 @@ func TestListProjects_SkillCountIsSumOfEntries(t *testing.T) {
 	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
 
 	ppRepo := &mockProjectProviderRepo{
-		byProject: map[int64][]ProjectProviderSummary{
+		byProject: map[int64][]domain.ProjectProviderSummary{
 			1: {{ProjectProviderID: 1, ProviderKey: "generic_agents", EntryCount: 3}},
 		},
 	}
@@ -155,7 +155,7 @@ func TestListProjects_MultipleProviders_SkillCountSummed(t *testing.T) {
 	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
 
 	ppRepo := &mockProjectProviderRepo{
-		byProject: map[int64][]ProjectProviderSummary{
+		byProject: map[int64][]domain.ProjectProviderSummary{
 			1: {
 				{ProjectProviderID: 1, ProviderKey: "generic_agents", EntryCount: 4},
 				{ProjectProviderID: 2, ProviderKey: "other", EntryCount: 2},
@@ -196,7 +196,7 @@ func TestGetProject_HappyPath(t *testing.T) {
 	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
 
 	ppRepo := &mockProjectProviderRepo{
-		byProject: map[int64][]ProjectProviderSummary{
+		byProject: map[int64][]domain.ProjectProviderSummary{
 			1: {{ProjectProviderID: 1, ProviderKey: "generic_agents", EntryCount: 2}},
 		},
 	}

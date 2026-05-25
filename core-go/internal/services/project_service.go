@@ -24,7 +24,7 @@ type ProjectListItem struct {
 	Name          string
 	Path          string
 	Status        domain.ProjectStatus
-	Providers     []ProjectProviderSummary
+	Providers     []domain.ProjectProviderSummary
 	SkillCount    int
 	WarningCount  int
 	LastScannedAt *time.Time
@@ -33,7 +33,7 @@ type ProjectListItem struct {
 // ProjectDetailView is the full project detail response.
 type ProjectDetailView struct {
 	Project   domain.Project
-	Providers []ProjectProviderSummary
+	Providers []domain.ProjectProviderSummary
 	Entries   []domain.Install
 	Warnings  []domain.Warning
 }
