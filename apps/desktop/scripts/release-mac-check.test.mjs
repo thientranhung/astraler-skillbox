@@ -106,6 +106,19 @@ describe("checkSigning (B1)", () => {
     });
     expect(r.status).toBe("PASS");
   });
+
+  it("fails for bare relative CSC_LINK (cert.p12) when file is missing — regression: must be treated as local, not URL/base64", () => {
+    // The IO shell must classify 'cert.p12' as isLocalPath:true (no leading /./~, not a URL, not base64).
+    // The evaluator must then FAIL and must NOT print the path value.
+    const r = checkSigning({
+      identityNames: [],
+      env: { CSC_LINK: "cert.p12", CSC_KEY_PASSWORD: "pw" },
+      fileProbes: { cscLink: { isLocalPath: true, exists: false, readable: false }, appleApiKey: null },
+    });
+    expect(r.status).toBe("FAIL");
+    expect(r.message).toMatch(/missing or unreadable/);
+    expect(r.message).not.toContain("cert.p12");
+  });
 });
 
 describe("checkNotarization (C1)", () => {

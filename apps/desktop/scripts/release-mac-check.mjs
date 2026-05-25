@@ -76,7 +76,9 @@ const identityNames = [...identityOut.matchAll(/"(Developer ID Application:[^"]*
 // File probes — derived flags only; the path itself is never put into facts beyond env.
 function cscLinkProbe(v) {
   if (typeof v !== "string" || v.trim() === "") return null;
-  const isLocalPath = /^(\/|\.|~)/.test(v) && !/^https?:\/\//i.test(v);
+  // Non-local: explicit URL, or pure base64 blob (only base64 alphabet chars — no dots or other path chars).
+  // Everything else — absolute (/...), tilde (~), dot-relative (./), AND bare relative (cert.p12) — is a local path.
+  const isLocalPath = !/^https?:\/\//i.test(v) && !/^[A-Za-z0-9+/]+=*$/.test(v);
   if (!isLocalPath) return { isLocalPath: false, exists: false, readable: false };
   return { isLocalPath: true, exists: existsSync(v), readable: readableFile(v) };
 }
