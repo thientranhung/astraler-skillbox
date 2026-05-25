@@ -322,3 +322,85 @@ func TestInstallSkillsInternal_AutoCreateSkillsDir(t *testing.T) {
 		t.Fatalf("metadata: got %+v want Requested=1 Created=1 Failed=0", im)
 	}
 }
+
+// --- Task 8: Claude no-scaffold block ---
+
+// TestInstallSkillsInternal_ClaudeNoScaffold verifies that an experimental claude
+// provider with CanCreateStructure=false and an absent .claude/skills folder fails
+// with provider_error before any write, and that the rescan never runs (the error
+// is raised in the ensure-dir phase, ahead of symlink creation and rescan).
+func TestInstallSkillsInternal_ClaudeNoScaffold(t *testing.T) {
+	ctx := context.Background()
+
+	projectDir := t.TempDir()
+	hostSkillsDir := t.TempDir()
+	skillPath := filepath.Join(hostSkillsDir, "documentation-writer")
+	if err := os.MkdirAll(skillPath, 0o755); err != nil {
+		t.Fatalf("mkdir host skill: %v", err)
+	}
+
+	gw := filesystem.NewGateway()
+
+	project := &domain.Project{ID: 1, Name: "myproject", Path: projectDir, Status: domain.ProjectStatusActive}
+	projRepo := newMockProjectRepo()
+	projRepo.projects[1] = project
+
+	ppRepo := &mockProjectProviderRepo{
+		byProject: map[int64][]domain.ProjectProviderSummary{
+			1: {{ProviderKey: providers.ClaudeKey, DetectionStatus: domain.DetectionStatusDetected}},
+		},
+	}
+	pdRepo := &mockProviderDefRepo{
+		defs: map[string]*domain.ProviderDefinition{
+			providers.ClaudeKey: {
+				ID:                 20,
+				Key:                providers.ClaudeKey,
+				Status:             domain.ProviderStatusExperimental,
+				CanCreateStructure: false,
+			},
+		},
+	}
+
+	activeHost := &domain.SkillHostFolder{ID: 1, SkillsPath: hostSkillsDir, Status: domain.SkillHostStatusActive}
+	hostReader := &mockActiveHostReader{host: activeHost}
+	skillLister := &mockSkillsByHostLister{
+		skills: map[int64][]domain.Skill{
+			1: {{ID: 1, Name: "documentation-writer", AbsolutePath: skillPath, Status: domain.SkillStatusAvailable}},
+		},
+	}
+
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{providers.NewGenericAgentsAdapter()}}
+	hostLister := &mockHostLister{hosts: []domain.SkillHostFolder{*activeHost}}
+	scanRepo := &mockProjectScanCommitter{}
+	runner := &mockRunner{}
+
+	svc := NewProjectService(
+		projRepo, ppRepo, &mockProjectWarningRepo{}, &mockProjectInstallRepo{}, gw,
+	).WithScanDeps(runner, scanRepo).
+		WithProviderDeps(registry, pdRepo, hostLister, skillLister).
+		WithInstallDeps(gw, hostReader, skillLister)
+
+	skillsDir := filepath.Join(projectDir, ".claude", "skills")
+	if _, err := os.Lstat(skillsDir); !os.IsNotExist(err) {
+		t.Fatalf("precondition: .claude/skills should be absent, got err=%v", err)
+	}
+
+	_, err := svc.installSkillsInternal(ctx, project, providers.ClaudeKey, []int64{1}, noopProgress)
+	ae := mustAppErr(t, err)
+	if ae.Code != domain.CodeProvider {
+		t.Fatalf("error code: got %q want %q", ae.Code, domain.CodeProvider)
+	}
+
+	// No write happened: .claude and .claude/skills must still be absent.
+	if _, derr := os.Lstat(skillsDir); !os.IsNotExist(derr) {
+		t.Fatalf(".claude/skills should not have been created, got err=%v", derr)
+	}
+	if _, derr := os.Lstat(filepath.Join(projectDir, ".claude")); !os.IsNotExist(derr) {
+		t.Fatalf(".claude should not have been created, got err=%v", derr)
+	}
+
+	// The provider_error is raised before the write phase, so rescan never runs.
+	if scanRepo.fullScanCallCount != 0 {
+		t.Fatalf("fullScanCallCount: got %d want 0", scanRepo.fullScanCallCount)
+	}
+}
