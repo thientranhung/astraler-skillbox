@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"path/filepath"
+	"time"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 )
@@ -128,4 +129,28 @@ func (m *mockProjectInstallRepo) ListByProject(_ context.Context, projectID int6
 		return nil, m.err
 	}
 	return m.byProject[projectID], nil
+}
+
+// -- mock project scan committer --
+
+type mockProjectScanCommitter struct {
+	terminalErr            error
+	terminalCallCount      int
+	lastTerminalProjectID  int64
+	lastTerminalStatus     domain.ProjectStatus
+	lastTerminalWarning    *domain.Warning
+}
+
+func (m *mockProjectScanCommitter) CommitProjectTerminal(
+	_ context.Context,
+	projectID int64,
+	status domain.ProjectStatus,
+	warning *domain.Warning,
+	_ time.Time,
+) error {
+	m.terminalCallCount++
+	m.lastTerminalProjectID = projectID
+	m.lastTerminalStatus = status
+	m.lastTerminalWarning = warning
+	return m.terminalErr
 }
