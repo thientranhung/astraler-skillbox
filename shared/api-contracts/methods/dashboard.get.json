@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DashboardGetMethod",
+  "description": "Contract for dashboard.get JSON-RPC method. Query used to populate the Dashboard screen with host status, skill/project summary, install breakdown, and warnings.",
+  "oneOf": [
+    { "$ref": "#/definitions/DashboardGetRequest" },
+    { "$ref": "#/definitions/DashboardGetResponse" }
+  ],
+  "definitions": {
+    "DashboardGetRequest": {
+      "title": "DashboardGetRequest",
+      "description": "Params for dashboard.get. Empty — no params needed.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "DashboardGetActiveHost": {
+      "title": "DashboardGetActiveHost",
+      "description": "Active Skill Host Folder details, present when an active host is configured",
+      "type": "object",
+      "properties": {
+        "hostId": { "type": "integer" },
+        "path": { "type": "string" },
+        "skillsPath": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "missing", "unreadable", "unwritable", "invalid_structure", "empty", "inactive"]
+        },
+        "lastScanAt": { "type": ["string", "null"] }
+      },
+      "required": ["hostId", "path", "skillsPath", "status", "lastScanAt"],
+      "additionalProperties": false
+    },
+    "DashboardGetSummary": {
+      "title": "DashboardGetSummary",
+      "description": "High-level counts for skills, projects, and warnings",
+      "type": "object",
+      "properties": {
+        "skills": { "type": "integer" },
+        "projects": { "type": "integer" },
+        "warnings": { "type": "integer" }
+      },
+      "required": ["skills", "projects", "warnings"],
+      "additionalProperties": false
+    },
+    "DashboardGetInstallsByMode": {
+      "title": "DashboardGetInstallsByMode",
+      "description": "Count of active installs grouped by install mode",
+      "type": "object",
+      "properties": {
+        "symlink": { "type": "integer" },
+        "rsyncCopy": { "type": "integer" },
+        "direct": { "type": "integer" }
+      },
+      "required": ["symlink", "rsyncCopy", "direct"],
+      "additionalProperties": false
+    },
+    "DashboardGetWarningsBySeverity": {
+      "title": "DashboardGetWarningsBySeverity",
+      "description": "Count of active warnings grouped by severity level",
+      "type": "object",
+      "properties": {
+        "info": { "type": "integer" },
+        "warning": { "type": "integer" },
+        "error": { "type": "integer" },
+        "blocking": { "type": "integer" }
+      },
+      "required": ["info", "warning", "error", "blocking"],
+      "additionalProperties": false
+    },
+    "DashboardGetWarning": {
+      "title": "DashboardGetWarning",
+      "description": "A single warning entry surfaced on the dashboard",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error", "blocking"]
+        },
+        "scopeType": {
+          "type": "string",
+          "enum": ["app", "skill_host_folder", "skill", "project", "project_provider", "install"]
+        },
+        "scopeId": { "type": ["integer", "null"] },
+        "actionKey": { "type": ["string", "null"] }
+      },
+      "required": ["code", "message", "severity", "scopeType", "scopeId", "actionKey"],
+      "additionalProperties": false
+    },
+    "DashboardGetResponse": {
+      "title": "DashboardGetResponse",
+      "description": "Dashboard data snapshot. Errors: database_error (1004) if DB unavailable.",
+      "type": "object",
+      "properties": {
+        "activeHost": {
+          "description": "Populated active host detail, or null when no active host or host row missing",
+          "oneOf": [
+            { "$ref": "#/definitions/DashboardGetActiveHost" },
+            { "type": "null" }
+          ]
+        },
+        "summary": {
+          "description": "High-level counts for skills, projects, and warnings",
+          "$ref": "#/definitions/DashboardGetSummary"
+        },
+        "installsByMode": {
+          "description": "Active installs grouped by install mode",
+          "$ref": "#/definitions/DashboardGetInstallsByMode"
+        },
+        "warningsBySeverity": {
+          "description": "Active warnings grouped by severity",
+          "$ref": "#/definitions/DashboardGetWarningsBySeverity"
+        },
+        "warnings": {
+          "description": "List of active warnings to display on the dashboard",
+          "type": "array",
+          "items": { "$ref": "#/definitions/DashboardGetWarning" }
+        }
+      },
+      "required": ["activeHost", "summary", "installsByMode", "warningsBySeverity", "warnings"],
+      "additionalProperties": false
+    }
+  }
+}
