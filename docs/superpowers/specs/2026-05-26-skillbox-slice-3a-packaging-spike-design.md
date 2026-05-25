@@ -50,6 +50,21 @@ No change required. `resolveDBPath` in `core-go/cmd/skillbox-core/main.go` alrea
 ### 4.5 How the executable bit is preserved / verified
 `extraResources` copies files preserving mode, but to be safe the build hook explicitly `chmod 0755` the binary before packaging, and the smoke flow verifies the bit on the installed bundle (`ls -l`/`test -x` on `Contents/Resources/core/skillbox-core`). If a future build path strips the bit, Electron main may also defensively `chmod` on first spawn — decided during implementation, not mandated here.
 
+### 4.6 Build entrypoint (scripts, hook order, output path)
+
+Expected `pnpm` scripts in `apps/desktop/package.json` (names are the contract implementation must honor):
+
+- `build:core` — compile the sidecar: `GOOS=darwin GOARCH=arm64 go build -o <staging>/skillbox-core ./cmd/skillbox-core` (run against `core-go`) and `chmod 0755` the output. `<staging>` is a path referenced by electron-builder `extraResources` (e.g. `apps/desktop/resources/core/skillbox-core`).
+- `package:mac:unsigned` — the spike entrypoint: runs `electron-vite build`, then `electron-builder --mac dmg` with signing disabled. Reserve `package:mac` for the signed 3B flow so the unsigned spike command is unambiguous.
+
+Hook / prepackage order (strict): the Go binary MUST exist before electron-builder packs the app. Two acceptable wirings, decided at implementation:
+1. Chain in the script: `package:mac:unsigned` = `pnpm build:core && pnpm build && electron-builder --mac dmg`.
+2. electron-builder `beforePack`/`beforeBuild` hook that invokes `build:core`.
+
+Either way the invariant is: **renderer/main bundle build + freshly built `skillbox-core` staged → then electron-builder packs**. electron-builder must not run before `build:core` completes.
+
+Expected DMG output: under `apps/desktop/dist/` (electron-builder's default `output` dir for this package), named per electron-builder's default `${productName}-${version}-arm64.dmg` (e.g. `Astraler Skillbox-0.0.0-arm64.dmg`). The exact `productName`/`version`/`artifactName` is fixed during implementation; the spec only pins the directory (`apps/desktop/dist/`) and that it is a single arm64 `.dmg`.
+
 ## 5. Acceptance Criteria
 
 - A documented build command produces an unsigned `.dmg`.
@@ -71,7 +86,7 @@ Automated unit coverage:
 Manual packaged smoke (run on the `.dmg` installed to `/Applications`):
 1. Mount `.dmg`, drag app to `/Applications`, eject.
 2. Launch from `/Applications` (double-click), ideally from a shell with a minimal PATH to prove no `go` dependency.
-3. Confirm window opens and `server.ready` is received (no startup error banner).
+3. Confirm window opens and `server.ready` is received (no startup error banner). Confirm via logs that it came from the **packaged** sidecar (see Observable Startup Evidence below).
 4. Confirm `~/Library/Application Support/Astraler Skillbox/skillbox.db` is created.
 5. Run host scan; confirm skills appear in Skills Library (`skill.list`).
 6. Add a project, run project scan.
@@ -79,6 +94,21 @@ Manual packaged smoke (run on the `.dmg` installed to `/Applications`):
 8. Open Dashboard; confirm it renders aggregated state.
 9. Quit the app; confirm via `pgrep -fl skillbox-core` that no sidecar process remains.
 10. Verify `test -x` on the bundled binary and that it sits outside `app.asar`.
+
+### Observable Startup Evidence (bundled sidecar)
+
+`server.ready` alone does not prove the sidecar was the **packaged** binary rather than a stray dev `go run`. To make the source observable, the existing `manager.ts` stderr lines are the evidence channel, and the spawn log line MUST include the resolved sidecar command/path so it is verifiable in packaged mode:
+
+- On spawn, main logs `[manager] spawning Go core from <path>`. In packaged mode this MUST show the bundled binary path under `process.resourcesPath` (e.g. `…/Astraler Skillbox.app/Contents/Resources/core/skillbox-core`), **not** a `go run`/repo-relative path. (Implementation note: the current dev log prints the cwd; the packaged branch must log the actual resolved executable path so this check is meaningful.)
+- On ready, main logs `[manager] Go core ready`.
+
+How to capture these for a packaged `/Applications` launch (Electron main stderr is not visible in a normal double-click launch):
+
+- **Launch from a terminal** to see stderr inline: `/Applications/Astraler\ Skillbox.app/Contents/MacOS/Astraler\ Skillbox` and observe the two `[manager]` lines.
+- Or capture to a file: `… /Astraler\ Skillbox 2> /tmp/skillbox-packaged.log` and grep for `spawning Go core from` and `Go core ready`.
+- Cross-check the running process: `pgrep -fl skillbox-core` should show the binary path inside the app bundle's `Contents/Resources/`, confirming the live sidecar is the packaged one.
+
+Evidence is considered sufficient when the spawn log line points at the in-bundle `Resources/core/skillbox-core` path AND `Go core ready` follows AND the live process path matches the bundle. (A dedicated app log file under Application Support is out of scope for this spike; terminal/redirected stderr is the documented location.)
 
 ## 7. Risks and Mitigations
 
