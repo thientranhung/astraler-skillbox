@@ -1144,21 +1144,36 @@ No code changes. Run every gate and the live preflight; commit nothing unless a 
 - [ ] **Step 8: Redaction grep** — `(cd apps/desktop && pnpm release:mac:check 2>&1 | grep -E '/Users/|-----BEGIN') || echo clean` → `clean`. (Targets real path/PEM indicators; variable names such as `CSC_KEY_PASSWORD` are expected output and must not be flagged.)
 - [ ] **Step 9: No side effects** — confirm the command made no build/sign/notarize artifact and mutated nothing: `git status --porcelain` is empty (clean of tracked artifacts), and `apps/desktop/dist` is unchanged. No network was contacted (the script contains no network call by construction).
 
-- [ ] **Step 10: Hygiene detection works when invoked from `apps/desktop` (regression guard for the git-cwd bug)** — prove F2 still catches a tracked `.p8` under `apps/desktop` even though `pnpm` runs the script from `apps/desktop`. This stages a throwaway file and fully cleans up:
+- [ ] **Step 10: Hygiene detection works when invoked from `apps/desktop` (regression guard for the git-cwd bug)** — prove that, even though `pnpm` runs the script from `apps/desktop`, F2 catches tracked `.p8` AND `.p12` files and F1 catches a tracked `apps/desktop/dist/...` artifact, all under `apps/desktop`. This stages three throwaway files (fake content only — NOT real credentials), verifies all three are detected, then fully unstages/deletes them and verifies a clean tree:
 
   ```sh
   cd apps/desktop
-  printf 'not-a-real-key' > __preflight_probe__.p8   # throwaway, NOT a real credential
-  git add -f __preflight_probe__.p8                   # make it tracked under apps/desktop
-  pnpm release:mac:check | grep -F "__preflight_probe__.p8" \
-    && echo "F2 detected the tracked .p8 from apps/desktop (cwd fix works)" \
-    || echo "FAIL: tracked .p8 was NOT detected — git is not running from repoRoot"
-  git rm --cached -f __preflight_probe__.p8           # unstage
-  rm -f __preflight_probe__.p8                         # delete the throwaway
-  git status --porcelain -- apps/desktop/__preflight_probe__.p8   # expect: empty (fully cleaned up)
+  mkdir -p dist
+  printf 'not-a-real-key'      > __preflight_probe__.p8    # F2: tracked .p8
+  printf 'not-a-real-cert'     > __preflight_probe__.p12   # F2: tracked .p12
+  printf 'not-a-real-artifact' > dist/__preflight_probe__.txt  # F1: tracked dist artifact (force-add past .gitignore)
+  git add -f __preflight_probe__.p8 __preflight_probe__.p12 dist/__preflight_probe__.txt
+
+  OUT="$(pnpm release:mac:check 2>&1)"
+  for p in \
+    "apps/desktop/__preflight_probe__.p8" \
+    "apps/desktop/__preflight_probe__.p12" \
+    "apps/desktop/dist/__preflight_probe__.txt"; do
+    printf '%s' "$OUT" | grep -qF "$p" \
+      && echo "detected: $p" \
+      || echo "FAIL: NOT detected: $p (git is not running from repoRoot)"
+  done
+
+  # Cleanup — fully unstage and delete every probe, then verify clean state.
+  git rm --cached -f __preflight_probe__.p8 __preflight_probe__.p12 dist/__preflight_probe__.txt
+  rm -f __preflight_probe__.p8 __preflight_probe__.p12 dist/__preflight_probe__.txt
+  git status --porcelain -- \
+    apps/desktop/__preflight_probe__.p8 \
+    apps/desktop/__preflight_probe__.p12 \
+    apps/desktop/dist/__preflight_probe__.txt   # expect: empty (fully cleaned up)
   ```
 
-  Expected: the grep prints the detection-success line (F2 FAIL row names `apps/desktop/__preflight_probe__.p8`), and the final `git status` is empty. If instead the failure line prints, the IO shell's git commands are not running from `repoRoot` — fix per Task 7 Step 3 before proceeding.
+  Expected: three `detected:` lines (no `FAIL:` line) — F2 names both `apps/desktop/__preflight_probe__.p8` and `apps/desktop/__preflight_probe__.p12`, and F1 names `apps/desktop/dist/__preflight_probe__.txt` — and the final `git status` is empty. If any `FAIL: NOT detected` line prints, the IO shell's git commands are not running from `repoRoot` — fix per Task 7 Step 3 before proceeding.
 
 ---
 
