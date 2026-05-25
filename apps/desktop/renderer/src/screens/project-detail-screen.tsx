@@ -6,6 +6,8 @@ import { useScanProject } from "../features/projects/use-scan-project.js";
 import { useOpenProjectFolder } from "../features/projects/use-open-project-folder.js";
 import { useOpenProjectTerminal } from "../features/projects/use-open-project-terminal.js";
 import { useRemoveProject } from "../features/projects/use-remove-project.js";
+import { useRemoveSkill } from "../features/projects/use-remove-skill.js";
+import { RemoveSkillDialog } from "../features/projects/remove-skill-dialog.js";
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
 import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
 import { useActiveHostSkills } from "../features/skills/use-active-host-skills.js";
@@ -92,7 +94,17 @@ function ProviderRow({ provider }: { provider: ProjectGetProvider }): React.JSX.
   );
 }
 
-function EntryRow({ entry }: { entry: ProjectGetEntry }): React.JSX.Element {
+function isRemovable(entry: ProjectGetEntry): boolean {
+  return entry.mode === "symlink" && entry.status === "current";
+}
+
+function EntryRow({
+  entry,
+  onRemove,
+}: {
+  entry: ProjectGetEntry;
+  onRemove: (entry: ProjectGetEntry) => void;
+}): React.JSX.Element {
   return (
     <tr className="border-b border-zinc-100 hover:bg-zinc-50">
       <td className="px-3 py-1.5 text-xs text-zinc-500">{entry.providerKey}</td>
@@ -112,6 +124,16 @@ function EntryRow({ entry }: { entry: ProjectGetEntry }): React.JSX.Element {
         {entry.symlinkTargetPath ?? "—"}
       </td>
       <td className="px-3 py-1.5 text-xs text-zinc-400">{entry.skillId ?? "—"}</td>
+      <td className="px-3 py-1.5 text-xs">
+        <button
+          onClick={() => onRemove(entry)}
+          disabled={!isRemovable(entry)}
+          title={isRemovable(entry) ? "Remove skill from project" : "Only current symlink installs can be removed in this slice"}
+          className="rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Remove
+        </button>
+      </td>
     </tr>
   );
 }
@@ -127,8 +149,21 @@ export function ProjectDetailScreen(): React.JSX.Element {
   const openFolder = useOpenProjectFolder();
   const openTerminal = useOpenProjectTerminal();
   const remove = useRemoveProject({ navigateAfter: true });
+  const removeSkill = useRemoveSkill();
+  const [removeTarget, setRemoveTarget] = useState<ProjectGetEntry | null>(null);
   const activeHostSkills = useActiveHostSkills();
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  const providerDisplayNameFor = (entry: ProjectGetEntry): string => {
+    const match = data?.providers.find((p) => p.projectProviderId === entry.projectProviderId);
+    return match?.displayName ?? entry.providerKey;
+  };
+
+  function confirmRemoveSkill(): void {
+    if (removeTarget == null || validId == null) return;
+    removeSkill.mutate({ projectId: validId, installId: removeTarget.id });
+    setRemoveTarget(null);
+  }
 
   function handleRemove(): void {
     if (window.confirm("Remove this project from Skillbox? Files on disk will not be deleted.")) {
@@ -305,11 +340,16 @@ export function ProjectDetailScreen(): React.JSX.Element {
                         <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Project Skill Path</th>
                         <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Symlink Target</th>
                         <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Skill ID</th>
+                        <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.entries.map((entry) => (
-                        <EntryRow key={entry.id} entry={entry} />
+                        <EntryRow
+                          key={entry.id}
+                          entry={entry}
+                          onRemove={setRemoveTarget}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -319,6 +359,17 @@ export function ProjectDetailScreen(): React.JSX.Element {
           </div>
         )}
       </div>
+
+      {removeTarget != null && (
+        <RemoveSkillDialog
+          skillName={removeTarget.name}
+          providerDisplayName={providerDisplayNameFor(removeTarget)}
+          path={removeTarget.projectSkillPath}
+          isPending={removeSkill.isPending}
+          onConfirm={confirmRemoveSkill}
+          onCancel={() => setRemoveTarget(null)}
+        />
+      )}
 
       {wizardOpen && validId != null && data != null && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30">
