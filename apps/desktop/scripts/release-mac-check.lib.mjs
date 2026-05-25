@@ -63,6 +63,76 @@ export function checkSigning({ identityNames, env, fileProbes }) {
   };
 }
 
+/** @param {Record<string,string|undefined>} env @param {any} fileProbes */
+export function checkNotarization(env, fileProbes) {
+  const out = [];
+  const g1Vars = ["APPLE_API_KEY", "APPLE_API_KEY_ID", "APPLE_API_ISSUER"];
+  const g2Vars = ["APPLE_ID", "APPLE_APP_SPECIFIC_PASSWORD", "APPLE_TEAM_ID"];
+  const setOf = (vars) => vars.filter((v) => isSet(env[v]));
+  const missingOf = (vars) => vars.filter((v) => !isSet(env[v]));
+
+  const g1Set = setOf(g1Vars);
+  const g1Missing = missingOf(g1Vars);
+  const g2Set = setOf(g2Vars);
+  const g2Missing = missingOf(g2Vars);
+
+  const apiKeyFileOk = fileProbes.appleApiKey ? fileProbes.appleApiKey.exists && fileProbes.appleApiKey.readable : false;
+  // If APPLE_API_KEY is set at all, a missing/unreadable .p8 is a real problem to
+  // surface — independent of whether the other Group 1 vars are present.
+  const apiKeyBadPath = isSet(env.APPLE_API_KEY) && !apiKeyFileOk;
+  const g1AllSet = g1Missing.length === 0;
+  const g1Complete = g1AllSet && apiKeyFileOk;
+  const g2Complete = g2Missing.length === 0;
+  const profileSet = isSet(env.APPLE_KEYCHAIN_PROFILE);
+
+  const REMEDIATION =
+    "One notarization credential group (Group 1: APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER, or Group 2: APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID)";
+
+  if (g1Complete && g2Complete) {
+    out.push({ id: "C1", category: "notarization", status: "PASS", message: "notarization credentials present" });
+    out.push({
+      id: "C1-precedence",
+      category: "notarization",
+      status: "WARN",
+      message: "both Group 1 (API key) and Group 2 (Apple ID) are complete; Group 1 (API key) is preferred and will be used",
+    });
+    return out;
+  }
+  if (g1Complete) {
+    out.push({ id: "C1", category: "notarization", status: "PASS", message: "API key (Group 1) detected" });
+    return out;
+  }
+  if (g2Complete) {
+    out.push({ id: "C1", category: "notarization", status: "PASS", message: "Apple ID (Group 2) detected" });
+    return out;
+  }
+
+  let msg;
+  if (apiKeyBadPath) {
+    // Surface the bad .p8 first, regardless of which other Group 1 vars are set.
+    // NEVER print the path — only the variable name and the generic problem.
+    const stillMissing = g1Missing.filter((v) => v !== "APPLE_API_KEY");
+    const more = stillMissing.length ? ` (also missing ${stillMissing.join(", ")})` : "";
+    msg = `the APPLE_API_KEY .p8 file is missing or unreadable${more}`;
+  } else if (g1Set.length >= g2Set.length && g1Set.length > 0) {
+    msg = `Group 1 partially set; missing ${g1Missing.join(", ")}`;
+  } else if (g2Set.length > 0) {
+    msg = `Group 2 partially set; missing ${g2Missing.join(", ")}`;
+  } else {
+    msg = "no complete credential group";
+  }
+  out.push({ id: "C1", category: "notarization", status: "FAIL", message: msg, remediation: REMEDIATION });
+  if (profileSet) {
+    out.push({
+      id: "C1-profile",
+      category: "notarization",
+      status: "INFO",
+      message: "APPLE_KEYCHAIN_PROFILE is set, but electron-builder mac.notarize uses Group 1 or Group 2; a keychain profile alone does not satisfy this gate",
+    });
+  }
+  return out;
+}
+
 /** @param {Record<string, boolean | undefined>} tools */
 export function checkTooling(tools) {
   const defs = [
