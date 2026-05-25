@@ -34,6 +34,12 @@ git status --short
 
 Confirm the target pane is in the expected app, not a shell. Confirm there is no stale prompt in the input area. If the agent is in a shell, start the TUI first and verify it loaded before sending work.
 
+## Context And Model Switching
+
+Before handing off a new task, decide whether the agent should run `/clear`. Use `/clear` when switching phases, changing from brainstorm to implementation, after a long or noisy thread, or after a failed/stale TUI interaction. Do not clear context in the middle of an active goal unless the current work is explicitly stopped or superseded.
+
+Use `opus` for `agent-tech-skillbox` when brainstorming, scoping, or writing plans. Switch `agent-tech-skillbox` back to `sonnet` for implementing an approved plan, running focused fixes, and test/build loops. Keep model changes explicit in the orchestration notes or prompt so the handoff state is clear.
+
 ## Prompt Delivery Rules
 
 Do not paste long prompts directly into TUI input. For long instructions, write a task brief file:
@@ -51,6 +57,30 @@ Read /tmp/skillbox-agent-task.md and follow it exactly. Stop after the requested
 If the TUI shows pasted text and does not run, send Enter once more only after confirming it is waiting for submission. Do not spam Enter.
 
 Do not run heredoc commands or non-interactive review commands inside an agent pane, for example `codex review --commit ... <<EOF`. Those commands can drop the agent out of the TUI workflow and pollute the pane with shell state. If a non-interactive command is needed, run it from the orchestrator shell instead, not from `agent-tech-skillbox` or `agent-lead-skillbox`.
+
+## `/goal` Prompt Shape
+
+Treat `/goal` prompts as scoped execution contracts, not full brainstorm documents. Use the long template from Obsidian as a thinking checklist, then compress it before sending to the agent.
+
+A good `/goal` includes:
+
+1. Final outcome in one sentence.
+2. Exact scope: files, layer, commit range, or slice.
+3. Non-goals and off-limits files, especially `CLAUDE.md`.
+4. Success criteria that can be verified.
+5. Required commands or smoke steps.
+6. Commit message or report-only instruction.
+7. Stop condition: report hash, tests, findings, or blocker.
+
+Prefer this compact shape:
+
+```text
+/goal [Outcome]. Scope: [files/layer]. Constraints: [non-goals/off-limits].
+Success: [observable criteria]. Verify: [commands/smoke]. Commit/report: [message or no-edit review].
+Stop after [checkpoint] and report [hash/tests/findings/blockers].
+```
+
+Do not overload `/goal` with broad product context if the agent can read the relevant spec or plan file. Reference the file instead. For large goals, create `/tmp/skillbox-agent-task.md` and send a short `/goal` that tells the agent to read it.
 
 ## Editing Ownership
 
