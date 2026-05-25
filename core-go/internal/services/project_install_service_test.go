@@ -597,3 +597,121 @@ func TestInstallSkillsInternal_ValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+// --- Task 11: multi-skill partial filesystem failure ---
+
+// flakyInstallFS wraps the real gateway but injects a CreateSymlink failure once
+// the call count exceeds failAfter. Calls up to and including failAfter delegate to
+// the real os, so successful links land on disk for the rescan to observe.
+type flakyInstallFS struct {
+	callCount int
+	failAfter int // fail CreateSymlink on calls > failAfter
+	gw        *filesystem.Gateway
+}
+
+func (f *flakyInstallFS) LstatExists(path string) (bool, error) { return f.gw.LstatExists(path) }
+func (f *flakyInstallFS) EnsureDir(path string) error           { return f.gw.EnsureDir(path) }
+func (f *flakyInstallFS) CreateSymlink(src, link string) error {
+	f.callCount++
+	if f.callCount > f.failAfter {
+		return &filesystem.FilesystemError{Code: filesystem.ErrNotWritable, Path: link, Message: "injected failure"}
+	}
+	return f.gw.CreateSymlink(src, link)
+}
+
+// TestInstallSkillsInternal_PartialFailureStopsAndRescans installs two skills where
+// the second symlink fails. The loop stops after the first error, the rescan still
+// runs once (so the successfully-linked skill is classified), the returned error is
+// filesystem_error, and metadata reports requested=2 created=1 failed=1.
+func TestInstallSkillsInternal_PartialFailureStopsAndRescans(t *testing.T) {
+	ctx := context.Background()
+
+	flaky := &flakyInstallFS{failAfter: 1, gw: filesystem.NewGateway()}
+	fx := newGenericInstallFixture(t, installFixtureOpts{
+		createProjectSkillsDir: true,
+		installFS:              flaky,
+	})
+	first := makeHostSkill(t, fx.hostReader.host.SkillsPath, 1, "alpha-skill", domain.SkillStatusAvailable)
+	second := makeHostSkill(t, fx.hostReader.host.SkillsPath, 2, "beta-skill", domain.SkillStatusAvailable)
+	fx.skillLister.skills[1] = []domain.Skill{first, second}
+
+	meta, err := fx.svc.installSkillsInternal(ctx, fx.project, providers.GenericAgentsKey, []int64{1, 2}, noopProgress)
+
+	ae := mustAppErr(t, err)
+	if ae.Code != domain.CodeFilesystem {
+		t.Fatalf("error code: got %q want %q", ae.Code, domain.CodeFilesystem)
+	}
+
+	// Loop stopped after the first failure: exactly two CreateSymlink attempts.
+	if flaky.callCount != 2 {
+		t.Fatalf("CreateSymlink call count: got %d want 2", flaky.callCount)
+	}
+
+	// The first symlink was actually written; the rescan classifies it as current.
+	skillsDir := filepath.Join(fx.project.Path, ".agents", "skills")
+	if _, lerr := os.Lstat(filepath.Join(skillsDir, "alpha-skill")); lerr != nil {
+		t.Fatalf("first symlink should exist on disk: %v", lerr)
+	}
+	if _, lerr := os.Lstat(filepath.Join(skillsDir, "beta-skill")); !os.IsNotExist(lerr) {
+		t.Fatalf("second symlink should not exist, got err=%v", lerr)
+	}
+
+	// Rescan still ran exactly once despite the partial failure.
+	if fx.scanRepo.fullScanCallCount != 1 {
+		t.Fatalf("fullScanCallCount: got %d want 1", fx.scanRepo.fullScanCallCount)
+	}
+
+	im, ok := meta.(installMetadata)
+	if !ok {
+		t.Fatalf("metadata type: got %T want installMetadata", meta)
+	}
+	if im.Requested != 2 || im.Created != 1 || im.Failed != 1 {
+		t.Fatalf("metadata: got %+v want Requested=2 Created=1 Failed=1", im)
+	}
+}
+
+// TestInstallSkillsInternal_EnsureDirPathFirstSymlinkFails covers the ensure-dir
+// branch: .agents/skills does not exist, gets created, then the very first
+// CreateSymlink fails. The rescan still runs once, the operation reports
+// filesystem_error, and metadata is requested=1 created=0 failed=1.
+func TestInstallSkillsInternal_EnsureDirPathFirstSymlinkFails(t *testing.T) {
+	ctx := context.Background()
+
+	flaky := &flakyInstallFS{failAfter: 0, gw: filesystem.NewGateway()}
+	fx := newGenericInstallFixture(t, installFixtureOpts{
+		createProjectSkillsDir: false, // ensure-dir branch
+		installFS:              flaky,
+	})
+	sk := makeHostSkill(t, fx.hostReader.host.SkillsPath, 1, "alpha-skill", domain.SkillStatusAvailable)
+	fx.skillLister.skills[1] = []domain.Skill{sk}
+
+	meta, err := fx.svc.installSkillsInternal(ctx, fx.project, providers.GenericAgentsKey, []int64{1}, noopProgress)
+
+	ae := mustAppErr(t, err)
+	if ae.Code != domain.CodeFilesystem {
+		t.Fatalf("error code: got %q want %q", ae.Code, domain.CodeFilesystem)
+	}
+
+	// EnsureDir created the skills directory even though the symlink then failed.
+	skillsDir := filepath.Join(fx.project.Path, ".agents", "skills")
+	di, derr := os.Stat(skillsDir)
+	if derr != nil || !di.IsDir() {
+		t.Fatalf("skills dir should have been created: err=%v", derr)
+	}
+	if _, lerr := os.Lstat(filepath.Join(skillsDir, "alpha-skill")); !os.IsNotExist(lerr) {
+		t.Fatalf("symlink should not exist after failure, got err=%v", lerr)
+	}
+
+	// Rescan still runs once because the write phase was reached.
+	if fx.scanRepo.fullScanCallCount != 1 {
+		t.Fatalf("fullScanCallCount: got %d want 1", fx.scanRepo.fullScanCallCount)
+	}
+
+	im, ok := meta.(installMetadata)
+	if !ok {
+		t.Fatalf("metadata type: got %T want installMetadata", meta)
+	}
+	if im.Requested != 1 || im.Created != 0 || im.Failed != 1 {
+		t.Fatalf("metadata: got %+v want Requested=1 Created=0 Failed=1", im)
+	}
+}
