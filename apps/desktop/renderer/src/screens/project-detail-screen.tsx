@@ -112,9 +112,10 @@ function EntryRow({ entry }: { entry: ProjectGetEntry }): React.JSX.Element {
 
 export function ProjectDetailScreen(): React.JSX.Element {
   const { projectId: projectIdStr } = useParams({ from: "/projects/$projectId" });
-  const projectId = parseInt(projectIdStr, 10);
+  const parsed = parseInt(projectIdStr, 10);
+  const validId: number | null = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   const navigate = useNavigate();
-  const { data, isPending, isError, error } = useProjectDetail(projectId);
+  const { data, isPending, isError, error } = useProjectDetail(validId);
   const scan = useScanProject();
   const isScanning = scan.operationId != null || scan.isPending;
 
@@ -151,7 +152,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
               </span>
             )}
             <button
-              onClick={() => scan.mutate(projectId)}
+              onClick={() => scan.mutate(validId!)}
               disabled={isScanning}
               className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
             >
@@ -164,19 +165,28 @@ export function ProjectDetailScreen(): React.JSX.Element {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {isPending && (
+        {validId == null && (
+          <div className="p-4">
+            <div className="flex items-start gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+              <AlertCircle size={13} className="mt-0.5 shrink-0" />
+              Invalid project ID: <span className="ml-1 font-mono">{projectIdStr}</span>
+            </div>
+          </div>
+        )}
+
+        {validId != null && isPending && (
           <div className="flex h-40 items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
           </div>
         )}
 
-        {isError && (
+        {validId != null && isError && (
           <div className="p-4">
             <ErrorDisplay error={error} />
           </div>
         )}
 
-        {!isPending && !isError && data != null && (
+        {validId != null && !isPending && !isError && data != null && (
           <div className="flex flex-col gap-4 p-4">
             {/* Warnings */}
             {data.warnings.length > 0 && (
