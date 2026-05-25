@@ -6,4 +6,8 @@ export const ALLOWLIST = new Set([
   "skill.list",
   "settings.get",
   "operation.cancel",
+  "project.add",
+  "project.list",
+  "project.get",
+  "project.scan",
 ]);

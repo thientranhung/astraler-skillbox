@@ -22,6 +22,7 @@ func New(
 	libSvc *services.SkillLibraryService,
 	settingsSvc *services.SettingsService,
 	runner *operations.Runner,
+	projectSvc *services.ProjectService,
 ) *App {
 	a := &App{
 		methods: handler.Map{
@@ -31,6 +32,10 @@ func New(
 			"skill.list":       rpchandlers.NewSkillListHandler(libSvc),
 			"settings.get":     rpchandlers.NewSettingsGetHandler(settingsSvc),
 			"operation.cancel": rpchandlers.NewOperationCancelHandler(runner),
+			"project.add":      rpchandlers.NewProjectAddHandler(projectSvc),
+			"project.list":     rpchandlers.NewProjectListHandler(projectSvc),
+			"project.get":      rpchandlers.NewProjectGetHandler(projectSvc),
+			"project.scan":     rpchandlers.NewProjectScanHandler(projectSvc),
 		},
 	}
 	return a
