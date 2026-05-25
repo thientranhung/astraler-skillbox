@@ -155,8 +155,8 @@ func TestProjectRepo_List_HidesRemovedProjects(t *testing.T) {
 
 	seedProject(t, repo, "proj-a", "/tmp/proj-a")
 	idB := seedProject(t, repo, "proj-b", "/tmp/proj-b")
-	if err := repo.MarkRemoved(ctx, idB); err != nil {
-		t.Fatalf("MarkRemoved: %v", err)
+	if ok, err := repo.MarkRemoved(ctx, idB); err != nil || !ok {
+		t.Fatalf("MarkRemoved: ok=%v err=%v", ok, err)
 	}
 
 	list, err := repo.List(ctx)
@@ -177,8 +177,8 @@ func TestProjectRepo_GetByID_ReturnsNilForRemoved(t *testing.T) {
 	ctx := context.Background()
 
 	id := seedProject(t, repo, "proj-a", "/tmp/proj-a")
-	if err := repo.MarkRemoved(ctx, id); err != nil {
-		t.Fatalf("MarkRemoved: %v", err)
+	if ok, err := repo.MarkRemoved(ctx, id); err != nil || !ok {
+		t.Fatalf("MarkRemoved: ok=%v err=%v", ok, err)
 	}
 
 	p, err := repo.GetByID(ctx, id)
@@ -196,8 +196,8 @@ func TestProjectRepo_UpsertByPath_RevivesRemoved(t *testing.T) {
 	ctx := context.Background()
 
 	id := seedProject(t, repo, "proj-a", "/tmp/proj-a")
-	if err := repo.MarkRemoved(ctx, id); err != nil {
-		t.Fatalf("MarkRemoved: %v", err)
+	if ok, err := repo.MarkRemoved(ctx, id); err != nil || !ok {
+		t.Fatalf("MarkRemoved: ok=%v err=%v", ok, err)
 	}
 
 	id2, isNew, err := repo.UpsertByPath(ctx, "proj-a-renamed", "/tmp/proj-a")
@@ -229,8 +229,12 @@ func TestProjectRepo_MarkRemoved_Success(t *testing.T) {
 	ctx := context.Background()
 
 	id := seedProject(t, repo, "proj-a", "/tmp/proj-a")
-	if err := repo.MarkRemoved(ctx, id); err != nil {
+	ok, err := repo.MarkRemoved(ctx, id)
+	if err != nil {
 		t.Fatalf("MarkRemoved: %v", err)
+	}
+	if !ok {
+		t.Error("expected ok=true for existing active project")
 	}
 
 	// Confirm via direct query since GetByID hides removed rows
@@ -248,9 +252,12 @@ func TestProjectRepo_MarkRemoved_Missing(t *testing.T) {
 	repo := NewProjectRepo(db)
 	ctx := context.Background()
 
-	err := repo.MarkRemoved(ctx, 9999)
-	if err == nil {
-		t.Fatal("expected error for missing project id")
+	ok, err := repo.MarkRemoved(ctx, 9999)
+	if err != nil {
+		t.Fatalf("expected no DB error for missing id, got: %v", err)
+	}
+	if ok {
+		t.Error("expected ok=false for missing project id")
 	}
 }
 
@@ -260,12 +267,15 @@ func TestProjectRepo_MarkRemoved_AlreadyRemoved(t *testing.T) {
 	ctx := context.Background()
 
 	id := seedProject(t, repo, "proj-a", "/tmp/proj-a")
-	if err := repo.MarkRemoved(ctx, id); err != nil {
-		t.Fatalf("first MarkRemoved: %v", err)
+	if ok, err := repo.MarkRemoved(ctx, id); err != nil || !ok {
+		t.Fatalf("first MarkRemoved: ok=%v err=%v", ok, err)
 	}
 
-	err := repo.MarkRemoved(ctx, id)
-	if err == nil {
-		t.Fatal("expected error for already-removed project")
+	ok, err := repo.MarkRemoved(ctx, id)
+	if err != nil {
+		t.Fatalf("expected no DB error for already-removed, got: %v", err)
+	}
+	if ok {
+		t.Error("expected ok=false for already-removed project")
 	}
 }

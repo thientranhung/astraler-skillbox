@@ -67,7 +67,10 @@ type ProjectRepo interface {
 	UpsertByPath(ctx context.Context, name, path string) (int64, bool, error)
 	GetByID(ctx context.Context, id int64) (*domain.Project, error)
 	List(ctx context.Context) ([]domain.Project, error)
-	MarkRemoved(ctx context.Context, id int64) error
+	// MarkRemoved sets a project's status to removed.
+	// Returns (true, nil) on success, (false, nil) if not found or already removed,
+	// and (false, err) on a real database failure.
+	MarkRemoved(ctx context.Context, id int64) (bool, error)
 }
 
 // ProjectFilesystem provides the read-only filesystem operations needed by the project service.

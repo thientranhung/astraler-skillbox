@@ -292,6 +292,17 @@ func TestRemoveProject_AlreadyRemoved_ValidationError(t *testing.T) {
 	requireAppError(t, err, domain.CodeValidation)
 }
 
+func TestRemoveProject_DatabaseError_MapsToDBCode(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
+	projRepo.markRemovedErr = errors.New("disk full")
+
+	svc := newProjectSvc(&mockProjectFS{}, projRepo)
+	_, err := svc.RemoveProject(ctx, 1)
+	requireAppError(t, err, domain.CodeDatabase)
+}
+
 func TestAddProject_AfterRemove_RevivesProject(t *testing.T) {
 	projRepo := newMockProjectRepo()
 	ctx := context.Background()

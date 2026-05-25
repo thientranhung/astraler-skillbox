@@ -218,7 +218,8 @@ func (s *ProjectService) GetProject(ctx context.Context, projectID int64) (*Proj
 }
 
 // RemoveProject soft-removes a project by setting its status to removed.
-// Returns validation_error if the project does not exist or is already removed.
+// Returns validation_error if the project does not exist or is already removed,
+// and database_error for any underlying persistence failure.
 func (s *ProjectService) RemoveProject(ctx context.Context, projectID int64) (*ProjectRemoveResult, error) {
 	existing, err := s.projectRepo.GetByID(ctx, projectID)
 	if err != nil {
@@ -231,8 +232,15 @@ func (s *ProjectService) RemoveProject(ctx context.Context, projectID int64) (*P
 		)
 	}
 
-	if err := s.projectRepo.MarkRemoved(ctx, projectID); err != nil {
-		return nil, domain.NewValidationError("Could not remove project", err.Error())
+	ok, err := s.projectRepo.MarkRemoved(ctx, projectID)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not remove project", err.Error())
+	}
+	if !ok {
+		return nil, domain.NewValidationError(
+			"Project not found",
+			fmt.Sprintf("projectId %d does not exist or is already removed", projectID),
+		)
 	}
 
 	return &ProjectRemoveResult{Removed: true}, nil
