@@ -55,6 +55,40 @@ func (r *InstallRepo) DeleteByID(ctx context.Context, installID int64) (int64, e
 	return res.RowsAffected()
 }
 
+// CountByModeActive returns install counts grouped by mode, excluding installs
+// that belong to removed projects.
+func (r *InstallRepo) CountByModeActive(ctx context.Context) (domain.InstallModeCounts, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT install_mode, COUNT(*)
+		FROM installs i
+		JOIN project_providers pp ON pp.id = i.project_provider_id
+		JOIN projects p ON p.id = pp.project_id
+		WHERE p.status <> 'removed'
+		GROUP BY install_mode`)
+	if err != nil {
+		return domain.InstallModeCounts{}, err
+	}
+	defer rows.Close()
+
+	var counts domain.InstallModeCounts
+	for rows.Next() {
+		var mode string
+		var n int
+		if err := rows.Scan(&mode, &n); err != nil {
+			return domain.InstallModeCounts{}, err
+		}
+		switch domain.InstallMode(mode) {
+		case domain.InstallModeSymlink:
+			counts.Symlink += n
+		case domain.InstallModeRsyncCopy:
+			counts.RsyncCopy += n
+		case domain.InstallModeDirect:
+			counts.Direct += n
+		}
+	}
+	return counts, rows.Err()
+}
+
 func scanInstall(rows *sql.Rows) (domain.Install, error) {
 	var inst domain.Install
 	var skillID, installedFromHostFolderID sql.NullInt64

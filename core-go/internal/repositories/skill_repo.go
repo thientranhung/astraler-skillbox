@@ -116,6 +116,14 @@ func (r *SkillRepo) ListIDsByHost(ctx context.Context, hostID int64) ([]int64, e
 	return ids, rows.Err()
 }
 
+// CountByHost returns the total number of skills for the given host.
+func (r *SkillRepo) CountByHost(ctx context.Context, hostID int64) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM skills WHERE skill_host_folder_id=?`, hostID).Scan(&count)
+	return count, err
+}
+
 func scanSkill(rows *sql.Rows) (domain.Skill, error) {
 	var s domain.Skill
 	var displayName, lastScanned, createdAt, updatedAt sql.NullString
