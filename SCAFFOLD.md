@@ -319,6 +319,27 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
   - Does **not** call Apple services, keychain, notarization, upload, `release:mac:check`, or `release:mac:full`.
 - See SMOKE.md → "Packaged App Launch Smoke (Slice 3F)".
 
+### DMG mount-and-launch smoke (Slice 3G)
+
+- `pnpm release:mac:dmg-smoke [path/to/artifact.dmg]` — proves the actual distributable DMG artifact
+  boots: mounts the DMG read-only, copies the top-level `Astraler Skillbox.app` via `ditto` to a
+  temp install dir, launches the *copy* from a neutral cwd, waits for the bundled Go core to be ready,
+  shuts down, asserts no orphaned `skillbox-core` from the copied bundle, detaches the DMG, and cleans
+  all temp dirs.
+  - Requires an already-produced DMG in `dist/` (run `release:mac:dry-run` first); or pass an
+    explicit path.
+  - Auto-discovers the DMG from `dist/` when exactly one `.dmg` is present; fails clearly when zero
+    or multiple DMGs exist without an explicit path.
+  - Never copies to `/Applications`. Launches the `ditto`-copied bundle; never launches the app
+    directly from the mounted volume.
+  - Sets `--user-data-dir=<tmpdir>` and `SKILLBOX_DB_PATH=<tmpdir>/skillbox.db` (temp paths, never
+    the real Application Support database). Strips credential env vars (`CSC_`, `APPLE_`, `NOTARYTOOL_`).
+  - Detach is mandatory: failed `hdiutil detach` (even after `-force`) surfaces as non-zero after the
+    report prints; the mount point is preserved for manual cleanup.
+  - Does **not** call Apple services, keychain, notarization, upload, `release:mac:check`, or
+    `release:mac:full`. Requires a display session (Electron BrowserWindow).
+- See SMOKE.md → "DMG Mount-and-Launch Smoke (Slice 3G)".
+
 ### Release dry-run — no-credential end-to-end chain (Slice 3E)
 
 > **NON-DISTRIBUTABLE — AD-HOC SIGNED — NOT NOTARIZED**

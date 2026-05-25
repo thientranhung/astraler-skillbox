@@ -634,6 +634,65 @@ Expected: `clean` (no `skillbox-core` from the staged app remains after smoke co
 
 ---
 
+## DMG Mount-and-Launch Smoke (Slice 3G)
+
+Credential-free. Requires an already-produced DMG from `release:mac:dry-run`.
+Proves the *actual distributable artifact* boots: mounts the DMG read-only, copies the top-level
+`Astraler Skillbox.app` to a temp install dir (never `/Applications`), launches the copy from a
+neutral cwd, waits for the bundled Go core to be ready, shuts down, asserts no orphaned
+`skillbox-core` from the copied bundle, detaches the DMG, and cleans all temp dirs.
+
+Does **not** prove Developer ID signing, notarization, stapling, or Gatekeeper acceptance.
+
+### Prerequisites
+
+- A DMG in `apps/desktop/dist/` (from `release:mac:dry-run`).
+- A display session (Electron requires a real BrowserWindow; not compatible with headless-only environments).
+
+### Run dry-run first, then dmg-smoke
+
+```sh
+(cd apps/desktop && pnpm release:mac:dry-run); echo "exit=$?"
+(cd apps/desktop && pnpm release:mac:dmg-smoke); echo "exit=$?"
+```
+
+When multiple DMGs exist in `dist/`, pass the path explicitly:
+
+```sh
+(cd apps/desktop && pnpm release:mac:dmg-smoke "dist/Astraler Skillbox-<version>-arm64.dmg"); echo "exit=$?"
+```
+
+Expected for `release:mac:dmg-smoke`:
+- `exit=0`
+- Output contains `[release:mac:dmg-smoke] DMG mounted at: ...`
+- Output contains `[release:mac:dmg-smoke] copied to    : ...` (install dir, not `/Applications`)
+- Output contains `[release:mac:dmg-smoke] SKILLBOX_DB_PATH: /tmp/...` (never the real database)
+- Output contains `[manager] Go core ready` (via the `[app][err]` prefix)
+- Output contains `[release:mac:dmg-smoke] no orphaned sidecar — clean shutdown.`
+- Output contains `[release:mac:dmg-smoke] DMG detached successfully.`
+- Final line: `[release:mac:dmg-smoke] OK: app launched from mounted DMG, Go core ready, no orphaned sidecar, clean detach`
+
+### Confirm no leaks after the run
+
+```sh
+pgrep -fl skillbox-core || echo "no orphaned core"
+hdiutil info | grep -i skillbox || echo "no leaked mount"
+ls "$TMPDIR" | grep skillbox-dmgsmoke || echo "no temp dirs left"
+```
+
+All three lines should print the "no ..." message.
+
+### Confirm no Apple services are called
+
+```sh
+(cd apps/desktop && pnpm release:mac:dmg-smoke "dist/Astraler Skillbox-<version>-arm64.dmg" 2>&1 | \
+  grep -E "release:mac:check|release:mac:full|notarization|keychain") || echo "clean"
+```
+
+Expected: `clean`.
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:
