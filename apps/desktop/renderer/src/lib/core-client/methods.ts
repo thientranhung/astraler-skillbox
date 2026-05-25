@@ -18,6 +18,8 @@ import type {
   ProjectRemoveResponse,
   InstallSkillRequest,
   InstallSkillResponse,
+  RemoveSkillRequest,
+  RemoveSkillResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -59,6 +61,9 @@ export const methods = {
 
   installSkill: (req: InstallSkillRequest) =>
     invoke<InstallSkillResponse>("install.skill", req),
+
+  removeSkill: (req: RemoveSkillRequest) =>
+    invoke<RemoveSkillResponse>("remove.skill", req),
 
   openPath: (path: string) =>
     invoke<{ opened: boolean }>("dialog.openPath", { path }),
