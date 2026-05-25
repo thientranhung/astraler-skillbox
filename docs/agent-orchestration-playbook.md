@@ -93,6 +93,18 @@ Review commit abc123 only. Do not edit files. Findings first. Verify: [commands]
 
 If a small finding expands into a larger design or cross-layer change, stop and create a new plan or planned milestone before using `/goal`.
 
+## Orchestrator Implementation Boundary
+
+The orchestrator is PM and coordinator first. "Do not use `/goal`" means use a normal prompt to the appropriate agent, not that the orchestrator should automatically implement the work inline.
+
+Default ownership:
+
+- `agent-tech-skillbox` implements approved work, including small fixes, using normal prompts or `/goal` depending on scope.
+- `agent-lead-skillbox` reviews, tests, and QA-checks using normal prompts.
+- Orchestrator writes plans/specs, manages scope, verifies independently, handles tmux hygiene, and only edits code directly for emergency unblock, tiny documentation/playbook changes, or user-approved inline fixes.
+
+If the orchestrator has already created partial local changes before handing off, state that clearly in the tech prompt and ask tech to continue from the current worktree state.
+
 ## `/goal` Prompt Shape
 
 Treat `/goal` prompts as scoped execution contracts, not full brainstorm documents. Use the Obsidian template as the canonical checklist, then compress it before sending to the agent:
