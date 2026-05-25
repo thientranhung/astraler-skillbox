@@ -20,3 +20,5 @@ export * from './methods/project-list.js';
 export * from './methods/project-get.js';
 export * from './methods/project-scan.js';
 export * from './electron/dialog-open-project-folder.js';
+export * from './methods/project-remove.js';
+export * from './electron/dialog-open-path.js';
