@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProjectListMethod",
+  "description": "Contract for project.list JSON-RPC method. Returns all projects with provider badges and summary counts.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProjectListRequest" },
+    { "$ref": "#/definitions/ProjectListResponse" }
+  ],
+  "definitions": {
+    "ProjectListRequest": {
+      "title": "ProjectListRequest",
+      "description": "No params needed for project.list.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ProjectListProviderSummary": {
+      "title": "ProjectListProviderSummary",
+      "description": "Brief provider info for the projects list view",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Provider definition key (e.g. generic_agents)"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Human-readable provider name"
+        },
+        "providerStatus": {
+          "type": "string",
+          "enum": ["supported", "experimental", "unsupported", "disabled"],
+          "description": "Provider definition status"
+        },
+        "detectionStatus": {
+          "type": "string",
+          "enum": ["detected", "missing", "invalid_structure"],
+          "description": "Detection status for this provider in the project"
+        }
+      },
+      "required": ["key", "displayName", "providerStatus", "detectionStatus"],
+      "additionalProperties": false
+    },
+    "ProjectListItem": {
+      "title": "ProjectListItem",
+      "description": "Single project row in the projects list",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "projects row ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Project display name"
+        },
+        "path": {
+          "type": "string",
+          "description": "Normalised absolute path"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "missing", "unreadable"],
+          "description": "Project status"
+        },
+        "providers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProjectListProviderSummary" },
+          "description": "Detected providers for this project"
+        },
+        "skillCount": {
+          "type": "integer",
+          "description": "Number of observed skill entries across all providers"
+        },
+        "warningCount": {
+          "type": "integer",
+          "description": "Number of active warnings (project + project_provider + install scopes)"
+        },
+        "lastScannedAt": {
+          "type": ["string", "null"],
+          "description": "ISO 8601 timestamp of the most recent completed scan, or null"
+        }
+      },
+      "required": ["id", "name", "path", "status", "providers", "skillCount", "warningCount", "lastScannedAt"],
+      "additionalProperties": false
+    },
+    "ProjectListResponse": {
+      "title": "ProjectListResponse",
+      "description": "All projects view model.",
+      "type": "object",
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProjectListItem" },
+          "description": "All projects, sorted by name"
+        }
+      },
+      "required": ["projects"],
+      "additionalProperties": false
+    }
+  }
+}

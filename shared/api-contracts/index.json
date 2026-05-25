@@ -12,6 +12,11 @@
     { "input": "methods/settings.get.json",     "output": "methods/settings-get.ts" },
     { "input": "notifications/server.ready.json",       "output": "notifications/server-ready.ts" },
     { "input": "notifications/operation.progress.json", "output": "notifications/operation-progress.ts" },
-    { "input": "electron/dialog.openHostFolder.json", "output": "electron/dialog-open-host-folder.ts" }
+    { "input": "electron/dialog.openHostFolder.json",    "output": "electron/dialog-open-host-folder.ts" },
+    { "input": "methods/project.add.json",               "output": "methods/project-add.ts" },
+    { "input": "methods/project.list.json",              "output": "methods/project-list.ts" },
+    { "input": "methods/project.get.json",               "output": "methods/project-get.ts" },
+    { "input": "methods/project.scan.json",              "output": "methods/project-scan.ts" },
+    { "input": "electron/dialog.openProjectFolder.json", "output": "electron/dialog-open-project-folder.ts" }
   ]
 }

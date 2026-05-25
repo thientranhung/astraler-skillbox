@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProjectScanMethod",
+  "description": "Contract for project.scan JSON-RPC method. Starts a long-running read-only project scan; progress arrives via operation.progress notifications.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProjectScanRequest" },
+    { "$ref": "#/definitions/ProjectScanResponse" }
+  ],
+  "definitions": {
+    "ProjectScanRequest": {
+      "title": "ProjectScanRequest",
+      "description": "Params for project.scan.",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "integer",
+          "description": "ID of the projects row to scan"
+        }
+      },
+      "required": ["projectId"],
+      "additionalProperties": false
+    },
+    "ProjectScanResponse": {
+      "title": "ProjectScanResponse",
+      "description": "Immediate response — the scan runs asynchronously. Errors: validation_error (1001) projectId not found; conflict_error (1005) project already being scanned.",
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "integer",
+          "description": "ID of the created scan operation; use with operation.progress notifications and operation.cancel"
+        }
+      },
+      "required": ["operationId"],
+      "additionalProperties": false
+    }
+  }
+}
