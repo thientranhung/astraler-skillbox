@@ -18,7 +18,7 @@ export interface DialogOpenPathRequest {
   path: string;
 }
 /**
- * Result of dialog.openPath. Errors: operation_error (1006) if Electron returns a non-empty error string.
+ * Result of dialog.openPath. Errors: unknown_error if Electron returns a non-empty error string.
  */
 export interface DialogOpenPathResponse {
   /**

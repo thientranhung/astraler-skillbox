@@ -23,7 +23,7 @@
     },
     "DialogOpenPathResponse": {
       "title": "DialogOpenPathResponse",
-      "description": "Result of dialog.openPath. Errors: operation_error (1006) if Electron returns a non-empty error string.",
+      "description": "Result of dialog.openPath. Errors: unknown_error if Electron returns a non-empty error string.",
       "type": "object",
       "properties": {
         "opened": {
