@@ -74,7 +74,9 @@ func main() {
 		WithInstallDeps(fs, hostRepo, skillRepo).
 		WithRemoveDeps(fs, installRepo)
 
-	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc)
+	dashboardSvc := services.NewDashboardService(appSettingsRepo, hostRepo, skillRepo, projectRepo, installRepo, warningRepo)
+
+	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc)
 
 	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
@@ -85,7 +87,7 @@ func main() {
 	if err := srv.Notify(sigCtx, "server.ready", map[string]interface{}{
 		"version":      "0.1.0-m3",
 		"pid":          os.Getpid(),
-		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel", "project.add", "project.list", "project.get", "project.scan", "project.remove", "install.skill", "remove.skill"},
+		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "settings.get", "operation.cancel", "project.add", "project.list", "project.get", "project.scan", "project.remove", "install.skill", "remove.skill", "dashboard.get"},
 	}); err != nil {
 		slog.Error("failed to send server.ready", "err", err)
 		os.Exit(1)
