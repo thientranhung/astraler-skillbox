@@ -489,3 +489,111 @@ func TestInstallSkillsInternal_ConflictAbort(t *testing.T) {
 		})
 	}
 }
+
+// --- Task 10: validation + within-root enforcement ---
+
+// TestInstallSkillsInternal_ValidationErrors exercises the synchronous validation
+// guards in installSkillsInternal. Each case mutates a healthy generic_agents
+// fixture into one bad precondition and asserts the expected error code, that the
+// rescan never runs, and (for the unsafe-name case) that no symlink is written.
+func TestInstallSkillsInternal_ValidationErrors(t *testing.T) {
+	cases := []struct {
+		name     string
+		wantCode string
+		// mutate adjusts the fixture into the failure precondition. It runs after a
+		// default-available skill (ID 1) has been seeded on the active host.
+		mutate func(t *testing.T, fx installSvcFixture)
+	}{
+		{
+			name:     "provider not in project",
+			wantCode: domain.CodeValidation,
+			mutate: func(_ *testing.T, fx installSvcFixture) {
+				fx.ppRepo.byProject[1] = nil
+			},
+		},
+		{
+			name:     "provider def unsupported",
+			wantCode: domain.CodeProvider,
+			mutate: func(_ *testing.T, fx installSvcFixture) {
+				fx.pdRepo.defs[providers.GenericAgentsKey].Status = domain.ProviderStatusUnsupported
+			},
+		},
+		{
+			name:     "detection status missing",
+			wantCode: domain.CodeValidation,
+			mutate: func(_ *testing.T, fx installSvcFixture) {
+				fx.ppRepo.byProject[1] = []domain.ProjectProviderSummary{
+					{ProviderKey: providers.GenericAgentsKey, DetectionStatus: domain.DetectionStatusMissing},
+				}
+			},
+		},
+		{
+			name:     "skill id not found",
+			wantCode: domain.CodeValidation,
+			mutate: func(_ *testing.T, fx installSvcFixture) {
+				fx.skillLister.skills[1] = nil
+			},
+		},
+		{
+			name:     "skill status missing",
+			wantCode: domain.CodeValidation,
+			mutate: func(_ *testing.T, fx installSvcFixture) {
+				sk := fx.skillLister.skills[1][0]
+				sk.Status = domain.SkillStatusMissing
+				fx.skillLister.skills[1] = []domain.Skill{sk}
+			},
+		},
+		{
+			name:     "no active host",
+			wantCode: domain.CodeValidation,
+			mutate: func(_ *testing.T, fx installSvcFixture) {
+				fx.hostReader.host = nil
+			},
+		},
+		{
+			name:     "unsafe skill name",
+			wantCode: domain.CodeValidation,
+			mutate: func(_ *testing.T, fx installSvcFixture) {
+				// A resolvable, available skill whose Name escapes the skills dir.
+				// Validation rejects it before any symlink is attempted, so the
+				// AbsolutePath need not exist on disk.
+				fx.skillLister.skills[1] = []domain.Skill{{
+					ID:           1,
+					Name:         "../escape",
+					AbsolutePath: filepath.Join(fx.hostReader.host.SkillsPath, "escape"),
+					Status:       domain.SkillStatusAvailable,
+				}}
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			fx := newGenericInstallFixture(t, installFixtureOpts{createProjectSkillsDir: true})
+			sk := makeHostSkill(t, fx.hostReader.host.SkillsPath, 1, "documentation-writer", domain.SkillStatusAvailable)
+			fx.skillLister.skills[1] = []domain.Skill{sk}
+
+			tc.mutate(t, fx)
+
+			_, err := fx.svc.installSkillsInternal(ctx, fx.project, providers.GenericAgentsKey, []int64{1}, noopProgress)
+			ae := mustAppErr(t, err)
+			if ae.Code != tc.wantCode {
+				t.Fatalf("error code: got %q want %q", ae.Code, tc.wantCode)
+			}
+
+			// All these guards fire before the write phase: no rescan, no symlink.
+			if fx.scanRepo.fullScanCallCount != 0 {
+				t.Fatalf("fullScanCallCount: got %d want 0", fx.scanRepo.fullScanCallCount)
+			}
+			entries, derr := os.ReadDir(filepath.Join(fx.project.Path, ".agents", "skills"))
+			if derr != nil {
+				t.Fatalf("readdir skills dir: %v", derr)
+			}
+			if len(entries) != 0 {
+				t.Fatalf("skills dir should be empty after a pre-write failure, got %d entries", len(entries))
+			}
+		})
+	}
+}
