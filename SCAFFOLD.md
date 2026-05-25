@@ -230,13 +230,30 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 
 ---
 
-## Packaging (Slice 3A — unsigned macOS DMG)
+## Packaging
 
-- `pnpm build:core` — compiles `core-go` to `apps/desktop/resources/core/skillbox-core` (darwin/arm64, CGO off).
-- `pnpm package:mac:unsigned` — runs `build:core`, then `electron-vite build`, then `electron-builder --mac dmg`.
-- Output: `apps/desktop/dist/Astraler Skillbox-<version>-arm64.dmg` (unsigned).
-- The sidecar is bundled via `extraResources` at `Contents/Resources/core/skillbox-core` (outside ASAR).
-- Signing/notarization is deferred to Slice 3B.
+### Unsigned (Slice 3A)
+- `pnpm package:mac:unsigned` — `build:core` → `electron-vite build` → `electron-builder --mac dmg`
+  with signing and hardened runtime disabled (`identity=null`, `hardenedRuntime=false`, `notarize=false`).
+- Output: `apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg` (unsigned). Launching requires a
+  Gatekeeper override (`xattr -dr com.apple.quarantine …`).
+
+### Signed config + dry-run (Slice 3B1)
+- The committed `electron-builder.yml` is the **signed default**: hardened runtime,
+  entitlements (`build/entitlements.mac.*.plist`), `mac.binaries` (signs the nested sidecar),
+  and `notarize: true`.
+- Dry-run (no Apple cert): `electron-builder --mac dmg -c.mac.identity=- -c.mac.notarize=false`
+  signs with an ad-hoc identity so you can verify `mac.binaries` reaches
+  `Contents/Resources/core/skillbox-core`. See SMOKE.md → "Signed Packaging Dry-Run (Slice 3B1)".
+
+### Signed + notarized (Slice 3B2 — deferred, needs credentials)
+- `pnpm package:mac` — full signed build. Requires in the environment:
+  - Apple Developer Program membership.
+  - Developer ID **Application** certificate + private key (login keychain, or `.p12` via `CSC_LINK`/`CSC_KEY_PASSWORD`).
+  - **Team ID**.
+  - Notarization credentials: App Store Connect API key (`APPLE_API_KEY` `.p8` + `APPLE_API_KEY_ID` + `APPLE_API_ISSUER`) **or** `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID`.
+- `.dmg`-only distribution → no Developer ID **Installer** cert / `.pkg` needed.
+- Running `pnpm package:mac` without these credentials is expected to fail; that is not a 3B1 gate.
 
 ---
 
