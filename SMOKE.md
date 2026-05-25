@@ -305,6 +305,80 @@ Run from the repo root. Produces and verifies an unsigned arm64 `.dmg`.
 
 ---
 
+## Signed Packaging Dry-Run (Slice 3B1)
+
+No Apple credentials required. Proves the signing config is valid, entitlements
+lint, the unsigned path still works, and `mac.binaries` reaches the sidecar via
+electron-builder's **own** ad-hoc signing (not a manual rescue).
+
+### Entitlements lint
+- [ ] `plutil -lint apps/desktop/build/entitlements.mac.plist` → `OK`
+- [ ] `plutil -lint apps/desktop/build/entitlements.mac.inherit.plist` → `OK`
+
+### Unsigned path regression (3A must still work)
+- [ ] `(cd apps/desktop && pnpm package:mac:unsigned)`
+- [ ] Artifact exists: `ls "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg"`
+- [ ] (Optional) re-run the "Packaged macOS DMG Smoke (Slice 3A)" functional steps against this DMG.
+
+### mac.binaries proof via electron-builder ad-hoc signing
+- [ ] Pack with an ad-hoc identity (electron-builder signs; no Developer ID cert needed):
+  ```sh
+  (cd apps/desktop && pnpm build:core && pnpm build && \
+     electron-builder --mac dmg -c.mac.identity=- -c.mac.notarize=false)
+  ```
+- [ ] Locate the packed app (adjust to electron-builder's actual output dir):
+  ```sh
+  APP="apps/desktop/dist/mac-arm64/Astraler Skillbox.app"
+  SIDE="$APP/Contents/Resources/core/skillbox-core"
+  ```
+- [ ] **Before any manual `codesign`**, confirm electron-builder signed the sidecar:
+  ```sh
+  codesign -dvvv "$SIDE"          # expect: a signature present (ad-hoc / Signature=adhoc)
+  codesign --verify --deep --strict --verbose=2 "$APP"   # expect: valid on disk
+  ```
+  Do **not** run `codesign -s - --deep --force` first — a post-hoc deep sign would
+  rescue a `mac.binaries` misconfiguration and mask the exact failure this step exists to catch.
+- [ ] If the sidecar shows **no** signature, `mac.binaries` did not reach it — fix the
+  path in `electron-builder.yml` (§3.1 of the spec) and re-run before proceeding.
+
+---
+
+## Signed + Notarized Smoke (Slice 3B2 — requires Apple Developer ID)
+
+DO NOT run in 3B1. Requires: Apple Developer Program, a Developer ID Application
+certificate + private key, the Team ID, and notarization credentials
+(App Store Connect API key preferred). notarytool is the only accepted upload
+path (altool retired 2023-11-01).
+
+```sh
+APP="/Applications/Astraler Skillbox.app"
+SIDE="$APP/Contents/Resources/core/skillbox-core"
+DMG="apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg"
+
+# Developer ID signature + hardened runtime (expect Authority=Developer ID Application + flags=...(runtime))
+codesign -dvvv "$APP"
+codesign -dvvv "$SIDE"
+codesign --verify --deep --strict --verbose=2 "$APP"
+codesign -d --entitlements - "$APP"
+
+# Gatekeeper + notarization
+spctl -a -vvv -t open "$APP"                # expect: accepted, source=Notarized Developer ID
+xcrun stapler validate "$APP"
+xcrun stapler validate "$DMG"
+
+# Simulate a downloaded copy WITHOUT mutating /Applications: temp copy, launch, clean up
+TMP="$(mktemp -d)"; cp -R "$APP" "$TMP/"; TMP_APP="$TMP/Astraler Skillbox.app"
+xattr -w com.apple.quarantine "0081;0;Safari;" "$TMP_APP"
+xattr -p com.apple.quarantine "$TMP_APP"
+open "$TMP_APP"                             # expect: launches, NO Gatekeeper prompt
+pgrep -fl skillbox-core
+osascript -e 'quit app "Astraler Skillbox"'
+rm -rf "$TMP"
+pgrep -fl skillbox-core                     # expect: nothing after quit
+```
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:
