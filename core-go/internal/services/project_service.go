@@ -324,10 +324,14 @@ func (s *ProjectService) scanProjectInternal(
 			continue // provider not seeded in DB; skip
 		}
 
-		// Collect warnings first so project-scope ones are captured even when not present.
+		// Collect provider-scoped warnings. Project-scoped "no_provider_detected" warnings
+		// are suppressed here and emitted once after all adapters run (see below).
 		rescan := "rescan"
 		var providerWarnings []domain.Warning
 		for _, aw := range result.Warnings {
+			if aw.Code == "no_provider_detected" {
+				continue // aggregated below
+			}
 			w := domain.Warning{
 				ScopeType: aw.ScopeType,
 				Severity:  aw.Severity,
@@ -342,7 +346,7 @@ func (s *ProjectService) scanProjectInternal(
 			}
 		}
 
-		// Provider not detected: record warnings but do not create a ProviderScanResult.
+		// Provider not detected: do not create a ProviderScanResult.
 		if !result.Present {
 			continue
 		}
@@ -383,6 +387,18 @@ func (s *ProjectService) scanProjectInternal(
 			DetectionStatus:      result.DetectionStatus,
 			Installs:             installs,
 			Warnings:             providerWarnings,
+		})
+	}
+
+	// Emit one project-level no_provider_detected only when all adapters failed to detect.
+	if len(providerResults) == 0 {
+		rescan := "rescan"
+		projectWarnings = append(projectWarnings, domain.Warning{
+			ScopeType: domain.WarningScopeProject,
+			Severity:  domain.WarningSeverityWarning,
+			Code:      "no_provider_detected",
+			Message:   "No provider detected in this project",
+			ActionKey: &rescan,
 		})
 	}
 

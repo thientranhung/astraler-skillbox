@@ -67,7 +67,10 @@ func main() {
 	libSvc := services.NewSkillLibraryService(skillRepo, hostRepo, warningRepo)
 	settingsSvc := services.NewSettingsService(appSettingsRepo, hostRepo)
 
-	providerRegistry := providers.NewRegistry(providers.NewGenericAgentsAdapter())
+	providerRegistry := providers.NewRegistry(
+		providers.NewGenericAgentsAdapter(),
+		providers.NewClaudeAdapter(),
+	)
 	projectSvc := services.NewProjectService(projectRepo, ppRepo, warningRepo, installRepo, fs).
 		WithScanDeps(runner, projectScanRepo).
 		WithProviderDeps(providerRegistry, pdRepo, hostRepo, skillRepo)

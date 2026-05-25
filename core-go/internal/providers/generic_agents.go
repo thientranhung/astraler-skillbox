@@ -10,6 +10,11 @@ import (
 // GenericAgentsKey is the stable provider key for the generic_agents adapter.
 const GenericAgentsKey = "generic_agents"
 
+// GenericAgentsDetectPath and GenericAgentsSkillsPath are the relative paths used by
+// GenericAgentsAdapter. Exported so drift tests can verify they match the seeded path candidates.
+const GenericAgentsDetectPath = ".agents"
+const GenericAgentsSkillsPath = ".agents/skills"
+
 // GenericAgentsAdapter detects the generic_agents provider by looking for
 // <root>/.agents (detect candidate) and <root>/.agents/skills (skills path).
 //
@@ -31,8 +36,8 @@ func NewGenericAgentsAdapter() *GenericAgentsAdapter {
 func (a *GenericAgentsAdapter) Key() string { return GenericAgentsKey }
 
 func (a *GenericAgentsAdapter) Detect(projectRoot string, fs FsReader) (DetectResult, error) {
-	agentsPath := filepath.Join(projectRoot, ".agents")
-	skillsPath := filepath.Join(projectRoot, ".agents", "skills")
+	agentsPath := filepath.Join(projectRoot, GenericAgentsDetectPath)
+	skillsPath := filepath.Join(projectRoot, GenericAgentsSkillsPath)
 
 	pi, err := fs.PathInfo(agentsPath)
 	if err != nil {
