@@ -368,6 +368,17 @@ describe("checkNotarization (C1)", () => {
     expect(c1(rows).status).toBe("FAIL");
     expect(c1(rows).message).toMatch(/\.p8 file is missing or unreadable/);
   });
+  it("surfaces a bad APPLE_API_KEY .p8 even when other Group 1 vars are missing (no path printed)", () => {
+    const rows = checkNotarization(
+      { APPLE_API_KEY: "/SENTINEL/key.p8" }, // only the key path set, and it is bad
+      { cscLink: null, appleApiKey: { exists: false, readable: false } }
+    );
+    const r = c1(rows);
+    expect(r.status).toBe("FAIL");
+    expect(r.message).toMatch(/\.p8 file is missing or unreadable/);
+    expect(r.message).toMatch(/also missing APPLE_API_KEY_ID, APPLE_API_ISSUER/);
+    expect(r.message).not.toContain("/SENTINEL/key.p8");
+  });
   it("passes complete Group 1", () => {
     expect(c1(checkNotarization(g1, probesOk)).status).toBe("PASS");
   });
@@ -412,6 +423,9 @@ export function checkNotarization(env, fileProbes) {
   const g2Missing = missingOf(g2Vars);
 
   const apiKeyFileOk = fileProbes.appleApiKey ? fileProbes.appleApiKey.exists && fileProbes.appleApiKey.readable : false;
+  // If APPLE_API_KEY is set at all, a missing/unreadable .p8 is a real problem to
+  // surface — independent of whether the other Group 1 vars are present.
+  const apiKeyBadPath = isSet(env.APPLE_API_KEY) && !apiKeyFileOk;
   const g1AllSet = g1Missing.length === 0;
   const g1Complete = g1AllSet && apiKeyFileOk;
   const g2Complete = g2Missing.length === 0;
@@ -440,8 +454,12 @@ export function checkNotarization(env, fileProbes) {
   }
 
   let msg;
-  if (g1AllSet && !apiKeyFileOk) {
-    msg = "APPLE_API_KEY, APPLE_API_KEY_ID, APPLE_API_ISSUER are set, but the APPLE_API_KEY .p8 file is missing or unreadable";
+  if (apiKeyBadPath) {
+    // Surface the bad .p8 first, regardless of which other Group 1 vars are set.
+    // NEVER print the path — only the variable name and the generic problem.
+    const stillMissing = g1Missing.filter((v) => v !== "APPLE_API_KEY");
+    const more = stillMissing.length ? ` (also missing ${stillMissing.join(", ")})` : "";
+    msg = `the APPLE_API_KEY .p8 file is missing or unreadable${more}`;
   } else if (g1Set.length >= g2Set.length && g1Set.length > 0) {
     msg = `Group 1 partially set; missing ${g1Missing.join(", ")}`;
   } else if (g2Set.length > 0) {
@@ -906,9 +924,9 @@ const desktop = path.resolve(here, ".."); // apps/desktop
 const repoRoot = path.resolve(desktop, "..", "..");
 
 /** Run a command read-only; return trimmed stdout or null on any failure. */
-function run(cmd, args) {
+function run(cmd, args, opts = {}) {
   try {
-    return execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], cwd: opts.cwd }).trim();
   } catch {
     return null;
   }
@@ -1004,13 +1022,18 @@ if (existsSync(sidecarPath)) {
 }
 
 // Hygiene — tracked-status entries only (ignore untracked ??), per spec F1.
-const statusOut = run("git", ["status", "--porcelain", "--untracked-files=no", "--", "apps/desktop/dist", "apps/desktop/resources/core"]) ?? "";
+// CRITICAL: this command is invoked from apps/desktop (pnpm cwd). Git pathspecs are
+// resolved relative to the *current directory*, so a naive `git ls-files -- apps/desktop`
+// from apps/desktop would look for apps/desktop/apps/desktop and silently find NOTHING,
+// missing tracked .p12/.p8 and dist artifacts. Run every git command from repoRoot with
+// repo-root-relative pathspecs so detection is correct regardless of invocation cwd.
+const statusOut = run("git", ["status", "--porcelain", "--untracked-files=no", "--", "apps/desktop/dist", "apps/desktop/resources/core"], { cwd: repoRoot }) ?? "";
 const trackedArtifacts = statusOut
   .split("\n")
   .map((l) => l.trim())
   .filter(Boolean)
   .map((l) => l.replace(/^\S+\s+/, "")); // drop the status code, keep the path
-const lsFiles = run("git", ["ls-files", "--", "apps/desktop"]) ?? "";
+const lsFiles = run("git", ["ls-files", "--", "apps/desktop"], { cwd: repoRoot }) ?? "";
 const trackedSecretFiles = lsFiles.split("\n").filter((f) => /\.(p12|p8)$/.test(f));
 
 // Version
@@ -1120,6 +1143,22 @@ No code changes. Run every gate and the live preflight; commit nothing unless a 
 - [ ] **Step 7: Live preflight verdict** — `(cd apps/desktop && pnpm release:mac:check); echo "exit=$?"` → `exit=1`; FAIL on `Signing credentials` + `Notarization credentials`; the "Missing…" list has exactly those two items; A1–A4 and D1–D5 PASS; E1 WARN or PASS.
 - [ ] **Step 8: Redaction grep** — `(cd apps/desktop && pnpm release:mac:check 2>&1 | grep -E '/Users/|-----BEGIN') || echo clean` → `clean`. (Targets real path/PEM indicators; variable names such as `CSC_KEY_PASSWORD` are expected output and must not be flagged.)
 - [ ] **Step 9: No side effects** — confirm the command made no build/sign/notarize artifact and mutated nothing: `git status --porcelain` is empty (clean of tracked artifacts), and `apps/desktop/dist` is unchanged. No network was contacted (the script contains no network call by construction).
+
+- [ ] **Step 10: Hygiene detection works when invoked from `apps/desktop` (regression guard for the git-cwd bug)** — prove F2 still catches a tracked `.p8` under `apps/desktop` even though `pnpm` runs the script from `apps/desktop`. This stages a throwaway file and fully cleans up:
+
+  ```sh
+  cd apps/desktop
+  printf 'not-a-real-key' > __preflight_probe__.p8   # throwaway, NOT a real credential
+  git add -f __preflight_probe__.p8                   # make it tracked under apps/desktop
+  pnpm release:mac:check | grep -F "__preflight_probe__.p8" \
+    && echo "F2 detected the tracked .p8 from apps/desktop (cwd fix works)" \
+    || echo "FAIL: tracked .p8 was NOT detected — git is not running from repoRoot"
+  git rm --cached -f __preflight_probe__.p8           # unstage
+  rm -f __preflight_probe__.p8                         # delete the throwaway
+  git status --porcelain -- apps/desktop/__preflight_probe__.p8   # expect: empty (fully cleaned up)
+  ```
+
+  Expected: the grep prints the detection-success line (F2 FAIL row names `apps/desktop/__preflight_probe__.p8`), and the final `git status` is empty. If instead the failure line prints, the IO shell's git commands are not running from `repoRoot` — fix per Task 7 Step 3 before proceeding.
 
 ---
 
