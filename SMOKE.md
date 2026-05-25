@@ -362,7 +362,8 @@ codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -d --entitlements - "$APP"
 
 # Gatekeeper + notarization
-spctl -a -vvv -t open "$APP"                # expect: accepted, source=Notarized Developer ID
+spctl -a -vvv -t exec "$APP"                # app: expect accepted, source=Notarized Developer ID
+spctl -a -vvv -t open "$DMG"                # dmg container: expect accepted, source=Notarized Developer ID
 xcrun stapler validate "$APP"
 xcrun stapler validate "$DMG"
 
@@ -394,6 +395,26 @@ network call, signs/notarizes/builds nothing, and never mutates the keychain.
   ```
   Expected: `clean`.
 - [ ] When credentials ARE present (3B2), the same command exits `0` — run it before `pnpm package:mac`.
+
+---
+
+## Release Artifact Verification (Slice 3B2B)
+
+Post-build, read-only verifier. No Apple credentials required for `--allow-adhoc`. The only
+side effect is a read-only DMG mount/detach; it never builds, signs, notarizes, staples, calls
+the network, or mutates the keychain.
+
+### Dry-run against the 3B1 ad-hoc bundle
+- [ ] Build the ad-hoc bundle (see "Signed Packaging Dry-Run (Slice 3B1)") so a `.dmg` exists under `apps/desktop/dist/`.
+- [ ] `(cd apps/desktop && pnpm release:mac:verify --allow-adhoc); echo "exit=$?"`
+  Expected: `exit=0`. App + sidecar signature-class (APP2/SID3, ad-hoc accepted) / `codesign --verify` / hardened-runtime / **entitlements (ENT1/ENT2)** are PASS; Gatekeeper/stapling/Team-ID lines are INFO.
+- [ ] Release mode against the same artifact: `(cd apps/desktop && pnpm release:mac:verify); echo "exit=$?"`
+  Expected: `exit=1`, FAILing on Developer ID signature, Team-ID equality, Gatekeeper (app + dmg), and stapling. The "Missing for a customer-ready release:" list is non-empty.
+- [ ] No leftover mount after either run: `hdiutil info | grep -i skillbox-verify || echo "clean"` → `clean`.
+
+### Release mode against a real notarized DMG (Slice 3B2 — needs credentials)
+- [ ] After a real `pnpm package:mac`, run `(cd apps/desktop && pnpm release:mac:verify dist/"Astraler Skillbox-0.1.0-arm64.dmg"); echo "exit=$?"` → `exit=0`, all checks PASS.
+- [ ] (Optional) pin the team: `SKILLBOX_EXPECTED_TEAM_ID=<TEAMID> pnpm release:mac:verify …`.
 
 ---
 

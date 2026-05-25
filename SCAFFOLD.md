@@ -265,6 +265,19 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
   into a build. It never signs, notarizes, builds, calls Apple, mutates the keychain, or prints
   any secret value or path. See SMOKE.md → "Release Preflight (Slice 3B2A)".
 
+### Release artifact verification (Slice 3B2B)
+- `pnpm release:mac:verify [path]` — read-only **post-build** gate (the bookend to `release:mac:check`).
+  Verifies a built `.app`/`.dmg` is customer-ready: Developer ID signature on the app **and** the
+  nested sidecar, a single shared Team ID, hardened runtime, the expected entitlements, Gatekeeper
+  acceptance of the app (`spctl -t exec`) and the DMG (`spctl -t open`), and a stapled ticket on both.
+- Input: an explicit `.app`, an explicit `.dmg`, or (no arg) the single `apps/desktop/dist/*.dmg`
+  (multiple → pass an explicit path). A `.dmg` is mounted **read-only**; the single top-level `.app`
+  is verified (nested Electron helper apps are ignored), then unmounted.
+- `--allow-adhoc` verifies the 3B1 ad-hoc dry-run bundle (signature/runtime/entitlements PASS;
+  notarization/stapling/Team-ID reported INFO). `SKILLBOX_EXPECTED_TEAM_ID` optionally pins the team.
+- It never builds, signs, notarizes, staples, calls Apple, or mutates the keychain. Run it AFTER
+  `pnpm package:mac`. See SMOKE.md → "Release Artifact Verification (Slice 3B2B)".
+
 ---
 
 ## Release Tag
