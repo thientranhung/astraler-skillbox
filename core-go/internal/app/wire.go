@@ -23,6 +23,7 @@ func New(
 	settingsSvc *services.SettingsService,
 	runner *operations.Runner,
 	projectSvc *services.ProjectService,
+	dashboardSvc *services.DashboardService,
 ) *App {
 	a := &App{
 		methods: handler.Map{
@@ -39,6 +40,7 @@ func New(
 			"project.remove":   rpchandlers.NewProjectRemoveHandler(projectSvc),
 			"install.skill":    rpchandlers.NewInstallSkillHandler(projectSvc),
 			"remove.skill":     rpchandlers.NewRemoveSkillHandler(projectSvc),
+			"dashboard.get":    rpchandlers.NewDashboardGetHandler(dashboardSvc),
 		},
 	}
 	return a

@@ -16,4 +16,5 @@ export const ALLOWLIST = new Set([
   "remove.skill",
   "dialog.openPath",
   "dialog.openTerminal",
+  "dashboard.get",
 ]);

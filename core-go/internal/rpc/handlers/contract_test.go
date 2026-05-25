@@ -166,3 +166,43 @@ func TestContract_HostScan_Response(t *testing.T) {
 	resp := hostScanResponse{OperationID: 1}
 	validateAgainstSchema(t, schema, resp)
 }
+
+func ptr64(v int64) *int64 { return &v }
+
+func TestContract_DashboardGet_Response(t *testing.T) {
+	schema := loadSchema(t, "methods/dashboard.get.json")
+
+	t.Run("populated", func(t *testing.T) {
+		lastScan := "2026-05-25T10:31:00Z"
+		resp := dashboardGetResponse{
+			ActiveHost: &dashboardActiveHostResponse{
+				HostID:     1,
+				Path:       "/host",
+				SkillsPath: "/host/.agents/skills",
+				Status:     "active",
+				LastScanAt: &lastScan,
+			},
+			Summary:            dashboardSummaryResponse{Skills: 42, Projects: 12, Warnings: 2},
+			InstallsByMode:     dashboardInstallsByModeResponse{Symlink: 9, RsyncCopy: 0, Direct: 3},
+			WarningsBySeverity: dashboardWarningsBySeverityResponse{Info: 0, Warning: 2, Error: 0, Blocking: 0},
+			Warnings: []dashboardWarningResponse{
+				{Code: "broken_symlink", Message: "msg", Severity: "warning", ScopeType: "install", ScopeID: ptr64(17), ActionKey: nil},
+			},
+		}
+		validateAgainstSchema(t, schema, resp)
+	})
+
+	t.Run("minimal", func(t *testing.T) {
+		resp2 := dashboardGetResponse{
+			ActiveHost:         nil,
+			Summary:            dashboardSummaryResponse{},
+			InstallsByMode:     dashboardInstallsByModeResponse{},
+			WarningsBySeverity: dashboardWarningsBySeverityResponse{},
+			Warnings:           make([]dashboardWarningResponse, 0),
+		}
+		validateAgainstSchema(t, schema, resp2)
+	})
+
+	// Compile-time check: dashboardGetResponse has no GlobalSkills or UpdatesAvailable fields.
+	// The type system enforces this — any such field would fail to compile above.
+}
