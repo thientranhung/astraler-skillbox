@@ -193,13 +193,30 @@ Go core, and shut down cleanly without leaving an orphaned `skillbox-core` proce
 `--user-data-dir` and `SKILLBOX_DB_PATH` so the smoke never touches the real Application Support
 database. It does not call Apple services, keychain, notarization, or `release:mac:full`.
 
+Then verify the distributable artifact itself (the DMG) boots correctly:
+
+```sh
+cd apps/desktop
+pnpm release:mac:dmg-smoke
+```
+
+This mounts the produced DMG read-only, copies the top-level `Astraler Skillbox.app` to a temp
+install dir (never `/Applications`) via `ditto`, and launches the *copy* — not the app on the mounted
+volume. It exercises the DMG → mount → copy-out → launch path, catching artifact-only failures
+(binary fails when read from a mounted volume, `.app` not copied into the DMG correctly, mount/volume
+permission differences) that `release:mac:launch-smoke` cannot see. Like the launch smoke, it sets a
+temp `--user-data-dir` and `SKILLBOX_DB_PATH`, strips credential env vars, asserts no orphaned sidecar,
+detaches the DMG, and cleans all temp dirs on every exit path. Credential-free, non-distributable,
+does not prove notarization or Gatekeeper acceptance.
+
 **Recommended sequence before a credentialed release attempt:**
 
 ```sh
-pnpm release:mac:dry-run    # build + ad-hoc sign + verify + manifest/checksum
+pnpm release:mac:dry-run        # build + ad-hoc sign + verify + manifest/checksum
 pnpm release:mac:launch-smoke   # boot the staged .app; confirm Go core starts and shuts down clean
+pnpm release:mac:dmg-smoke      # boot the app from the mounted DMG (the distributable artifact)
 # Then, once credentials are available:
-pnpm release:mac:full       # full credentialed release
+pnpm release:mac:full           # full credentialed release
 ```
 
 ---
