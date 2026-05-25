@@ -7,6 +7,8 @@ import {
   checkNotarization,
   checkConfig,
   checkSidecar,
+  checkHygiene,
+  checkVersion,
 } from "./release-mac-check.lib.mjs";
 
 describe("isSet", () => {
@@ -202,5 +204,29 @@ describe("checkSidecar (E1)", () => {
   });
   it("fails not executable", () => {
     expect(checkSidecar({ present: true, arch: "arm64", executable: false }).status).toBe("FAIL");
+  });
+});
+
+describe("checkHygiene (F1/F2)", () => {
+  const id = (rows, k) => rows.find((r) => r.id === k).status;
+  it("passes when nothing tracked", () => {
+    const rows = checkHygiene({ trackedArtifacts: [], trackedSecretFiles: [] });
+    expect(id(rows, "F1")).toBe("PASS");
+    expect(id(rows, "F2")).toBe("PASS");
+  });
+  it("fails F1 on a tracked build artifact", () => {
+    expect(id(checkHygiene({ trackedArtifacts: ["apps/desktop/dist/x.dmg"], trackedSecretFiles: [] }), "F1")).toBe("FAIL");
+  });
+  it("fails F2 on a tracked credential file", () => {
+    expect(id(checkHygiene({ trackedArtifacts: [], trackedSecretFiles: ["apps/desktop/cert.p8"] }), "F2")).toBe("FAIL");
+  });
+});
+
+describe("checkVersion (G1)", () => {
+  it("passes a real version", () => {
+    expect(checkVersion("0.1.0").status).toBe("PASS");
+  });
+  it("warns on 0.0.0", () => {
+    expect(checkVersion("0.0.0").status).toBe("WARN");
   });
 });
