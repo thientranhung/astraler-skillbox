@@ -530,6 +530,68 @@ Use the existing unsigned/ad-hoc DMG built from Slice 3A/3B1.
 
 ---
 
+## Release Dry-Run (Slice 3E) — No-Credential End-to-End Chain
+
+> **NON-DISTRIBUTABLE — AD-HOC SIGNED — NOT NOTARIZED**
+>
+> This command validates the local build → ad-hoc sign → verify → manifest/checksum chain without
+> Apple credentials. It does **not** prove Developer ID signing, notarization, stapling, or Gatekeeper
+> acceptance for customer distribution. For the canonical customer release, see `release:mac:full`.
+
+Distinctions from related commands:
+- `release:mac:full` — canonical customer release, gated by `release:mac:check` credentials.
+- `package:mac:unsigned` — packaging-only smoke with signing/hardened-runtime disabled; does **not** prove the verifier or manifest chain.
+- `release:mac:dry-run` (this section) — full chain proof with ad-hoc signing; hardened runtime **remains enabled**.
+
+### Prerequisites
+
+- Node 20+, pnpm 9+, Go 1.22+ installed.
+- No Apple credentials required.
+
+### Run the dry-run
+
+```sh
+(cd apps/desktop && pnpm release:mac:dry-run); echo "exit=$?"
+```
+
+Expected: `exit=0`. Output includes:
+- `NON-DISTRIBUTABLE`, `AD-HOC`, `NOT NOTARIZED` in start and success banners.
+- `[build:core]`, `[build]`, `[electron-builder]` prefixed build output.
+- `[release:mac:verify]` PASS (ad-hoc accepted via `--allow-adhoc`).
+- `[release:mac:manifest]` PASS — manifest JSON and `SHA256SUMS` written to `dist/`.
+- `[shasum]` checksum verification OK for the selected artifact only.
+
+### Artifact checks
+
+```sh
+# DMG exists
+ls "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg"
+
+# Manifest exists and has eight fields
+cat "apps/desktop/dist/Astraler Skillbox-0.1.0-arm64.dmg.manifest.json"
+
+# SHA256SUMS line was written/upserted
+cat apps/desktop/dist/SHA256SUMS
+```
+
+### Confirm dry-run does NOT trigger release preflight
+
+```sh
+(cd apps/desktop && pnpm release:mac:dry-run 2>&1 | grep "release:mac:check") || echo "clean"
+```
+
+Expected: `clean` (no `release:mac:check` invocation).
+
+### Confirm release:mac:full still exits at preflight
+
+```sh
+(cd apps/desktop && pnpm release:mac:full); echo "exit=$?"
+```
+
+Expected: `exit=1`, output contains `STOPPED: preflight (release:mac:check) failed`, no package output.
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:

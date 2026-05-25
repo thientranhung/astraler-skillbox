@@ -150,7 +150,40 @@ Expected output for a fully signed and notarized build:
 
 ---
 
-## 7. Current State on This Machine (No Credentials)
+## 7. No-Credential Release Dry-Run
+
+> **NON-DISTRIBUTABLE — AD-HOC SIGNED — NOT NOTARIZED**
+>
+> `pnpm release:mac:dry-run` is a local chain-validation harness that runs **without** any Apple
+> credentials. It proves the build → ad-hoc sign → verify → manifest/checksum pipeline works before
+> signing/notarization credentials are installed.
+
+```sh
+cd apps/desktop
+pnpm release:mac:dry-run
+```
+
+Pipeline:
+1. `build:core` — compile Go sidecar
+2. `build` — electron-vite renderer build
+3. `electron-builder --mac dmg -c.mac.identity=- -c.mac.notarize=false` — ad-hoc signed DMG (hardened runtime **stays enabled**)
+4. `release:mac:verify --allow-adhoc <dmg>` — artifact integrity check (ad-hoc accepted)
+5. `release:mac:manifest <dmg>` — write manifest JSON + SHA256SUMS
+6. `shasum -a 256 -c` — verify only the selected artifact's checksum line
+
+Differences from `release:mac:full`:
+- No `release:mac:check` preflight.
+- Ad-hoc identity (`-c.mac.identity=-`) instead of Developer ID.
+- `--allow-adhoc` passed to the verifier.
+- Hardened runtime is preserved (`hardenedRuntime=false` is never set).
+
+The output artifact is labeled `NON-DISTRIBUTABLE`, `AD-HOC`, and `NOT NOTARIZED`. It **does not**
+prove Developer ID signing, notarization, stapling, or Gatekeeper acceptance for customer distribution.
+Use `pnpm release:mac:full` (with credentials) for a customer-ready build.
+
+---
+
+## 8. Current State on This Machine (No Credentials)
 
 This machine currently has:
 - No Developer ID Application certificate installed
@@ -166,7 +199,7 @@ This is the expected customer-release behavior without credentials. Use `pnpm pa
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 ### `FAIL no signing credential`
 - Keychain path: import the Developer ID Application `.p12` and re-run `pnpm release:mac:check`.
@@ -197,7 +230,7 @@ This is the expected customer-release behavior without credentials. Use `pnpm pa
 
 ---
 
-## 9. Distribution
+## 10. Distribution
 
 The current tooling **does not push or upload** artifacts anywhere.
 Distribution (GitHub Releases, S3, CDN) is out of scope for this runbook.
