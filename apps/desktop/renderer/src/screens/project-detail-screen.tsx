@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertTriangle, AlertCircle, Info, PlusCircle } from "lucide-react";
 import { useProjectDetail } from "../features/projects/use-project-detail.js";
 import { useScanProject } from "../features/projects/use-scan-project.js";
 import { useOpenProjectFolder } from "../features/projects/use-open-project-folder.js";
 import { useOpenProjectTerminal } from "../features/projects/use-open-project-terminal.js";
 import { useRemoveProject } from "../features/projects/use-remove-project.js";
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
+import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
+import { useActiveHostSkills } from "../features/skills/use-active-host-skills.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import type { ProjectGetEntry, ProjectGetWarning, ProjectGetProvider } from "@contracts/index.js";
 
@@ -124,6 +126,8 @@ export function ProjectDetailScreen(): React.JSX.Element {
   const openFolder = useOpenProjectFolder();
   const openTerminal = useOpenProjectTerminal();
   const remove = useRemoveProject({ navigateAfter: true });
+  const activeHostSkills = useActiveHostSkills();
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   function handleRemove(): void {
     if (window.confirm("Remove this project from Skillbox? Files on disk will not be deleted.")) {
@@ -189,6 +193,14 @@ export function ProjectDetailScreen(): React.JSX.Element {
             >
               <TerminalSquare size={12} />
               Terminal
+            </button>
+            <button
+              onClick={() => setWizardOpen(true)}
+              title="Add skill to project"
+              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              <PlusCircle size={12} />
+              Add Skill
             </button>
             <button
               onClick={handleRemove}
@@ -306,6 +318,19 @@ export function ProjectDetailScreen(): React.JSX.Element {
           </div>
         )}
       </div>
+
+      {wizardOpen && validId != null && data != null && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="w-full max-w-lg rounded-lg border border-zinc-200 bg-white shadow-xl">
+            <AddSkillWizard
+              projectId={validId}
+              providers={data.providers}
+              skills={activeHostSkills.skills}
+              onClose={() => setWizardOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
