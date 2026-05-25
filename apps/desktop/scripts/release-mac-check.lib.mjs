@@ -211,3 +211,26 @@ export function checkSidecar(sidecar) {
   }
   return { id: "E1", category: "sidecar", status: "PASS", message: "staged sidecar is arm64 + executable" };
 }
+
+/** @param {{trackedArtifacts:string[], trackedSecretFiles:string[]}} facts */
+export function checkHygiene({ trackedArtifacts, trackedSecretFiles }) {
+  const out = [];
+  out.push(
+    trackedArtifacts.length === 0
+      ? { id: "F1", category: "hygiene", status: "PASS", message: "no tracked build artifacts under dist/ or resources/core" }
+      : { id: "F1", category: "hygiene", status: "FAIL", message: `tracked build artifacts present: ${trackedArtifacts.join(", ")}`, remediation: "git rm --cached the tracked dist/ or resources/core artifacts; keep them gitignored" }
+  );
+  out.push(
+    trackedSecretFiles.length === 0
+      ? { id: "F2", category: "hygiene", status: "PASS", message: "no tracked .p12/.p8 under apps/desktop" }
+      : { id: "F2", category: "hygiene", status: "FAIL", message: `tracked credential file(s): ${trackedSecretFiles.join(", ")}`, remediation: "git rm --cached the tracked .p12/.p8 file(s); never commit credentials" }
+  );
+  return out;
+}
+
+/** @param {string} version */
+export function checkVersion(version) {
+  return version && version !== "0.0.0"
+    ? { id: "G1", category: "version", status: "PASS", message: `version ${version}` }
+    : { id: "G1", category: "version", status: "WARN", message: `version is ${version || "unset"} (set a real release version)` };
+}
