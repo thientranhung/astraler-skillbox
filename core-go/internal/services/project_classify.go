@@ -1,8 +1,6 @@
 package services
 
 import (
-	"strings"
-
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/providers"
 )
@@ -75,7 +73,7 @@ func classifySymlinkEntry(entry providers.AdapterEntry, hosts []HostSummary) Cla
 	resolved := entry.ResolvedTarget
 	for i := range hosts {
 		h := &hosts[i]
-		if !isUnderSkillsPath(resolved, h.SkillsPath) {
+		if !isWithin(h.SkillsPath, resolved) {
 			continue
 		}
 
@@ -107,15 +105,6 @@ func classifySymlinkEntry(entry providers.AdapterEntry, hosts []HostSummary) Cla
 	}
 }
 
-// isUnderSkillsPath reports whether child is a direct or indirect descendant of
-// parent. The check uses a "/" suffix to prevent false positives where parent is
-// a prefix of a sibling directory name (e.g. /a/skillsX vs /a/skills).
-func isUnderSkillsPath(child, parent string) bool {
-	if parent == "" || child == "" {
-		return false
-	}
-	return strings.HasPrefix(child, parent+"/")
-}
 
 // ptrStr returns a pointer to s, or nil when s is empty.
 func ptrStr(s string) *string {
