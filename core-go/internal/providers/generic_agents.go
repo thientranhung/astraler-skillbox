@@ -17,8 +17,8 @@ const GenericAgentsKey = "generic_agents"
 //  1. .agents missing  → Present=false, DetectionStatus=missing, warning no_provider_detected
 //  2. .agents dir      → Present=true, detected; read .agents/skills for entries
 //  3. .agents/skills missing → detected, 0 entries, no error
-//  4. .agents exists but is unreadable dir → invalid_structure + warning
-//  5. .agents exists but is a file → invalid_structure + warning
+//  4. .agents exists but is unreadable dir → Present=true, invalid_structure + warning
+//  5. .agents exists but is a file → Present=true, invalid_structure + warning
 //
 // Adapter is read-only: no writes to filesystem or database.
 type GenericAgentsAdapter struct{}
@@ -53,11 +53,13 @@ func (a *GenericAgentsAdapter) Detect(projectRoot string, fs FsReader) (DetectRe
 		}, nil
 	}
 
-	// Rules 4+5: .agents exists but is not a readable directory.
+	// Rules 4+5: .agents exists but is not a readable directory (or is a file).
+	// Present=true because the provider path was found; DetectionStatus=invalid_structure.
 	if !pi.IsDir || !pi.Readable {
 		return DetectResult{
-			Present:         false,
+			Present:         true,
 			DetectedPath:    agentsPath,
+			SkillsPath:      skillsPath,
 			DetectionStatus: domain.DetectionStatusInvalidStructure,
 			Warnings: []AdapterWarning{{
 				Code:      "invalid_structure",

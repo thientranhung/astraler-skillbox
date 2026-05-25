@@ -257,6 +257,70 @@ func TestScanProjectSkills_MissingDir_ReturnsError(t *testing.T) {
 	}
 }
 
+// Fix 2: SymlinkTargetRaw must be the exact string from os.Readlink, not rewritten.
+func TestScanProjectSkills_RelativeSymlink_RawTargetPreserved(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "real-skill")
+	if err := os.Mkdir(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Create symlink with a relative target.
+	link := filepath.Join(dir, "rel-link")
+	if err := os.Symlink("real-skill", link); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := ScanProjectSkills(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := findEntry(t, entries, "rel-link")
+	if !e.IsSymlink {
+		t.Error("IsSymlink: want true")
+	}
+	// Raw target must be exactly what os.Readlink returns — NOT rewritten to absolute.
+	if e.SymlinkTargetRaw != "real-skill" {
+		t.Errorf("SymlinkTargetRaw: got %q want %q (exact os.Readlink value)", e.SymlinkTargetRaw, "real-skill")
+	}
+	// ResolvedTarget should still be resolved correctly.
+	if e.ResolvedTarget == "" {
+		t.Error("ResolvedTarget: want non-empty (EvalSymlinks should resolve relative target)")
+	}
+}
+
+// Fix 3: Symlink to a regular file must have IsDir=false.
+func TestScanProjectSkills_SymlinkToFile_IsDirFalse(t *testing.T) {
+	dir := t.TempDir()
+	targetFile, err := os.CreateTemp(dir, "target-file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetFile.Close()
+
+	link := filepath.Join(dir, "file-link")
+	if err := os.Symlink(targetFile.Name(), link); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := ScanProjectSkills(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := findEntry(t, entries, "file-link")
+	if !e.IsSymlink {
+		t.Error("IsSymlink: want true")
+	}
+	if e.Broken {
+		t.Error("Broken: want false (target exists)")
+	}
+	if e.IsDir {
+		t.Error("IsDir: want false for symlink pointing to a regular file")
+	}
+	if e.ResolvedTarget == "" {
+		t.Error("ResolvedTarget: want non-empty")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------

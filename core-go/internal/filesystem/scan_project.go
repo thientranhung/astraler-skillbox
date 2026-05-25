@@ -21,7 +21,7 @@ type ProjectEntry struct {
 	Path             string
 	IsDir            bool
 	IsSymlink        bool
-	SymlinkTargetRaw string // raw target from os.Readlink, normalised to absolute
+	SymlinkTargetRaw string // raw target exactly as returned by os.Readlink (may be relative)
 	ResolvedTarget   string // canonical path via EvalSymlinks; empty when Broken or non-symlink
 	Broken           bool   // EvalSymlinks returned ErrNotExist
 	ResolveError     error  // non-nil for other EvalSymlinks errors (loop, IO, …)
@@ -93,10 +93,7 @@ func ScanProjectSkills(skillsPath string) ([]ProjectEntry, error) {
 			if readErr != nil {
 				entry.Broken = true
 			} else {
-				// Normalise to absolute.
-				if !filepath.IsAbs(rawTarget) {
-					rawTarget = filepath.Clean(filepath.Join(filepath.Dir(absPath), rawTarget))
-				}
+				// Preserve the raw target exactly as returned by os.Readlink.
 				entry.SymlinkTargetRaw = rawTarget
 
 				resolved, evalErr := filepath.EvalSymlinks(absPath)
@@ -108,7 +105,10 @@ func ScanProjectSkills(skillsPath string) ([]ProjectEntry, error) {
 					}
 				} else {
 					entry.ResolvedTarget = resolved
-					entry.IsDir = true
+					// Determine IsDir from the resolved target's actual type.
+					if resolvedInfo, statErr := os.Stat(resolved); statErr == nil {
+						entry.IsDir = resolvedInfo.IsDir()
+					}
 				}
 			}
 		} else {
