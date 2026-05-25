@@ -59,3 +59,44 @@ type OperationRunner interface {
 	// (false, validation_error) if operationID not found; (false, db_error) on failure.
 	Cancel(ctx context.Context, operationID int64) (bool, error)
 }
+
+// ProjectProviderSummary is a per-provider view used by project list and detail queries.
+type ProjectProviderSummary struct {
+	ProjectProviderID   int64
+	ProviderKey         string
+	ProviderDisplayName string
+	ProviderStatus      domain.ProviderStatus
+	DetectionStatus     domain.DetectionStatus
+	DetectedPath        *string
+	SkillsPath          *string
+	EntryCount          int
+}
+
+// ProjectRepo is the minimal repository interface for projects.
+type ProjectRepo interface {
+	UpsertByPath(ctx context.Context, name, path string) (int64, bool, error)
+	GetByID(ctx context.Context, id int64) (*domain.Project, error)
+	List(ctx context.Context) ([]domain.Project, error)
+}
+
+// ProjectFilesystem provides the read-only filesystem operations needed by the project service.
+type ProjectFilesystem interface {
+	ValidateProjectPath(path string) error
+	NormalizeAbs(path string) (string, error)
+}
+
+// ProjectProviderRepo reads project_providers joined with definitions and entry counts.
+type ProjectProviderRepo interface {
+	ListByProject(ctx context.Context, projectID int64) ([]ProjectProviderSummary, error)
+}
+
+// ProjectWarningRepo reads warnings across project, project_provider, and install scopes.
+type ProjectWarningRepo interface {
+	CountActiveForProject(ctx context.Context, projectID int64) (int, error)
+	ListActiveForProject(ctx context.Context, projectID int64) ([]domain.Warning, error)
+}
+
+// ProjectInstallRepo reads observed install entries for a project.
+type ProjectInstallRepo interface {
+	ListByProject(ctx context.Context, projectID int64) ([]domain.Install, error)
+}
