@@ -293,6 +293,32 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 - On a machine without Apple credentials: exits non-zero at preflight; `package:mac` is never invoked.
 - See SMOKE.md → "Release Orchestrator (Slice 3B2C)".
 
+### Packaged app launch smoke (Slice 3F)
+
+- **Entitlement**: `com.apple.security.cs.disable-library-validation=true` is set in **both**
+  `build/entitlements.mac.plist` (main app process) and `build/entitlements.mac.inherit.plist`
+  (Electron helper processes). This is a deliberate hardened-runtime exception required to prevent
+  the `Electron Framework ... different Team IDs` / `Library not loaded` crash when launching an
+  ad-hoc signed bundle locally.
+  - Main-app-only was tested first: with the entitlement absent from `entitlements.mac.inherit.plist`,
+    `release:mac:launch-smoke` failed immediately with `Astraler Skillbox Helper.app` unable to load
+    `Electron Framework` — `not valid for use in process: mapping process and mapped file (non-platform)
+    have different Team IDs`. Electron forks GPU, network-service, and renderer helper processes that
+    each independently load `Electron Framework`; the main-process entitlement does not propagate to them.
+  - The inherit entitlement is therefore required for the helper processes, not just the main process.
+  - The signed-release path (Developer ID + notarization) is unaffected; Developer ID/notarization
+    behaviour must be validated separately once real credentials are available.
+- `pnpm release:mac:launch-smoke` — proves the staged `.app` at `dist/mac-arm64/Astraler Skillbox.app`
+  can boot, start the bundled `skillbox-core` sidecar, and shut down cleanly.
+  - Requires an already-packaged app (run `release:mac:dry-run` first).
+  - Sets `--user-data-dir=<tmpdir>` and `SKILLBOX_DB_PATH=<tmpdir>/skillbox.db` so the smoke never touches the real Application Support database.
+  - Streams app stdout/stderr with `[app]` / `[app][err]` prefixes.
+  - Waits up to 30 seconds for `[manager] Go core ready`; fails on `Library not loaded`, `not valid for use in process`, `server.ready timeout`, or `[manager] FATAL`.
+  - After readiness: sends SIGTERM, waits, then asserts no `skillbox-core` inside the staged app remains.
+  - Always removes the temp dir on exit (success or failure).
+  - Does **not** call Apple services, keychain, notarization, upload, `release:mac:check`, or `release:mac:full`.
+- See SMOKE.md → "Packaged App Launch Smoke (Slice 3F)".
+
 ### Release dry-run — no-credential end-to-end chain (Slice 3E)
 
 > **NON-DISTRIBUTABLE — AD-HOC SIGNED — NOT NOTARIZED**

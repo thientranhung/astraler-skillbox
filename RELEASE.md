@@ -150,7 +150,7 @@ Expected output for a fully signed and notarized build:
 
 ---
 
-## 7. No-Credential Release Dry-Run
+## 7. No-Credential Release Dry-Run and Launch Smoke
 
 > **NON-DISTRIBUTABLE — AD-HOC SIGNED — NOT NOTARIZED**
 >
@@ -180,6 +180,27 @@ Differences from `release:mac:full`:
 The output artifact is labeled `NON-DISTRIBUTABLE`, `AD-HOC`, and `NOT NOTARIZED`. It **does not**
 prove Developer ID signing, notarization, stapling, or Gatekeeper acceptance for customer distribution.
 Use `pnpm release:mac:full` (with credentials) for a customer-ready build.
+
+After a successful dry-run, verify the packaged app actually boots before attempting a credentialed release:
+
+```sh
+cd apps/desktop
+pnpm release:mac:launch-smoke
+```
+
+This proves the staged `.app` at `dist/mac-arm64/Astraler Skillbox.app` can boot, start the bundled
+Go core, and shut down cleanly without leaving an orphaned `skillbox-core` process. It sets a temporary
+`--user-data-dir` and `SKILLBOX_DB_PATH` so the smoke never touches the real Application Support
+database. It does not call Apple services, keychain, notarization, or `release:mac:full`.
+
+**Recommended sequence before a credentialed release attempt:**
+
+```sh
+pnpm release:mac:dry-run    # build + ad-hoc sign + verify + manifest/checksum
+pnpm release:mac:launch-smoke   # boot the staged .app; confirm Go core starts and shuts down clean
+# Then, once credentials are available:
+pnpm release:mac:full       # full credentialed release
+```
 
 ---
 

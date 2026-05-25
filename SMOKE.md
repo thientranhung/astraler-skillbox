@@ -592,6 +592,48 @@ Expected: `exit=1`, output contains `STOPPED: preflight (release:mac:check) fail
 
 ---
 
+## Packaged App Launch Smoke (Slice 3F)
+
+Credential-free. Requires an already-packaged staged `.app` from `release:mac:dry-run`.
+Proves the packaged app boots, the bundled Go core starts, and no orphaned `skillbox-core` remains after shutdown.
+Does **not** prove Gatekeeper acceptance or notarization.
+
+### Prerequisites
+
+- A staged app at `apps/desktop/dist/mac-arm64/Astraler Skillbox.app` (from `release:mac:dry-run`).
+- A display session (Electron requires a real BrowserWindow; not compatible with headless-only environments).
+
+### Run the dry-run first, then launch-smoke
+
+```sh
+(cd apps/desktop && pnpm release:mac:dry-run); echo "exit=$?"
+(cd apps/desktop && pnpm release:mac:launch-smoke); echo "exit=$?"
+```
+
+Expected for `release:mac:launch-smoke`:
+- `exit=0`
+- Output contains `[manager] Go core ready` (via the `[app][err]` prefix)
+- Final line: `[release:mac:launch-smoke] OK: app launched, Go core ready, no orphaned sidecar`
+- No `Library not loaded`, `not valid for use in process`, `server.ready timeout`, or `[manager] FATAL` lines
+
+### Confirm no Apple services are called
+
+```sh
+(cd apps/desktop && pnpm release:mac:launch-smoke 2>&1 | grep -E "release:mac:check|release:mac:full|notarization|keychain") || echo "clean"
+```
+
+Expected: `clean`.
+
+### Confirm no orphaned sidecar after smoke
+
+```sh
+pgrep -fl skillbox-core || echo "clean"
+```
+
+Expected: `clean` (no `skillbox-core` from the staged app remains after smoke completes).
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:
