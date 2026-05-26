@@ -24,7 +24,7 @@ export function SkillRow({ skill }: SkillRowProps): React.JSX.Element {
         <SkillStatusBadge status={skill.status} />
       </td>
       <td className="px-3 py-2 text-sm text-zinc-600">{skill.projectsUsingCount}</td>
-      <td className="px-3 py-2 font-mono text-xs text-zinc-500">{skill.relativePath}</td>
+      <td className="max-w-md break-all px-3 py-2 font-mono text-xs leading-snug text-zinc-500">{skill.relativePath}</td>
       <td className="px-3 py-2 text-sm text-zinc-400">{skill.sourceLabel ?? "—"}</td>
     </tr>
   );

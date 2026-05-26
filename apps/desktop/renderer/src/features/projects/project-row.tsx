@@ -45,7 +45,7 @@ export function ProjectRow({ project }: ProjectRowProps): React.JSX.Element {
           className="block w-full text-left"
         >
           <div className="text-sm font-medium text-zinc-900 hover:underline">{project.name}</div>
-          <div className="font-mono text-xs text-zinc-400">{project.path}</div>
+          <div className="break-all font-mono text-xs leading-snug text-zinc-400">{project.path}</div>
         </button>
       </td>
       <td className="px-3 py-2">

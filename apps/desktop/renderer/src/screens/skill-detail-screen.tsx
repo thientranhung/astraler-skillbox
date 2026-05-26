@@ -99,17 +99,17 @@ export function SkillDetailScreen(): React.JSX.Element {
                   <span className="w-28 shrink-0 text-zinc-400">Status</span>
                   <SkillStatusBadge status={data.skill.status} />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-start gap-2">
                   <span className="w-28 shrink-0 text-zinc-400">Relative path</span>
-                  <span className="font-mono text-zinc-600">{data.skill.relativePath}</span>
+                  <span className="break-all font-mono leading-snug text-zinc-600">{data.skill.relativePath}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-start gap-2">
                   <span className="w-28 shrink-0 text-zinc-400">Absolute path</span>
-                  <span className="truncate font-mono text-zinc-600" title={data.skill.absolutePath}>{data.skill.absolutePath}</span>
+                  <span className="break-all font-mono leading-snug text-zinc-600">{data.skill.absolutePath}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-start gap-2">
                   <span className="w-28 shrink-0 text-zinc-400">Host folder</span>
-                  <span className="truncate font-mono text-zinc-600" title={data.skill.hostPath}>{data.skill.hostPath}</span>
+                  <span className="break-all font-mono leading-snug text-zinc-600">{data.skill.hostPath}</span>
                 </div>
                 {data.skill.sourceLabel != null && (
                   <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export function SkillDetailScreen(): React.JSX.Element {
                               {p.status}
                             </span>
                           </td>
-                          <td className="max-w-xs truncate px-3 py-1.5 font-mono text-xs text-zinc-400" title={p.projectSkillPath}>
+                          <td className="max-w-md break-all px-3 py-1.5 font-mono text-xs leading-snug text-zinc-400">
                             {p.projectSkillPath}
                           </td>
                         </tr>
