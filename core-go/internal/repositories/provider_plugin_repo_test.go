@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -274,7 +275,10 @@ func TestProviderPluginRepo_CommitLayerScan_WarningsPersisted(t *testing.T) {
 		ScanStatus:           domain.PluginLayerScanOK,
 		SettingsFilePath:     "/tmp/s.json",
 		LastScannedAt:        time.Now().UTC(),
-		Warnings:             []string{"truncated at 1000 entries", "skipped invalid key \"bad\""},
+		Warnings: []string{
+			"enabledPlugins truncated at 1000 entries",
+			"skipped enabledPlugins entry: key format must be name@marketplace",
+		},
 	}
 	if err := r.CommitLayerScan(ctx, scan, nil, nil); err != nil {
 		t.Fatalf("CommitLayerScan: %v", err)
@@ -290,8 +294,14 @@ func TestProviderPluginRepo_CommitLayerScan_WarningsPersisted(t *testing.T) {
 	if len(scans[0].Warnings) != 2 {
 		t.Fatalf("warnings: got %d want 2", len(scans[0].Warnings))
 	}
-	if scans[0].Warnings[0] != "truncated at 1000 entries" {
+	if scans[0].Warnings[0] != "enabledPlugins truncated at 1000 entries" {
 		t.Errorf("warning[0]: got %q", scans[0].Warnings[0])
+	}
+	// Verify no raw key content leaks through
+	for _, w := range scans[0].Warnings {
+		if strings.Contains(w, "bad") || strings.Contains(w, "%q") {
+			t.Errorf("warning contains raw key content: %q", w)
+		}
 	}
 }
 
