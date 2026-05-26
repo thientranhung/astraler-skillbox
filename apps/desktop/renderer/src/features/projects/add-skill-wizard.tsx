@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import type { ProjectGetProvider, SkillListSkill } from "@contracts/index.js";
+import { ProviderIcon } from "../../components/provider-icon.js";
 import { useInstallSkill } from "./use-install-skill.js";
 
 interface AddSkillWizardProps {
@@ -89,7 +90,10 @@ export function AddSkillWizard({
                   onChange={() => setSelectedProviderKey(p.providerKey)}
                   className="accent-blue-600"
                 />
-                {p.displayName}
+                <span className="inline-flex items-center gap-1.5">
+                  <ProviderIcon providerKey={p.providerKey} />
+                  {p.displayName}
+                </span>
               </label>
             ))}
           </div>
