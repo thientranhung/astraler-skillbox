@@ -408,3 +408,130 @@ func TestProviderRegistryService_ResetPaths_InvalidScope(t *testing.T) {
 		t.Errorf("expected validation_error, got %v", err)
 	}
 }
+
+// -- GlobalPaths tests --
+
+// makeGlobalEntry builds a registry entry with has_global_level and optional global candidates.
+func makeGlobalEntry(key string, hasGlobal bool, detectRel, skillsRel string) domain.ProviderRegistryEntry {
+	iconKey := key
+	e := domain.ProviderRegistryEntry{
+		Definition: domain.ProviderDefinition{
+			ID:             1,
+			Key:            key,
+			DisplayName:    key,
+			ProviderType:   key,
+			IconKey:        &iconKey,
+			Status:         domain.ProviderStatusSupported,
+			HasGlobalLevel: hasGlobal,
+		},
+	}
+	if detectRel != "" {
+		e.Candidates = append(e.Candidates, domain.ProviderPathCandidate{
+			RelativePath: detectRel, Scope: "global", Purpose: "detect", Priority: 10, VerificationStatus: "assumed",
+		})
+	}
+	if skillsRel != "" {
+		e.Candidates = append(e.Candidates, domain.ProviderPathCandidate{
+			RelativePath: skillsRel, Scope: "global", Purpose: "skills", Priority: 10, VerificationStatus: "assumed",
+		})
+	}
+	return e
+}
+
+// TestGlobalPaths_BuiltinCandidates returns the seeded global detect/skills paths.
+func TestGlobalPaths_BuiltinCandidates(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{
+		makeGlobalEntry("generic_agents", true, "~/.agents", "~/.agents/skills"),
+	}
+	svc := makeSvc(entries, nil)
+
+	got, err := svc.GlobalPaths(context.Background())
+	if err != nil {
+		t.Fatalf("GlobalPaths: %v", err)
+	}
+	p, ok := got["generic_agents"]
+	if !ok {
+		t.Fatal("expected generic_agents in result")
+	}
+	if p.DetectRel != "~/.agents" {
+		t.Errorf("DetectRel: got %q want ~/.agents", p.DetectRel)
+	}
+	if p.SkillsRel != "~/.agents/skills" {
+		t.Errorf("SkillsRel: got %q want ~/.agents/skills", p.SkillsRel)
+	}
+}
+
+// TestGlobalPaths_GlobalOverride replaces the builtin skills path.
+func TestGlobalPaths_GlobalOverride(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{
+		makeGlobalEntry("generic_agents", true, "~/.agents", "~/.agents/skills"),
+	}
+	overrides := []domain.ProviderPathOverride{
+		{ProviderDefinitionID: 1, Scope: "global", Purpose: "skills", Paths: []string{"/custom/skills"}},
+	}
+	svc := makeSvc(entries, overrides)
+
+	got, err := svc.GlobalPaths(context.Background())
+	if err != nil {
+		t.Fatalf("GlobalPaths: %v", err)
+	}
+	p := got["generic_agents"]
+	if p.SkillsRel != "/custom/skills" {
+		t.Errorf("SkillsRel: got %q want /custom/skills", p.SkillsRel)
+	}
+	// Detect path not overridden — should still use builtin.
+	if p.DetectRel != "~/.agents" {
+		t.Errorf("DetectRel: got %q want ~/.agents", p.DetectRel)
+	}
+}
+
+// TestGlobalPaths_NoGlobalLevel excludes providers with has_global_level=false.
+func TestGlobalPaths_NoGlobalLevel(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{
+		makeGlobalEntry("codex", false, "", ""),
+	}
+	svc := makeSvc(entries, nil)
+
+	got, err := svc.GlobalPaths(context.Background())
+	if err != nil {
+		t.Fatalf("GlobalPaths: %v", err)
+	}
+	if _, ok := got["codex"]; ok {
+		t.Error("codex should not appear in GlobalPaths (has_global_level=false)")
+	}
+}
+
+// TestGlobalPaths_MissingCandidates_Excluded guards against a provider that has has_global_level=true
+// but no seeded global detect/skills candidates. Without this guard, expandGlobalPath("") would
+// return homeDir causing the adapter to scan the home directory itself.
+func TestGlobalPaths_MissingCandidates_Excluded(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{
+		makeGlobalEntry("future_provider", true, "", ""),
+	}
+	svc := makeSvc(entries, nil)
+
+	got, err := svc.GlobalPaths(context.Background())
+	if err != nil {
+		t.Fatalf("GlobalPaths: %v", err)
+	}
+	if _, ok := got["future_provider"]; ok {
+		t.Error("future_provider should be excluded: has_global_level=true but no global candidates seeded")
+	}
+}
+
+// TestGlobalPaths_PartialCandidates_Excluded guards the case where only one of detect/skills
+// candidates is seeded. Both are required for a well-formed global location.
+func TestGlobalPaths_PartialCandidates_Excluded(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{
+		makeGlobalEntry("half_provider", true, "~/.half", ""),
+	}
+	svc := makeSvc(entries, nil)
+
+	got, err := svc.GlobalPaths(context.Background())
+	if err != nil {
+		t.Fatalf("GlobalPaths: %v", err)
+	}
+	if _, ok := got["half_provider"]; ok {
+		t.Error("half_provider should be excluded: skills candidate missing")
+	}
+}

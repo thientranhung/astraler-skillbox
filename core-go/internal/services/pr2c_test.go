@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
@@ -306,4 +307,66 @@ func (r *singleAdapterRegistry) Get(key string) (providers.ProviderAdapter, bool
 		return r.adapter, true
 	}
 	return nil, false
+}
+
+// -- Issue 1 regression tests: ProviderDefByKey DB error must fail the scan --
+
+// TestPR2C_ProviderDefDBError_FailsScan verifies that a real DB error from ProviderDefByKey
+// fails the scan rather than silently skipping the provider.
+func TestPR2C_ProviderDefDBError_FailsScan(t *testing.T) {
+	dbErr := errors.New("database is locked")
+	// defID=0 with non-nil error simulates a real DB failure (not a not-found).
+	globalRepo := &mockGlobalRepo{defID: 0, defErr: dbErr}
+	scanWriter := &mockGlobalScanWriter{}
+	home := "/fakehome"
+
+	capAdapter := &capturingGlobalAdapter{
+		key:          providers.GenericAgentsKey,
+		result:       providers.GlobalDetectResult{},
+		capturedPath: &providers.GlobalScopePaths{},
+	}
+
+	// No resolver: adapter defaults are used, so the provider is not skipped by the resolver.
+	fs := newMockGlobalFS(home)
+	svc := newGlobalServiceWithResolver(globalRepo, scanWriter, fs, capAdapter, nil)
+
+	_, err := svc.ScanGlobal(context.Background())
+	if err == nil {
+		t.Fatal("expected scan to fail when ProviderDefByKey returns a DB error")
+	}
+	var ae *domain.AppError
+	if !errors.As(err, &ae) || ae.Code != domain.CodeDatabase {
+		t.Errorf("expected database_error, got %v", err)
+	}
+	// No commit should have happened.
+	if len(scanWriter.committed) != 0 {
+		t.Errorf("expected no commits after DB error, got %d", len(scanWriter.committed))
+	}
+}
+
+// TestPR2C_ProviderDefNotFound_SkipsSilently verifies that when ProviderDefByKey returns
+// defID=0 with no error (provider not seeded), the provider is silently skipped and
+// the scan succeeds with no commits.
+func TestPR2C_ProviderDefNotFound_SkipsSilently(t *testing.T) {
+	// defID=0 with nil error: the new contract for "not found".
+	globalRepo := &mockGlobalRepo{defID: 0, defErr: nil}
+	scanWriter := &mockGlobalScanWriter{}
+	home := "/fakehome"
+
+	capAdapter := &capturingGlobalAdapter{
+		key:          providers.GenericAgentsKey,
+		result:       providers.GlobalDetectResult{Present: true, Status: domain.GlobalLocationStatusActive},
+		capturedPath: &providers.GlobalScopePaths{},
+	}
+
+	fs := newMockGlobalFS(home)
+	svc := newGlobalServiceWithResolver(globalRepo, scanWriter, fs, capAdapter, nil)
+
+	_, err := svc.ScanGlobal(context.Background())
+	if err != nil {
+		t.Fatalf("expected scan to succeed for not-found provider, got: %v", err)
+	}
+	if len(scanWriter.committed) != 0 {
+		t.Errorf("expected 0 commits for not-found provider, got %d", len(scanWriter.committed))
+	}
 }

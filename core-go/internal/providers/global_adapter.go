@@ -41,7 +41,11 @@ type GlobalProviderAdapter interface {
 // If rel starts with "~/", strip the "~/" prefix and join with homeDir.
 // If rel starts with "/", treat as absolute.
 // Otherwise join rel with homeDir.
+// Returns "" for empty input so callers can detect misconfiguration.
 func expandGlobalPath(homeDir, rel string) string {
+	if rel == "" {
+		return ""
+	}
 	if strings.HasPrefix(rel, "~/") {
 		return homeDir + "/" + rel[2:]
 	}
