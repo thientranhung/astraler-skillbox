@@ -225,6 +225,69 @@ func (s *ProviderRegistryService) ProjectPaths(ctx context.Context) (map[string]
 	return result, nil
 }
 
+// GlobalPaths returns effective global-scope detect and skills relative paths for every
+// provider that has has_global_level=true: override.Paths[0] if a global-scope override
+// exists, else the builtin candidate from the DB.
+// Providers with has_global_level=false are excluded from the returned map.
+func (s *ProviderRegistryService) GlobalPaths(ctx context.Context) (map[string]providers.GlobalScopePaths, error) {
+	entries, err := s.repo.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider registry", err.Error())
+	}
+	overrides, err := s.overrideRepo.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider path overrides", err.Error())
+	}
+
+	// Index global-scope overrides: providerDefinitionID → purpose → first path.
+	type overrideKey struct {
+		provID  int64
+		purpose string
+	}
+	overrideFirst := make(map[overrideKey]string)
+	for _, o := range overrides {
+		if o.Scope != "global" || len(o.Paths) == 0 {
+			continue
+		}
+		k := overrideKey{o.ProviderDefinitionID, o.Purpose}
+		if _, seen := overrideFirst[k]; !seen {
+			overrideFirst[k] = o.Paths[0]
+		}
+	}
+
+	result := make(map[string]providers.GlobalScopePaths)
+	for _, e := range entries {
+		if !e.Definition.HasGlobalLevel {
+			continue
+		}
+		var p providers.GlobalScopePaths
+		// Resolve detect rel.
+		if v, ok := overrideFirst[overrideKey{e.Definition.ID, "detect"}]; ok {
+			p.DetectRel = v
+		} else {
+			for _, c := range e.Candidates {
+				if c.Scope == "global" && c.Purpose == "detect" {
+					p.DetectRel = c.RelativePath
+					break
+				}
+			}
+		}
+		// Resolve skills rel.
+		if v, ok := overrideFirst[overrideKey{e.Definition.ID, "skills"}]; ok {
+			p.SkillsRel = v
+		} else {
+			for _, c := range e.Candidates {
+				if c.Scope == "global" && c.Purpose == "skills" {
+					p.SkillsRel = c.RelativePath
+					break
+				}
+			}
+		}
+		result[e.Definition.Key] = p
+	}
+	return result, nil
+}
+
 func validatePath(p, scope string) error {
 	if p == "" {
 		return domain.NewValidationError("Empty path", "path must not be empty")

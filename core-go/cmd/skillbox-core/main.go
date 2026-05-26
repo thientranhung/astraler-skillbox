@@ -82,7 +82,8 @@ func main() {
 
 	globalScanRepo := repositories.NewGlobalScanRepo(db)
 	globalLocationRepo := repositories.NewGlobalLocationRepo(db)
-	globalSvc := services.NewGlobalSkillsService(globalLocationRepo, globalScanRepo, appSettingsRepo, hostRepo, skillRepo, providerRegistry, fs, runner)
+	globalSvc := services.NewGlobalSkillsService(globalLocationRepo, globalScanRepo, appSettingsRepo, hostRepo, skillRepo, providerRegistry, fs, runner).
+		WithGlobalPathResolver(providerRegistrySvc)
 
 	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc)
 

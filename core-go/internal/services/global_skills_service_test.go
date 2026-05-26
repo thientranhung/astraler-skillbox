@@ -105,10 +105,13 @@ func (m *mockGlobalAdapter) Key() string { return m.key }
 func (m *mockGlobalAdapter) DefaultProjectPaths() providers.ProjectScopePaths {
 	return providers.ProjectScopePaths{}
 }
+func (m *mockGlobalAdapter) DefaultGlobalPaths() providers.GlobalScopePaths {
+	return providers.GlobalScopePaths{}
+}
 func (m *mockGlobalAdapter) Detect(_ string, _ providers.ProjectScopePaths, _ providers.FsReader) (providers.DetectResult, error) {
 	return providers.DetectResult{}, nil
 }
-func (m *mockGlobalAdapter) DetectGlobal(_ string, _ providers.FsReader) (providers.GlobalDetectResult, error) {
+func (m *mockGlobalAdapter) DetectGlobal(_ string, _ providers.GlobalScopePaths, _ providers.FsReader) (providers.GlobalDetectResult, error) {
 	return m.result, m.err
 }
 

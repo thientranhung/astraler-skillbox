@@ -115,11 +115,15 @@ func (a *GenericAgentsAdapter) Detect(projectRoot string, paths ProjectScopePath
 	return result, nil
 }
 
-// DetectGlobal detects the global generic_agents provider rooted at homeDir/.agents.
+func (a *GenericAgentsAdapter) DefaultGlobalPaths() GlobalScopePaths {
+	return GlobalScopePaths{DetectRel: GenericAgentsDetectPath, SkillsRel: GenericAgentsSkillsPath}
+}
+
+// DetectGlobal detects the global generic_agents provider rooted at homeDir using the resolved paths.
 // It is read-only: no folder creation occurs.
-func (a *GenericAgentsAdapter) DetectGlobal(homeDir string, fs FsReader) (GlobalDetectResult, error) {
-	agentsPath := filepath.Join(homeDir, GenericAgentsDetectPath)
-	skillsPath := filepath.Join(homeDir, GenericAgentsSkillsPath)
+func (a *GenericAgentsAdapter) DetectGlobal(homeDir string, paths GlobalScopePaths, fs FsReader) (GlobalDetectResult, error) {
+	agentsPath := expandGlobalPath(homeDir, paths.DetectRel)
+	skillsPath := expandGlobalPath(homeDir, paths.SkillsRel)
 
 	pi, err := fs.PathInfo(agentsPath)
 	if err != nil {

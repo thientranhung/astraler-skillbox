@@ -147,6 +147,12 @@ type ProjectProviderPathResolver interface {
 	ProjectPaths(ctx context.Context) (map[string]providers.ProjectScopePaths, error)
 }
 
+// GlobalProviderPathResolver returns effective global-scope detect/skills rel paths per provider key.
+// Override ?? builtin resolution is done inside; callers stay DB-free.
+type GlobalProviderPathResolver interface {
+	GlobalPaths(ctx context.Context) (map[string]providers.GlobalScopePaths, error)
+}
+
 // SkillHostLister lists all skill host folders regardless of status.
 type SkillHostLister interface {
 	ListAll(ctx context.Context) ([]domain.SkillHostFolder, error)
