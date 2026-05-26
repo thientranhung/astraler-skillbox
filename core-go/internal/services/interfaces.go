@@ -141,6 +141,12 @@ type ProviderRegistry interface {
 	Get(key string) (providers.ProviderAdapter, bool)
 }
 
+// ProjectProviderPathResolver returns effective project-scope detect/skills rel paths per provider key.
+// Override ?? builtin resolution is done inside the implementation; callers stay DB-free.
+type ProjectProviderPathResolver interface {
+	ProjectPaths(ctx context.Context) (map[string]providers.ProjectScopePaths, error)
+}
+
 // SkillHostLister lists all skill host folders regardless of status.
 type SkillHostLister interface {
 	ListAll(ctx context.Context) ([]domain.SkillHostFolder, error)

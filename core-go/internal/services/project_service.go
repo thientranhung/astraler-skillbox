@@ -9,6 +9,7 @@ import (
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
 	"github.com/astraler/skillbox/core-go/internal/operations"
+	"github.com/astraler/skillbox/core-go/internal/providers"
 	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
@@ -60,6 +61,8 @@ type ProjectService struct {
 	providerDefRepo    ProviderDefinitionRepo
 	hostLister         SkillHostLister
 	skillsByHostLister SkillsByHostLister
+	// pathResolver resolves effective project-scope detect/skills paths (override ?? builtin).
+	pathResolver ProjectProviderPathResolver
 	// install deps — nil until WithInstallDeps is called
 	installFS        InstallFilesystem
 	activeHostReader ActiveHostReader
@@ -107,6 +110,13 @@ func (s *ProjectService) WithProviderDeps(
 	s.providerDefRepo = pdRepo
 	s.hostLister = hostLister
 	s.skillsByHostLister = skillsByHostLister
+	return s
+}
+
+// WithPathResolver attaches the effective-path resolver used by scan and install.
+// Returns the receiver to allow chaining.
+func (s *ProjectService) WithPathResolver(resolver ProjectProviderPathResolver) *ProjectService {
+	s.pathResolver = resolver
 	return s
 }
 
@@ -338,12 +348,26 @@ func (s *ProjectService) scanProjectInternal(
 		return nil, err
 	}
 
+	// Resolve effective project-scope paths (override ?? builtin) once per scan.
+	var effectivePathsMap map[string]providers.ProjectScopePaths
+	if s.pathResolver != nil {
+		var resolveErr error
+		effectivePathsMap, resolveErr = s.pathResolver.ProjectPaths(ctx)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+	}
+
 	adapters := s.providerRegistry.All()
 	providerResults := make([]repositories.ProviderScanResult, 0, len(adapters))
 	var projectWarnings []domain.Warning
 
 	for _, adapter := range adapters {
-		result, detectErr := adapter.Detect(project.Path, s.fs)
+		paths, ok := effectivePathsMap[adapter.Key()]
+		if !ok {
+			paths = adapter.DefaultProjectPaths()
+		}
+		result, detectErr := adapter.Detect(project.Path, paths, s.fs)
 		if detectErr != nil {
 			continue // non-fatal: skip this provider
 		}

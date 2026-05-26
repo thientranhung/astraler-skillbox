@@ -102,7 +102,10 @@ type mockGlobalAdapter struct {
 }
 
 func (m *mockGlobalAdapter) Key() string { return m.key }
-func (m *mockGlobalAdapter) Detect(_ string, _ providers.FsReader) (providers.DetectResult, error) {
+func (m *mockGlobalAdapter) DefaultProjectPaths() providers.ProjectScopePaths {
+	return providers.ProjectScopePaths{}
+}
+func (m *mockGlobalAdapter) Detect(_ string, _ providers.ProjectScopePaths, _ providers.FsReader) (providers.DetectResult, error) {
 	return providers.DetectResult{}, nil
 }
 func (m *mockGlobalAdapter) DetectGlobal(_ string, _ providers.FsReader) (providers.GlobalDetectResult, error) {

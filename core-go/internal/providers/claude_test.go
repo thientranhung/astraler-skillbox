@@ -18,7 +18,7 @@ func TestClaudeAdapter_Key(t *testing.T) {
 
 func TestClaudeAdapter_ClaudeMissing(t *testing.T) {
 	a := providers.NewClaudeAdapter()
-	result, err := a.Detect("/project", newMockFS())
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), newMockFS())
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestClaudeAdapter_ClaudeIsFile_InvalidStructure(t *testing.T) {
 	fs := newMockFS()
 	fs.setFile("/project/.claude")
 
-	result, err := a.Detect("/project", fs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), fs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestClaudeAdapter_ClaudeUnreadable_InvalidStructure(t *testing.T) {
 	fs := newMockFS()
 	fs.setUnreadableDir("/project/.claude")
 
-	result, err := a.Detect("/project", fs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), fs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestClaudeAdapter_SkillsMissing_DetectedZeroEntries(t *testing.T) {
 	fs := newMockFS()
 	fs.setDir("/project/.claude")
 
-	result, err := a.Detect("/project", fs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), fs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestClaudeAdapter_WithEntries(t *testing.T) {
 		{Name: "skill-b", Path: "/project/.claude/skills/skill-b", IsSymlink: true, Broken: true},
 	}
 
-	result, err := a.Detect("/project", mfs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), mfs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestClaudeAdapter_UnreadableSkillsDir_Warning(t *testing.T) {
 	base.setDir("/project/.claude/skills")
 	mfs := &listErrFS{mockFS: base, errForPath: "/project/.claude/skills"}
 
-	result, err := a.Detect("/project", mfs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), mfs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}

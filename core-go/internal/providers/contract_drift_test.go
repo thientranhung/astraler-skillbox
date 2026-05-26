@@ -45,7 +45,7 @@ func TestContractDrift_AdapterStatusesAreContractAllowed(t *testing.T) {
 	for _, adapter := range reg.All() {
 		for fixtureName, fs := range fixtureFS {
 			name := fmt.Sprintf("%s/%s", adapter.Key(), fixtureName)
-			result, err := adapter.Detect("/project", fs)
+			result, err := adapter.Detect("/project", adapter.DefaultProjectPaths(), fs)
 			if err != nil {
 				t.Errorf("%s: Detect returned error: %v", name, err)
 				continue

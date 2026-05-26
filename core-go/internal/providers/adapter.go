@@ -43,10 +43,21 @@ type DetectResult struct {
 	Warnings        []AdapterWarning
 }
 
+// ProjectScopePaths holds the effective relative paths for project-scope provider detection.
+// Callers resolve override ?? builtin before passing here; adapters use these verbatim.
+type ProjectScopePaths struct {
+	DetectRel string
+	SkillsRel string
+}
+
 // ProviderAdapter detects a specific agent provider in a project directory.
 // Adapters must be pure: they read facts via FsReader and return structured
 // results. They must not write to the filesystem or to the database.
 type ProviderAdapter interface {
 	Key() string
-	Detect(projectRoot string, fs FsReader) (DetectResult, error)
+	// Detect inspects projectRoot using the resolved paths. Call DefaultProjectPaths()
+	// or a resolver to produce paths; adapters must not hard-code them.
+	Detect(projectRoot string, paths ProjectScopePaths, fs FsReader) (DetectResult, error)
+	// DefaultProjectPaths returns the adapter's built-in relative paths for project scope.
+	DefaultProjectPaths() ProjectScopePaths
 }

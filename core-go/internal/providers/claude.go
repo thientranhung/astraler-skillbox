@@ -36,9 +36,13 @@ func NewClaudeAdapter() *ClaudeAdapter {
 
 func (a *ClaudeAdapter) Key() string { return ClaudeKey }
 
-func (a *ClaudeAdapter) Detect(projectRoot string, fs FsReader) (DetectResult, error) {
-	detectPath := filepath.Join(projectRoot, ClaudeDetectPath)
-	skillsPath := filepath.Join(projectRoot, ClaudeSkillsPath)
+func (a *ClaudeAdapter) DefaultProjectPaths() ProjectScopePaths {
+	return ProjectScopePaths{DetectRel: ClaudeDetectPath, SkillsRel: ClaudeSkillsPath}
+}
+
+func (a *ClaudeAdapter) Detect(projectRoot string, paths ProjectScopePaths, fs FsReader) (DetectResult, error) {
+	detectPath := filepath.Join(projectRoot, paths.DetectRel)
+	skillsPath := filepath.Join(projectRoot, paths.SkillsRel)
 
 	pi, err := fs.PathInfo(detectPath)
 	if err != nil {

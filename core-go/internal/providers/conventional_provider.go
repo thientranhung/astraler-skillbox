@@ -43,9 +43,13 @@ func newConventionalProviderAdapter(key, detectRel, skillsRel string) *conventio
 
 func (a *conventionalProviderAdapter) Key() string { return a.key }
 
-func (a *conventionalProviderAdapter) Detect(projectRoot string, fs FsReader) (DetectResult, error) {
-	detectPath := filepath.Join(projectRoot, a.detectRel)
-	skillsPath := filepath.Join(projectRoot, a.skillsRel)
+func (a *conventionalProviderAdapter) DefaultProjectPaths() ProjectScopePaths {
+	return ProjectScopePaths{DetectRel: a.detectRel, SkillsRel: a.skillsRel}
+}
+
+func (a *conventionalProviderAdapter) Detect(projectRoot string, paths ProjectScopePaths, fs FsReader) (DetectResult, error) {
+	detectPath := filepath.Join(projectRoot, paths.DetectRel)
+	skillsPath := filepath.Join(projectRoot, paths.SkillsRel)
 
 	pi, err := fs.PathInfo(detectPath)
 	if err != nil {

@@ -35,9 +35,13 @@ func NewGenericAgentsAdapter() *GenericAgentsAdapter {
 
 func (a *GenericAgentsAdapter) Key() string { return GenericAgentsKey }
 
-func (a *GenericAgentsAdapter) Detect(projectRoot string, fs FsReader) (DetectResult, error) {
-	agentsPath := filepath.Join(projectRoot, GenericAgentsDetectPath)
-	skillsPath := filepath.Join(projectRoot, GenericAgentsSkillsPath)
+func (a *GenericAgentsAdapter) DefaultProjectPaths() ProjectScopePaths {
+	return ProjectScopePaths{DetectRel: GenericAgentsDetectPath, SkillsRel: GenericAgentsSkillsPath}
+}
+
+func (a *GenericAgentsAdapter) Detect(projectRoot string, paths ProjectScopePaths, fs FsReader) (DetectResult, error) {
+	agentsPath := filepath.Join(projectRoot, paths.DetectRel)
+	skillsPath := filepath.Join(projectRoot, paths.SkillsRel)
 
 	pi, err := fs.PathInfo(agentsPath)
 	if err != nil {
