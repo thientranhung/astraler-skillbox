@@ -223,7 +223,7 @@ function effectiveStatusClass(status: PPProjectEntry["effectiveStatus"]): string
 }
 
 function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.Element {
-  const { data } = useProviderPluginList();
+  const { data, isPending, isError, error } = useProviderPluginList();
   const scanMutation = useScanProviderPluginsProject();
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
 
@@ -245,11 +245,19 @@ function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.E
         </button>
       </div>
 
-      {projectView == null && (
+      {isPending && (
+        <p className="text-xs text-zinc-400">Loading plugin data…</p>
+      )}
+
+      {isError && (
+        <ErrorDisplay error={error} />
+      )}
+
+      {!isPending && !isError && projectView == null && (
         <p className="text-xs text-zinc-400">No plugin data. Run Scan Plugins to populate.</p>
       )}
 
-      {projectView != null && (
+      {!isPending && !isError && projectView != null && (
         <div className="flex flex-col gap-3">
           {/* Layer statuses */}
           <div className="overflow-x-auto rounded border border-zinc-200">
