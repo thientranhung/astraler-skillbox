@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProviderResetPathsMethod",
+  "description": "Contract for provider.resetPaths command. Removes user path override for a provider (scope+purpose) slot, restoring built-in defaults.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProviderResetPathsRequest" },
+    { "$ref": "#/definitions/ProviderResetPathsResponse" }
+  ],
+  "definitions": {
+    "ProviderResetPathsRequest": {
+      "title": "ProviderResetPathsRequest",
+      "description": "Params for provider.resetPaths.",
+      "type": "object",
+      "properties": {
+        "providerKey": {
+          "type": "string",
+          "description": "Stable provider key"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["project", "global"],
+          "description": "Scope of the slot to reset"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": ["detect", "skills", "config", "commands"],
+          "description": "Purpose of the slot to reset"
+        }
+      },
+      "required": ["providerKey", "scope", "purpose"],
+      "additionalProperties": false
+    },
+    "ProviderResetPathsResponse": {
+      "title": "ProviderResetPathsResponse",
+      "description": "Result of provider.resetPaths. Errors: validation_error (1001), database_error (1004).",
+      "type": "object",
+      "properties": {
+        "reset": {
+          "type": "boolean",
+          "description": "True if an override existed and was removed; false if no override was stored"
+        }
+      },
+      "required": ["reset"],
+      "additionalProperties": false
+    }
+  }
+}
