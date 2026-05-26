@@ -1,12 +1,12 @@
 import React from "react";
-import { RefreshCw, AlertTriangle, FolderOpen } from "lucide-react";
+import { RefreshCw, FolderOpen } from "lucide-react";
 import { useGlobalList } from "../features/global-skills/use-global-list.js";
 import { useScanGlobal } from "../features/global-skills/use-scan-global.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
-import type { GlobalListLocation, GlobalListEntry, GlobalListWarning } from "@contracts/index.js";
+import type { GlobalListLocation, GlobalListEntry } from "@contracts/index.js";
 
 function statusBadgeClass(status: GlobalListLocation["status"]): string {
   switch (status) {
@@ -27,41 +27,6 @@ function entryStatusBadgeClass(status: GlobalListEntry["status"]): string {
   }
 }
 
-function WarningSeverityIcon({ severity }: { severity: GlobalListWarning["severity"] }) {
-  const cls = severity === "error" || severity === "blocking" ? "text-red-500" : "text-yellow-500";
-  return <AlertTriangle size={12} className={`mt-0.5 shrink-0 ${cls}`} />;
-}
-
-function highlightWarningMessage(message: string): React.ReactNode[] {
-  const tokenPattern = /(`[^`]+`|~\/[^\s,;)]+|\/[^\s,;)]+|\.[A-Za-z0-9_./-]+)/g;
-  return message.split(tokenPattern).filter(Boolean).map((part, index) => {
-    if (tokenPattern.test(part)) {
-      tokenPattern.lastIndex = 0;
-      return <strong key={`${part}-${index}`} className="font-semibold text-yellow-900">{part.replaceAll("`", "")}</strong>;
-    }
-    tokenPattern.lastIndex = 0;
-    return <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
-  });
-}
-
-function WarningRow({ warning }: { warning: GlobalListWarning }): React.JSX.Element {
-  return (
-    <div className="flex items-start gap-1.5 text-xs text-yellow-800">
-      <WarningSeverityIcon severity={warning.severity} />
-      <div>
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="rounded bg-yellow-100 px-1.5 py-0.5 font-medium uppercase text-yellow-900">
-            {warning.severity}
-          </span>
-          <span className="font-mono text-[11px] text-yellow-700">{warning.code}</span>
-          <span className="text-yellow-700">· {warning.scopeType.replaceAll("_", " ")}</span>
-        </div>
-        <p className="mt-1 leading-relaxed">{highlightWarningMessage(warning.message)}</p>
-      </div>
-    </div>
-  );
-}
-
 export function GlobalSkillsScreen(): React.JSX.Element {
   const { data, isPending, isError, error } = useGlobalList();
   const scanMutation = useScanGlobal();
@@ -80,7 +45,7 @@ export function GlobalSkillsScreen(): React.JSX.Element {
         <div>
           <h2 className="text-sm font-semibold text-zinc-900">Global Skills</h2>
           <p className="mt-0.5 text-xs text-zinc-400">
-            Read-only scan of global provider folders. Warnings mean Skillbox could not read or validate a location or entry; no files were changed.
+            Read-only scan of global provider folders. Status badges show whether each location and skill entry is usable.
           </p>
         </div>
         <button
@@ -149,15 +114,6 @@ export function GlobalSkillsScreen(): React.JSX.Element {
 
                 {loc.path != null && (
                   <p className="mb-2 font-mono text-xs text-zinc-400">{loc.skillsPath ?? loc.path}</p>
-                )}
-
-                {/* Location warnings */}
-                {loc.warnings.length > 0 && (
-                  <div className="mb-2 rounded border border-yellow-100 bg-yellow-50 px-3 py-2">
-                    {loc.warnings.map((w, i) => (
-                      <WarningRow key={i} warning={w} />
-                    ))}
-                  </div>
                 )}
 
                 {/* Entries table */}

@@ -30,7 +30,7 @@ const baseData = {
   installsByMode: { symlink: 10, rsyncCopy: 2, direct: 1 },
   warningsBySeverity: { info: 1, warning: 1, error: 0, blocking: 0 },
   warnings: [
-    { code: "missing_skill", message: "Skill not found", severity: "warning", scopeType: "global", scopeId: null, actionKey: null },
+    { code: "missing_global_location", message: "Location not found", severity: "warning", scopeType: "global_provider_location", scopeId: null, actionKey: null },
   ],
 };
 
@@ -99,7 +99,7 @@ describe("DashboardScreen", () => {
     const summarySection = screen.getByText("Summary").closest("section")!;
     expect(within(summarySection).getByText("5")).not.toBeNull(); // skills
     expect(within(summarySection).getByText("3")).not.toBeNull(); // projects
-    expect(within(summarySection).getByText("2")).not.toBeNull(); // warnings
+    expect(within(summarySection).getByText("2")).not.toBeNull(); // attention needed
   });
 
   it("renders active host status as a green badge", () => {
@@ -160,10 +160,10 @@ describe("DashboardScreen", () => {
     render(<DashboardScreen />);
     expect(screen.getByRole("button", { name: /^Skills 5$/i }).className).toContain("cursor-pointer");
     expect(screen.getByRole("button", { name: /^Projects 3$/i }).className).toContain("cursor-pointer");
-    expect(screen.getByRole("button", { name: /^Warnings 2$/i }).className).toContain("cursor-pointer");
+    expect(screen.getByRole("button", { name: /^Attention needed 2$/i }).className).toContain("cursor-pointer");
   });
 
-  it("explains what warning means on the dashboard", () => {
+  it("does not render raw warning explanations on the dashboard", () => {
     mockUseDashboard.mockReturnValue({
       isPending: false,
       isError: false,
@@ -172,8 +172,8 @@ describe("DashboardScreen", () => {
     });
 
     render(<DashboardScreen />);
-    expect(screen.getByText(/Warning means Skillbox found something unusual/i)).toBeTruthy();
-    expect(screen.getByText(/The app can still run/i)).toBeTruthy();
+    expect(screen.queryByText(/Warning means Skillbox found something unusual/i)).toBeNull();
+    expect(screen.queryByText("Location not found")).toBeNull();
   });
 
   it("shows zero-data CTA when projects === 0", () => {
@@ -191,19 +191,34 @@ describe("DashboardScreen", () => {
     expect(screen.getByRole("button", { name: "View Skills" })).toBeTruthy();
   });
 
-  it("shows 'No active warnings' when warnings list is empty", () => {
+  it("hides attention row when there are no warnings", () => {
     mockUseDashboard.mockReturnValue({
       isPending: false,
       isError: false,
-      data: { ...baseData, warnings: [] },
+      data: { ...baseData, summary: { ...baseData.summary, warnings: 0 }, warnings: [] },
       refetch: vi.fn(),
     });
 
     render(<DashboardScreen />);
-    expect(screen.getByText("No active warnings")).toBeTruthy();
+    expect(screen.queryByText("Attention needed")).toBeNull();
   });
 
-  it("navigates to project detail when clicking a project-scoped warning", () => {
+  it("routes attention to global when global warnings exist", () => {
+    const mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseDashboard.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: baseData,
+      refetch: vi.fn(),
+    });
+
+    render(<DashboardScreen />);
+    fireEvent.click(screen.getByRole("button", { name: /^Attention needed 2$/i }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/global" });
+  });
+
+  it("routes attention to projects for project and install warnings", () => {
     const mockNavigate = vi.fn();
     mockUseNavigate.mockReturnValue(mockNavigate);
     mockUseDashboard.mockReturnValue({
@@ -219,13 +234,27 @@ describe("DashboardScreen", () => {
     });
 
     render(<DashboardScreen />);
-    expect(screen.getByText("Project warning")).toBeTruthy();
-    expect(screen.getByText("install_broken")).toBeTruthy();
-    const warningBtn = screen.getByRole("button", { name: "Open" });
-    fireEvent.click(warningBtn);
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/projects/$projectId",
-      params: { projectId: "7" },
+    fireEvent.click(screen.getByRole("button", { name: /^Attention needed 2$/i }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/projects" });
+  });
+
+  it("routes attention to skills for skill host warnings", () => {
+    const mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseDashboard.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: {
+        ...baseData,
+        warnings: [
+          { code: "host_missing", message: "Host missing", severity: "error", scopeType: "skill_host_folder", scopeId: 1, actionKey: null },
+        ],
+      },
+      refetch: vi.fn(),
     });
+
+    render(<DashboardScreen />);
+    fireEvent.click(screen.getByRole("button", { name: /^Attention needed 2$/i }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/skills" });
   });
 });

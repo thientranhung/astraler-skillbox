@@ -100,17 +100,17 @@ describe("GlobalSkillsScreen", () => {
     expect(screen.getByText("current")).toBeTruthy();
   });
 
-  it("renders location warnings", () => {
+  it("does not render location warning feed when status already communicates the issue", () => {
     const loc = makeLocation({
       warnings: [{ code: "missing", severity: "warning", scopeType: "global_provider_location", scopeId: 1, actionKey: null, message: "Location missing" }],
     });
     mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc] } });
 
     render(<GlobalSkillsScreen />);
-    expect(screen.getByText("Location missing")).toBeTruthy();
+    expect(screen.queryByText("Location missing")).toBeNull();
   });
 
-  it("explains read-only global warnings and shows warning metadata", () => {
+  it("explains that status badges carry global scan state without showing warning metadata", () => {
     const loc = makeLocation({
       warnings: [{
         code: "global_provider_location_missing",
@@ -125,9 +125,10 @@ describe("GlobalSkillsScreen", () => {
 
     render(<GlobalSkillsScreen />);
     expect(screen.getByText(/Read-only scan of global provider folders/i)).toBeTruthy();
-    expect(screen.getByText("warning")).toBeTruthy();
-    expect(screen.getByText("global_provider_location_missing")).toBeTruthy();
-    expect(screen.getByText("~/.agents/skills")).toBeTruthy();
+    expect(screen.getByText(/Status badges show whether each location and skill entry is usable/i)).toBeTruthy();
+    expect(screen.queryByText("warning")).toBeNull();
+    expect(screen.queryByText("global_provider_location_missing")).toBeNull();
+    expect(screen.queryByText("~/.agents/skills")).toBeNull();
   });
 
   it("Open Folder button calls methods.openPath with location skillsPath", () => {

@@ -1,5 +1,5 @@
 import React from "react";
-import { RefreshCw, AlertTriangle, FolderOpen, TerminalSquare, Trash2 } from "lucide-react";
+import { RefreshCw, FolderOpen, TerminalSquare, Trash2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ProjectListItem } from "@contracts/index.js";
 import { useScanProject } from "./use-scan-project.js";
@@ -83,16 +83,6 @@ export function ProjectRow({ project }: ProjectRowProps): React.JSX.Element {
       </td>
       <td className="px-3 py-2">
         <ProjectProviderSkillStats project={project} />
-      </td>
-      <td className="px-3 py-2">
-        {project.warningCount > 0 ? (
-          <span className="flex items-center gap-1 text-xs text-yellow-700">
-            <AlertTriangle size={12} />
-            {project.warningCount}
-          </span>
-        ) : (
-          <span className="text-xs text-zinc-400">—</span>
-        )}
       </td>
       <td className="px-3 py-2 text-xs text-zinc-400">
         {project.lastScannedAt != null

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { RefreshCw, AlertTriangle, FolderOpen, Search, TerminalSquare } from "lucide-react";
+import { RefreshCw, FolderOpen, Search, TerminalSquare } from "lucide-react";
 import { useActiveHost } from "../features/skill-host/use-active-host.js";
 import { useSkillsList } from "../features/skills-library/use-skills-list.js";
 import { useScanHost } from "../features/skill-host/use-scan-host.js";
@@ -89,18 +89,6 @@ export function SkillsLibraryScreen(): React.JSX.Element {
           </button>
         </div>
       </div>
-
-      {/* Warnings */}
-      {data?.warnings != null && data.warnings.length > 0 && (
-        <div className="border-b border-yellow-100 bg-yellow-50 px-4 py-2">
-          {data.warnings.map((w, i) => (
-            <div key={i} className="flex items-start gap-1.5 text-xs text-yellow-800">
-              <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-              <span>{w.message}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Totals */}
       {data != null && (
