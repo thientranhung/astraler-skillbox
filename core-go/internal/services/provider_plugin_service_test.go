@@ -95,6 +95,129 @@ func TestResolveEffectivePlugin_UnknownProjectBlocksUserInheritance(t *testing.T
 	}
 }
 
+// ---- missing-status tests (Issue 1 fix) ----
+
+// Missing local layer must not block project/user inheritance.
+func TestResolveEffectivePlugin_MissingLocalDoesNotBlock(t *testing.T) {
+	local := badScan(1, domain.PluginLayerLocal, domain.PluginLayerScanMissing, ptr64(10))
+	project := okScan(2, domain.PluginLayerProject, ptr64(10))
+	user := okScan(3, domain.PluginLayerUser, nil)
+
+	entryMap := map[int64][]domain.PluginEntry{
+		1: {},
+		2: {makeEntry(2, "plugin-a", "npm", true)},
+		3: {},
+	}
+
+	result := resolveEffectivePlugin("plugin-a", "npm", local, project, user, entryMap)
+	if result.EffectiveStatus != domain.PluginEffectiveEnabled {
+		t.Errorf("missing local must not block; expected enabled (project), got %s", result.EffectiveStatus)
+	}
+	if result.ProvenanceLayer == nil || *result.ProvenanceLayer != domain.PluginLayerProject {
+		t.Errorf("provenance: expected project, got %v", result.ProvenanceLayer)
+	}
+}
+
+// Missing project layer must not block user inheritance.
+func TestResolveEffectivePlugin_MissingProjectDoesNotBlock(t *testing.T) {
+	project := badScan(2, domain.PluginLayerProject, domain.PluginLayerScanMissing, ptr64(10))
+	user := okScan(3, domain.PluginLayerUser, nil)
+
+	entryMap := map[int64][]domain.PluginEntry{
+		2: {},
+		3: {makeEntry(3, "plugin-a", "npm", false)},
+	}
+
+	result := resolveEffectivePlugin("plugin-a", "npm", nil, project, user, entryMap)
+	if result.EffectiveStatus != domain.PluginEffectiveDisabled {
+		t.Errorf("missing project must not block; expected disabled (user), got %s", result.EffectiveStatus)
+	}
+	if result.ProvenanceLayer == nil || *result.ProvenanceLayer != domain.PluginLayerUser {
+		t.Errorf("provenance: expected user, got %v", result.ProvenanceLayer)
+	}
+}
+
+// Missing all layers → absent (not unknown).
+func TestResolveEffectivePlugin_AllMissing_IsAbsent(t *testing.T) {
+	local := badScan(1, domain.PluginLayerLocal, domain.PluginLayerScanMissing, ptr64(10))
+	project := badScan(2, domain.PluginLayerProject, domain.PluginLayerScanMissing, ptr64(10))
+	user := badScan(3, domain.PluginLayerUser, domain.PluginLayerScanMissing, nil)
+
+	entryMap := map[int64][]domain.PluginEntry{}
+
+	result := resolveEffectivePlugin("plugin-a", "npm", local, project, user, entryMap)
+	if result.EffectiveStatus != domain.PluginEffectiveAbsent {
+		t.Errorf("all missing → absent, got %s", result.EffectiveStatus)
+	}
+}
+
+// Malformed local (non-missing error) must still block.
+func TestResolveEffectivePlugin_MalformedLocalStillBlocks(t *testing.T) {
+	local := badScan(1, domain.PluginLayerLocal, domain.PluginLayerScanMalformed, ptr64(10))
+	project := okScan(2, domain.PluginLayerProject, ptr64(10))
+	user := okScan(3, domain.PluginLayerUser, nil)
+
+	entryMap := map[int64][]domain.PluginEntry{
+		1: {},
+		2: {makeEntry(2, "plugin-a", "npm", true)},
+		3: {makeEntry(3, "plugin-a", "npm", true)},
+	}
+
+	result := resolveEffectivePlugin("plugin-a", "npm", local, project, user, entryMap)
+	if result.EffectiveStatus != domain.PluginEffectiveUnknown {
+		t.Errorf("malformed local must block; expected unknown, got %s", result.EffectiveStatus)
+	}
+}
+
+// Missing local + missing project + ok user with entry → falls all the way to user.
+func TestResolveEffectivePlugin_MissingLocal_MissingProject_UserEnabled(t *testing.T) {
+	local := badScan(1, domain.PluginLayerLocal, domain.PluginLayerScanMissing, ptr64(10))
+	project := badScan(2, domain.PluginLayerProject, domain.PluginLayerScanMissing, ptr64(10))
+	user := okScan(3, domain.PluginLayerUser, nil)
+
+	entryMap := map[int64][]domain.PluginEntry{
+		3: {makeEntry(3, "plugin-a", "npm", true)},
+	}
+
+	result := resolveEffectivePlugin("plugin-a", "npm", local, project, user, entryMap)
+	if result.EffectiveStatus != domain.PluginEffectiveEnabled {
+		t.Errorf("expected enabled (user), got %s", result.EffectiveStatus)
+	}
+}
+
+// ---- sanitizeWarnings tests (Issue 2 fix) ----
+
+func TestSanitizeWarnings_Empty(t *testing.T) {
+	if got := sanitizeWarnings(nil); got != nil {
+		t.Errorf("nil input: expected nil, got %v", got)
+	}
+	if got := sanitizeWarnings([]string{}); got != nil {
+		t.Errorf("empty input: expected nil, got %v", got)
+	}
+}
+
+func TestSanitizeWarnings_CapsAt20(t *testing.T) {
+	in := make([]string, 30)
+	for i := range in {
+		in[i] = "warning"
+	}
+	got := sanitizeWarnings(in)
+	if len(got) != maxScanWarnings {
+		t.Errorf("cap: got %d want %d", len(got), maxScanWarnings)
+	}
+}
+
+func TestSanitizeWarnings_TruncatesLongStrings(t *testing.T) {
+	long := make([]byte, maxScanWarningLen+100)
+	for i := range long {
+		long[i] = 'x'
+	}
+	got := sanitizeWarnings([]string{string(long)})
+	if len(got[0]) != maxScanWarningLen {
+		t.Errorf("truncation: got len %d want %d", len(got[0]), maxScanWarningLen)
+	}
+}
+
 func TestResolveEffectivePlugin_AbsentAcrossAllLayers(t *testing.T) {
 	local := okScan(1, domain.PluginLayerLocal, ptr64(10))
 	project := okScan(2, domain.PluginLayerProject, ptr64(10))

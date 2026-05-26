@@ -27,6 +27,10 @@ export interface PPGlobalView {
    * ISO-8601 timestamp or null
    */
   lastScannedAt: string | null;
+  /**
+   * Parse-time warnings (e.g. truncated entries, skipped keys). Empty when never scanned or no warnings.
+   */
+  scanWarnings: string[];
   plugins: PPGlobalEntry[];
   marketplaces: PPMarketplace[];
   managedOutOfScope: boolean;
@@ -57,6 +61,10 @@ export interface PPLayerStatus {
    * ISO-8601 timestamp or null
    */
   lastScannedAt: string | null;
+  /**
+   * Parse-time warnings for this layer.
+   */
+  scanWarnings: string[];
 }
 export interface PPProjectEntry {
   pluginName: string;

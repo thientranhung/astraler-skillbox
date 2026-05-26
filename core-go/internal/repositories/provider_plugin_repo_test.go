@@ -27,8 +27,37 @@ func TestMigration000012_DatabaseVersion(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&v); err != nil {
 		t.Fatalf("database_version query: %v", err)
 	}
-	if v != 12 {
-		t.Errorf("database_version: got %d want 12", v)
+	if v != 13 {
+		t.Errorf("database_version: got %d want 13", v)
+	}
+}
+
+func TestMigration000013_ScanWarningsColumn(t *testing.T) {
+	db := NewTestDB(t)
+	var v int
+	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&v); err != nil {
+		t.Fatalf("database_version query: %v", err)
+	}
+	if v != 13 {
+		t.Errorf("database_version: got %d want 13", v)
+	}
+
+	// Column must exist with default value of '[]'
+	var provID int64
+	if err := db.QueryRow(`SELECT id FROM provider_definitions WHERE key='claude'`).Scan(&provID); err != nil {
+		t.Fatalf("claude not found: %v", err)
+	}
+	res, err := db.Exec(`INSERT INTO provider_plugin_layer_scans (provider_definition_id, project_id, settings_layer, scan_status, settings_file_path) VALUES (?, NULL, 'user', 'ok', '/tmp/f')`, provID)
+	if err != nil {
+		t.Fatalf("insert without scan_warnings: %v", err)
+	}
+	id, _ := res.LastInsertId()
+	var w string
+	if err := db.QueryRow(`SELECT scan_warnings FROM provider_plugin_layer_scans WHERE id=?`, id).Scan(&w); err != nil {
+		t.Fatalf("select scan_warnings: %v", err)
+	}
+	if w != "[]" {
+		t.Errorf("scan_warnings default: got %q want []", w)
 	}
 }
 
@@ -226,6 +255,71 @@ func TestProviderPluginRepo_CommitLayerScan_Upsert(t *testing.T) {
 	entries, _ := r.ListEntriesForScan(ctx, scans[0].ID)
 	if len(entries) != 0 {
 		t.Errorf("expected 0 entries after malformed scan, got %d (stale state persisted)", len(entries))
+	}
+}
+
+func TestProviderPluginRepo_CommitLayerScan_WarningsPersisted(t *testing.T) {
+	db := NewTestDB(t)
+	r := NewProviderPluginRepo(db)
+	ctx := context.Background()
+
+	var provID int64
+	if err := db.QueryRow(`SELECT id FROM provider_definitions WHERE key='claude'`).Scan(&provID); err != nil {
+		t.Fatalf("claude not found: %v", err)
+	}
+
+	scan := &domain.PluginLayerScan{
+		ProviderDefinitionID: provID,
+		SettingsLayer:        domain.PluginLayerUser,
+		ScanStatus:           domain.PluginLayerScanOK,
+		SettingsFilePath:     "/tmp/s.json",
+		LastScannedAt:        time.Now().UTC(),
+		Warnings:             []string{"truncated at 1000 entries", "skipped invalid key \"bad\""},
+	}
+	if err := r.CommitLayerScan(ctx, scan, nil, nil); err != nil {
+		t.Fatalf("CommitLayerScan: %v", err)
+	}
+
+	scans, err := r.ListLayerScansForProvider(ctx, provID)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(scans) != 1 {
+		t.Fatalf("scans: got %d want 1", len(scans))
+	}
+	if len(scans[0].Warnings) != 2 {
+		t.Fatalf("warnings: got %d want 2", len(scans[0].Warnings))
+	}
+	if scans[0].Warnings[0] != "truncated at 1000 entries" {
+		t.Errorf("warning[0]: got %q", scans[0].Warnings[0])
+	}
+}
+
+func TestProviderPluginRepo_CommitLayerScan_EmptyWarningsRoundTrip(t *testing.T) {
+	db := NewTestDB(t)
+	r := NewProviderPluginRepo(db)
+	ctx := context.Background()
+
+	var provID int64
+	if err := db.QueryRow(`SELECT id FROM provider_definitions WHERE key='claude'`).Scan(&provID); err != nil {
+		t.Fatalf("claude not found: %v", err)
+	}
+
+	scan := &domain.PluginLayerScan{
+		ProviderDefinitionID: provID,
+		SettingsLayer:        domain.PluginLayerUser,
+		ScanStatus:           domain.PluginLayerScanMissing,
+		SettingsFilePath:     "/tmp/s.json",
+		LastScannedAt:        time.Now().UTC(),
+		Warnings:             nil,
+	}
+	if err := r.CommitLayerScan(ctx, scan, nil, nil); err != nil {
+		t.Fatalf("CommitLayerScan: %v", err)
+	}
+
+	scans, _ := r.ListLayerScansForProvider(ctx, provID)
+	if scans[0].Warnings != nil {
+		t.Errorf("nil warnings should round-trip as nil, got %v", scans[0].Warnings)
 	}
 }
 
