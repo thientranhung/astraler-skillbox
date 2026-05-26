@@ -34,6 +34,22 @@ git status --short
 
 Confirm the target pane is in the expected app, not a shell. Confirm there is no stale prompt in the input area. If the agent is in a shell, start the TUI first and verify it loaded before sending work.
 
+For `agent-lead-skillbox`, `cmd=codex-aarch64-a` and the correct `cwd` are necessary but not sufficient. Codex can be running while its input area still contains a suggestion or stale text such as `Run /review on my current changes` or `Summarize recent commits`. Treat that state as not ready.
+
+Before every lead handoff:
+
+1. Capture the pane and inspect the bottom input area.
+2. Send `C-u` to clear any visible input.
+3. Send the prompt from a short text file or short literal string.
+4. Press Enter once. If the text remains in the input area and the TUI is waiting, press Enter one more time.
+5. Confirm the prompt moved into the transcript or the pane shows active work.
+
+Use this audit command when the session state is unclear:
+
+```sh
+tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} cmd=#{pane_current_command} active=#{pane_active} title=#{pane_title} cwd=#{pane_current_path}' | rg 'agent-lead-skillbox|agent-tech-skillbox'
+```
+
 ## Context And Model Switching
 
 Before handing off a new task, decide whether the agent should run `/clear`. Use `/clear` when switching phases, changing from brainstorm to implementation, after a long or noisy thread, or after a failed/stale TUI interaction. Do not clear context in the middle of an active goal unless the current work is explicitly stopped or superseded.
@@ -165,6 +181,8 @@ If a prompt is accidentally sent to the shell, stop immediately. Do not try to c
 
 If the pane shows a suggestion or placeholder such as `Summarize recent commits`, treat it as unsafe until verified. Clear or exit before sending a real task.
 
+If `C-c` exits Codex to a shell, restart with `codex --yolo`, then capture the pane again before sending work. Do not trust the process name alone; inspect the visible input area.
+
 ## Review Loop
 
 Lead reviews must be scoped to a commit or file and must start with findings. Example:
@@ -174,6 +192,22 @@ Review commit abc123 only. Do not edit files. Findings first. Approve or block.
 ```
 
 When the lead finds an issue, send it to tech as a small scoped task. After the fix commit, ask lead to review only the follow-up commit.
+
+Do not ask for a final verdict after interrupting, clearing, or restarting the lead unless the lead has already shown evidence that it inspected the diff and considered verification. If the lead reports `No verdict` because it did not inspect the change, treat that as a correct guardrail and rerun a scoped review from scratch.
+
+Slow review is acceptable when the pane shows active reading, searches, or test reasoning. Wait for the actual review instead of forcing a quick approval.
+
+When lead findings identify docs/source-of-truth drift, fix the documentation before closing the task. Rerun targeted searches after the fix, for example:
+
+```sh
+rg "old provider label|stale UI text" docs apps core-go
+```
+
+## Migration And Bulk Edit Safety
+
+When adding a later migration that changes data created by an older migration, keep the older migration test faithful to the old SQL. Add a new test for the new migration and update only latest-state expectations where appropriate.
+
+After broad search-and-replace work, inspect nearby tests and numeric assertions before committing. Run targeted searches for accidental replacements and verify migration test fixtures still match their migration files.
 
 ## Hardening Notes
 
