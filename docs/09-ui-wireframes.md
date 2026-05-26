@@ -16,7 +16,7 @@ architecture hoặc visual design.
 ## Table Notation
 
 ASCII table examples use the abbreviation **Shared Agents** for the full user-facing label
-**Shared Agent Skills (.agents)**. The full name appears in filters, selection dialogs,
+**Shared Agent Skills**. The full name appears in filters, selection dialogs,
 status labels, and confirmation steps where it is the primary information shown to the user.
 
 ## Navigation Shell
@@ -227,7 +227,7 @@ Projects
 [Add Project] [Scan All]
 
 Filters
-  Provider: all / Shared Agent Skills (.agents) / Claude / unsupported
+  Provider: all / Shared Agent Skills / Claude / unsupported
   Status: all / active / missing / warnings
   Search: __________________
 
@@ -258,7 +258,7 @@ Path: /repo/content-lab
 Status: active
 
 Providers
-  [Shared Agent Skills (.agents)] supported    .agents/skills     5 skills
+  [Shared Agent Skills] supported    .agents/skills     5 skills
   [Claude]         experimental .claude/...        3 skills
 
 Actions
@@ -301,7 +301,7 @@ Step 1: Select Skills
   [ ] browser-automation
 
 Step 2: Select Provider
-  ( ) Shared Agent Skills (.agents)   supported      .agents/skills
+  ( ) Shared Agent Skills   supported      .agents/skills
   ( ) Claude           experimental   .claude/...
 
 Step 3: Select Mode
@@ -309,7 +309,7 @@ Step 3: Select Mode
   ( ) rsync/copy
 
 Step 4: Confirm
-  Install 2 skills into content-lab / Shared Agent Skills (.agents) using symlink.
+  Install 2 skills into content-lab / Shared Agent Skills using symlink.
   Existing conflicts: none
   Affected paths:
     /repo/content-lab/.agents/skills/documentation-writer
@@ -538,7 +538,7 @@ Direct installs unaffected:
   project-e
 
 Global symlink installs updated immediately:
-  User Global (Shared Agent Skills (.agents))
+  User Global (Shared Agent Skills)
 
 Global rsync/copy installs needing sync:
   Claude Global

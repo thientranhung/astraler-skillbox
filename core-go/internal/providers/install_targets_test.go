@@ -20,7 +20,7 @@ func TestInstallTargets(t *testing.T) {
 	if shared.ProviderKey != providers.GenericAgentsKey {
 		t.Errorf("shared provider key: got %q", shared.ProviderKey)
 	}
-	if shared.DisplayName != "Shared Agent Skills (.agents)" {
+	if shared.DisplayName != "Shared Agent Skills" {
 		t.Errorf("shared display name: got %q", shared.DisplayName)
 	}
 	if shared.RelativeSkillsPath != providers.GenericAgentsSkillsPath {
@@ -37,7 +37,7 @@ func TestInstallTargets(t *testing.T) {
 	if claude.ProviderKey != providers.ClaudeKey {
 		t.Errorf("claude provider key: got %q", claude.ProviderKey)
 	}
-	if claude.DisplayName != "Claude (.claude)" {
+	if claude.DisplayName != "Claude" {
 		t.Errorf("claude display name: got %q", claude.DisplayName)
 	}
 	if claude.RelativeSkillsPath != providers.ClaudeSkillsPath {

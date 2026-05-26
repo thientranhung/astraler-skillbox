@@ -8,7 +8,7 @@ afterEach(() => cleanup());
 
 const baseProps = {
   skillName: "documentation-writer",
-  providerDisplayName: "Shared Agent Skills (.agents)",
+  providerDisplayName: "Shared Agent Skills",
   path: "/repo/content-lab/.agents/skills/documentation-writer",
   isPending: false,
 };

@@ -173,7 +173,7 @@ func (r *syncRunner) Cancel(_ context.Context, _ int64) (bool, error) { return t
 // -- tests --
 
 func TestGlobalSkillsService_ScanGlobal_Active(t *testing.T) {
-	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills (.agents)", status: "supported"}
+	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills", status: "supported"}
 	scanWriter := &mockGlobalScanWriter{}
 
 	home := "/fakehome"
@@ -212,7 +212,7 @@ func TestGlobalSkillsService_ScanGlobal_Active(t *testing.T) {
 }
 
 func TestGlobalSkillsService_ScanGlobal_SkillsMissing_NoFolderCreation(t *testing.T) {
-	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills (.agents)", status: "supported"}
+	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills", status: "supported"}
 	scanWriter := &mockGlobalScanWriter{}
 
 	home := "/fakehome"
@@ -245,7 +245,7 @@ func TestGlobalSkillsService_ScanGlobal_SkillsMissing_NoFolderCreation(t *testin
 }
 
 func TestGlobalSkillsService_ScanGlobal_BrokenSymlink_Warning(t *testing.T) {
-	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills (.agents)", status: "supported"}
+	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills", status: "supported"}
 	scanWriter := &mockGlobalScanWriter{}
 
 	home := "/fakehome"
@@ -290,7 +290,7 @@ func TestGlobalSkillsService_ScanGlobal_BrokenSymlink_Warning(t *testing.T) {
 func TestGlobalSkillsService_ScanGlobal_ClaudeNotEnumerated(t *testing.T) {
 	// The registry only has generic_agents; no Claude adapter present.
 	// A scan must not produce a Claude global_provider_locations row.
-	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills (.agents)", status: "supported"}
+	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills", status: "supported"}
 	scanWriter := &mockGlobalScanWriter{}
 
 	home := "/fakehome"
@@ -319,7 +319,7 @@ func TestGlobalSkillsService_ScanGlobal_ClaudeNotEnumerated(t *testing.T) {
 }
 
 func TestGlobalSkillsService_ScanGlobal_ConflictError(t *testing.T) {
-	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills (.agents)", status: "supported"}
+	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills", status: "supported"}
 	scanWriter := &mockGlobalScanWriter{}
 	fs := newMockGlobalFS("/fakehome")
 	ga := &mockGlobalAdapter{key: providers.GenericAgentsKey}
@@ -351,7 +351,7 @@ func TestGlobalSkillsService_ListGlobal(t *testing.T) {
 		{
 			GlobalProviderLocationID: 1,
 			ProviderKey:              "generic_agents",
-			ProviderDisplayName:      "Shared Agent Skills (.agents)",
+			ProviderDisplayName:      "Shared Agent Skills",
 			Status:                   domain.GlobalLocationStatusActive,
 			Entries:                  []domain.GlobalInstallView{},
 			Warnings:                 []domain.Warning{},
@@ -373,7 +373,7 @@ func TestGlobalSkillsService_ListGlobal(t *testing.T) {
 }
 
 func TestGlobalSkillsService_DirectEntry_DirectCurrentNilSkillID(t *testing.T) {
-	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills (.agents)", status: "supported"}
+	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills", status: "supported"}
 	scanWriter := &mockGlobalScanWriter{}
 
 	home := "/fakehome"

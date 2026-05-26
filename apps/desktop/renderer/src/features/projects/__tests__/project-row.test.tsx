@@ -80,14 +80,14 @@ describe("ProjectRow", () => {
               providers: [
                 {
                   key: "generic_agents",
-                  displayName: "Shared Agent Skills (.agents)",
+                  displayName: "Shared Agent Skills",
                   providerStatus: "supported",
                   detectionStatus: "detected",
                   entryCount: 2,
                 },
                 {
                   key: "claude",
-                  displayName: "Claude (.claude)",
+                  displayName: "Claude",
                   providerStatus: "experimental",
                   detectionStatus: "detected",
                   entryCount: 3,
@@ -99,8 +99,8 @@ describe("ProjectRow", () => {
       </table>,
     );
 
-    expect(screen.getByTitle("Shared Agent Skills (.agents): 2 skills")).toBeTruthy();
-    expect(screen.getByTitle("Claude (.claude): 3 skills")).toBeTruthy();
+    expect(screen.getByTitle("Shared Agent Skills: 2 skills")).toBeTruthy();
+    expect(screen.getByTitle("Claude: 3 skills")).toBeTruthy();
     expect(screen.queryByText("5")).toBeNull();
   });
 });

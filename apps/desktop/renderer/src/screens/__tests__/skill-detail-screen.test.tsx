@@ -44,7 +44,7 @@ const fakeProject = {
   projectName: "proj-alpha",
   projectProviderId: 5,
   providerKey: "generic_agents",
-  providerDisplayName: "Shared Agent Skills (.agents)",
+  providerDisplayName: "Shared Agent Skills",
   mode: "symlink" as const,
   status: "current" as const,
   projectSkillPath: "/proj-alpha/.agents/skills/my-skill",
@@ -86,7 +86,7 @@ describe("SkillDetailScreen", () => {
     render(<SkillDetailScreen />);
     expect(screen.getByText("my-skill")).toBeTruthy();
     expect(screen.getByText("proj-alpha")).toBeTruthy();
-    expect(screen.getByText("Shared Agent Skills (.agents)")).toBeTruthy();
+    expect(screen.getByText("Shared Agent Skills")).toBeTruthy();
   });
 
   it("renders empty state when no projects use the skill", () => {
