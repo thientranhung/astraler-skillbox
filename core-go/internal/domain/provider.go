@@ -63,3 +63,22 @@ type ProjectProviderSummary struct {
 	SkillsPath          *string
 	EntryCount          int
 }
+
+// ProviderPathCandidate is a single path candidate for a provider, as stored in
+// provider_path_candidates. Scope and purpose classify how it is used.
+type ProviderPathCandidate struct {
+	ID                 int64
+	ProviderDefinitionID int64
+	RelativePath       string
+	Scope              string // "project" or "global"
+	Purpose            string // "detect", "skills", "config", "commands"
+	Priority           int
+	VerificationStatus string // "verified", "assumed", "experimental"
+}
+
+// ProviderRegistryEntry is the full read-only view of a provider definition with
+// its path candidates. Used by provider.list.
+type ProviderRegistryEntry struct {
+	Definition ProviderDefinition
+	Candidates []ProviderPathCandidate
+}

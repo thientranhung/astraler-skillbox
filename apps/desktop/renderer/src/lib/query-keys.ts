@@ -16,4 +16,7 @@ export const queryKeys = {
   global: {
     list: () => ["global", "list"] as const,
   },
+  providers: {
+    list: () => ["providers", "list"] as const,
+  },
 };

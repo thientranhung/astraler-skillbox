@@ -19,14 +19,18 @@ const BRAND_PROVIDER_ICONS: Record<string, string> = {
 
 interface ProviderIconProps {
   providerKey: string;
+  /** Optional icon key from provider registry metadata. When provided, takes precedence over providerKey lookup. */
+  iconKey?: string | null;
   className?: string;
 }
 
 export function ProviderIcon({
   providerKey,
+  iconKey,
   className = "",
 }: ProviderIconProps): React.JSX.Element {
-  const iconSvg = BRAND_PROVIDER_ICONS[providerKey];
+  const lookupKey = iconKey != null ? iconKey : providerKey;
+  const iconSvg = BRAND_PROVIDER_ICONS[lookupKey];
   const cls = `inline-flex h-4 w-4 shrink-0 items-center justify-center ${className}`;
 
   if (iconSvg != null) {

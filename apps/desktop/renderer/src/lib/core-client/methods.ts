@@ -25,6 +25,7 @@ import type {
   DashboardGetResponse,
   GlobalScanResponse,
   GlobalListResponse,
+  ProviderListResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -84,4 +85,6 @@ export const methods = {
   scanGlobal: () => invoke<GlobalScanResponse>("global.scan", {}),
 
   listGlobal: () => invoke<GlobalListResponse>("global.list", {}),
+
+  listProviders: () => invoke<ProviderListResponse>("provider.list", {}),
 };

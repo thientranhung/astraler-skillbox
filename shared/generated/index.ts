@@ -29,3 +29,4 @@ export * from './methods/dashboard-get.js';
 export * from './methods/skill-get.js';
 export * from './methods/global-scan.js';
 export * from './methods/global-list.js';
+export * from './methods/provider-list.js';
