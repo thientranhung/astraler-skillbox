@@ -46,9 +46,9 @@ export interface ProviderListProvider {
    */
   status: 'supported' | 'experimental' | 'unsupported' | 'disabled';
   /**
-   * Whether this provider is enabled. Derived as true for supported/experimental built-ins until override storage is available.
+   * Whether this provider is available for use. Derived from support status: true for supported/experimental, false for unsupported/disabled. Not a user preference — override storage is deferred.
    */
-  enabled: boolean;
+  isAvailable: boolean;
   /**
    * Whether Skillbox can create the provider directory structure in a project
    */

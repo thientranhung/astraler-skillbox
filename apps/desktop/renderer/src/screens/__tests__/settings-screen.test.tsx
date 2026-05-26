@@ -51,7 +51,7 @@ const makeProvider = (overrides = {}) => ({
   providerType: "generic_agents",
   iconKey: "generic_agents",
   status: "supported" as const,
-  enabled: true,
+  isAvailable: true,
   canCreateStructure: false,
   hasGlobalLevel: true,
   candidates: [
@@ -130,7 +130,7 @@ describe("SettingsScreen", () => {
     mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
     mockUseProviderList.mockReturnValue({
       data: {
-        providers: [makeProvider({ key: "opencode", displayName: "OpenCode", status: "unsupported", enabled: false, hasGlobalLevel: false, candidates: [] })],
+        providers: [makeProvider({ key: "opencode", displayName: "OpenCode", status: "unsupported", isAvailable: false, hasGlobalLevel: false, candidates: [] })],
       },
     });
 

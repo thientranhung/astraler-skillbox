@@ -77,9 +77,9 @@
           "enum": ["supported", "experimental", "unsupported", "disabled"],
           "description": "Skillbox support level for this provider"
         },
-        "enabled": {
+        "isAvailable": {
           "type": "boolean",
-          "description": "Whether this provider is enabled. Derived as true for supported/experimental built-ins until override storage is available."
+          "description": "Whether this provider is available for use. Derived from support status: true for supported/experimental, false for unsupported/disabled. Not a user preference — override storage is deferred."
         },
         "canCreateStructure": {
           "type": "boolean",
@@ -95,7 +95,7 @@
           "description": "All path candidates for this provider, ordered by priority descending"
         }
       },
-      "required": ["key", "displayName", "providerType", "iconKey", "status", "enabled", "canCreateStructure", "hasGlobalLevel", "candidates"],
+      "required": ["key", "displayName", "providerType", "iconKey", "status", "isAvailable", "canCreateStructure", "hasGlobalLevel", "candidates"],
       "additionalProperties": false
     },
     "ProviderListResponse": {
