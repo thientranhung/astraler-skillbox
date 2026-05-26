@@ -11,6 +11,12 @@ const WARNING_SEVERITY_CLASS: Record<DashboardGetWarning["severity"], string> = 
   blocking: "bg-red-100 text-red-800",
 };
 
+const HOST_STATUS_CLASS: Record<string, string> = {
+  active: "bg-green-100 text-green-800",
+  missing: "bg-red-100 text-red-800",
+  error: "bg-red-100 text-red-800",
+};
+
 function scopeLabel(scopeType: DashboardGetWarning["scopeType"]): string {
   switch (scopeType) {
     case "project": return "Project warning";
@@ -104,7 +110,7 @@ export function DashboardScreen(): React.JSX.Element {
           </div>
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm font-medium text-zinc-700">Status</span>
-            <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
+            <span className={`rounded px-2 py-0.5 text-xs font-medium ${HOST_STATUS_CLASS[data.activeHost.status] ?? "bg-zinc-100 text-zinc-600"}`}>
               {data.activeHost.status}
             </span>
           </div>
