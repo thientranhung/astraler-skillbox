@@ -299,6 +299,66 @@ func TestScan_UnknownProviderInResolver_FallsBackToAdapterDefault(t *testing.T) 
 	}
 }
 
+// TestScan_WithPathResolver_PresentTrue_CommitsDetectedAndSkillsPath verifies that when
+// an adapter returns Present:true using the effective resolved paths, the committed
+// ProviderScanResult carries those DetectedPath and SkillsPath values.
+func TestScan_WithPathResolver_PresentTrue_CommitsDetectedAndSkillsPath(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "p", "/tmp/p") //nolint:errcheck
+
+	adapter := &pathCapturingAdapter{
+		key: "claude",
+		result: providers.DetectResult{
+			Present:         true,
+			DetectedPath:    "/tmp/p/.config/claude",
+			SkillsPath:      "/tmp/p/.config/claude/skills",
+			DetectionStatus: domain.DetectionStatusDetected,
+		},
+	}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{adapter}}
+	pdRepo := &mockProviderDefRepo{defs: map[string]*domain.ProviderDefinition{
+		"claude": {ID: 1, Key: "claude"},
+	}}
+	scanRepo := &mockProjectScanCommitter{}
+
+	resolver := &mockPathResolver{paths: map[string]providers.ProjectScopePaths{
+		"claude": {DetectRel: ".config/claude", SkillsRel: ".config/claude/skills"},
+	}}
+
+	svc := NewProjectService(
+		projRepo,
+		&mockProjectProviderRepo{byProject: make(map[int64][]domain.ProjectProviderSummary)},
+		&mockProjectWarningRepo{},
+		&mockProjectInstallRepo{},
+		&mockProjectFS{},
+	).WithScanDeps(&mockRunner{}, scanRepo).
+		WithProviderDeps(registry, pdRepo, &mockHostLister{}, &mockSkillsByHostLister{}).
+		WithPathResolver(resolver)
+
+	project, _ := projRepo.GetByID(ctx, 1)
+	if _, err := svc.scanProjectInternal(ctx, project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+
+	if scanRepo.fullScanCallCount != 1 {
+		t.Fatalf("CommitProjectScan call count: got %d want 1", scanRepo.fullScanCallCount)
+	}
+	if len(scanRepo.lastProviders) != 1 {
+		t.Fatalf("committed providers: got %d want 1", len(scanRepo.lastProviders))
+	}
+	psr := scanRepo.lastProviders[0]
+	if psr.DetectedPath == nil || *psr.DetectedPath != "/tmp/p/.config/claude" {
+		t.Errorf("DetectedPath: got %v want /tmp/p/.config/claude", psr.DetectedPath)
+	}
+	if psr.SkillsPath == nil || *psr.SkillsPath != "/tmp/p/.config/claude/skills" {
+		t.Errorf("SkillsPath: got %v want /tmp/p/.config/claude/skills", psr.SkillsPath)
+	}
+	if psr.DetectionStatus != domain.DetectionStatusDetected {
+		t.Errorf("DetectionStatus: got %v want detected", psr.DetectionStatus)
+	}
+}
+
 // -- Install integration: path resolver affects skills target path --
 
 // mockInstallPathResolver records whether it was called and returns configured paths.
@@ -405,6 +465,96 @@ func TestInstall_WithSkillsPathOverride_LinksIntoOverriddenDir(t *testing.T) {
 	defaultLinkPath := filepath.Join(projectDir, providers.GenericAgentsSkillsPath, "test-skill")
 	if _, err := os.Lstat(defaultLinkPath); err == nil {
 		t.Errorf("skill unexpectedly found in builtin dir %q", defaultLinkPath)
+	}
+
+	if !resolver.called {
+		t.Error("expected path resolver to be called during install")
+	}
+}
+
+// TestInstall_GlobalScopeOverride_UsesBuiltinPath verifies that when the path resolver
+// returns an empty map (simulating global-scope-only overrides being filtered out by
+// ProjectPaths), installSkillsInternal falls back to the builtin skills path and does
+// NOT write to any global override location.
+func TestInstall_GlobalScopeOverride_UsesBuiltinPath(t *testing.T) {
+	ctx := context.Background()
+
+	// Project dir: create the builtin .agents/skills dir.
+	projectDir := t.TempDir()
+	builtinSkillsDir := filepath.Join(projectDir, providers.GenericAgentsSkillsPath)
+	if err := os.MkdirAll(builtinSkillsDir, 0o755); err != nil {
+		t.Fatalf("mkdir builtin skills: %v", err)
+	}
+
+	// Host dir with one skill folder.
+	hostSkillsDir := t.TempDir()
+	hostSkillPath := filepath.Join(hostSkillsDir, "test-skill")
+	if err := os.MkdirAll(hostSkillPath, 0o755); err != nil {
+		t.Fatalf("mkdir host skill: %v", err)
+	}
+
+	gw := filesystem.NewGateway()
+	project := &domain.Project{
+		ID:     1,
+		Name:   "global-override-test",
+		Path:   projectDir,
+		Status: domain.ProjectStatusActive,
+	}
+	projRepo := newMockProjectRepo()
+	projRepo.projects[1] = project
+
+	ppRepo := &mockProjectProviderRepo{
+		byProject: map[int64][]domain.ProjectProviderSummary{
+			1: {{
+				ProviderKey:     providers.GenericAgentsKey,
+				DetectionStatus: domain.DetectionStatusDetected,
+			}},
+		},
+	}
+	pdRepo := &mockProviderDefRepo{
+		defs: map[string]*domain.ProviderDefinition{
+			providers.GenericAgentsKey: {
+				ID:                 10,
+				Key:                providers.GenericAgentsKey,
+				Status:             domain.ProviderStatusSupported,
+				CanCreateStructure: true,
+			},
+		},
+	}
+	activeHost := &domain.SkillHostFolder{ID: 1, SkillsPath: hostSkillsDir, Status: domain.SkillHostStatusActive}
+	hostReader := &mockActiveHostReader{host: activeHost}
+	skillLister := &mockSkillsByHostLister{
+		skills: map[int64][]domain.Skill{
+			1: {{ID: 1, Name: "test-skill", AbsolutePath: hostSkillPath, Status: domain.SkillStatusAvailable}},
+		},
+	}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{providers.NewGenericAgentsAdapter()}}
+	hostLister := &mockHostLister{hosts: []domain.SkillHostFolder{*activeHost}}
+	scanRepo := &mockProjectScanCommitter{}
+	runner := &mockRunner{}
+
+	// Resolver returns empty map: simulates global-scope-only override being filtered out.
+	resolver := &mockInstallPathResolver{paths: map[string]providers.ProjectScopePaths{}}
+
+	svc := NewProjectService(projRepo, ppRepo, &mockProjectWarningRepo{}, &mockProjectInstallRepo{}, gw).
+		WithScanDeps(runner, scanRepo).
+		WithProviderDeps(registry, pdRepo, hostLister, skillLister).
+		WithInstallDeps(gw, hostReader, skillLister).
+		WithPathResolver(resolver)
+
+	_, err := svc.installSkillsInternal(ctx, project, providers.GenericAgentsKey, []int64{1}, noopProgress)
+	if err != nil {
+		t.Fatalf("installSkillsInternal: %v", err)
+	}
+
+	// Symlink must be in the builtin dir.
+	linkPath := filepath.Join(builtinSkillsDir, "test-skill")
+	fi, lerr := os.Lstat(linkPath)
+	if lerr != nil {
+		t.Fatalf("expected symlink at builtin path %q: %v", linkPath, lerr)
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected symlink, got %v", fi.Mode())
 	}
 
 	if !resolver.called {

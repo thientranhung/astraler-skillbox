@@ -165,10 +165,12 @@ func (s *ProjectService) installSkillsInternal(
 	// Use effective skills rel: override ?? builtin (from pathResolver), fall back to target default.
 	skillsRel := target.RelativeSkillsPath
 	if s.pathResolver != nil {
-		if pathsMap, resolveErr := s.pathResolver.ProjectPaths(ctx); resolveErr == nil {
-			if ep, ok := pathsMap[providerKey]; ok && ep.SkillsRel != "" {
-				skillsRel = ep.SkillsRel
-			}
+		pathsMap, resolveErr := s.pathResolver.ProjectPaths(ctx)
+		if resolveErr != nil {
+			return nil, domain.NewDatabaseError("Could not resolve provider paths", resolveErr.Error())
+		}
+		if ep, ok := pathsMap[providerKey]; ok && ep.SkillsRel != "" {
+			skillsRel = ep.SkillsRel
 		}
 	}
 	skillsPath, err := s.fs.NormalizeAbs(filepath.Join(project.Path, skillsRel))
