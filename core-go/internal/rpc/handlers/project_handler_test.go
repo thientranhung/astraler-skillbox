@@ -138,6 +138,7 @@ func TestProjectListHandler_WithProjects(t *testing.T) {
 					ProviderDisplayName: "Shared Agent Skills (.agents)",
 					ProviderStatus:      domain.ProviderStatusSupported,
 					DetectionStatus:     domain.DetectionStatusDetected,
+					EntryCount:          2,
 				},
 			},
 			SkillCount:    2,
@@ -156,6 +157,7 @@ func TestProjectListHandler_WithProjects(t *testing.T) {
 			Providers    []struct {
 				Key         string `json:"key"`
 				DisplayName string `json:"displayName"`
+				EntryCount  int    `json:"entryCount"`
 			} `json:"providers"`
 		} `json:"projects"`
 	}
@@ -179,6 +181,9 @@ func TestProjectListHandler_WithProjects(t *testing.T) {
 	}
 	if resp.Projects[0].Providers[0].DisplayName != "Shared Agent Skills (.agents)" {
 		t.Errorf("provider displayName: got %q", resp.Projects[0].Providers[0].DisplayName)
+	}
+	if resp.Projects[0].Providers[0].EntryCount != 2 {
+		t.Errorf("provider entryCount: got %d want 2", resp.Projects[0].Providers[0].EntryCount)
 	}
 }
 
@@ -268,12 +273,12 @@ func TestProjectGetHandler_EntryProviderKeyDerived(t *testing.T) {
 		},
 		Entries: []domain.Install{
 			{
-				ID:               1,
+				ID:                1,
 				ProjectProviderID: 42,
-				SkillName:        "my-skill",
-				InstallMode:      domain.InstallModeSymlink,
-				InstallStatus:    domain.InstallStatusCurrent,
-				ProjectSkillPath: "/p/.cursor/skills/my-skill",
+				SkillName:         "my-skill",
+				InstallMode:       domain.InstallModeSymlink,
+				InstallStatus:     domain.InstallStatusCurrent,
+				ProjectSkillPath:  "/p/.cursor/skills/my-skill",
 			},
 		},
 		Warnings: []domain.Warning{},

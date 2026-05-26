@@ -18,6 +18,7 @@ type projectListProviderSummary struct {
 	DisplayName     string `json:"displayName"`
 	ProviderStatus  string `json:"providerStatus"`
 	DetectionStatus string `json:"detectionStatus"`
+	EntryCount      int    `json:"entryCount"`
 }
 
 type projectListItem struct {
@@ -53,6 +54,7 @@ func NewProjectListHandler(svc projectListService) jrpc2.Handler {
 					DisplayName:     p.ProviderDisplayName,
 					ProviderStatus:  string(p.ProviderStatus),
 					DetectionStatus: string(p.DetectionStatus),
+					EntryCount:      p.EntryCount,
 				})
 			}
 			resp.Projects = append(resp.Projects, projectListItem{

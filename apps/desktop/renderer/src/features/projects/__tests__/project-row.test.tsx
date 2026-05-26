@@ -56,7 +56,7 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("ProjectRow", () => {
-  it("renders a full project path sub-row for scanning", () => {
+  it("renders the project path without a separate path sub-row", () => {
     render(
       <table>
         <tbody>
@@ -65,7 +65,42 @@ describe("ProjectRow", () => {
       </table>,
     );
 
-    expect(screen.getByText("project:")).toBeTruthy();
-    expect(screen.getAllByText("/repo/demo").length).toBeGreaterThan(1);
+    expect(screen.queryByText("project:")).toBeNull();
+    expect(screen.getAllByText("/repo/demo")).toHaveLength(1);
+  });
+
+  it("renders skill counts per provider instead of one aggregate count", () => {
+    render(
+      <table>
+        <tbody>
+          <ProjectRow
+            project={{
+              ...project,
+              skillCount: 5,
+              providers: [
+                {
+                  key: "generic_agents",
+                  displayName: "Shared Agent Skills (.agents)",
+                  providerStatus: "supported",
+                  detectionStatus: "detected",
+                  entryCount: 2,
+                },
+                {
+                  key: "claude",
+                  displayName: "Claude (.claude)",
+                  providerStatus: "experimental",
+                  detectionStatus: "detected",
+                  entryCount: 3,
+                },
+              ],
+            }}
+          />
+        </tbody>
+      </table>,
+    );
+
+    expect(screen.getByTitle("Shared Agent Skills (.agents): 2 skills")).toBeTruthy();
+    expect(screen.getByTitle("Claude (.claude): 3 skills")).toBeTruthy();
+    expect(screen.queryByText("5")).toBeNull();
   });
 });

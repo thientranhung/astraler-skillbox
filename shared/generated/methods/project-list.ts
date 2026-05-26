@@ -46,7 +46,7 @@ export interface ProjectListItem {
    */
   providers: ProjectListProviderSummary[];
   /**
-   * Number of observed skill entries across all providers
+   * Deprecated aggregate count across all providers; prefer providers[].entryCount for UI display
    */
   skillCount: number;
   /**
@@ -78,4 +78,8 @@ export interface ProjectListProviderSummary {
    * Detection status for this provider in the project
    */
   detectionStatus: 'detected' | 'configured' | 'missing' | 'invalid_structure';
+  /**
+   * Number of observed skill entries for this provider
+   */
+  entryCount: number;
 }

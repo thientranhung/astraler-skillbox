@@ -36,9 +36,13 @@
           "type": "string",
           "enum": ["detected", "configured", "missing", "invalid_structure"],
           "description": "Detection status for this provider in the project"
+        },
+        "entryCount": {
+          "type": "integer",
+          "description": "Number of observed skill entries for this provider"
         }
       },
-      "required": ["key", "displayName", "providerStatus", "detectionStatus"],
+      "required": ["key", "displayName", "providerStatus", "detectionStatus", "entryCount"],
       "additionalProperties": false
     },
     "ProjectListItem": {
@@ -70,7 +74,7 @@
         },
         "skillCount": {
           "type": "integer",
-          "description": "Number of observed skill entries across all providers"
+          "description": "Deprecated aggregate count across all providers; prefer providers[].entryCount for UI display"
         },
         "warningCount": {
           "type": "integer",
