@@ -24,6 +24,8 @@
     { "input": "methods/install.skill.json", "output": "methods/install-skill.ts" },
     { "input": "methods/remove.skill.json", "output": "methods/remove-skill.ts" },
     { "input": "methods/dashboard.get.json", "output": "methods/dashboard-get.ts" },
-    { "input": "methods/skill.get.json", "output": "methods/skill-get.ts" }
+    { "input": "methods/skill.get.json", "output": "methods/skill-get.ts" },
+    { "input": "methods/global.scan.json", "output": "methods/global-scan.ts" },
+    { "input": "methods/global.list.json", "output": "methods/global-list.ts" }
   ]
 }

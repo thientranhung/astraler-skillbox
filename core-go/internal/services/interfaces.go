@@ -121,6 +121,7 @@ type ProviderDefinitionRepo interface {
 // ProviderRegistry returns all registered provider adapters.
 type ProviderRegistry interface {
 	All() []providers.ProviderAdapter
+	Get(key string) (providers.ProviderAdapter, bool)
 }
 
 // SkillHostLister lists all skill host folders regardless of status.
@@ -163,4 +164,33 @@ type RemoveFilesystem interface {
 // *repositories.InstallRepo satisfies this interface.
 type RemoveInstallDeleter interface {
 	DeleteByID(ctx context.Context, installID int64) (int64, error)
+}
+
+// GlobalFilesystem provides the read-only filesystem operations needed by GlobalSkillsService.
+// filesystem.Gateway satisfies this interface.
+type GlobalFilesystem interface {
+	HomeDir() (string, error)
+	PathInfo(path string) (filesystem.PathInfo, error)
+	ListSkillEntries(skillsPath string) ([]filesystem.ProjectEntry, error)
+}
+
+// GlobalRepo looks up provider definitions and reads persisted global locations.
+// *repositories.GlobalLocationRepo satisfies this interface.
+type GlobalRepo interface {
+	ProviderDefByKey(ctx context.Context, key string) (id int64, displayName, status string, err error)
+	ListForView(ctx context.Context) ([]domain.GlobalLocationView, error)
+}
+
+// GlobalScanWriter persists global scan results atomically.
+// *repositories.GlobalScanRepo satisfies this interface.
+type GlobalScanWriter interface {
+	CommitGlobalScan(
+		ctx context.Context,
+		providerDefID int64,
+		path, skillsPath *string,
+		status domain.GlobalLocationStatus,
+		installs []repositories.GlobalInstallScanResult,
+		locationWarnings []domain.Warning,
+		now time.Time,
+	) error
 }

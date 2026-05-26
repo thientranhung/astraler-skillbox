@@ -23,6 +23,8 @@ import type {
   RemoveSkillRequest,
   RemoveSkillResponse,
   DashboardGetResponse,
+  GlobalScanResponse,
+  GlobalListResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -78,4 +80,8 @@ export const methods = {
     invoke<{ opened: boolean }>("dialog.openTerminal", { path }),
 
   getDashboard: () => invoke<DashboardGetResponse>("dashboard.get", {}),
+
+  scanGlobal: () => invoke<GlobalScanResponse>("global.scan", {}),
+
+  listGlobal: () => invoke<GlobalListResponse>("global.list", {}),
 };

@@ -18,4 +18,6 @@ export const ALLOWLIST = new Set([
   "dialog.openPath",
   "dialog.openTerminal",
   "dashboard.get",
+  "global.scan",
+  "global.list",
 ]);

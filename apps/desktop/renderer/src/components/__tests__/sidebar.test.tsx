@@ -7,4 +7,14 @@ describe("NAV_ITEMS", () => {
     expect(NAV_ITEMS[0].to).toBe("/dashboard");
     expect(NAV_ITEMS[0].label).toBe("Dashboard");
   });
+
+  it("has Global Skills between Skills and Projects", () => {
+    const labels = NAV_ITEMS.map((item) => item.label);
+    const skillsIdx = labels.indexOf("Skills");
+    const globalIdx = labels.indexOf("Global Skills");
+    const projectsIdx = labels.indexOf("Projects");
+    expect(globalIdx).toBeGreaterThan(skillsIdx);
+    expect(globalIdx).toBeLessThan(projectsIdx);
+    expect(NAV_ITEMS[globalIdx].to).toBe("/global");
+  });
 });

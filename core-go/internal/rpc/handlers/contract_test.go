@@ -220,6 +220,69 @@ func TestContract_HostScan_Response(t *testing.T) {
 
 func ptr64(v int64) *int64 { return &v }
 
+func TestContract_GlobalScan_Response(t *testing.T) {
+	schema := loadSchema(t, "methods/global.scan.json")
+	resp := globalScanResponse{OperationID: 1}
+	validateAgainstSchema(t, schema, resp)
+}
+
+func TestContract_GlobalList_Response(t *testing.T) {
+	schema := loadSchema(t, "methods/global.list.json")
+
+	rescan := "rescan"
+	scopeID := int64(10)
+	skillID := int64(7)
+	srcPath := "/host/.agents/skills/adr-helper"
+	symlinkTarget := "/host/.agents/skills/adr-helper"
+	agentsPath := "/home/user/.agents"
+	skillsPath := "/home/user/.agents/skills"
+	lastScan := "2026-05-26T10:00:00Z"
+
+	resp := globalListResponse{
+		Locations: []globalListLocationResponse{
+			{
+				GlobalProviderLocationID: 1,
+				ProviderKey:              "generic_agents",
+				ProviderDisplayName:      "Shared Agent Skills (.agents)",
+				ProviderStatus:           "supported",
+				Path:                     &agentsPath,
+				SkillsPath:               &skillsPath,
+				Status:                   "active",
+				LastScannedAt:            &lastScan,
+				Entries: []globalListEntryResponse{
+					{
+						GlobalInstallID:   10,
+						SkillName:         "adr-helper",
+						SkillID:           &skillID,
+						Mode:              "symlink",
+						Status:            "current",
+						GlobalSkillPath:   skillsPath + "/adr-helper",
+						SourceSkillPath:   &srcPath,
+						SymlinkTargetPath: &symlinkTarget,
+					},
+				},
+				Warnings: []globalListWarningResponse{
+					{
+						Code:      "broken_symlink",
+						Severity:  "warning",
+						ScopeType: "global_install",
+						ScopeID:   &scopeID,
+						ActionKey: &rescan,
+						Message:   "broken",
+					},
+				},
+			},
+		},
+	}
+	validateAgainstSchema(t, schema, resp)
+}
+
+func TestContract_GlobalList_EmptyResponse(t *testing.T) {
+	schema := loadSchema(t, "methods/global.list.json")
+	resp := globalListResponse{Locations: []globalListLocationResponse{}}
+	validateAgainstSchema(t, schema, resp)
+}
+
 func TestContract_DashboardGet_Response(t *testing.T) {
 	schema := loadSchema(t, "methods/dashboard.get.json")
 
