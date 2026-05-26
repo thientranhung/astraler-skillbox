@@ -60,8 +60,8 @@ func TestMigration000005_GlobalSkills(t *testing.T) {
 	if err := db.QueryRow("SELECT database_version FROM app_settings WHERE id=1").Scan(&dbVersion); err != nil {
 		t.Fatalf("query database_version: %v", err)
 	}
-	if dbVersion != 6 {
-		t.Errorf("database_version: got %d want 6", dbVersion)
+	if dbVersion != 7 {
+		t.Errorf("database_version: got %d want 7", dbVersion)
 	}
 }
 
