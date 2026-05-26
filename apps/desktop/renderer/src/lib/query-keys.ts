@@ -19,4 +19,7 @@ export const queryKeys = {
   providers: {
     list: () => ["providers", "list"] as const,
   },
+  providerPlugins: {
+    list: () => ["providerPlugins", "list"] as const,
+  },
 };

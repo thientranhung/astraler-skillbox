@@ -17,6 +17,7 @@ import { ProjectsScreen } from "../screens/projects-screen.js";
 import { ProjectDetailScreen } from "../screens/project-detail-screen.js";
 import { SkillDetailScreen } from "../screens/skill-detail-screen.js";
 import { GlobalSkillsScreen } from "../screens/global-skills-screen.js";
+import { PluginsScreen } from "../screens/plugins-screen.js";
 
 // Root — bare layout with no shell
 function RootLayout(): React.JSX.Element {
@@ -101,6 +102,12 @@ const globalRoute = createRoute({
   component: GlobalSkillsScreen,
 });
 
+const pluginsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/plugins",
+  component: PluginsScreen,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/settings",
@@ -110,7 +117,7 @@ const settingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   setupRoute,
-  shellRoute.addChildren([dashboardRoute, skillsRoute, skillDetailRoute, globalRoute, projectsRoute, projectDetailRoute, settingsRoute]),
+  shellRoute.addChildren([dashboardRoute, skillsRoute, skillDetailRoute, globalRoute, projectsRoute, projectDetailRoute, pluginsRoute, settingsRoute]),
 ]);
 
 export const router = createRouter({
