@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import React from "react";
 
 vi.mock("../../features/app-settings/use-app-settings.js", () => ({
@@ -20,17 +20,29 @@ vi.mock("../../lib/core-client/methods.js", () => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: vi.fn(),
 }));
+vi.mock("../../features/providers/provider-paths-editor.js", () => ({
+  ProviderPathsEditor: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="paths-editor">
+      <button onClick={onClose}>CloseEditor</button>
+    </div>
+  ),
+}));
+vi.mock("../../features/providers/use-reset-provider-paths.js", () => ({
+  useResetProviderPaths: vi.fn(),
+}));
 
 import { SettingsScreen } from "../settings-screen.js";
 import { useAppSettings } from "../../features/app-settings/use-app-settings.js";
 import { useChooseHost } from "../../features/skill-host/use-choose-host.js";
 import { useProviderList } from "../../features/providers/use-provider-list.js";
 import { useNavigate } from "@tanstack/react-router";
+import { useResetProviderPaths } from "../../features/providers/use-reset-provider-paths.js";
 
 const mockUseAppSettings = useAppSettings as ReturnType<typeof vi.fn>;
 const mockUseChooseHost = useChooseHost as ReturnType<typeof vi.fn>;
 const mockUseProviderList = useProviderList as ReturnType<typeof vi.fn>;
 const mockUseNavigate = useNavigate as ReturnType<typeof vi.fn>;
+const mockUseResetProviderPaths = useResetProviderPaths as ReturnType<typeof vi.fn>;
 
 const baseSettings = {
   activeSkillHostFolderId: 1,
@@ -66,6 +78,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUseNavigate.mockReturnValue(vi.fn());
   mockUseChooseHost.mockReturnValue({ isPending: false, mutate: vi.fn(), error: null });
+  mockUseResetProviderPaths.mockReturnValue({ mutate: vi.fn(), isPending: false });
 });
 
 afterEach(() => cleanup());
@@ -165,5 +178,50 @@ describe("SettingsScreen", () => {
 
     render(<SettingsScreen />);
     expect(screen.getByText(/loading providers/i)).not.toBeNull();
+  });
+
+  it("shows Override badge when any candidate has source=override", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({
+      data: {
+        providers: [makeProvider({
+          candidates: [
+            { relativePath: ".custom", scope: "project" as const, purpose: "detect" as const, priority: 10, source: "override" as const, verificationStatus: "assumed" as const },
+          ],
+        })],
+      },
+    });
+    render(<SettingsScreen />);
+    expect(screen.getByText("Override")).not.toBeNull();
+  });
+
+  it("shows Edit button for each provider row", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({ data: { providers: [makeProvider()] } });
+    render(<SettingsScreen />);
+    expect(screen.getAllByRole("button", { name: /edit/i }).length).toBeGreaterThan(0);
+  });
+
+  it("opens editor dialog when Edit clicked", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({ data: { providers: [makeProvider()] } });
+    render(<SettingsScreen />);
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[0]);
+    expect(screen.getByTestId("paths-editor")).not.toBeNull();
+  });
+
+  it("shows Reset button for provider with override candidates", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({
+      data: {
+        providers: [makeProvider({
+          candidates: [
+            { relativePath: ".custom", scope: "project" as const, purpose: "detect" as const, priority: 10, source: "override" as const, verificationStatus: "assumed" as const },
+          ],
+        })],
+      },
+    });
+    render(<SettingsScreen />);
+    expect(screen.getByRole("button", { name: /reset/i })).not.toBeNull();
   });
 });

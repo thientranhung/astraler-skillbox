@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Pencil, RotateCcw } from "lucide-react";
 import { useAppSettings } from "../features/app-settings/use-app-settings.js";
 import { useChooseHost } from "../features/skill-host/use-choose-host.js";
 import { useProviderList } from "../features/providers/use-provider-list.js";
+import { useResetProviderPaths } from "../features/providers/use-reset-provider-paths.js";
+import { ProviderPathsEditor } from "../features/providers/provider-paths-editor.js";
 import { methods } from "../lib/core-client/methods.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
@@ -37,23 +39,114 @@ function ProviderStatusBadge({
   );
 }
 
-function candidatePaths(
+function hasOverride(provider: ProviderListProvider): boolean {
+  return provider.candidates.some((c) => c.source === "override");
+}
+
+function candidatePathsWithSource(
   provider: ProviderListProvider,
   scope: "project" | "global",
   purpose: "detect" | "skills",
-): string[] {
-  return provider.candidates
-    .filter((c) => c.scope === scope && c.purpose === purpose)
-    .sort((a, b) => b.priority - a.priority)
-    .map((c) => c.relativePath);
+): { paths: string[]; source: string } {
+  const cands = provider.candidates.filter((c) => c.scope === scope && c.purpose === purpose);
+  const sorted = [...cands].sort((a, b) => b.priority - a.priority);
+  const source = sorted.some((c) => c.source === "override") ? "override" : "builtin";
+  return { paths: sorted.map((c) => c.relativePath), source };
 }
 
-function PathList({ paths }: { paths: string[] }): React.JSX.Element {
-  if (paths.length === 0) return <span className="text-zinc-400">—</span>;
+function PathListWithSource({ data }: { data: { paths: string[]; source: string } }): React.JSX.Element {
+  if (data.paths.length === 0) return <span className="text-zinc-400">—</span>;
   return (
-    <span className="font-mono text-xs text-zinc-600">
-      {paths.join(", ")}
+    <span className={`font-mono text-xs ${data.source === "override" ? "text-blue-600" : "text-zinc-600"}`}>
+      {data.paths.join(", ")}
     </span>
+  );
+}
+
+function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JSX.Element {
+  const [editSlot, setEditSlot] = useState<{ scope: "project" | "global"; purpose: "detect" | "skills" | "config" | "commands"; paths: string[] } | null>(null);
+  const resetMutation = useResetProviderPaths();
+
+  const projectDetect = candidatePathsWithSource(provider, "project", "detect");
+  const projectSkills = candidatePathsWithSource(provider, "project", "skills");
+  const globalSkills = provider.hasGlobalLevel ? candidatePathsWithSource(provider, "global", "skills") : null;
+  const overridden = hasOverride(provider);
+
+  function handleReset() {
+    const overrideCand = provider.candidates.find((c) => c.source === "override");
+    if (!overrideCand) return;
+    resetMutation.mutate({
+      providerKey: provider.key,
+      scope: overrideCand.scope as "project" | "global",
+      purpose: overrideCand.purpose,
+    });
+  }
+
+  return (
+    <>
+      <tr className={!provider.isAvailable ? "opacity-50" : ""}>
+        <td className="px-3 py-2">
+          <div className="flex items-center gap-2">
+            <ProviderIcon providerKey={provider.key} iconKey={provider.iconKey} />
+            <span className="font-medium text-zinc-800">{provider.displayName}</span>
+            {overridden && (
+              <span className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                Override
+              </span>
+            )}
+          </div>
+        </td>
+        <td className="px-3 py-2 font-mono text-zinc-500">{provider.key}</td>
+        <td className="px-3 py-2">
+          <ProviderStatusBadge status={provider.status} />
+        </td>
+        <td className="px-3 py-2">
+          <PathListWithSource data={projectDetect} />
+        </td>
+        <td className="px-3 py-2">
+          <PathListWithSource data={projectSkills} />
+        </td>
+        <td className="px-3 py-2">
+          {globalSkills != null ? (
+            <PathListWithSource data={globalSkills} />
+          ) : (
+            <span className="text-zinc-300">—</span>
+          )}
+        </td>
+        <td className="px-3 py-2">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setEditSlot({ scope: "project", purpose: "detect", paths: projectDetect.paths })}
+              className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+              aria-label="Edit"
+              title="Edit project detect paths"
+            >
+              <Pencil size={12} />
+            </button>
+            {overridden && (
+              <button
+                onClick={handleReset}
+                disabled={resetMutation.isPending}
+                className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-red-500 disabled:opacity-50"
+                aria-label="Reset"
+                title="Reset to defaults"
+              >
+                <RotateCcw size={12} />
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+      {editSlot != null && (
+        <ProviderPathsEditor
+          providerKey={provider.key}
+          scope={editSlot.scope}
+          purpose={editSlot.purpose}
+          currentPaths={editSlot.paths}
+          onClose={() => setEditSlot(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -140,7 +233,7 @@ export function SettingsScreen(): React.JSX.Element {
       <div>
         <h3 className="text-sm font-semibold text-zinc-800">Providers</h3>
         <p className="mt-0.5 text-xs text-zinc-500">
-          Built-in provider registry — read only. Path overrides and enable/disable controls are coming in a future update.
+          Override paths are configuration metadata only — scan and install behavior integration is a later slice.
         </p>
 
         <div className="mt-3 overflow-x-auto rounded border border-zinc-200">
@@ -153,45 +246,16 @@ export function SettingsScreen(): React.JSX.Element {
                 <th className="px-3 py-2 font-medium">Project detect</th>
                 <th className="px-3 py-2 font-medium">Project skills</th>
                 <th className="px-3 py-2 font-medium">Global skills</th>
+                <th className="px-3 py-2 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {(providerData?.providers ?? []).map((provider) => (
-                <tr
-                  key={provider.key}
-                  className={`${!provider.isAvailable ? "opacity-50" : ""}`}
-                >
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <ProviderIcon
-                        providerKey={provider.key}
-                        iconKey={provider.iconKey}
-                      />
-                      <span className="font-medium text-zinc-800">{provider.displayName}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-zinc-500">{provider.key}</td>
-                  <td className="px-3 py-2">
-                    <ProviderStatusBadge status={provider.status} />
-                  </td>
-                  <td className="px-3 py-2">
-                    <PathList paths={candidatePaths(provider, "project", "detect")} />
-                  </td>
-                  <td className="px-3 py-2">
-                    <PathList paths={candidatePaths(provider, "project", "skills")} />
-                  </td>
-                  <td className="px-3 py-2">
-                    {provider.hasGlobalLevel ? (
-                      <PathList paths={candidatePaths(provider, "global", "skills")} />
-                    ) : (
-                      <span className="text-zinc-300">—</span>
-                    )}
-                  </td>
-                </tr>
+                <ProviderRow key={provider.key} provider={provider} />
               ))}
               {(providerData?.providers ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-4 text-center text-zinc-400">
+                  <td colSpan={7} className="px-3 py-4 text-center text-zinc-400">
                     Loading providers…
                   </td>
                 </tr>
