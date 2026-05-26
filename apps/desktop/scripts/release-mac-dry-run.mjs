@@ -255,7 +255,11 @@ const result = await runReleaseMacDryRun({
   now: () => Date.now(),
 });
 
-if (result.failedStage === "build:core") {
+if (result.failedStage === "generate-icon") {
+  process.stderr.write(
+    "\n[release:mac:dry-run] STOPPED: generate:icon failed - icon not generated, build not started.\n"
+  );
+} else if (result.failedStage === "build:core") {
   process.stderr.write(
     "\n[release:mac:dry-run] STOPPED: build:core failed - build not started.\n"
   );

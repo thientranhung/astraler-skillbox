@@ -233,8 +233,9 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 ## Packaging
 
 ### Unsigned (Slice 3A)
-- `pnpm package:mac:unsigned` — `build:core` → `electron-vite build` → `electron-builder --mac dmg`
-  with signing and hardened runtime disabled (`identity=null`, `hardenedRuntime=false`, `notarize=false`).
+- `pnpm package:mac:unsigned` — `generate:icon` → `build:core` → `electron-vite build` →
+  `electron-builder --mac dmg` with signing and hardened runtime disabled (`identity=null`,
+  `hardenedRuntime=false`, `notarize=false`).
 - Output: `apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg` (unsigned). Launching requires a
   Gatekeeper override (`xattr -dr com.apple.quarantine …`).
 
@@ -345,9 +346,10 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 > **NON-DISTRIBUTABLE — AD-HOC SIGNED — NOT NOTARIZED**
 
 - `pnpm release:mac:dry-run` — validates the local build → ad-hoc sign → verify → manifest/checksum
-  chain without Apple credentials. Runs: `build:core` → `build` → `electron-builder --mac dmg
-  -c.mac.identity=- -c.mac.notarize=false` (hardened runtime **remains enabled**) → `release:mac:verify
-  --allow-adhoc <dmg>` → `release:mac:manifest <dmg>` → `shasum -a 256 -c` (selected line only).
+  chain without Apple credentials. Runs: `generate:icon` → `build:core` → `build` →
+  `electron-builder --mac dmg -c.mac.identity=- -c.mac.notarize=false` (hardened runtime **remains
+  enabled**) → `release:mac:verify --allow-adhoc <dmg>` → `release:mac:manifest <dmg>` →
+  `shasum -a 256 -c` (selected line only).
 - Does **not** invoke `release:mac:check`, `package:mac`, `package:mac:unsigned`, notarization,
   keychain, or credentials. Never sets `-c.mac.hardenedRuntime=false`.
 - Selects the produced DMG by before/after `dist/*.dmg` metadata (same algorithm as `release:mac:full`).
@@ -355,6 +357,19 @@ Generated files live in `shared/generated/` and are committed. Do not edit them 
 - Output artifact is for local chain validation only; Gatekeeper/customer distribution requires real
   signing + notarization via `release:mac:full`.
 - See SMOKE.md → "Release Dry-Run (Slice 3E)".
+
+### macOS app icon pipeline (Slice 3I)
+
+- `apps/desktop/build/icon.svg` is the only committed icon source. It is hand-authored SVG with no
+  text/font elements.
+- `pnpm generate:icon` renders the SVG via `@resvg/resvg-js`, creates the standard macOS iconset via
+  `sips`, and packs `build/icon.icns` via `iconutil`.
+- `build/icon.icns` and `build/.gen/` are generated artifacts and intentionally ignored.
+- `electron-builder.yml` sets `mac.icon: build/icon.icns`; `package:mac`, `package:mac:unsigned`, and
+  `release:mac:dry-run` all generate the icon before packaging.
+- `pnpm release:mac:icon-verify [dist/mac-arm64/Astraler Skillbox.app]` confirms the packaged app
+  does not ship the default `electron.icns`, the resource exists, the bytes differ from Electron's
+  default icon hash, and `file` reports a valid `Mac OS X icon`.
 
 ### Release manifest + checksums (Slice 3C)
 - `pnpm release:mac:manifest <path-to-dmg>` — credential-free artifact integrity generator.

@@ -30,7 +30,7 @@ export function scrubEnv(env) {
 /**
  * Injectable orchestrator for the macOS release dry-run flow.
  *
- * Flow: snapshot before -> build:core -> build -> ad-hoc electron-builder ->
+ * Flow: generate-icon -> build:core -> build -> ad-hoc electron-builder ->
  *       snapshot after -> select dmg -> verify --allow-adhoc -> manifest -> checksum
  *
  * No preflight (release:mac:check) is invoked - this is a no-credential local harness.
@@ -48,6 +48,15 @@ export async function runReleaseMacDryRun({ runStage, snapshotDist, verifyChecks
   // Snapshot dist/*.dmg before packaging
   const beforeSnapshot = await snapshotDist();
   const packageStartMs = now();
+
+  // Stage 0: generate the macOS app icon (build/icon.icns) before electron-builder.
+  // release:mac:dry-run packages via electron-builder directly (not package:mac:unsigned),
+  // so it must generate the icon itself; mac.icon: build/icon.icns would otherwise fail on
+  // a clean checkout. runStage runs `pnpm generate:icon` (non-electron-builder branch).
+  const generateIconResult = await runStage("generate-icon", ["generate:icon"]);
+  if (generateIconResult.code !== 0) {
+    return { exitCode: generateIconResult.code, failedStage: "generate-icon" };
+  }
 
   // Stage 1: build Go core
   const buildCoreResult = await runStage("build:core", ["build:core"]);

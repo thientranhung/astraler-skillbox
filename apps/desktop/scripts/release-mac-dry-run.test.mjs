@@ -133,14 +133,15 @@ describe("runReleaseMacDryRun - verify --allow-adhoc", () => {
 // ---------------------------------------------------------------------------
 
 describe("runReleaseMacDryRun - success path", () => {
-  it("calls build:core, build, electron-builder, verify, manifest, checksum in order", async () => {
+  it("calls generate:icon, build:core, build, electron-builder, verify, manifest, checksum in order", async () => {
     const { runStage, verifyChecksum } = await runSuccessPath();
     const calledCmds = runStage.mock.calls.map((c) => c[1][0]);
-    expect(calledCmds[0]).toBe("build:core");
-    expect(calledCmds[1]).toBe("build");
-    expect(calledCmds[2]).toBe("electron-builder");
-    expect(calledCmds[3]).toBe("release:mac:verify");
-    expect(calledCmds[4]).toBe("release:mac:manifest");
+    expect(calledCmds[0]).toBe("generate:icon");
+    expect(calledCmds[1]).toBe("build:core");
+    expect(calledCmds[2]).toBe("build");
+    expect(calledCmds[3]).toBe("electron-builder");
+    expect(calledCmds[4]).toBe("release:mac:verify");
+    expect(calledCmds[5]).toBe("release:mac:manifest");
     expect(verifyChecksum).toHaveBeenCalledTimes(1);
     expect(verifyChecksum).toHaveBeenCalledWith("/dist/App-1.0-arm64.dmg");
   });
@@ -179,6 +180,7 @@ describe("runReleaseMacDryRun - manifest only after verify", () => {
   it("does NOT call manifest when verify fails", async () => {
     const snapshotDist = makeSnapshotWithOneDmg("/dist/App.dmg");
     const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon
       .mockResolvedValueOnce({ code: 0 }) // build:core
       .mockResolvedValueOnce({ code: 0 }) // build
       .mockResolvedValueOnce({ code: 0 }) // electron-builder
@@ -205,7 +207,9 @@ describe("runReleaseMacDryRun - manifest only after verify", () => {
 describe("runReleaseMacDryRun - build:core failure", () => {
   it("stops at build:core and does not invoke build or package", async () => {
     const snapshotDist = vi.fn().mockResolvedValue([]);
-    const runStage = vi.fn().mockResolvedValueOnce({ code: 2 }); // build:core fails
+    const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon ok
+      .mockResolvedValueOnce({ code: 2 }); // build:core fails
 
     const result = await runReleaseMacDryRun({
       runStage,
@@ -216,8 +220,10 @@ describe("runReleaseMacDryRun - build:core failure", () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.failedStage).toBe("build:core");
-    expect(runStage).toHaveBeenCalledTimes(1);
+    expect(runStage).toHaveBeenCalledTimes(2);
     const calledCmds = runStage.mock.calls.map((c) => c[1][0]);
+    expect(calledCmds).toContain("generate:icon");
+    expect(calledCmds).toContain("build:core");
     expect(calledCmds).not.toContain("build");
     expect(calledCmds).not.toContain("electron-builder");
     expect(calledCmds).not.toContain("release:mac:verify");
@@ -228,6 +234,7 @@ describe("runReleaseMacDryRun - build failure", () => {
   it("stops after build:core and does not invoke electron-builder or verify", async () => {
     const snapshotDist = vi.fn().mockResolvedValue([]);
     const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon ok
       .mockResolvedValueOnce({ code: 0 }) // build:core ok
       .mockResolvedValueOnce({ code: 1 }); // build fails
 
@@ -240,7 +247,7 @@ describe("runReleaseMacDryRun - build failure", () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.failedStage).toBe("build");
-    expect(runStage).toHaveBeenCalledTimes(2);
+    expect(runStage).toHaveBeenCalledTimes(3);
     const calledCmds = runStage.mock.calls.map((c) => c[1][0]);
     expect(calledCmds).not.toContain("electron-builder");
     expect(calledCmds).not.toContain("release:mac:verify");
@@ -251,6 +258,7 @@ describe("runReleaseMacDryRun - package-dmg failure", () => {
   it("stops before DMG selection and verify when electron-builder fails", async () => {
     const snapshotDist = vi.fn().mockResolvedValue([]);
     const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon
       .mockResolvedValueOnce({ code: 0 }) // build:core
       .mockResolvedValueOnce({ code: 0 }) // build
       .mockResolvedValueOnce({ code: 3 }); // electron-builder fails
@@ -275,6 +283,7 @@ describe("runReleaseMacDryRun - DMG selection failure (no DMG changed)", () => {
     const staleSnapshot = [dmg("/dist/App.dmg", 100, 1000)];
     const snapshotDist = vi.fn().mockResolvedValue(staleSnapshot); // identical before and after
     const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon
       .mockResolvedValueOnce({ code: 0 }) // build:core
       .mockResolvedValueOnce({ code: 0 }) // build
       .mockResolvedValueOnce({ code: 0 }); // electron-builder
@@ -303,9 +312,10 @@ describe("runReleaseMacDryRun - DMG selection failure (multiple changed DMGs)", 
       return Promise.resolve([dmg("/dist/A.dmg"), dmg("/dist/B.dmg")]);
     });
     const runStage = vi.fn()
-      .mockResolvedValueOnce({ code: 0 })
-      .mockResolvedValueOnce({ code: 0 })
-      .mockResolvedValueOnce({ code: 0 });
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon
+      .mockResolvedValueOnce({ code: 0 }) // build:core
+      .mockResolvedValueOnce({ code: 0 }) // build
+      .mockResolvedValueOnce({ code: 0 }); // electron-builder
 
     const result = await runReleaseMacDryRun({
       runStage,
@@ -326,6 +336,7 @@ describe("runReleaseMacDryRun - verify failure", () => {
   it("exits non-zero and stops before manifest when verify fails", async () => {
     const snapshotDist = makeSnapshotWithOneDmg("/dist/App.dmg");
     const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon
       .mockResolvedValueOnce({ code: 0 }) // build:core
       .mockResolvedValueOnce({ code: 0 }) // build
       .mockResolvedValueOnce({ code: 0 }) // electron-builder
@@ -349,6 +360,7 @@ describe("runReleaseMacDryRun - manifest failure", () => {
   it("exits non-zero and stops before checksum when manifest fails", async () => {
     const snapshotDist = makeSnapshotWithOneDmg("/dist/App.dmg");
     const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon
       .mockResolvedValueOnce({ code: 0 }) // build:core
       .mockResolvedValueOnce({ code: 0 }) // build
       .mockResolvedValueOnce({ code: 0 }) // electron-builder
@@ -373,6 +385,7 @@ describe("runReleaseMacDryRun - checksum failure", () => {
   it("exits non-zero when checksum verification fails", async () => {
     const snapshotDist = makeSnapshotWithOneDmg("/dist/App.dmg");
     const runStage = vi.fn()
+      .mockResolvedValueOnce({ code: 0 }) // generate-icon
       .mockResolvedValueOnce({ code: 0 }) // build:core
       .mockResolvedValueOnce({ code: 0 }) // build
       .mockResolvedValueOnce({ code: 0 }) // electron-builder
@@ -517,5 +530,51 @@ describe("runReleaseMacDryRun - selected DMG path propagation", () => {
     expect(result.exitCode).toBe(0);
     expect(result.dmgPath).toBe("/dist/App.dmg");
     expect(result.dmgReason).toBe("modified");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generate-icon stage (Slice 3I)
+// ---------------------------------------------------------------------------
+
+describe("runReleaseMacDryRun — generate-icon stage (Slice 3I)", () => {
+  function makeDeps(overrides = {}) {
+    const calls = [];
+    const runStage = vi.fn(async (stage) => {
+      calls.push(stage);
+      const code = overrides.failStage === stage ? 1 : 0;
+      if (stage === "manifest") {
+        return { code, manifestPath: "/d/x.dmg.manifest.json", sha256sumsPath: "/d/SHA256SUMS" };
+      }
+      return { code };
+    });
+    const snapshotDist = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([{ path: "/d/x.dmg", size: 10, mtimeMs: 100, isFile: true }]);
+    const deps = { runStage, snapshotDist, verifyChecksum: vi.fn(async () => ({ code: 0 })), now: () => 0 };
+    return { deps, calls, runStage };
+  }
+
+  it("runs generate-icon before build:core on the happy path", async () => {
+    const { deps, calls } = makeDeps();
+    await runReleaseMacDryRun(deps);
+    expect(calls.indexOf("generate-icon")).toBe(0);
+    expect(calls.indexOf("generate-icon")).toBeLessThan(calls.indexOf("build:core"));
+  });
+
+  it("invokes generate-icon via `pnpm generate:icon` (not electron-builder)", async () => {
+    const { deps, runStage } = makeDeps();
+    await runReleaseMacDryRun(deps);
+    expect(runStage).toHaveBeenCalledWith("generate-icon", ["generate:icon"]);
+  });
+
+  it("short-circuits with failedStage 'generate-icon' and never builds when icon generation fails", async () => {
+    const { deps, calls } = makeDeps({ failStage: "generate-icon" });
+    const result = await runReleaseMacDryRun(deps);
+    expect(result.failedStage).toBe("generate-icon");
+    expect(result.exitCode).toBe(1);
+    expect(calls).toEqual(["generate-icon"]);
+    expect(calls).not.toContain("build:core");
   });
 });

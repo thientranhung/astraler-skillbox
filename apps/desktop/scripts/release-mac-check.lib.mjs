@@ -245,6 +245,81 @@ export function checkBundleMetadata(config) {
   return out;
 }
 
+const EXPECTED_ICON = "build/icon.icns";
+
+/**
+ * @param {any} config
+ * @param {{svgPresent:boolean,svgUsable:boolean,icnsPresent:boolean,icnsValid:boolean}} icon
+ */
+export function checkIcon(config, icon) {
+  const out = [];
+  const macIcon = config && config.mac && config.mac.icon;
+
+  // D8 — electron-builder mac.icon config
+  if (macIcon === EXPECTED_ICON) {
+    out.push({ id: "D8", category: "config", status: "PASS", message: `mac.icon: ${EXPECTED_ICON}` });
+  } else if (!isSet(macIcon)) {
+    out.push({
+      id: "D8",
+      category: "config",
+      status: "FAIL",
+      message: "mac.icon is not set (bundle would ship the default Electron icon)",
+      remediation: `Set mac.icon: ${EXPECTED_ICON} in electron-builder.yml`,
+    });
+  } else {
+    out.push({
+      id: "D8",
+      category: "config",
+      status: "FAIL",
+      message: `mac.icon is ${JSON.stringify(macIcon)}, expected ${EXPECTED_ICON}`,
+      remediation: `Set mac.icon: ${EXPECTED_ICON} in electron-builder.yml`,
+    });
+  }
+
+  // D8-source — committed SVG source
+  if (!icon.svgPresent) {
+    out.push({
+      id: "D8-source",
+      category: "config",
+      status: "FAIL",
+      message: "icon source build/icon.svg is missing",
+      remediation: "Restore build/icon.svg (the only committed icon asset)",
+    });
+  } else if (!icon.svgUsable) {
+    out.push({
+      id: "D8-source",
+      category: "config",
+      status: "FAIL",
+      message: "build/icon.svg is malformed; the generator cannot run",
+      remediation: "Fix build/icon.svg (well-formed <svg>, no <text>/<tspan>); see pnpm generate:icon",
+    });
+  } else {
+    out.push({ id: "D8-source", category: "config", status: "PASS", message: "icon source build/icon.svg present and usable" });
+  }
+
+  // D8-artifact — generated .icns
+  if (!icon.icnsPresent) {
+    out.push({
+      id: "D8-artifact",
+      category: "config",
+      status: "WARN",
+      message: "generated build/icon.icns absent (package:mac runs generate:icon before packaging)",
+    });
+  } else if (!icon.icnsValid) {
+    out.push({
+      id: "D8-artifact",
+      category: "config",
+      status: "FAIL",
+      message: "build/icon.icns exists but is empty/invalid/unreadable",
+      remediation: "Rerun pnpm generate:icon to regenerate build/icon.icns",
+    });
+  } else {
+    out.push({ id: "D8-artifact", category: "config", status: "PASS", message: "generated build/icon.icns present and valid" });
+  }
+
+  return out;
+}
+
 /** @param {{present:boolean,arch:string|null,executable:boolean}} sidecar */
 export function checkSidecar(sidecar) {
   if (!sidecar || !sidecar.present) {
@@ -291,6 +366,7 @@ export function evaluate(facts) {
     ...checkNotarization(facts.env, facts.fileProbes),
     ...checkConfig(facts.config, facts.entitlements),
     ...checkBundleMetadata(facts.config),
+    ...checkIcon(facts.config, facts.icon),
     checkSidecar(facts.sidecar),
     ...checkHygiene(facts),
     checkVersion(facts.version),

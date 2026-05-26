@@ -12,6 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import { evaluate, render } from "./release-mac-check.lib.mjs";
+import { assertSvgUsable } from "./generate-icon.lib.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktop = path.resolve(here, ".."); // apps/desktop
@@ -117,6 +118,33 @@ if (existsSync(sidecarPath)) {
   sidecar = { present: true, arch, executable };
 }
 
+// Icon assets (Slice 3I) — source committed, .icns is a generated artifact.
+const iconSvgPath = path.join(desktop, "build", "icon.svg");
+const iconIcnsPath = path.join(desktop, "build", "icon.icns");
+const svgPresent = existsSync(iconSvgPath);
+let svgUsable = false;
+if (svgPresent) {
+  try {
+    assertSvgUsable(readFileSync(iconSvgPath, "utf8"));
+    svgUsable = true;
+  } catch {
+    svgUsable = false;
+  }
+}
+const icnsPresent = existsSync(iconIcnsPath);
+let icnsValid = false;
+if (icnsPresent) {
+  const typeOk = (run("/usr/bin/file", [iconIcnsPath]) ?? "").includes("Mac OS X icon");
+  let nonEmpty = false;
+  try {
+    nonEmpty = statSync(iconIcnsPath).size > 0;
+  } catch {
+    nonEmpty = false;
+  }
+  icnsValid = typeOk && nonEmpty && readableFile(iconIcnsPath);
+}
+const icon = { svgPresent, svgUsable, icnsPresent, icnsValid };
+
 // Hygiene — tracked-status entries only (ignore untracked ??), per spec F1.
 // CRITICAL: this command is invoked from apps/desktop (pnpm cwd). Git pathspecs are
 // resolved relative to the *current directory*, so a naive `git ls-files -- apps/desktop`
@@ -144,6 +172,7 @@ const facts = {
   config,
   entitlements,
   sidecar,
+  icon,
   trackedArtifacts,
   trackedSecretFiles,
   version: pkg.version,

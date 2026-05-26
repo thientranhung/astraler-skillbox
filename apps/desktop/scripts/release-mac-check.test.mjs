@@ -7,6 +7,7 @@ import {
   checkNotarization,
   checkConfig,
   checkBundleMetadata,
+  checkIcon,
   checkSidecar,
   checkHygiene,
   checkVersion,
@@ -187,6 +188,7 @@ const GOOD_CONFIG = {
   artifactName: "astraler-skillbox-${version}-${arch}.${ext}",
   copyright: "Copyright (c) 2026 Astraler",
   mac: {
+    icon: "build/icon.icns",
     hardenedRuntime: true,
     notarize: true,
     binaries: ["Contents/Resources/core/skillbox-core"],
@@ -303,6 +305,7 @@ function baseFacts(overrides = {}) {
     config: GOOD_CONFIG,
     entitlements: GOOD_ENT,
     sidecar: { present: true, arch: "arm64", executable: true },
+    icon: { svgPresent: true, svgUsable: true, icnsPresent: true, icnsValid: true },
     trackedArtifacts: [],
     trackedSecretFiles: [],
     version: "0.1.0",
@@ -358,5 +361,53 @@ describe("render redaction", () => {
     ]) {
       expect(text).not.toContain(secret);
     }
+  });
+});
+
+describe("checkIcon (D8)", () => {
+  const goodIcon = { svgPresent: true, svgUsable: true, icnsPresent: true, icnsValid: true };
+  const cfg = (icon) => ({ mac: { icon } });
+
+  it("PASS path: mac.icon correct, svg usable, icns valid", () => {
+    const r = checkIcon(cfg("build/icon.icns"), goodIcon);
+    expect(r.find((x) => x.id === "D8").status).toBe("PASS");
+    expect(r.find((x) => x.id === "D8-source").status).toBe("PASS");
+    expect(r.find((x) => x.id === "D8-artifact").status).toBe("PASS");
+    expect(r.every((x) => x.category === "config")).toBe(true);
+  });
+
+  it("D8 FAIL when mac.icon is unset (default Electron icon)", () => {
+    const d8 = checkIcon({ mac: {} }, goodIcon).find((x) => x.id === "D8");
+    expect(d8.status).toBe("FAIL");
+    expect(d8.message).toMatch(/not set|default/i);
+    expect(d8.remediation).toContain("build/icon.icns");
+  });
+
+  it("D8 FAIL when mac.icon points elsewhere", () => {
+    const r = checkIcon(cfg("build/other.icns"), goodIcon);
+    expect(r.find((x) => x.id === "D8").status).toBe("FAIL");
+  });
+
+  it("D8-source FAIL when svg missing", () => {
+    const r = checkIcon(cfg("build/icon.icns"), { ...goodIcon, svgPresent: false });
+    expect(r.find((x) => x.id === "D8-source").status).toBe("FAIL");
+  });
+
+  it("D8-source FAIL when svg malformed (generator cannot run)", () => {
+    const src = checkIcon(cfg("build/icon.icns"), { ...goodIcon, svgUsable: false }).find((x) => x.id === "D8-source");
+    expect(src.status).toBe("FAIL");
+    expect(src.message).toMatch(/malformed|usable|generator/i);
+  });
+
+  it("D8-artifact WARN when generated icns absent on clean checkout", () => {
+    const art = checkIcon(cfg("build/icon.icns"), { ...goodIcon, icnsPresent: false, icnsValid: false }).find((x) => x.id === "D8-artifact");
+    expect(art.status).toBe("WARN");
+    expect(art.message).toMatch(/generate:icon|package/i);
+  });
+
+  it("D8-artifact FAIL when icns present but invalid", () => {
+    const art = checkIcon(cfg("build/icon.icns"), { ...goodIcon, icnsValid: false }).find((x) => x.id === "D8-artifact");
+    expect(art.status).toBe("FAIL");
+    expect(art.message).toMatch(/invalid|empty|unreadable/i);
   });
 });

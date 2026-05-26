@@ -12,6 +12,7 @@ extraResources:
   - from: resources/core/skillbox-core
     to: core/skillbox-core
 mac:
+  icon: build/icon.icns
   category: public.app-category.developer-tools
   hardenedRuntime: true
   gatekeeperAssess: false
