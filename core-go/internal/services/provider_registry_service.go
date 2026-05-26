@@ -2,17 +2,24 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 )
 
-// ProviderRegistryService returns the read-only provider registry for the UI.
+var validScopes = map[string]bool{"project": true, "global": true}
+var validPurposes = map[string]bool{"detect": true, "skills": true, "config": true, "commands": true}
+
+// ProviderRegistryService returns the provider registry with override support.
 type ProviderRegistryService struct {
-	repo ProviderRegistryRepo
+	repo         ProviderRegistryRepo
+	overrideRepo ProviderOverrideRepo
 }
 
-func NewProviderRegistryService(repo ProviderRegistryRepo) *ProviderRegistryService {
-	return &ProviderRegistryService{repo: repo}
+func NewProviderRegistryService(repo ProviderRegistryRepo, overrideRepo ProviderOverrideRepo) *ProviderRegistryService {
+	return &ProviderRegistryService{repo: repo, overrideRepo: overrideRepo}
 }
 
 func (s *ProviderRegistryService) List(ctx context.Context) ([]domain.ProviderRegistryEntry, error) {
@@ -20,5 +27,160 @@ func (s *ProviderRegistryService) List(ctx context.Context) ([]domain.ProviderRe
 	if err != nil {
 		return nil, domain.NewDatabaseError("Could not load provider registry", err.Error())
 	}
+
+	overrides, err := s.overrideRepo.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider path overrides", err.Error())
+	}
+
+	if len(overrides) > 0 {
+		entries = mergeOverrides(entries, overrides)
+	} else {
+		// Stamp Source="builtin" on all candidates when no overrides exist.
+		for i := range entries {
+			for j := range entries[i].Candidates {
+				entries[i].Candidates[j].Source = "builtin"
+			}
+		}
+	}
+
 	return entries, nil
+}
+
+// mergeOverrides replaces builtin candidates for each (providerID, scope, purpose)
+// slot that has an override. Override candidates carry Source="override".
+func mergeOverrides(entries []domain.ProviderRegistryEntry, overrides []domain.ProviderPathOverride) []domain.ProviderRegistryEntry {
+	result := make([]domain.ProviderRegistryEntry, len(entries))
+	for i, e := range entries {
+		// Collect overridden slots for this provider.
+		overriddenSlots := map[string][]string{} // "scope:purpose" → paths
+		for _, o := range overrides {
+			if o.ProviderDefinitionID == e.Definition.ID {
+				key := o.Scope + ":" + o.Purpose
+				overriddenSlots[key] = o.Paths
+			}
+		}
+
+		var newCands []domain.ProviderPathCandidate
+
+		// Add override candidates first.
+		for slotKey, paths := range overriddenSlots {
+			parts := strings.SplitN(slotKey, ":", 2)
+			scope, purpose := parts[0], parts[1]
+			for _, p := range paths {
+				newCands = append(newCands, domain.ProviderPathCandidate{
+					ProviderDefinitionID: e.Definition.ID,
+					RelativePath:         p,
+					Scope:                scope,
+					Purpose:              purpose,
+					Priority:             10,
+					VerificationStatus:   "assumed",
+					Source:               "override",
+				})
+			}
+		}
+
+		// Add builtin candidates for non-overridden slots.
+		for _, c := range e.Candidates {
+			key := c.Scope + ":" + c.Purpose
+			if _, overridden := overriddenSlots[key]; !overridden {
+				c.Source = "builtin"
+				newCands = append(newCands, c)
+			}
+		}
+
+		result[i] = domain.ProviderRegistryEntry{
+			Definition: e.Definition,
+			Candidates: newCands,
+		}
+	}
+	return result
+}
+
+// UpdatePaths validates and persists a path override for the given (providerKey, scope, purpose).
+func (s *ProviderRegistryService) UpdatePaths(ctx context.Context, providerKey, scope, purpose string, paths []string) error {
+	if providerKey == "" {
+		return domain.NewValidationError("Provider key is required", "providerKey must not be empty")
+	}
+	if !validScopes[scope] {
+		return domain.NewValidationError("Invalid scope", fmt.Sprintf("scope must be 'project' or 'global', got %q", scope))
+	}
+	if !validPurposes[purpose] {
+		return domain.NewValidationError("Invalid purpose", fmt.Sprintf("purpose must be one of detect/skills/config/commands, got %q", purpose))
+	}
+	if len(paths) == 0 {
+		return domain.NewValidationError("Paths must not be empty", "provide at least one path, or use resetPaths to restore defaults")
+	}
+	for _, p := range paths {
+		if err := validatePath(p, scope); err != nil {
+			return err
+		}
+	}
+
+	provID, err := s.overrideRepo.GetProviderIDByKey(ctx, providerKey)
+	if err != nil {
+		return domain.NewDatabaseError("Could not look up provider", err.Error())
+	}
+	if provID == 0 {
+		return domain.NewValidationError("Unknown provider", fmt.Sprintf("provider key %q not found", providerKey))
+	}
+
+	if err := s.overrideRepo.Upsert(ctx, domain.ProviderPathOverride{
+		ProviderDefinitionID: provID,
+		Scope:                scope,
+		Purpose:              purpose,
+		Paths:                paths,
+	}); err != nil {
+		return domain.NewDatabaseError("Could not save path override", err.Error())
+	}
+	return nil
+}
+
+// ResetPaths removes the user override for (providerKey, scope, purpose), restoring builtin defaults.
+// Returns true if an override was removed, false if none existed.
+func (s *ProviderRegistryService) ResetPaths(ctx context.Context, providerKey, scope, purpose string) (bool, error) {
+	if providerKey == "" {
+		return false, domain.NewValidationError("Provider key is required", "providerKey must not be empty")
+	}
+	if !validScopes[scope] {
+		return false, domain.NewValidationError("Invalid scope", fmt.Sprintf("scope must be 'project' or 'global', got %q", scope))
+	}
+	if !validPurposes[purpose] {
+		return false, domain.NewValidationError("Invalid purpose", fmt.Sprintf("purpose must be one of detect/skills/config/commands, got %q", purpose))
+	}
+
+	provID, err := s.overrideRepo.GetProviderIDByKey(ctx, providerKey)
+	if err != nil {
+		return false, domain.NewDatabaseError("Could not look up provider", err.Error())
+	}
+	if provID == 0 {
+		return false, domain.NewValidationError("Unknown provider", fmt.Sprintf("provider key %q not found", providerKey))
+	}
+
+	deleted, err := s.overrideRepo.Delete(ctx, provID, scope, purpose)
+	if err != nil {
+		return false, domain.NewDatabaseError("Could not reset path override", err.Error())
+	}
+	return deleted, nil
+}
+
+func validatePath(p, scope string) error {
+	if p == "" {
+		return domain.NewValidationError("Empty path", "path must not be empty")
+	}
+	switch scope {
+	case "project":
+		if strings.HasPrefix(p, "/") {
+			return domain.NewValidationError("Invalid project path", fmt.Sprintf("project path must be relative, got absolute path %q", p))
+		}
+		clean := filepath.Clean(p)
+		if clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+			return domain.NewValidationError("Invalid project path", fmt.Sprintf("project path must not escape via .., got %q", p))
+		}
+	case "global":
+		if !strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "~/") {
+			return domain.NewValidationError("Invalid global path", fmt.Sprintf("global path must start with / or ~/, got %q", p))
+		}
+	}
+	return nil
 }

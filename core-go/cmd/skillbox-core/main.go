@@ -53,6 +53,7 @@ func main() {
 	installRepo := repositories.NewInstallRepo(db)
 	projectScanRepo := repositories.NewProjectScanRepo(db)
 	pdRepo := repositories.NewProviderDefinitionRepo(db)
+	overrideRepo := repositories.NewProviderOverrideRepo(db)
 
 	progressCh := make(chan operations.ProgressEvent, 64)
 	runner := operations.NewRunner(operationRepo, progressCh)
@@ -80,7 +81,7 @@ func main() {
 	globalLocationRepo := repositories.NewGlobalLocationRepo(db)
 	globalSvc := services.NewGlobalSkillsService(globalLocationRepo, globalScanRepo, appSettingsRepo, hostRepo, skillRepo, providerRegistry, fs, runner)
 
-	providerRegistrySvc := services.NewProviderRegistryService(pdRepo)
+	providerRegistrySvc := services.NewProviderRegistryService(pdRepo, overrideRepo)
 
 	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc)
 

@@ -118,10 +118,21 @@ type ProviderDefinitionRepo interface {
 	GetByKey(ctx context.Context, key string) (*domain.ProviderDefinition, error)
 }
 
-// ProviderRegistryRepo lists all provider definitions with their path candidates.
+// ProviderRegistryRepo lists all provider definitions with their path candidates
+// and looks up individual providers by key.
 // *repositories.ProviderDefinitionRepo satisfies this interface.
 type ProviderRegistryRepo interface {
 	ListAll(ctx context.Context) ([]domain.ProviderRegistryEntry, error)
+	GetByKey(ctx context.Context, key string) (*domain.ProviderDefinition, error)
+}
+
+// ProviderOverrideRepo stores user path overrides for built-in providers.
+// *repositories.ProviderOverrideRepo satisfies this interface.
+type ProviderOverrideRepo interface {
+	ListAll(ctx context.Context) ([]domain.ProviderPathOverride, error)
+	Upsert(ctx context.Context, o domain.ProviderPathOverride) error
+	Delete(ctx context.Context, providerDefinitionID int64, scope, purpose string) (bool, error)
+	GetProviderIDByKey(ctx context.Context, key string) (int64, error)
 }
 
 // ProviderRegistry returns all registered provider adapters.
