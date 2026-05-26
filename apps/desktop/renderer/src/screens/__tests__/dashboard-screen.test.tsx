@@ -102,6 +102,20 @@ describe("DashboardScreen", () => {
     expect(within(summarySection).getByText("2")).not.toBeNull(); // warnings
   });
 
+  it("renders active host status as a green badge", () => {
+    mockUseDashboard.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: baseData,
+      refetch: vi.fn(),
+    });
+
+    render(<DashboardScreen />);
+    const activeBadge = screen.getByText("active");
+    expect(activeBadge.className).toContain("bg-green-100");
+    expect(activeBadge.className).toContain("text-green-800");
+  });
+
   it("opens global view from summary and keeps updates disabled", () => {
     const mockNavigate = vi.fn();
     mockUseNavigate.mockReturnValue(mockNavigate);
