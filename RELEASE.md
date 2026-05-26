@@ -14,6 +14,7 @@ All commands run from `apps/desktop/` unless stated otherwise.
 | pnpm | 9+ (`pnpm -v`) |
 | JS deps installed | `(cd apps/desktop && pnpm install)` |
 | Apple Developer Program | Active paid membership |
+| App icon | `apps/desktop/build/icon.svg` is the only committed icon source. `pnpm generate:icon` produces `build/icon.icns` (untracked) via resvg → sips → iconutil. `package:mac` runs it automatically before packaging, so the generated `.icns` need not exist on a clean checkout. |
 
 ---
 
@@ -82,6 +83,18 @@ pnpm release:mac:check
 | Other `FAIL ...` | Blocking issue; read the remediation and resolve before proceeding |
 
 Failures are intentional release gates. `release:mac:full` stops at preflight when any required release check fails.
+
+To regenerate the icon manually (e.g. after editing `build/icon.svg`):
+
+```bash
+cd apps/desktop
+pnpm generate:icon
+```
+
+`release:mac:check` reports the icon under "electron-builder config":
+- `D8` — `mac.icon` is `build/icon.icns`.
+- `D8-source` — `build/icon.svg` present and usable.
+- `D8-artifact` — generated `build/icon.icns` present/valid (WARN if absent on a clean checkout; the package step generates it).
 
 ---
 
@@ -209,10 +222,22 @@ temp `--user-data-dir` and `SKILLBOX_DB_PATH`, strips credential env vars, asser
 detaches the DMG, and cleans all temp dirs on every exit path. Credential-free, non-distributable,
 does not prove notarization or Gatekeeper acceptance.
 
+### Icon verification (offline, no credentials)
+
+```bash
+pnpm release:mac:icon-verify "dist/mac-arm64/Astraler Skillbox.app"
+```
+
+Reads `CFBundleIconFile` from the packaged `Info.plist` and asserts the bundle ships a customized,
+valid `.icns`: the icon file is not `electron.icns`, the resource exists under `Contents/Resources/`,
+its bytes are not identical to the default Electron icon, and `file` reports a `Mac OS X icon`.
+No Apple services, keychain, or network are touched.
+
 **Recommended sequence before a credentialed release attempt:**
 
 ```sh
 pnpm release:mac:dry-run        # build + ad-hoc sign + verify + manifest/checksum
+pnpm release:mac:icon-verify "dist/mac-arm64/Astraler Skillbox.app"  # confirm the packaged app ships the custom icon
 pnpm release:mac:launch-smoke   # boot the staged .app; confirm Go core starts and shuts down clean
 pnpm release:mac:dmg-smoke      # boot the app from the mounted DMG (the distributable artifact)
 # Then, once credentials are available:

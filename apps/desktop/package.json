@@ -14,13 +14,15 @@
     "generate:contracts": "node scripts/generate-contracts.mjs",
     "check:contracts-drift": "node scripts/generate-contracts.mjs --check",
     "build:core": "node scripts/build-core.mjs",
-    "package:mac": "pnpm build:core && pnpm build && electron-builder --mac dmg",
-    "package:mac:unsigned": "pnpm build:core && pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false",
+    "generate:icon": "node scripts/generate-icon.mjs",
+    "package:mac": "pnpm generate:icon && pnpm build:core && pnpm build && electron-builder --mac dmg",
+    "package:mac:unsigned": "pnpm generate:icon && pnpm build:core && pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false",
     "release:mac:check": "node scripts/release-mac-check.mjs",
     "release:mac:verify": "node scripts/release-mac-verify.mjs",
     "release:mac:manifest": "node scripts/release-mac-manifest.mjs",
     "release:mac:full": "node scripts/release-mac-full.mjs",
     "release:mac:dry-run": "node scripts/release-mac-dry-run.mjs",
+    "release:mac:icon-verify": "node scripts/release-mac-icon-verify.mjs",
     "release:mac:launch-smoke": "node scripts/release-mac-launch-smoke.mjs",
     "release:mac:dmg-smoke": "node scripts/release-mac-dmg-smoke.mjs"
   },
@@ -40,6 +42,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query-devtools": "^5.100.14",
     "@tanstack/router-devtools": "^1.167.0",
