@@ -164,23 +164,23 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getByRole("button", { name: /All providers 1/i })).toBeTruthy();
   });
 
-  it("shows full project skill paths directly and keeps copy actions", () => {
+  it("shows project-relative skill paths directly and keeps copy actions for absolute paths", () => {
     render(<ProjectDetailScreen />);
 
     expect(screen.queryByRole("button", { name: /show full project skill path/i })).toBeNull();
-    expect(screen.getAllByText("/repo/demo/.agents/skills/current-skill").length).toBeGreaterThan(0);
+    expect(screen.getByText(".agents/skills/current-skill")).toBeTruthy();
+    expect(screen.queryByText("/repo/demo/.agents/skills/current-skill")).toBeNull();
 
     fireEvent.click(screen.getAllByRole("button", { name: /copy project skill path/i })[0]);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("/repo/demo/.agents/skills/current-skill");
   });
 
-  it("shows project and target path detail lines below each skill entry", () => {
+  it("shows symlink target paths in the main row", () => {
     render(<ProjectDetailScreen />);
 
-    expect(screen.getAllByText("project:").length).toBe(projectDetail.entries.length);
-    expect(screen.getAllByText("target:").length).toBe(projectDetail.entries.length);
-    expect(screen.getAllByText("/repo/demo/.agents/skills/current-skill").length).toBeGreaterThan(1);
-    expect(screen.getAllByText("/host/.agents/skills/current-skill").length).toBeGreaterThan(1);
+    expect(screen.queryByText("project:")).toBeNull();
+    expect(screen.queryByText("target:")).toBeNull();
+    expect(screen.getByText("/host/.agents/skills/current-skill")).toBeTruthy();
   });
 
   it("does not mark copy as successful when clipboard is unavailable", () => {

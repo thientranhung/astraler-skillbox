@@ -55,13 +55,13 @@ func TestMigration000005_GlobalSkills(t *testing.T) {
 		t.Errorf("claude.has_global_level: got %d want 1 (must be unchanged)", claudeGlobalLevel)
 	}
 
-	// database_version must be 5.
+	// database_version reflects the latest migration applied by NewTestDB.
 	var dbVersion int
 	if err := db.QueryRow("SELECT database_version FROM app_settings WHERE id=1").Scan(&dbVersion); err != nil {
 		t.Fatalf("query database_version: %v", err)
 	}
-	if dbVersion != 5 {
-		t.Errorf("database_version: got %d want 5", dbVersion)
+	if dbVersion != 6 {
+		t.Errorf("database_version: got %d want 6", dbVersion)
 	}
 }
 

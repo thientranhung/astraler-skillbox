@@ -63,8 +63,11 @@ func TestContractDrift_AdapterStatusesAreContractAllowed(t *testing.T) {
 func TestContractDrift_RegisteredAdapterKeys(t *testing.T) {
 	reg := providers.NewDefaultRegistry()
 	wantKeys := map[string]bool{
-		providers.GenericAgentsKey: true,
-		providers.ClaudeKey:        true,
+		providers.GenericAgentsKey:  true,
+		providers.ClaudeKey:         true,
+		providers.CodexKey:          true,
+		providers.GeminiKey:         true,
+		providers.AntigravityCLIKey: true,
 	}
 	for key := range wantKeys {
 		if _, ok := reg.Get(key); !ok {

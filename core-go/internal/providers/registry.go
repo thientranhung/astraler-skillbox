@@ -11,6 +11,9 @@ func NewDefaultRegistry() *Registry {
 	return NewRegistry(
 		NewGenericAgentsAdapter(),
 		NewClaudeAdapter(),
+		NewCodexAdapter(),
+		NewGeminiAdapter(),
+		NewAntigravityCLIAdapter(),
 	)
 }
 
