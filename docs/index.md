@@ -140,6 +140,12 @@ Playbook hardening cho điều phối `agent-tech-skillbox` và
 `agent-lead-skillbox`: tmux hygiene, prompt dài qua file, phase gates, review
 loop, và recovery khi TUI input bị kẹt hoặc trôi sang shell.
 
+[superpowers/specs/2026-05-26-provider-registry-settings-design.md](superpowers/specs/2026-05-26-provider-registry-settings-design.md)
+
+Spec cho Provider Registry Settings: Settings trở thành nguồn sự thật để khai
+báo built-in/custom provider, icon, enablement, và path candidates cho global
+lẫn project skill scopes.
+
 ## Suggested Reading Flow
 
 ```text
@@ -182,3 +188,4 @@ README.md
 - Transport decision brainstorm result: [review-results/transport-decision-brainstorm.md](review-results/transport-decision-brainstorm.md)
 - Tech stack scaffold review result: [review-results/tech-stack-scaffold-review.md](review-results/tech-stack-scaffold-review.md)
 - Agent orchestration playbook: [agent-orchestration-playbook.md](agent-orchestration-playbook.md)
+- Provider Registry Settings design: [superpowers/specs/2026-05-26-provider-registry-settings-design.md](superpowers/specs/2026-05-26-provider-registry-settings-design.md)
