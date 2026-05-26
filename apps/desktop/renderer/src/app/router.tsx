@@ -15,6 +15,7 @@ import { SkillsLibraryScreen } from "../screens/skills-library-screen.js";
 import { SettingsScreen } from "../screens/settings-screen.js";
 import { ProjectsScreen } from "../screens/projects-screen.js";
 import { ProjectDetailScreen } from "../screens/project-detail-screen.js";
+import { SkillDetailScreen } from "../screens/skill-detail-screen.js";
 
 // Root — bare layout with no shell
 function RootLayout(): React.JSX.Element {
@@ -87,6 +88,12 @@ const projectDetailRoute = createRoute({
   component: ProjectDetailScreen,
 });
 
+const skillDetailRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/skills/$skillId",
+  component: SkillDetailScreen,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/settings",
@@ -96,7 +103,7 @@ const settingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   setupRoute,
-  shellRoute.addChildren([dashboardRoute, skillsRoute, projectsRoute, projectDetailRoute, settingsRoute]),
+  shellRoute.addChildren([dashboardRoute, skillsRoute, skillDetailRoute, projectsRoute, projectDetailRoute, settingsRoute]),
 ]);
 
 export const router = createRouter({

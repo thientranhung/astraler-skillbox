@@ -6,6 +6,8 @@ import type {
   HostScanResponse,
   SkillListRequest,
   SkillListResponse,
+  SkillGetRequest,
+  SkillGetResponse,
   SettingsGetResponse,
   ProjectAddRequest,
   ProjectAddResponse,
@@ -38,6 +40,9 @@ export const methods = {
 
   listSkills: (req: SkillListRequest) =>
     invoke<SkillListResponse>("skill.list", req),
+
+  getSkill: (req: SkillGetRequest) =>
+    invoke<SkillGetResponse>("skill.get", req),
 
   cancelOperation: (req: { operationId: number }) =>
     invoke<{ acknowledged: boolean }>("operation.cancel", req),

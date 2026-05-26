@@ -33,9 +33,10 @@
           "enum": ["available", "missing", "unreadable", "local_modified", "unknown"]
         },
         "sourceLabel": { "type": ["string", "null"] },
-        "lastScannedAt": { "type": ["string", "null"] }
+        "lastScannedAt": { "type": ["string", "null"] },
+        "projectsUsingCount": { "type": "integer" }
       },
-      "required": ["id", "name", "relativePath", "status", "sourceLabel", "lastScannedAt"],
+      "required": ["id", "name", "relativePath", "status", "sourceLabel", "lastScannedAt", "projectsUsingCount"],
       "additionalProperties": false
     },
     "SkillListTotals": {

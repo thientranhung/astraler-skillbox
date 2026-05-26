@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SkillGetMethod",
+  "description": "Contract for skill.get JSON-RPC method. Returns read-only skill metadata plus project/provider installs.",
+  "oneOf": [
+    { "$ref": "#/definitions/SkillGetRequest" },
+    { "$ref": "#/definitions/SkillGetResponse" }
+  ],
+  "definitions": {
+    "SkillGetRequest": {
+      "title": "SkillGetRequest",
+      "description": "Params for skill.get.",
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "integer",
+          "description": "ID of the skill to fetch. Must be > 0."
+        }
+      },
+      "required": ["skillId"],
+      "additionalProperties": false
+    },
+    "SkillGetSkill": {
+      "title": "SkillGetSkill",
+      "description": "Skill metadata in the skill.get response.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "relativePath": { "type": "string" },
+        "absolutePath": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["available", "missing", "unreadable", "local_modified", "unknown"]
+        },
+        "sourceLabel": { "type": ["string", "null"] },
+        "hostPath": { "type": "string" },
+        "lastScannedAt": { "type": ["string", "null"] }
+      },
+      "required": ["id", "name", "relativePath", "absolutePath", "status", "sourceLabel", "hostPath", "lastScannedAt"],
+      "additionalProperties": false
+    },
+    "SkillGetProjectInstall": {
+      "title": "SkillGetProjectInstall",
+      "description": "One project/provider install row referencing this skill.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "integer" },
+        "projectName": { "type": "string" },
+        "projectProviderId": { "type": "integer" },
+        "providerKey": { "type": "string" },
+        "providerDisplayName": { "type": "string" },
+        "mode": {
+          "type": "string",
+          "enum": ["symlink", "rsync_copy", "direct"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["current", "outdated", "missing", "broken_symlink", "old_host", "external_symlink", "conflict", "needs_sync", "error"]
+        },
+        "projectSkillPath": { "type": "string" }
+      },
+      "required": ["projectId", "projectName", "projectProviderId", "providerKey", "providerDisplayName", "mode", "status", "projectSkillPath"],
+      "additionalProperties": false
+    },
+    "SkillGetResponse": {
+      "title": "SkillGetResponse",
+      "description": "Read-only skill detail. Errors: validation_error (1001) if skillId not found or <= 0.",
+      "type": "object",
+      "properties": {
+        "skill": { "$ref": "#/definitions/SkillGetSkill" },
+        "projects": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/SkillGetProjectInstall" },
+          "description": "One row per project/provider install. Removed projects excluded."
+        }
+      },
+      "required": ["skill", "projects"],
+      "additionalProperties": false
+    }
+  }
+}

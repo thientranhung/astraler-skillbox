@@ -12,6 +12,17 @@ const (
 	SkillStatusUnknown       SkillStatus = "unknown"
 )
 
+type SkillProjectUsage struct {
+	ProjectID           int64
+	ProjectName         string
+	ProjectProviderID   int64
+	ProviderKey         string
+	ProviderDisplayName string
+	Mode                string
+	Status              string
+	ProjectSkillPath    string
+}
+
 type Skill struct {
 	ID                int64
 	SkillHostFolderID int64

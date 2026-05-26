@@ -135,3 +135,10 @@ describe("methods.getDashboard", () => {
     expect(mockInvoke).toHaveBeenCalledWith("dashboard.get", {});
   });
 });
+
+describe("methods.getSkill", () => {
+  it("calls skill.get with skillId", async () => {
+    await methods.getSkill({ skillId: 42 });
+    expect(mockInvoke).toHaveBeenCalledWith("skill.get", { skillId: 42 });
+  });
+});

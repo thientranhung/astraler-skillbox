@@ -49,6 +49,7 @@ export interface SkillListSkill {
   status: 'available' | 'missing' | 'unreadable' | 'local_modified' | 'unknown';
   sourceLabel: string | null;
   lastScannedAt: string | null;
+  projectsUsingCount: number;
 }
 /**
  * Counts per status for the skills list

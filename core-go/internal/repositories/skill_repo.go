@@ -124,6 +124,86 @@ func (r *SkillRepo) CountByHost(ctx context.Context, hostID int64) (int, error) 
 	return count, err
 }
 
+// CountProjectsPerSkillByHost returns a map of skill_id → distinct active project count
+// for all skills belonging to hostID. Skills with zero installs have count 0.
+func (r *SkillRepo) CountProjectsPerSkillByHost(ctx context.Context, hostID int64) (map[int64]int, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT s.id, COUNT(DISTINCT p.id)
+		   FROM skills s
+		   LEFT JOIN installs i ON i.skill_id = s.id
+		   LEFT JOIN project_providers pp ON pp.id = i.project_provider_id
+		   LEFT JOIN projects p ON p.id = pp.project_id AND p.status != 'removed'
+		  WHERE s.skill_host_folder_id = ?
+		  GROUP BY s.id`, hostID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int64]int)
+	for rows.Next() {
+		var skillID int64
+		var count int
+		if err := rows.Scan(&skillID, &count); err != nil {
+			return nil, err
+		}
+		result[skillID] = count
+	}
+	return result, rows.Err()
+}
+
+// GetByID returns the skill with the given id, or (nil, nil) if not found.
+func (r *SkillRepo) GetByID(ctx context.Context, id int64) (*domain.Skill, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, skill_host_folder_id, name, display_name, relative_path, absolute_path,
+		        status, source_id, last_scanned_at, created_at, updated_at
+		   FROM skills WHERE id = ?`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, rows.Err()
+	}
+	s, err := scanSkill(rows)
+	if err != nil {
+		return nil, err
+	}
+	return &s, rows.Err()
+}
+
+// ProjectsUsingSkill returns one row per active project/provider install that
+// references skillID. Removed projects are excluded. Results are ordered by
+// project name then provider display name.
+func (r *SkillRepo) ProjectsUsingSkill(ctx context.Context, skillID int64) ([]domain.SkillProjectUsage, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT p.id, p.name, pp.id, pd.key, pd.display_name,
+		        i.install_mode, i.install_status, i.project_skill_path
+		   FROM installs i
+		   JOIN project_providers pp ON pp.id = i.project_provider_id
+		   JOIN projects p           ON p.id = pp.project_id
+		   JOIN provider_definitions pd ON pd.id = pp.provider_definition_id
+		  WHERE i.skill_id = ?
+		    AND p.status != 'removed'
+		  ORDER BY p.name, pd.display_name`, skillID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []domain.SkillProjectUsage
+	for rows.Next() {
+		var u domain.SkillProjectUsage
+		if err := rows.Scan(&u.ProjectID, &u.ProjectName, &u.ProjectProviderID,
+			&u.ProviderKey, &u.ProviderDisplayName, &u.Mode, &u.Status, &u.ProjectSkillPath); err != nil {
+			return nil, err
+		}
+		result = append(result, u)
+	}
+	return result, rows.Err()
+}
+
 func scanSkill(rows *sql.Rows) (domain.Skill, error) {
 	var s domain.Skill
 	var displayName, lastScanned, createdAt, updatedAt sql.NullString
