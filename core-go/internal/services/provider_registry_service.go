@@ -57,13 +57,17 @@ func (s *ProviderRegistryService) List(ctx context.Context) ([]domain.ProviderRe
 	}
 
 	// Stamp IsEnabled and CanToggle on each entry.
+	// IsEnabled is clamped to false when canToggle is false regardless of any stored user setting,
+	// so that a provider that became unsupported after being enabled never reports isEnabled=true.
 	for i := range entries {
 		canToggle := deriveCanToggle(entries[i].Definition.Status)
 		entries[i].CanToggle = canToggle
-		if v, ok := userEnabled[entries[i].Definition.ID]; ok {
+		if !canToggle {
+			entries[i].IsEnabled = false
+		} else if v, ok := userEnabled[entries[i].Definition.ID]; ok {
 			entries[i].IsEnabled = v
 		} else {
-			entries[i].IsEnabled = canToggle
+			entries[i].IsEnabled = true
 		}
 	}
 
