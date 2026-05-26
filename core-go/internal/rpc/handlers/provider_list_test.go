@@ -19,7 +19,7 @@ func TestContract_ProviderList_Response(t *testing.T) {
 				ProviderType:       "claude",
 				IconKey:            &iconKey,
 				Status:             "experimental",
-				Enabled:            true,
+				IsAvailable:        true,
 				CanCreateStructure: false,
 				HasGlobalLevel:     true,
 				Candidates: []providerListPathCandidate{
@@ -62,7 +62,7 @@ func TestContract_ProviderList_NullIconKey(t *testing.T) {
 				ProviderType:       "generic_agents",
 				IconKey:            nil,
 				Status:             "supported",
-				Enabled:            true,
+				IsAvailable:        true,
 				CanCreateStructure: false,
 				HasGlobalLevel:     true,
 				Candidates:         []providerListPathCandidate{},
@@ -72,10 +72,10 @@ func TestContract_ProviderList_NullIconKey(t *testing.T) {
 	validateAgainstSchema(t, schema, resp)
 }
 
-func TestDeriveEnabled_SupportedAndExperimental(t *testing.T) {
+func TestDeriveIsAvailable_SupportedAndExperimental(t *testing.T) {
 	cases := []struct {
-		status  domain.ProviderStatus
-		enabled bool
+		status      domain.ProviderStatus
+		isAvailable bool
 	}{
 		{domain.ProviderStatusSupported, true},
 		{domain.ProviderStatusExperimental, true},
@@ -83,9 +83,9 @@ func TestDeriveEnabled_SupportedAndExperimental(t *testing.T) {
 		{domain.ProviderStatusDisabled, false},
 	}
 	for _, c := range cases {
-		got := deriveEnabled(c.status)
-		if got != c.enabled {
-			t.Errorf("deriveEnabled(%q): got %v want %v", c.status, got, c.enabled)
+		got := deriveIsAvailable(c.status)
+		if got != c.isAvailable {
+			t.Errorf("deriveIsAvailable(%q): got %v want %v", c.status, got, c.isAvailable)
 		}
 	}
 }

@@ -48,7 +48,7 @@ func TestProviderListHandler_ReturnsProviders(t *testing.T) {
 	var resp struct {
 		Providers []struct {
 			Key            string `json:"key"`
-			Enabled        bool   `json:"enabled"`
+			IsAvailable    bool   `json:"isAvailable"`
 			HasGlobalLevel bool   `json:"hasGlobalLevel"`
 		} `json:"providers"`
 	}
@@ -61,15 +61,15 @@ func TestProviderListHandler_ReturnsProviders(t *testing.T) {
 	if resp.Providers[0].Key != "generic_agents" {
 		t.Errorf("first key: got %q want generic_agents", resp.Providers[0].Key)
 	}
-	if !resp.Providers[0].Enabled {
-		t.Error("supported provider should have enabled=true")
+	if !resp.Providers[0].IsAvailable {
+		t.Error("supported provider should have isAvailable=true")
 	}
 	if !resp.Providers[0].HasGlobalLevel {
 		t.Error("generic_agents should have hasGlobalLevel=true")
 	}
 }
 
-func TestProviderListHandler_UnsupportedEnabled_False(t *testing.T) {
+func TestProviderListHandler_UnsupportedIsAvailable_False(t *testing.T) {
 	svc := &stubProviderRegistrySvc{
 		entries: []domain.ProviderRegistryEntry{
 			makeRegistryEntry("opencode", domain.ProviderStatusUnsupported, false),
@@ -79,7 +79,7 @@ func TestProviderListHandler_UnsupportedEnabled_False(t *testing.T) {
 
 	var resp struct {
 		Providers []struct {
-			Enabled bool `json:"enabled"`
+			IsAvailable bool `json:"isAvailable"`
 		} `json:"providers"`
 	}
 	if err := cli.CallResult(context.Background(), "provider.list", nil, &resp); err != nil {
@@ -88,8 +88,8 @@ func TestProviderListHandler_UnsupportedEnabled_False(t *testing.T) {
 	if len(resp.Providers) == 0 {
 		t.Fatal("expected at least one provider")
 	}
-	if resp.Providers[0].Enabled {
-		t.Error("unsupported provider should have enabled=false")
+	if resp.Providers[0].IsAvailable {
+		t.Error("unsupported provider should have isAvailable=false")
 	}
 }
 

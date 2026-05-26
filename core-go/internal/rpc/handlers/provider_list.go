@@ -28,7 +28,7 @@ type providerListProvider struct {
 	ProviderType       string                      `json:"providerType"`
 	IconKey            *string                     `json:"iconKey"`
 	Status             string                      `json:"status"`
-	Enabled            bool                        `json:"enabled"`
+	IsAvailable        bool                        `json:"isAvailable"`
 	CanCreateStructure bool                        `json:"canCreateStructure"`
 	HasGlobalLevel     bool                        `json:"hasGlobalLevel"`
 	Candidates         []providerListPathCandidate `json:"candidates"`
@@ -65,7 +65,7 @@ func NewProviderListHandler(svc providerRegistryService) jrpc2.Handler {
 				ProviderType:       d.ProviderType,
 				IconKey:            d.IconKey,
 				Status:             string(d.Status),
-				Enabled:            deriveEnabled(d.Status),
+				IsAvailable:        deriveIsAvailable(d.Status),
 				CanCreateStructure: d.CanCreateStructure,
 				HasGlobalLevel:     d.HasGlobalLevel,
 				Candidates:         candidates,
@@ -76,9 +76,8 @@ func NewProviderListHandler(svc providerRegistryService) jrpc2.Handler {
 	})
 }
 
-// deriveEnabled returns true for supported and experimental built-in providers.
-// Override storage is deferred to PR-2; until then, unsupported providers are
-// shown but treated as disabled.
-func deriveEnabled(status domain.ProviderStatus) bool {
+// deriveIsAvailable returns true for supported and experimental providers.
+// This reflects Skillbox support status, not user preference — override storage is deferred.
+func deriveIsAvailable(status domain.ProviderStatus) bool {
 	return status == domain.ProviderStatusSupported || status == domain.ProviderStatusExperimental
 }

@@ -159,7 +159,7 @@ export function SettingsScreen(): React.JSX.Element {
               {(providerData?.providers ?? []).map((provider) => (
                 <tr
                   key={provider.key}
-                  className={`${!provider.enabled ? "opacity-50" : ""}`}
+                  className={`${!provider.isAvailable ? "opacity-50" : ""}`}
                 >
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
