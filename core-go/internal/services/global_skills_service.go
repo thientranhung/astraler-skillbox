@@ -113,10 +113,13 @@ func (s *GlobalSkillsService) scanGlobalInternal(ctx context.Context, progress o
 			continue
 		}
 
-		// Look up provider definition — gating: skip if not seeded.
+		// Look up provider definition — gating: skip if not seeded, fail on real DB errors.
 		defID, _, _, lookupErr := s.globalRepo.ProviderDefByKey(ctx, adapter.Key())
 		if lookupErr != nil {
-			// Provider not found in DB → skip (not seeded or has_global_level=0).
+			return nil, domain.NewDatabaseError("Could not look up provider definition for "+adapter.Key(), lookupErr.Error())
+		}
+		if defID == 0 {
+			// Provider not seeded in DB → skip silently.
 			continue
 		}
 

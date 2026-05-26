@@ -283,6 +283,12 @@ func (s *ProviderRegistryService) GlobalPaths(ctx context.Context) (map[string]p
 				}
 			}
 		}
+		// Skip providers whose effective detect or skills path resolved to empty.
+		// This guards against future providers that have has_global_level=true but
+		// no seeded global candidates, which would cause expandGlobalPath to return homeDir.
+		if p.DetectRel == "" || p.SkillsRel == "" {
+			continue
+		}
 		result[e.Definition.Key] = p
 	}
 	return result, nil

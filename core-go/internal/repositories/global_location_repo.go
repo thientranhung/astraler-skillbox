@@ -14,12 +14,14 @@ type GlobalLocationRepo struct{ db *sql.DB }
 func NewGlobalLocationRepo(db *sql.DB) *GlobalLocationRepo { return &GlobalLocationRepo{db: db} }
 
 // ProviderDefByKey returns id, display_name, and status for a provider key.
+// Returns (0, "", "", nil) when the key is not found — callers must treat defID==0 as "skip".
+// Only non-zero errors indicate real DB/query failures.
 func (r *GlobalLocationRepo) ProviderDefByKey(ctx context.Context, key string) (id int64, displayName, status string, err error) {
 	err = r.db.QueryRowContext(ctx,
 		`SELECT id, display_name, status FROM provider_definitions WHERE key=?`, key,
 	).Scan(&id, &displayName, &status)
 	if err == sql.ErrNoRows {
-		return 0, "", "", fmt.Errorf("provider definition not found: %q", key)
+		return 0, "", "", nil
 	}
 	return id, displayName, status, err
 }
