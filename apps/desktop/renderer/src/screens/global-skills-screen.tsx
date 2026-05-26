@@ -31,6 +31,36 @@ function WarningSeverityIcon({ severity }: { severity: GlobalListWarning["severi
   return <AlertTriangle size={12} className={`mt-0.5 shrink-0 ${cls}`} />;
 }
 
+function highlightWarningMessage(message: string): React.ReactNode[] {
+  const tokenPattern = /(`[^`]+`|~\/[^\s,;)]+|\/[^\s,;)]+|\.[A-Za-z0-9_./-]+)/g;
+  return message.split(tokenPattern).filter(Boolean).map((part, index) => {
+    if (tokenPattern.test(part)) {
+      tokenPattern.lastIndex = 0;
+      return <strong key={`${part}-${index}`} className="font-semibold text-yellow-900">{part.replaceAll("`", "")}</strong>;
+    }
+    tokenPattern.lastIndex = 0;
+    return <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
+  });
+}
+
+function WarningRow({ warning }: { warning: GlobalListWarning }): React.JSX.Element {
+  return (
+    <div className="flex items-start gap-1.5 text-xs text-yellow-800">
+      <WarningSeverityIcon severity={warning.severity} />
+      <div>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="rounded bg-yellow-100 px-1.5 py-0.5 font-medium uppercase text-yellow-900">
+            {warning.severity}
+          </span>
+          <span className="font-mono text-[11px] text-yellow-700">{warning.code}</span>
+          <span className="text-yellow-700">· {warning.scopeType.replaceAll("_", " ")}</span>
+        </div>
+        <p className="mt-1 leading-relaxed">{highlightWarningMessage(warning.message)}</p>
+      </div>
+    </div>
+  );
+}
+
 export function GlobalSkillsScreen(): React.JSX.Element {
   const { data, isPending, isError, error } = useGlobalList();
   const scanMutation = useScanGlobal();
@@ -46,7 +76,12 @@ export function GlobalSkillsScreen(): React.JSX.Element {
     <div className="flex flex-1 flex-col">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-zinc-900">Global Skills</h2>
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-900">Global Skills</h2>
+          <p className="mt-0.5 text-xs text-zinc-400">
+            Read-only scan of global provider folders. Warnings mean Skillbox could not read or validate a location or entry; no files were changed.
+          </p>
+        </div>
         <button
           onClick={() => scanMutation.mutate()}
           disabled={isScanning || scanMutation.isPending}
@@ -116,10 +151,7 @@ export function GlobalSkillsScreen(): React.JSX.Element {
                 {loc.warnings.length > 0 && (
                   <div className="mb-2 rounded border border-yellow-100 bg-yellow-50 px-3 py-2">
                     {loc.warnings.map((w, i) => (
-                      <div key={i} className="flex items-start gap-1.5 text-xs text-yellow-800">
-                        <WarningSeverityIcon severity={w.severity} />
-                        <span>{w.message}</span>
-                      </div>
+                      <WarningRow key={i} warning={w} />
                     ))}
                   </div>
                 )}
