@@ -19,12 +19,13 @@ type skillListRequest struct {
 }
 
 type skillListSkill struct {
-	ID            int64   `json:"id"`
-	Name          string  `json:"name"`
-	RelativePath  string  `json:"relativePath"`
-	Status        string  `json:"status"`
-	SourceLabel   *string `json:"sourceLabel"`
-	LastScannedAt *string `json:"lastScannedAt"`
+	ID                 int64   `json:"id"`
+	Name               string  `json:"name"`
+	RelativePath       string  `json:"relativePath"`
+	Status             string  `json:"status"`
+	SourceLabel        *string `json:"sourceLabel"`
+	LastScannedAt      *string `json:"lastScannedAt"`
+	ProjectsUsingCount int     `json:"projectsUsingCount"`
 }
 
 type skillListTotals struct {
@@ -75,12 +76,13 @@ func NewSkillListHandler(svc skillListService) jrpc2.Handler {
 
 		for _, s := range view.Skills {
 			resp.Skills = append(resp.Skills, skillListSkill{
-				ID:            s.ID,
-				Name:          s.Name,
-				RelativePath:  s.RelativePath,
-				Status:        string(s.Status),
-				SourceLabel:   s.SourceLabel,
-				LastScannedAt: s.LastScannedAt,
+				ID:                 s.ID,
+				Name:               s.Name,
+				RelativePath:       s.RelativePath,
+				Status:             string(s.Status),
+				SourceLabel:        s.SourceLabel,
+				LastScannedAt:      s.LastScannedAt,
+				ProjectsUsingCount: s.ProjectsUsingCount,
 			})
 		}
 		if resp.Skills == nil {

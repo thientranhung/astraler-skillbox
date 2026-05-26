@@ -1,23 +1,39 @@
-import React from "react";
-import { RefreshCw, AlertTriangle } from "lucide-react";
+import React, { useState } from "react";
+import { RefreshCw, AlertTriangle, FolderOpen, Search } from "lucide-react";
 import { useActiveHost } from "../features/skill-host/use-active-host.js";
 import { useSkillsList } from "../features/skills-library/use-skills-list.js";
 import { useScanHost } from "../features/skill-host/use-scan-host.js";
 import { SkillRow } from "../features/skills-library/skill-row.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
+import { methods } from "../lib/core-client/methods.js";
+
+type SkillStatus = "all" | "available" | "missing" | "unreadable" | "local_modified" | "unknown";
 
 export function SkillsLibraryScreen(): React.JSX.Element {
   const activeHost = useActiveHost();
   const { data, isPending, isError, error } = useSkillsList();
   const scanMutation = useScanHost();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<SkillStatus>("all");
 
   function handleScan(): void {
     if (activeHost == null) return;
     scanMutation.mutate(activeHost.hostId);
   }
 
+  function handleOpenHostFolder(): void {
+    if (data?.hostPath == null) return;
+    void methods.openPath(data.hostPath);
+  }
+
   const isScanning = scanMutation.operationId != null;
+
+  const filteredSkills = (data?.skills ?? []).filter((skill) => {
+    const matchesSearch = search.trim() === "" || skill.name.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === "all" || skill.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="flex flex-1 flex-col">
@@ -35,6 +51,14 @@ export function SkillsLibraryScreen(): React.JSX.Element {
               Last scan: {new Date(data.lastScanAt).toLocaleString()}
             </span>
           )}
+          <button
+            onClick={handleOpenHostFolder}
+            disabled={data?.hostPath == null}
+            className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+          >
+            <FolderOpen size={13} />
+            Open Folder
+          </button>
           <button
             onClick={handleScan}
             disabled={isScanning || scanMutation.isPending || activeHost == null}
@@ -77,6 +101,34 @@ export function SkillsLibraryScreen(): React.JSX.Element {
         </div>
       )}
 
+      {/* Search + Filter bar */}
+      {data != null && (
+        <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-2">
+          <div className="relative flex-1 max-w-xs">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search skills…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded border border-zinc-200 py-1.5 pl-7 pr-3 text-xs focus:border-zinc-400 focus:outline-none"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as SkillStatus)}
+            className="rounded border border-zinc-200 py-1.5 pl-2 pr-6 text-xs focus:border-zinc-400 focus:outline-none"
+          >
+            <option value="all">All statuses</option>
+            <option value="available">Available</option>
+            <option value="missing">Missing</option>
+            <option value="unreadable">Unreadable</option>
+            <option value="local_modified">Modified</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {isPending && (
@@ -104,12 +156,13 @@ export function SkillsLibraryScreen(): React.JSX.Element {
               <tr>
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500">Name</th>
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500">Status</th>
+                <th className="px-3 py-2 text-xs font-medium text-zinc-500">Projects</th>
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500">Path</th>
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500">Source</th>
               </tr>
             </thead>
             <tbody>
-              {data.skills.map((skill) => (
+              {filteredSkills.map((skill) => (
                 <SkillRow key={skill.id} skill={skill} />
               ))}
             </tbody>

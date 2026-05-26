@@ -38,6 +38,9 @@ type SkillRepo interface {
 	ListByHost(ctx context.Context, hostID int64) ([]domain.Skill, error)
 	MarkMissing(ctx context.Context, hostID int64, presentIDs []int64) error
 	ListIDsByHost(ctx context.Context, hostID int64) ([]int64, error)
+	CountProjectsPerSkillByHost(ctx context.Context, hostID int64) (map[int64]int, error)
+	GetByID(ctx context.Context, id int64) (*domain.Skill, error)
+	ProjectsUsingSkill(ctx context.Context, skillID int64) ([]domain.SkillProjectUsage, error)
 }
 
 // WarningRepo is the minimal warning repo interface.

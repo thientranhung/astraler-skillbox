@@ -112,7 +112,9 @@ func (m *mockAppSettingsRepo) Get(_ context.Context) (*domain.AppSettings, error
 // -- mock skill repo (used by SkillLibraryService tests) --
 
 type mockSkillRepo struct {
-	skills map[int64][]domain.Skill
+	skills        map[int64][]domain.Skill
+	projectCounts map[int64]int
+	usages        []domain.SkillProjectUsage
 }
 
 func newMockSkillRepo() *mockSkillRepo {
@@ -150,6 +152,26 @@ func (m *mockSkillRepo) ListIDsByHost(_ context.Context, hostID int64) ([]int64,
 		ids = append(ids, s.ID)
 	}
 	return ids, nil
+}
+
+func (m *mockSkillRepo) CountProjectsPerSkillByHost(_ context.Context, _ int64) (map[int64]int, error) {
+	return m.projectCounts, nil
+}
+
+func (m *mockSkillRepo) GetByID(_ context.Context, id int64) (*domain.Skill, error) {
+	for _, skills := range m.skills {
+		for _, s := range skills {
+			if s.ID == id {
+				cp := s
+				return &cp, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockSkillRepo) ProjectsUsingSkill(_ context.Context, _ int64) ([]domain.SkillProjectUsage, error) {
+	return m.usages, nil
 }
 
 // -- mock warning repo (used by SkillLibraryService tests) --

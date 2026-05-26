@@ -31,6 +31,7 @@ func New(
 			"host.choose":      rpchandlers.NewHostChooseHandler(hostSvc),
 			"host.scan":        rpchandlers.NewHostScanHandler(hostSvc),
 			"skill.list":       rpchandlers.NewSkillListHandler(libSvc),
+			"skill.get":        rpchandlers.NewSkillGetHandler(libSvc),
 			"settings.get":     rpchandlers.NewSettingsGetHandler(settingsSvc),
 			"operation.cancel": rpchandlers.NewOperationCancelHandler(runner),
 			"project.add":      rpchandlers.NewProjectAddHandler(projectSvc),

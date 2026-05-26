@@ -4,6 +4,7 @@ export const queryKeys = {
   },
   skills: {
     list: (hostId: number) => ["skills", "list", hostId] as const,
+    detail: (skillId: number) => ["skills", "detail", skillId] as const,
   },
   projects: {
     list: () => ["projects", "list"] as const,

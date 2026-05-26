@@ -155,6 +155,57 @@ func TestContract_SkillList_Response(t *testing.T) {
 	validateAgainstSchema(t, schema, resp)
 }
 
+func TestContract_SkillGet_Response(t *testing.T) {
+	schema := loadSchema(t, "methods/skill.get.json")
+
+	srcLabel := "github.com/org/repo"
+	lastScan := "2026-05-26T10:00:00Z"
+	resp := skillGetResponse{
+		Skill: skillGetSkill{
+			ID:            1,
+			Name:          "my-skill",
+			RelativePath:  ".agents/skills/my-skill",
+			AbsolutePath:  "/host/.agents/skills/my-skill",
+			Status:        "available",
+			SourceLabel:   &srcLabel,
+			HostPath:      "/host",
+			LastScannedAt: &lastScan,
+		},
+		Projects: []skillGetProjectInstall{
+			{
+				ProjectID:           10,
+				ProjectName:         "proj-alpha",
+				ProjectProviderID:   5,
+				ProviderKey:         "generic_agents",
+				ProviderDisplayName: "Shared Agent Skills (.agents)",
+				Mode:                "symlink",
+				Status:              "current",
+				ProjectSkillPath:    "/proj-alpha/.agents/skills/my-skill",
+			},
+		},
+	}
+	validateAgainstSchema(t, schema, resp)
+}
+
+func TestContract_SkillGet_ResponseEmpty(t *testing.T) {
+	schema := loadSchema(t, "methods/skill.get.json")
+
+	resp := skillGetResponse{
+		Skill: skillGetSkill{
+			ID:            2,
+			Name:          "unused-skill",
+			RelativePath:  ".agents/skills/unused-skill",
+			AbsolutePath:  "/host/.agents/skills/unused-skill",
+			Status:        "available",
+			SourceLabel:   nil,
+			HostPath:      "/host",
+			LastScannedAt: nil,
+		},
+		Projects: []skillGetProjectInstall{},
+	}
+	validateAgainstSchema(t, schema, resp)
+}
+
 func TestContract_OperationCancel_Response(t *testing.T) {
 	schema := loadSchema(t, "methods/operation.cancel.json")
 	resp := operationCancelResponse{Acknowledged: true}

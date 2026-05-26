@@ -5,6 +5,7 @@ export const ALLOWLIST = new Set([
   "host.choose",
   "host.scan",
   "skill.list",
+  "skill.get",
   "settings.get",
   "operation.cancel",
   "project.add",
