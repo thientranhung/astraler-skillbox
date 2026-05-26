@@ -52,6 +52,27 @@ func TestScanHostFolder_NormalDir(t *testing.T) {
 	}
 }
 
+func TestScanHostFolder_IgnoresDSStore(t *testing.T) {
+	skills := makeSkillsDir(t)
+	if err := os.WriteFile(filepath.Join(skills, ".DS_Store"), []byte("metadata"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(skills, "my-skill"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := ScanHostFolder(skills)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	if entries[0].Name != "my-skill" {
+		t.Fatalf("entry name: got %q want %q", entries[0].Name, "my-skill")
+	}
+}
+
 func TestScanHostFolder_ValidSymlink(t *testing.T) {
 	skills := makeSkillsDir(t)
 	// Create a real skill dir inside the same skills dir.

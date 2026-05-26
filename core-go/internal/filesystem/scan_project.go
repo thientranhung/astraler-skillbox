@@ -83,6 +83,9 @@ func ScanProjectSkills(skillsPath string) ([]ProjectEntry, error) {
 	result := make([]ProjectEntry, 0, len(entries))
 	for _, de := range entries {
 		name := de.Name()
+		if shouldIgnoreSkillEntryName(name) {
+			continue
+		}
 		absPath := filepath.Join(skillsPath, name)
 
 		entry := ProjectEntry{Name: name, Path: absPath}

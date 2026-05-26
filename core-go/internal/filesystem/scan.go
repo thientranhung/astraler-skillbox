@@ -28,6 +28,9 @@ func ScanHostFolder(skillsPath string) ([]HostEntry, error) {
 	var result []HostEntry
 	for _, de := range entries {
 		name := de.Name()
+		if shouldIgnoreSkillEntryName(name) {
+			continue
+		}
 		absPath := filepath.Join(skillsPath, name)
 		relPath := filepath.Join(".agents", "skills", name)
 
