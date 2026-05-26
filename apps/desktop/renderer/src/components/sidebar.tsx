@@ -1,12 +1,13 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Library, Globe, FolderGit2, Settings } from "lucide-react";
+import { LayoutDashboard, Library, Globe, FolderGit2, Puzzle, Settings } from "lucide-react";
 
 export const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/skills", label: "Skills", icon: Library },
   { to: "/global", label: "Global Skills", icon: Globe },
   { to: "/projects", label: "Projects", icon: FolderGit2 },
+  { to: "/plugins", label: "Plugins", icon: Puzzle },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 

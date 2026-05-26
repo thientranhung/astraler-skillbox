@@ -8,12 +8,14 @@ import { useOpenProjectTerminal } from "../features/projects/use-open-project-te
 import { useRemoveProject } from "../features/projects/use-remove-project.js";
 import { useRemoveSkill } from "../features/projects/use-remove-skill.js";
 import { RemoveSkillDialog } from "../features/projects/remove-skill-dialog.js";
+import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
+import { useScanProviderPluginsProject } from "../features/provider-plugins/use-scan-provider-plugins-project.js";
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
 import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
 import { useActiveHostSkills } from "../features/skills/use-active-host-skills.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
-import type { ProjectGetEntry, ProjectGetProvider } from "@contracts/index.js";
+import type { ProjectGetEntry, ProjectGetProvider, PPLayerStatus, PPProjectEntry } from "@contracts/index.js";
 
 const ENTRY_STATUS_CONFIG: Record<ProjectGetEntry["status"], { label: string; description: string; cls: string }> = {
   current: { label: "Linked to active host", description: "This project entry points to the active Skill Host copy.", cls: "bg-green-100 text-green-800" },
@@ -190,6 +192,146 @@ function EntryRow({
         </button>
       </td>
     </tr>
+  );
+}
+
+const LAYER_SCAN_LABEL: Record<PPLayerStatus["scanStatus"], string> = {
+  ok: "ok",
+  missing: "not configured",
+  unreadable: "unreadable",
+  malformed: "malformed",
+  too_large: "too large",
+  symlink: "symlink (skipped)",
+  path_escape: "path escape (skipped)",
+};
+
+function layerScanClass(status: PPLayerStatus["scanStatus"]): string {
+  switch (status) {
+    case "ok": return "bg-green-100 text-green-700";
+    case "missing": return "bg-zinc-100 text-zinc-400";
+    default: return "bg-yellow-100 text-yellow-700";
+  }
+}
+
+function effectiveStatusClass(status: PPProjectEntry["effectiveStatus"]): string {
+  switch (status) {
+    case "enabled": return "bg-green-100 text-green-700";
+    case "disabled": return "bg-zinc-100 text-zinc-500";
+    case "absent": return "bg-zinc-100 text-zinc-400";
+    default: return "bg-yellow-100 text-yellow-700";
+  }
+}
+
+function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.Element {
+  const { data } = useProviderPluginList();
+  const scanMutation = useScanProviderPluginsProject();
+  const isScanning = scanMutation.operationId != null || scanMutation.isPending;
+
+  const projectView = data?.projects.find((p) => p.projectId === projectId) ?? null;
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          Provider Plugins
+        </h3>
+        <button
+          onClick={() => scanMutation.mutate(projectId)}
+          disabled={isScanning}
+          className="flex items-center gap-1.5 rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        >
+          <RefreshCw size={11} className={isScanning ? "animate-spin" : ""} />
+          {isScanning ? "Scanning…" : "Scan Plugins"}
+        </button>
+      </div>
+
+      {projectView == null && (
+        <p className="text-xs text-zinc-400">No plugin data. Run Scan Plugins to populate.</p>
+      )}
+
+      {projectView != null && (
+        <div className="flex flex-col gap-3">
+          {/* Layer statuses */}
+          <div className="overflow-x-auto rounded border border-zinc-200">
+            <table className="w-full text-left">
+              <thead className="border-b border-zinc-200 bg-zinc-50">
+                <tr>
+                  <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Layer</th>
+                  <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Status</th>
+                  <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">File</th>
+                  <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Last Scanned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projectView.layerStatuses.map((ls) => (
+                  <tr key={ls.layer} className="border-b border-zinc-100">
+                    <td className="px-3 py-1.5 text-xs font-medium text-zinc-700">{ls.layer}</td>
+                    <td className="px-3 py-1.5 text-xs">
+                      <span className={`rounded px-1.5 py-0.5 font-medium ${layerScanClass(ls.scanStatus)}`}>
+                        {LAYER_SCAN_LABEL[ls.scanStatus] ?? ls.scanStatus}
+                      </span>
+                    </td>
+                    <td className="max-w-xs break-all px-3 py-1.5 font-mono text-xs text-zinc-400">
+                      {ls.filePath}
+                      {ls.scanWarnings.length > 0 && ls.scanStatus !== "missing" && (
+                        <ul className="mt-0.5 list-none">
+                          {ls.scanWarnings.map((w, i) => (
+                            <li key={i} className="text-zinc-500">{w}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 text-xs text-zinc-400">
+                      {ls.lastScannedAt != null ? new Date(ls.lastScannedAt).toLocaleString() : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Effective plugins */}
+          {projectView.plugins.length > 0 && (
+            <div className="overflow-x-auto rounded border border-zinc-200">
+              <table className="w-full text-left">
+                <thead className="border-b border-zinc-200 bg-zinc-50">
+                  <tr>
+                    <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Plugin</th>
+                    <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Marketplace</th>
+                    <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Effective</th>
+                    <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Provenance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projectView.plugins.map((p, i) => (
+                    <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                      <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{p.pluginName}</td>
+                      <td className="px-3 py-1.5 text-xs text-zinc-500">{p.marketplaceName || "—"}</td>
+                      <td className="px-3 py-1.5 text-xs">
+                        <span className={`rounded px-1.5 py-0.5 font-medium ${effectiveStatusClass(p.effectiveStatus)}`}>
+                          {p.effectiveStatus}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5 text-xs text-zinc-500">{p.provenanceLayer ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {projectView.plugins.length === 0 && (
+            <p className="text-xs text-zinc-400">No plugins found across layers.</p>
+          )}
+
+          {projectView.managedOutOfScope && (
+            <p className="text-xs text-zinc-400">
+              Some settings in this project are managed outside Skillbox.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -372,6 +514,9 @@ export function ProjectDetailScreen(): React.JSX.Element {
                 </div>
               )}
             </div>
+
+            {/* Provider Plugins */}
+            <ProjectPluginSection projectId={validId} />
 
             {/* Skill Entries */}
             <div>

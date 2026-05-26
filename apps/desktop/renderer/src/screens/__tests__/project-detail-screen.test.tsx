@@ -28,6 +28,12 @@ vi.mock("../../features/projects/use-remove-skill.js", () => ({
 vi.mock("../../features/skills/use-active-host-skills.js", () => ({
   useActiveHostSkills: vi.fn(),
 }));
+vi.mock("../../features/provider-plugins/use-provider-plugin-list.js", () => ({
+  useProviderPluginList: vi.fn(),
+}));
+vi.mock("../../features/provider-plugins/use-scan-provider-plugins-project.js", () => ({
+  useScanProviderPluginsProject: vi.fn(),
+}));
 
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { ProjectDetailScreen } from "../project-detail-screen.js";
@@ -38,6 +44,8 @@ import { useOpenProjectTerminal } from "../../features/projects/use-open-project
 import { useRemoveProject } from "../../features/projects/use-remove-project.js";
 import { useRemoveSkill } from "../../features/projects/use-remove-skill.js";
 import { useActiveHostSkills } from "../../features/skills/use-active-host-skills.js";
+import { useProviderPluginList } from "../../features/provider-plugins/use-provider-plugin-list.js";
+import { useScanProviderPluginsProject } from "../../features/provider-plugins/use-scan-provider-plugins-project.js";
 import type { ProjectGetResponse } from "@contracts/index.js";
 
 const mockUseParams = useParams as ReturnType<typeof vi.fn>;
@@ -49,6 +57,8 @@ const mockUseOpenProjectTerminal = useOpenProjectTerminal as ReturnType<typeof v
 const mockUseRemoveProject = useRemoveProject as ReturnType<typeof vi.fn>;
 const mockUseRemoveSkill = useRemoveSkill as ReturnType<typeof vi.fn>;
 const mockUseActiveHostSkills = useActiveHostSkills as ReturnType<typeof vi.fn>;
+const mockUseProviderPluginList = useProviderPluginList as ReturnType<typeof vi.fn>;
+const mockUseScanProviderPluginsProject = useScanProviderPluginsProject as ReturnType<typeof vi.fn>;
 
 const projectDetail: ProjectGetResponse = {
   project: { id: 7, name: "demo", path: "/repo/demo", status: "active", lastScannedAt: null },
@@ -112,6 +122,8 @@ beforeEach(() => {
   mockUseRemoveProject.mockReturnValue({ mutate: vi.fn(), isPending: false });
   mockUseRemoveSkill.mockReturnValue({ mutate: vi.fn(), isPending: false });
   mockUseActiveHostSkills.mockReturnValue({ skills: [] });
+  mockUseProviderPluginList.mockReturnValue({ isPending: false, isError: false, data: null });
+  mockUseScanProviderPluginsProject.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -181,6 +193,84 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.queryByText("project:")).toBeNull();
     expect(screen.queryByText("target:")).toBeNull();
     expect(screen.getByText("/host/.agents/skills/current-skill")).toBeTruthy();
+  });
+
+  it("renders Provider Plugins section with Scan Plugins button", () => {
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText("Provider Plugins")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /scan plugins/i })).toBeTruthy();
+  });
+
+  it("shows 'No plugin data' when provider plugin list returns null", () => {
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText(/No plugin data/i)).toBeTruthy();
+  });
+
+  it("shows layer statuses and plugins when provider plugin data is available", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: {
+        global: {
+          providerKey: "claude",
+          userLayerPath: "/Users/test/.claude/settings.json",
+          userLayerStatus: null,
+          lastScannedAt: null,
+          scanWarnings: [],
+          plugins: [],
+          marketplaces: [],
+          managedOutOfScope: false,
+        },
+        projects: [{
+          projectId: 7,
+          providerKey: "claude",
+          layerStatuses: [
+            { layer: "user", scanStatus: "ok", filePath: "/Users/test/.claude/settings.json", lastScannedAt: null, scanWarnings: [] },
+            { layer: "project", scanStatus: "missing", filePath: "/repo/demo/.claude/settings.json", lastScannedAt: null, scanWarnings: [] },
+          ],
+          plugins: [{ pluginName: "dev-tools", marketplaceName: "npm", effectiveStatus: "enabled", provenanceLayer: "user", layerBreakdown: [] }],
+          marketplaces: [],
+          managedOutOfScope: false,
+        }],
+      },
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getAllByText("user").length).toBeGreaterThan(0);
+    expect(screen.getByText("not configured")).toBeTruthy();
+    expect(screen.getByText("dev-tools")).toBeTruthy();
+    expect(screen.getByText("enabled")).toBeTruthy();
+  });
+
+  it("shows missing layer as 'not configured', not error language", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: {
+        global: {
+          providerKey: "claude",
+          userLayerPath: "/Users/test/.claude/settings.json",
+          userLayerStatus: null,
+          lastScannedAt: null,
+          scanWarnings: [],
+          plugins: [],
+          marketplaces: [],
+          managedOutOfScope: false,
+        },
+        projects: [{
+          projectId: 7,
+          providerKey: "claude",
+          layerStatuses: [
+            { layer: "project", scanStatus: "missing", filePath: "/repo/demo/.claude/settings.json", lastScannedAt: null, scanWarnings: [] },
+          ],
+          plugins: [],
+          marketplaces: [],
+          managedOutOfScope: false,
+        }],
+      },
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText("not configured")).toBeTruthy();
+    expect(screen.queryByText(/error/i)).toBeNull();
   });
 
   it("does not mark copy as successful when clipboard is unavailable", () => {
