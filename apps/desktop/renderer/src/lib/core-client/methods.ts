@@ -26,6 +26,10 @@ import type {
   GlobalScanResponse,
   GlobalListResponse,
   ProviderListResponse,
+  ProviderUpdatePathsRequest,
+  ProviderUpdatePathsResponse,
+  ProviderResetPathsRequest,
+  ProviderResetPathsResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -87,4 +91,10 @@ export const methods = {
   listGlobal: () => invoke<GlobalListResponse>("global.list", {}),
 
   listProviders: () => invoke<ProviderListResponse>("provider.list", {}),
+
+  updateProviderPaths: (req: ProviderUpdatePathsRequest) =>
+    invoke<ProviderUpdatePathsResponse>("provider.updatePaths", req),
+
+  resetProviderPaths: (req: ProviderResetPathsRequest) =>
+    invoke<ProviderResetPathsResponse>("provider.resetPaths", req),
 };
