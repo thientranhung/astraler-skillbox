@@ -52,7 +52,9 @@ export function ProviderPathsEditor({ providerKey, scope, purpose, currentPaths,
             onChange={(e) => setRawPaths(e.target.value)}
           />
           <p className="mt-2 text-xs text-zinc-400">
-            These are configuration metadata only. Behavior integration (scan, install) is a later slice.
+            {scope === "project"
+              ? "Project paths must be relative (e.g. .agents/skills). Saving updates the effective path candidates for future scans and installs."
+              : "Global paths must start with / or ~/. Saving updates the effective path candidates for future global scans."}
           </p>
           {mutation.isError && mutation.error != null && (
             <p className="mt-1 text-xs text-red-500">{String(mutation.error)}</p>
