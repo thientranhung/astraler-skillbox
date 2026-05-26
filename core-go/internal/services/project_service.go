@@ -63,6 +63,8 @@ type ProjectService struct {
 	skillsByHostLister SkillsByHostLister
 	// pathResolver resolves effective project-scope detect/skills paths (override ?? builtin).
 	pathResolver ProjectProviderPathResolver
+	// enablementResolver returns the effective enabled state per provider key.
+	enablementResolver ProviderEnablementResolver
 	// install deps — nil until WithInstallDeps is called
 	installFS        InstallFilesystem
 	activeHostReader ActiveHostReader
@@ -117,6 +119,13 @@ func (s *ProjectService) WithProviderDeps(
 // Returns the receiver to allow chaining.
 func (s *ProjectService) WithPathResolver(resolver ProjectProviderPathResolver) *ProjectService {
 	s.pathResolver = resolver
+	return s
+}
+
+// WithEnablementResolver attaches the provider enablement resolver used by scan and install.
+// Returns the receiver to allow chaining.
+func (s *ProjectService) WithEnablementResolver(resolver ProviderEnablementResolver) *ProjectService {
+	s.enablementResolver = resolver
 	return s
 }
 
@@ -358,11 +367,26 @@ func (s *ProjectService) scanProjectInternal(
 		}
 	}
 
+	// Resolve provider enablement once per scan.
+	var enabledMap map[string]bool
+	if s.enablementResolver != nil {
+		var resolveErr error
+		enabledMap, resolveErr = s.enablementResolver.EnabledMap(ctx)
+		if resolveErr != nil {
+			return nil, domain.NewDatabaseError("Could not resolve provider enablement", resolveErr.Error())
+		}
+	}
+
 	adapters := s.providerRegistry.All()
 	providerResults := make([]repositories.ProviderScanResult, 0, len(adapters))
 	var projectWarnings []domain.Warning
 
 	for _, adapter := range adapters {
+		if enabledMap != nil {
+			if enabled, ok := enabledMap[adapter.Key()]; ok && !enabled {
+				continue
+			}
+		}
 		paths, ok := effectivePathsMap[adapter.Key()]
 		if !ok {
 			paths = adapter.DefaultProjectPaths()

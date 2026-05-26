@@ -161,6 +161,12 @@ type GlobalProviderPathResolver interface {
 	GlobalPaths(ctx context.Context) (map[string]providers.GlobalScopePaths, error)
 }
 
+// ProviderEnablementResolver returns the effective enabled state per provider key,
+// clamped by support status (same rules as provider.list).
+type ProviderEnablementResolver interface {
+	EnabledMap(ctx context.Context) (map[string]bool, error)
+}
+
 // SkillHostLister lists all skill host folders regardless of status.
 type SkillHostLister interface {
 	ListAll(ctx context.Context) ([]domain.SkillHostFolder, error)

@@ -103,6 +103,37 @@ func (s *ProviderRegistryService) SetEnabled(ctx context.Context, providerKey st
 	return nil
 }
 
+// EnabledMap returns the effective enabled state per provider key,
+// clamped by support status (same rules as List). DB errors return database_error.
+func (s *ProviderRegistryService) EnabledMap(ctx context.Context) (map[string]bool, error) {
+	entries, err := s.repo.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider registry", err.Error())
+	}
+	userSettings, err := s.userSettingsRepo.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider user settings", err.Error())
+	}
+
+	userEnabled := make(map[int64]bool, len(userSettings))
+	for _, us := range userSettings {
+		userEnabled[us.ProviderDefinitionID] = us.Enabled
+	}
+
+	result := make(map[string]bool, len(entries))
+	for _, e := range entries {
+		canToggle := deriveCanToggle(e.Definition.Status)
+		if !canToggle {
+			result[e.Definition.Key] = false
+		} else if v, ok := userEnabled[e.Definition.ID]; ok {
+			result[e.Definition.Key] = v
+		} else {
+			result[e.Definition.Key] = true
+		}
+	}
+	return result, nil
+}
+
 // deriveCanToggle returns true for supported and experimental providers.
 func deriveCanToggle(status domain.ProviderStatus) bool {
 	return status == domain.ProviderStatusSupported || status == domain.ProviderStatusExperimental
