@@ -103,3 +103,114 @@ func (a *ClaudeAdapter) Detect(projectRoot string, paths ProjectScopePaths, fs F
 	}
 	return result, nil
 }
+
+// DefaultGlobalPaths returns the adapter's built-in global-scope paths.
+// Claude's global convention: ~/.claude (detect), ~/.claude/skills (skills).
+func (a *ClaudeAdapter) DefaultGlobalPaths() GlobalScopePaths {
+	return GlobalScopePaths{DetectRel: ClaudeDetectPath, SkillsRel: ClaudeSkillsPath}
+}
+
+// DetectGlobal detects the global Claude provider rooted at homeDir using the resolved paths.
+// It is read-only: no folder creation occurs. Logic mirrors GenericAgentsAdapter.DetectGlobal.
+func (a *ClaudeAdapter) DetectGlobal(homeDir string, paths GlobalScopePaths, fs FsReader) (GlobalDetectResult, error) {
+	claudePath := expandGlobalPath(homeDir, paths.DetectRel)
+	skillsPath := expandGlobalPath(homeDir, paths.SkillsRel)
+
+	pi, err := fs.PathInfo(claudePath)
+	if err != nil {
+		return GlobalDetectResult{}, err
+	}
+
+	// ~/.claude missing.
+	if !pi.Exists {
+		return GlobalDetectResult{
+			Present: false,
+			Status:  domain.GlobalLocationStatusMissing,
+			Warnings: []AdapterWarning{{
+				Code:      "global_provider_location_missing",
+				Message:   "~/.claude directory not found",
+				Severity:  domain.WarningSeverityWarning,
+				ScopeType: domain.WarningScopeGlobalProviderLocation,
+			}},
+		}, nil
+	}
+
+	// ~/.claude exists but is not a readable directory (or is a file).
+	if !pi.IsDir || !pi.Readable {
+		return GlobalDetectResult{
+			Present:          true,
+			GlobalPath:       claudePath,
+			GlobalSkillsPath: skillsPath,
+			Status:           domain.GlobalLocationStatusInvalidStructure,
+			Warnings: []AdapterWarning{{
+				Code:      "invalid_structure",
+				Message:   "~/.claude exists but is not a readable directory",
+				Severity:  domain.WarningSeverityWarning,
+				ScopeType: domain.WarningScopeGlobalProviderLocation,
+			}},
+		}, nil
+	}
+
+	// ~/.claude is a readable directory.
+	result := GlobalDetectResult{
+		Present:          true,
+		GlobalPath:       claudePath,
+		GlobalSkillsPath: skillsPath,
+	}
+
+	// Check ~/.claude/skills.
+	skillsPi, err := fs.PathInfo(skillsPath)
+	if err != nil {
+		return result, err
+	}
+
+	if !skillsPi.Exists {
+		// skills root absent — do NOT create the folder.
+		result.Status = domain.GlobalLocationStatusMissing
+		result.Warnings = append(result.Warnings, AdapterWarning{
+			Code:      "global_provider_location_missing",
+			Message:   "~/.claude/skills directory not found",
+			Severity:  domain.WarningSeverityWarning,
+			ScopeType: domain.WarningScopeGlobalProviderLocation,
+		})
+		return result, nil
+	}
+
+	if !skillsPi.IsDir || !skillsPi.Readable {
+		result.Status = domain.GlobalLocationStatusUnreadable
+		result.Warnings = append(result.Warnings, AdapterWarning{
+			Code:      "unreadable",
+			Message:   "~/.claude/skills is not readable",
+			Severity:  domain.WarningSeverityWarning,
+			ScopeType: domain.WarningScopeGlobalProviderLocation,
+		})
+		return result, nil
+	}
+
+	rawEntries, err := fs.ListSkillEntries(skillsPath)
+	if err != nil {
+		result.Status = domain.GlobalLocationStatusUnreadable
+		result.Warnings = append(result.Warnings, AdapterWarning{
+			Code:      "unreadable",
+			Message:   "Could not read ~/.claude/skills directory",
+			Severity:  domain.WarningSeverityWarning,
+			ScopeType: domain.WarningScopeGlobalProviderLocation,
+		})
+		return result, nil
+	}
+
+	if len(rawEntries) == 0 {
+		result.Status = domain.GlobalLocationStatusEmpty
+		return result, nil
+	}
+
+	result.Status = domain.GlobalLocationStatusActive
+	result.Entries = make([]AdapterEntry, 0, len(rawEntries))
+	for _, e := range rawEntries {
+		result.Entries = append(result.Entries, entryFromProjectEntry(e))
+	}
+	return result, nil
+}
+
+// ensure ClaudeAdapter implements GlobalProviderAdapter at compile time.
+var _ GlobalProviderAdapter = (*ClaudeAdapter)(nil)

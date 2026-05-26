@@ -18,7 +18,7 @@ func TestGenericAgentsAdapter_DetectGlobal_AgentsMissing(t *testing.T) {
 	a := providers.NewGenericAgentsAdapter()
 	fs := newMockFS() // all paths missing
 
-	result, err := a.DetectGlobal(testHome, fs)
+	result, err := a.DetectGlobal(testHome, a.DefaultGlobalPaths(), fs)
 	if err != nil {
 		t.Fatalf("DetectGlobal: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestGenericAgentsAdapter_DetectGlobal_AgentsIsFile(t *testing.T) {
 	fs := newMockFS()
 	fs.setFile(agentsPath())
 
-	result, err := a.DetectGlobal(testHome, fs)
+	result, err := a.DetectGlobal(testHome, a.DefaultGlobalPaths(), fs)
 	if err != nil {
 		t.Fatalf("DetectGlobal: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestGenericAgentsAdapter_DetectGlobal_AgentsUnreadableDir(t *testing.T) {
 	fs := newMockFS()
 	fs.setUnreadableDir(agentsPath())
 
-	result, err := a.DetectGlobal(testHome, fs)
+	result, err := a.DetectGlobal(testHome, a.DefaultGlobalPaths(), fs)
 	if err != nil {
 		t.Fatalf("DetectGlobal: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestGenericAgentsAdapter_DetectGlobal_SkillsMissing_NoFolderCreated(t *test
 	fs.setDir(agentsPath())
 	// skills path is NOT set → Exists=false
 
-	result, err := a.DetectGlobal(testHome, fs)
+	result, err := a.DetectGlobal(testHome, a.DefaultGlobalPaths(), fs)
 	if err != nil {
 		t.Fatalf("DetectGlobal: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestGenericAgentsAdapter_DetectGlobal_SkillsEmpty(t *testing.T) {
 	fs.setDir(skillsPath())
 	// No entries in skills dir.
 
-	result, err := a.DetectGlobal(testHome, fs)
+	result, err := a.DetectGlobal(testHome, a.DefaultGlobalPaths(), fs)
 	if err != nil {
 		t.Fatalf("DetectGlobal: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestGenericAgentsAdapter_DetectGlobal_Active(t *testing.T) {
 			ResolvedTarget:   "/host/.agents/skills/adr-helper"},
 	}
 
-	result, err := a.DetectGlobal(testHome, fs)
+	result, err := a.DetectGlobal(testHome, a.DefaultGlobalPaths(), fs)
 	if err != nil {
 		t.Fatalf("DetectGlobal: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestGenericAgentsAdapter_DetectGlobal_SkillsUnreadable(t *testing.T) {
 	fs.setDir(agentsPath())
 	fs.setUnreadableDir(skillsPath())
 
-	result, err := a.DetectGlobal(testHome, fs)
+	result, err := a.DetectGlobal(testHome, a.DefaultGlobalPaths(), fs)
 	if err != nil {
 		t.Fatalf("DetectGlobal: %v", err)
 	}
