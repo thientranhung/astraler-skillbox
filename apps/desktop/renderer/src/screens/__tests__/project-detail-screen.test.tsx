@@ -164,12 +164,11 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getByRole("button", { name: /All providers 1/i })).toBeTruthy();
   });
 
-  it("offers explicit show and copy actions for project skill paths", () => {
+  it("shows full project skill paths directly and keeps copy actions", () => {
     render(<ProjectDetailScreen />);
 
-    const showButtons = screen.getAllByRole("button", { name: /show full project skill path/i });
-    fireEvent.click(showButtons[0]);
-    expect(screen.getAllByText("/repo/demo/.agents/skills/current-skill").length).toBeGreaterThan(1);
+    expect(screen.queryByRole("button", { name: /show full project skill path/i })).toBeNull();
+    expect(screen.getAllByText("/repo/demo/.agents/skills/current-skill").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getAllByRole("button", { name: /copy project skill path/i })[0]);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("/repo/demo/.agents/skills/current-skill");

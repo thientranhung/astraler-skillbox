@@ -114,7 +114,7 @@ export function AddSkillWizard({
                   className="accent-blue-600"
                 />
                 <span className="text-xs font-medium text-zinc-800">{skill.name}</span>
-                <span className="ml-auto font-mono text-xs text-zinc-400">{skill.relativePath}</span>
+                <span className="ml-auto max-w-[65%] break-all text-right font-mono text-xs leading-snug text-zinc-400">{skill.relativePath}</span>
               </label>
             ))}
           </div>

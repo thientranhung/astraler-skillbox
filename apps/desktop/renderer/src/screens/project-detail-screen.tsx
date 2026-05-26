@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertTriangle, AlertCircle, Info, PlusCircle, Copy, Check, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertTriangle, AlertCircle, Info, PlusCircle, Copy, Check } from "lucide-react";
 import { useProjectDetail } from "../features/projects/use-project-detail.js";
 import { useScanProject } from "../features/projects/use-scan-project.js";
 import { useOpenProjectFolder } from "../features/projects/use-open-project-folder.js";
@@ -96,7 +96,7 @@ function ProviderRow({ provider }: { provider: ProjectGetProvider }): React.JSX.
           <span className="text-[11px] leading-tight text-zinc-400">{providerStatus.description}</span>
         </div>
       </td>
-      <td className="max-w-xs truncate px-3 py-1.5 font-mono text-xs text-zinc-400" title={provider.detectedPath ?? undefined}>
+      <td className="max-w-md break-all px-3 py-1.5 font-mono text-xs leading-snug text-zinc-400">
         {provider.detectedPath ?? "—"}
       </td>
       <td className="px-3 py-1.5 text-xs text-zinc-500">{provider.entryCount}</td>
@@ -111,7 +111,6 @@ function PathCell({
   value: string | null;
   label: string;
 }): React.JSX.Element {
-  const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (value == null || value === "") {
@@ -128,19 +127,10 @@ function PathCell({
 
   return (
     <div className="min-w-0">
-      <div className="flex min-w-0 items-center gap-1">
-        <span className="truncate font-mono text-xs text-zinc-500" title={value}>
+      <div className="flex min-w-0 items-start gap-1">
+        <span className="break-all font-mono text-xs leading-snug text-zinc-500">
           {value}
         </span>
-        <button
-          type="button"
-          onClick={() => setExpanded((next) => !next)}
-          aria-label={`${expanded ? "Hide" : "Show"} full ${label}`}
-          title={`${expanded ? "Hide" : "Show"} full ${label}`}
-          className="shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-        >
-          {expanded ? <EyeOff size={12} /> : <Eye size={12} />}
-        </button>
         <button
           type="button"
           onClick={() => void copyPath()}
@@ -151,11 +141,6 @@ function PathCell({
           {copied ? <Check size={12} /> : <Copy size={12} />}
         </button>
       </div>
-      {expanded && (
-        <div className="mt-1 break-all rounded bg-zinc-50 px-2 py-1 font-mono text-[11px] leading-snug text-zinc-600">
-          {value}
-        </div>
-      )}
     </div>
   );
 }
@@ -253,8 +238,8 @@ export function ProjectDetailScreen(): React.JSX.Element {
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 flex-wrap items-start gap-3">
           <button
             onClick={() => void navigate({ to: "/projects" })}
             className="flex shrink-0 items-center gap-1 text-xs text-zinc-500 hover:text-zinc-800"
@@ -265,9 +250,9 @@ export function ProjectDetailScreen(): React.JSX.Element {
           {data != null && (
             <>
               <span className="shrink-0 text-zinc-300">/</span>
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="truncate text-sm font-semibold text-zinc-900">{data.project.name}</span>
-                <span className="hidden truncate font-mono text-xs text-zinc-400 md:block" title={data.project.path}>
+                <span className="break-all font-mono text-xs leading-snug text-zinc-400">
                   {data.project.path}
                 </span>
               </div>
