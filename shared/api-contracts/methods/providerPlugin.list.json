@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProviderPluginListMethod",
+  "description": "Contract for providerPlugin.list JSON-RPC method. Returns persisted plugin visibility data for global (user layer) and all projects.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProviderPluginListRequest" },
+    { "$ref": "#/definitions/ProviderPluginListResponse" }
+  ],
+  "definitions": {
+    "ProviderPluginListRequest": {
+      "title": "ProviderPluginListRequest",
+      "description": "Params for providerPlugin.list (no params required).",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ProviderPluginListResponse": {
+      "title": "ProviderPluginListResponse",
+      "type": "object",
+      "properties": {
+        "global": { "$ref": "#/definitions/PPGlobalView" },
+        "projects": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PPProjectView" }
+        }
+      },
+      "required": ["global", "projects"],
+      "additionalProperties": false
+    },
+    "PPGlobalView": {
+      "title": "PPGlobalView",
+      "type": "object",
+      "properties": {
+        "providerKey": { "type": "string" },
+        "userLayerPath": { "type": "string" },
+        "userLayerStatus": {
+          "type": ["string", "null"],
+          "enum": ["ok", "missing", "unreadable", "malformed", "too_large", "symlink", "path_escape", null],
+          "description": "null when never scanned"
+        },
+        "lastScannedAt": { "type": ["string", "null"], "description": "ISO-8601 timestamp or null" },
+        "plugins": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PPGlobalEntry" }
+        },
+        "marketplaces": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PPMarketplace" }
+        },
+        "managedOutOfScope": { "type": "boolean" }
+      },
+      "required": ["providerKey", "userLayerPath", "userLayerStatus", "lastScannedAt", "plugins", "marketplaces", "managedOutOfScope"],
+      "additionalProperties": false
+    },
+    "PPGlobalEntry": {
+      "title": "PPGlobalEntry",
+      "type": "object",
+      "properties": {
+        "pluginName": { "type": "string" },
+        "marketplaceName": { "type": "string" },
+        "status": { "type": "string", "enum": ["enabled", "disabled"] }
+      },
+      "required": ["pluginName", "marketplaceName", "status"],
+      "additionalProperties": false
+    },
+    "PPProjectView": {
+      "title": "PPProjectView",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "integer" },
+        "providerKey": { "type": "string" },
+        "layerStatuses": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PPLayerStatus" }
+        },
+        "plugins": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PPProjectEntry" }
+        },
+        "marketplaces": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PPMarketplace" }
+        },
+        "managedOutOfScope": { "type": "boolean" }
+      },
+      "required": ["projectId", "providerKey", "layerStatuses", "plugins", "marketplaces", "managedOutOfScope"],
+      "additionalProperties": false
+    },
+    "PPLayerStatus": {
+      "title": "PPLayerStatus",
+      "type": "object",
+      "properties": {
+        "layer": { "type": "string", "enum": ["user", "project", "local"] },
+        "scanStatus": { "type": "string", "enum": ["ok", "missing", "unreadable", "malformed", "too_large", "symlink", "path_escape"] },
+        "filePath": { "type": "string" },
+        "lastScannedAt": { "type": ["string", "null"], "description": "ISO-8601 timestamp or null" }
+      },
+      "required": ["layer", "scanStatus", "filePath", "lastScannedAt"],
+      "additionalProperties": false
+    },
+    "PPProjectEntry": {
+      "title": "PPProjectEntry",
+      "type": "object",
+      "properties": {
+        "pluginName": { "type": "string" },
+        "marketplaceName": { "type": "string" },
+        "effectiveStatus": { "type": "string", "enum": ["enabled", "disabled", "absent", "unknown"] },
+        "provenanceLayer": { "type": ["string", "null"], "enum": ["user", "project", "local", null] },
+        "layerBreakdown": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PPLayerDetail" }
+        }
+      },
+      "required": ["pluginName", "marketplaceName", "effectiveStatus", "provenanceLayer", "layerBreakdown"],
+      "additionalProperties": false
+    },
+    "PPLayerDetail": {
+      "title": "PPLayerDetail",
+      "type": "object",
+      "properties": {
+        "layer": { "type": "string", "enum": ["user", "project", "local"] },
+        "scanStatus": { "type": "string", "enum": ["ok", "missing", "unreadable", "malformed", "too_large", "symlink", "path_escape"] },
+        "declaration": { "type": ["string", "null"], "enum": ["enabled", "disabled", null] }
+      },
+      "required": ["layer", "scanStatus", "declaration"],
+      "additionalProperties": false
+    },
+    "PPMarketplace": {
+      "title": "PPMarketplace",
+      "type": "object",
+      "properties": {
+        "marketplaceName": { "type": "string" },
+        "sourceType": { "type": "string" },
+        "sourceSummary": { "type": "string" }
+      },
+      "required": ["marketplaceName", "sourceType", "sourceSummary"],
+      "additionalProperties": false
+    }
+  }
+}

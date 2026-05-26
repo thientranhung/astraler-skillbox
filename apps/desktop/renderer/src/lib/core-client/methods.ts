@@ -32,6 +32,10 @@ import type {
   ProviderResetPathsResponse,
   ProviderSetEnabledRequest,
   ProviderSetEnabledResponse,
+  ProviderPluginScanGlobalResponse,
+  ProviderPluginScanProjectRequest,
+  ProviderPluginScanProjectResponse,
+  ProviderPluginListResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -102,4 +106,13 @@ export const methods = {
 
   setProviderEnabled: (req: ProviderSetEnabledRequest) =>
     invoke<ProviderSetEnabledResponse>("provider.setEnabled", req),
+
+  scanProviderPluginsGlobal: () =>
+    invoke<ProviderPluginScanGlobalResponse>("providerPlugin.scanGlobal", {}),
+
+  scanProviderPluginsProject: (req: ProviderPluginScanProjectRequest) =>
+    invoke<ProviderPluginScanProjectResponse>("providerPlugin.scanProject", req),
+
+  listProviderPlugins: () =>
+    invoke<ProviderPluginListResponse>("providerPlugin.list", {}),
 };
