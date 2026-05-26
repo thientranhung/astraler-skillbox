@@ -20,6 +20,8 @@ func TestContract_ProviderList_Response(t *testing.T) {
 				IconKey:            &iconKey,
 				Status:             "experimental",
 				IsAvailable:        true,
+				IsEnabled:          true,
+				CanToggle:          true,
 				CanCreateStructure: false,
 				HasGlobalLevel:     true,
 				Candidates: []providerListPathCandidate{
@@ -63,6 +65,8 @@ func TestContract_ProviderList_NullIconKey(t *testing.T) {
 				IconKey:            nil,
 				Status:             "supported",
 				IsAvailable:        true,
+				IsEnabled:          true,
+				CanToggle:          true,
 				CanCreateStructure: false,
 				HasGlobalLevel:     true,
 				Candidates:         []providerListPathCandidate{},

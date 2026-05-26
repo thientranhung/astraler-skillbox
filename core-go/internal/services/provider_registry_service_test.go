@@ -29,6 +29,20 @@ func (m *mockProviderRegistryRepo) GetByKey(_ context.Context, key string) (*dom
 	return nil, nil
 }
 
+type mockProviderUserSettingsRepo struct {
+	settings []domain.ProviderUserSetting
+	listErr  error
+	upsertErr error
+}
+
+func (m *mockProviderUserSettingsRepo) ListAll(_ context.Context) ([]domain.ProviderUserSetting, error) {
+	return m.settings, m.listErr
+}
+
+func (m *mockProviderUserSettingsRepo) Upsert(_ context.Context, _ int64, _ bool) error {
+	return m.upsertErr
+}
+
 type mockProviderOverrideRepo struct {
 	overrides  []domain.ProviderPathOverride
 	listErr    error
@@ -92,7 +106,7 @@ func makeSvc(entries []domain.ProviderRegistryEntry, overrides []domain.Provider
 		overrides: overrides,
 		idByKey:   idByKey,
 	}
-	return NewProviderRegistryService(repo, overrideRepo)
+	return NewProviderRegistryService(repo, overrideRepo, &mockProviderUserSettingsRepo{})
 }
 
 // -- List tests --
@@ -118,7 +132,7 @@ func TestProviderRegistryService_List_ReturnsEntries(t *testing.T) {
 
 func TestProviderRegistryService_List_RepoErrorWrapped(t *testing.T) {
 	repo := &mockProviderRegistryRepo{err: errors.New("db gone")}
-	svc := NewProviderRegistryService(repo, &mockProviderOverrideRepo{})
+	svc := NewProviderRegistryService(repo, &mockProviderOverrideRepo{}, &mockProviderUserSettingsRepo{})
 
 	_, err := svc.List(context.Background())
 	if err == nil {
@@ -221,7 +235,7 @@ func TestProviderRegistryService_List_BuiltinPreservedForNonOverriddenSlot(t *te
 func TestProviderRegistryService_UpdatePaths_Success(t *testing.T) {
 	entries := []domain.ProviderRegistryEntry{makeTestEntry("claude", "experimental")}
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{entries: entries}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{entries: entries}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "project", "detect", []string{".custom"})
 	if err != nil {
@@ -231,7 +245,7 @@ func TestProviderRegistryService_UpdatePaths_Success(t *testing.T) {
 
 func TestProviderRegistryService_UpdatePaths_UnknownProvider(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "no_such", "project", "detect", []string{".path"})
 	if err == nil {
@@ -245,7 +259,7 @@ func TestProviderRegistryService_UpdatePaths_UnknownProvider(t *testing.T) {
 
 func TestProviderRegistryService_UpdatePaths_InvalidScope(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "invalid_scope", "detect", []string{".path"})
 	if err == nil {
@@ -259,7 +273,7 @@ func TestProviderRegistryService_UpdatePaths_InvalidScope(t *testing.T) {
 
 func TestProviderRegistryService_UpdatePaths_InvalidPurpose(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "project", "invalid_purpose", []string{".path"})
 	if err == nil {
@@ -273,7 +287,7 @@ func TestProviderRegistryService_UpdatePaths_InvalidPurpose(t *testing.T) {
 
 func TestProviderRegistryService_UpdatePaths_ProjectPathWithDotDot(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "project", "detect", []string{"../escape"})
 	if err == nil {
@@ -287,7 +301,7 @@ func TestProviderRegistryService_UpdatePaths_ProjectPathWithDotDot(t *testing.T)
 
 func TestProviderRegistryService_UpdatePaths_ProjectPathAbsolute(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "project", "detect", []string{"/absolute"})
 	if err == nil {
@@ -301,7 +315,7 @@ func TestProviderRegistryService_UpdatePaths_ProjectPathAbsolute(t *testing.T) {
 
 func TestProviderRegistryService_UpdatePaths_GlobalPathNoTilde(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "global", "skills", []string{"relative/path"})
 	if err == nil {
@@ -315,7 +329,7 @@ func TestProviderRegistryService_UpdatePaths_GlobalPathNoTilde(t *testing.T) {
 
 func TestProviderRegistryService_UpdatePaths_GlobalAbsolutePathAllowed(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "global", "skills", []string{"/usr/local/claude/skills"})
 	if err != nil {
@@ -325,7 +339,7 @@ func TestProviderRegistryService_UpdatePaths_GlobalAbsolutePathAllowed(t *testin
 
 func TestProviderRegistryService_UpdatePaths_GlobalTildePathAllowed(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "global", "skills", []string{"~/.claude/skills"})
 	if err != nil {
@@ -335,7 +349,7 @@ func TestProviderRegistryService_UpdatePaths_GlobalTildePathAllowed(t *testing.T
 
 func TestProviderRegistryService_UpdatePaths_EmptyPaths(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	err := svc.UpdatePaths(context.Background(), "claude", "project", "detect", []string{})
 	if err == nil {
@@ -354,7 +368,7 @@ func TestProviderRegistryService_ResetPaths_ExistingOverride(t *testing.T) {
 		idByKey:   map[string]int64{"claude": 1},
 		deleteRet: true,
 	}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	reset, err := svc.ResetPaths(context.Background(), "claude", "project", "detect")
 	if err != nil {
@@ -370,7 +384,7 @@ func TestProviderRegistryService_ResetPaths_NoOverride(t *testing.T) {
 		idByKey:   map[string]int64{"claude": 1},
 		deleteRet: false,
 	}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	reset, err := svc.ResetPaths(context.Background(), "claude", "project", "detect")
 	if err != nil {
@@ -383,7 +397,7 @@ func TestProviderRegistryService_ResetPaths_NoOverride(t *testing.T) {
 
 func TestProviderRegistryService_ResetPaths_UnknownProvider(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	_, err := svc.ResetPaths(context.Background(), "no_such", "project", "detect")
 	if err == nil {
@@ -397,7 +411,7 @@ func TestProviderRegistryService_ResetPaths_UnknownProvider(t *testing.T) {
 
 func TestProviderRegistryService_ResetPaths_InvalidScope(t *testing.T) {
 	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 1}}
-	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo)
+	svc := NewProviderRegistryService(&mockProviderRegistryRepo{}, overrideRepo, &mockProviderUserSettingsRepo{})
 
 	_, err := svc.ResetPaths(context.Background(), "claude", "bad_scope", "detect")
 	if err == nil {
@@ -533,5 +547,170 @@ func TestGlobalPaths_PartialCandidates_Excluded(t *testing.T) {
 	}
 	if _, ok := got["half_provider"]; ok {
 		t.Error("half_provider should be excluded: skills candidate missing")
+	}
+}
+
+// -- IsEnabled / CanToggle derivation tests --
+
+func makeEntryWithID(id int64, key, status string) domain.ProviderRegistryEntry {
+	iconKey := key
+	return domain.ProviderRegistryEntry{
+		Definition: domain.ProviderDefinition{
+			ID:           id,
+			Key:          key,
+			DisplayName:  key,
+			ProviderType: key,
+			IconKey:      &iconKey,
+			Status:       domain.ProviderStatus(status),
+		},
+	}
+}
+
+func TestProviderRegistryService_List_IsEnabled_DefaultsFromStatus(t *testing.T) {
+	cases := []struct {
+		status    string
+		wantEnabled bool
+		wantCanToggle bool
+	}{
+		{"supported", true, true},
+		{"experimental", true, true},
+		{"unsupported", false, false},
+		{"disabled", false, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.status, func(t *testing.T) {
+			entries := []domain.ProviderRegistryEntry{makeEntryWithID(1, "prov", tc.status)}
+			svc := makeSvc(entries, nil)
+
+			got, err := svc.List(context.Background())
+			if err != nil {
+				t.Fatalf("List: %v", err)
+			}
+			if got[0].IsEnabled != tc.wantEnabled {
+				t.Errorf("IsEnabled: got %v want %v (status=%s)", got[0].IsEnabled, tc.wantEnabled, tc.status)
+			}
+			if got[0].CanToggle != tc.wantCanToggle {
+				t.Errorf("CanToggle: got %v want %v (status=%s)", got[0].CanToggle, tc.wantCanToggle, tc.status)
+			}
+		})
+	}
+}
+
+func TestProviderRegistryService_List_IsEnabled_UserSettingOverridesDefault(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{makeEntryWithID(42, "claude", "experimental")}
+	repo := &mockProviderRegistryRepo{entries: entries}
+	overrideRepo := &mockProviderOverrideRepo{idByKey: map[string]int64{"claude": 42}}
+	userSettingsRepo := &mockProviderUserSettingsRepo{
+		settings: []domain.ProviderUserSetting{{ID: 1, ProviderDefinitionID: 42, Enabled: false}},
+	}
+	svc := NewProviderRegistryService(repo, overrideRepo, userSettingsRepo)
+
+	got, err := svc.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got[0].IsEnabled {
+		t.Error("IsEnabled should be false when user setting is false, even for experimental provider")
+	}
+}
+
+func TestProviderRegistryService_List_IsEnabled_UserEnableOverridesDefault(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{makeEntryWithID(7, "prov", "supported")}
+	repo := &mockProviderRegistryRepo{entries: entries}
+	overrideRepo := &mockProviderOverrideRepo{}
+	userSettingsRepo := &mockProviderUserSettingsRepo{
+		settings: []domain.ProviderUserSetting{{ID: 1, ProviderDefinitionID: 7, Enabled: true}},
+	}
+	svc := NewProviderRegistryService(repo, overrideRepo, userSettingsRepo)
+
+	got, err := svc.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if !got[0].IsEnabled {
+		t.Error("IsEnabled should be true when user setting is true")
+	}
+}
+
+// -- SetEnabled tests --
+
+func makeSvcWithUserSettings(
+	entries []domain.ProviderRegistryEntry,
+	userSettings []domain.ProviderUserSetting,
+) (*ProviderRegistryService, *mockProviderUserSettingsRepo) {
+	repo := &mockProviderRegistryRepo{entries: entries}
+	overrideRepo := &mockProviderOverrideRepo{}
+	us := &mockProviderUserSettingsRepo{settings: userSettings}
+	return NewProviderRegistryService(repo, overrideRepo, us), us
+}
+
+func TestProviderRegistryService_SetEnabled_PersistsTrue(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{makeEntryWithID(1, "claude", "experimental")}
+	svc, usRepo := makeSvcWithUserSettings(entries, nil)
+
+	if err := svc.SetEnabled(context.Background(), "claude", true); err != nil {
+		t.Fatalf("SetEnabled(true): %v", err)
+	}
+	// The mock just doesn't error; verify no error is the success signal.
+	_ = usRepo
+}
+
+func TestProviderRegistryService_SetEnabled_PersistsFalse(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{makeEntryWithID(1, "generic_agents", "supported")}
+	svc, _ := makeSvcWithUserSettings(entries, nil)
+
+	if err := svc.SetEnabled(context.Background(), "generic_agents", false); err != nil {
+		t.Fatalf("SetEnabled(false): %v", err)
+	}
+}
+
+func TestProviderRegistryService_SetEnabled_UnknownProvider(t *testing.T) {
+	svc, _ := makeSvcWithUserSettings(nil, nil)
+
+	err := svc.SetEnabled(context.Background(), "no_such_provider", true)
+	if err == nil {
+		t.Fatal("expected error for unknown provider")
+	}
+	var ae *domain.AppError
+	if !errors.As(err, &ae) || ae.Code != domain.CodeValidation {
+		t.Errorf("expected validation_error, got %v", err)
+	}
+}
+
+func TestProviderRegistryService_SetEnabled_EnableUnsupportedRejected(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{makeEntryWithID(1, "prov", "unsupported")}
+	svc, _ := makeSvcWithUserSettings(entries, nil)
+
+	err := svc.SetEnabled(context.Background(), "prov", true)
+	if err == nil {
+		t.Fatal("expected error when enabling unsupported provider")
+	}
+	var ae *domain.AppError
+	if !errors.As(err, &ae) || ae.Code != domain.CodeValidation {
+		t.Errorf("expected validation_error, got %v", err)
+	}
+}
+
+func TestProviderRegistryService_SetEnabled_DisableUnsupportedAllowed(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{makeEntryWithID(1, "prov", "unsupported")}
+	svc, _ := makeSvcWithUserSettings(entries, nil)
+
+	// Disabling an already-disabled provider is fine (no-op in practice).
+	if err := svc.SetEnabled(context.Background(), "prov", false); err != nil {
+		t.Fatalf("SetEnabled(false) for unsupported should be allowed: %v", err)
+	}
+}
+
+func TestProviderRegistryService_SetEnabled_EmptyKeyRejected(t *testing.T) {
+	svc, _ := makeSvcWithUserSettings(nil, nil)
+
+	err := svc.SetEnabled(context.Background(), "", true)
+	if err == nil {
+		t.Fatal("expected error for empty key")
+	}
+	var ae *domain.AppError
+	if !errors.As(err, &ae) || ae.Code != domain.CodeValidation {
+		t.Errorf("expected validation_error, got %v", err)
 	}
 }

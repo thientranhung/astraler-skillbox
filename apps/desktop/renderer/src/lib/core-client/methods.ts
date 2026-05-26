@@ -30,6 +30,8 @@ import type {
   ProviderUpdatePathsResponse,
   ProviderResetPathsRequest,
   ProviderResetPathsResponse,
+  ProviderSetEnabledRequest,
+  ProviderSetEnabledResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -97,4 +99,7 @@ export const methods = {
 
   resetProviderPaths: (req: ProviderResetPathsRequest) =>
     invoke<ProviderResetPathsResponse>("provider.resetPaths", req),
+
+  setProviderEnabled: (req: ProviderSetEnabledRequest) =>
+    invoke<ProviderSetEnabledResponse>("provider.setEnabled", req),
 };

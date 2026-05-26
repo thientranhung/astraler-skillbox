@@ -20,4 +20,8 @@ export const ALLOWLIST = new Set([
   "dashboard.get",
   "global.scan",
   "global.list",
+  "provider.list",
+  "provider.updatePaths",
+  "provider.resetPaths",
+  "provider.setEnabled",
 ]);

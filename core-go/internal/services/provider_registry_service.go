@@ -13,14 +13,15 @@ import (
 var validScopes = map[string]bool{"project": true, "global": true}
 var validPurposes = map[string]bool{"detect": true, "skills": true, "config": true, "commands": true}
 
-// ProviderRegistryService returns the provider registry with override support.
+// ProviderRegistryService returns the provider registry with override and user-settings support.
 type ProviderRegistryService struct {
-	repo         ProviderRegistryRepo
-	overrideRepo ProviderOverrideRepo
+	repo             ProviderRegistryRepo
+	overrideRepo     ProviderOverrideRepo
+	userSettingsRepo ProviderUserSettingsRepo
 }
 
-func NewProviderRegistryService(repo ProviderRegistryRepo, overrideRepo ProviderOverrideRepo) *ProviderRegistryService {
-	return &ProviderRegistryService{repo: repo, overrideRepo: overrideRepo}
+func NewProviderRegistryService(repo ProviderRegistryRepo, overrideRepo ProviderOverrideRepo, userSettingsRepo ProviderUserSettingsRepo) *ProviderRegistryService {
+	return &ProviderRegistryService{repo: repo, overrideRepo: overrideRepo, userSettingsRepo: userSettingsRepo}
 }
 
 func (s *ProviderRegistryService) List(ctx context.Context) ([]domain.ProviderRegistryEntry, error) {
@@ -34,10 +35,20 @@ func (s *ProviderRegistryService) List(ctx context.Context) ([]domain.ProviderRe
 		return nil, domain.NewDatabaseError("Could not load provider path overrides", err.Error())
 	}
 
+	userSettings, err := s.userSettingsRepo.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider user settings", err.Error())
+	}
+
+	// Build a lookup map: providerDefinitionID → user-set enabled value.
+	userEnabled := make(map[int64]bool, len(userSettings))
+	for _, us := range userSettings {
+		userEnabled[us.ProviderDefinitionID] = us.Enabled
+	}
+
 	if len(overrides) > 0 {
 		entries = mergeOverrides(entries, overrides)
 	} else {
-		// Stamp Source="builtin" on all candidates when no overrides exist.
 		for i := range entries {
 			for j := range entries[i].Candidates {
 				entries[i].Candidates[j].Source = "builtin"
@@ -45,7 +56,52 @@ func (s *ProviderRegistryService) List(ctx context.Context) ([]domain.ProviderRe
 		}
 	}
 
+	// Stamp IsEnabled and CanToggle on each entry.
+	for i := range entries {
+		canToggle := deriveCanToggle(entries[i].Definition.Status)
+		entries[i].CanToggle = canToggle
+		if v, ok := userEnabled[entries[i].Definition.ID]; ok {
+			entries[i].IsEnabled = v
+		} else {
+			entries[i].IsEnabled = canToggle
+		}
+	}
+
 	return entries, nil
+}
+
+// SetEnabled persists the user's enabled preference for the given provider.
+// Returns validation_error if the provider is unknown or if enabled=true is requested
+// for a provider that cannot be toggled (unsupported/disabled status).
+func (s *ProviderRegistryService) SetEnabled(ctx context.Context, providerKey string, enabled bool) error {
+	if providerKey == "" {
+		return domain.NewValidationError("Provider key is required", "providerKey must not be empty")
+	}
+
+	def, err := s.repo.GetByKey(ctx, providerKey)
+	if err != nil {
+		return domain.NewDatabaseError("Could not look up provider", err.Error())
+	}
+	if def == nil {
+		return domain.NewValidationError("Unknown provider", fmt.Sprintf("provider key %q not found", providerKey))
+	}
+
+	if enabled && !deriveCanToggle(def.Status) {
+		return domain.NewValidationError(
+			"Provider cannot be enabled",
+			fmt.Sprintf("provider %q has status %q and cannot be toggled on", providerKey, def.Status),
+		)
+	}
+
+	if err := s.userSettingsRepo.Upsert(ctx, def.ID, enabled); err != nil {
+		return domain.NewDatabaseError("Could not save provider user setting", err.Error())
+	}
+	return nil
+}
+
+// deriveCanToggle returns true for supported and experimental providers.
+func deriveCanToggle(status domain.ProviderStatus) bool {
+	return status == domain.ProviderStatusSupported || status == domain.ProviderStatusExperimental
 }
 
 // mergeOverrides replaces builtin candidates for each (providerID, scope, purpose)
