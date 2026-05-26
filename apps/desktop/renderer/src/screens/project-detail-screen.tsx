@@ -149,6 +149,21 @@ function isRemovable(entry: ProjectGetEntry): boolean {
   return entry.mode === "symlink" && entry.status === "current";
 }
 
+function PathDetailLine({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}): React.JSX.Element {
+  return (
+    <div className="flex min-w-0 gap-2 text-[11px] leading-snug">
+      <span className="w-12 shrink-0 font-medium text-zinc-400">{label}:</span>
+      <span className="break-all font-mono text-zinc-500">{value ?? "—"}</span>
+    </div>
+  );
+}
+
 function EntryRow({
   entry,
   onRemove,
@@ -157,35 +172,45 @@ function EntryRow({
   onRemove: (entry: ProjectGetEntry) => void;
 }): React.JSX.Element {
   return (
-    <tr className="border-b border-zinc-100 hover:bg-zinc-50">
-      <td className="px-3 py-1.5 text-xs text-zinc-500">{entry.providerKey}</td>
-      <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{entry.name}</td>
-      <td className="px-3 py-1.5 text-xs">
-        <span className="inline-flex items-center rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-600">
-          {entry.mode}
-        </span>
-      </td>
-      <td className="px-3 py-1.5 text-xs">
-        <EntryStatusBadge status={entry.status} />
-      </td>
-      <td className="max-w-sm px-3 py-1.5 text-xs">
-        <PathCell value={entry.projectSkillPath} label="project skill path" />
-      </td>
-      <td className="max-w-sm px-3 py-1.5 text-xs">
-        <PathCell value={entry.symlinkTargetPath} label="symlink target path" />
-      </td>
-      <td className="px-3 py-1.5 text-xs text-zinc-400">{entry.skillId ?? "—"}</td>
-      <td className="px-3 py-1.5 text-xs">
-        <button
-          onClick={() => onRemove(entry)}
-          disabled={!isRemovable(entry)}
-          title={isRemovable(entry) ? "Remove skill from project" : "Only current symlink installs can be removed in this slice"}
-          className="rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Remove
-        </button>
-      </td>
-    </tr>
+    <>
+      <tr className="border-b border-zinc-100 hover:bg-zinc-50">
+        <td className="px-3 py-1.5 text-xs text-zinc-500">{entry.providerKey}</td>
+        <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{entry.name}</td>
+        <td className="px-3 py-1.5 text-xs">
+          <span className="inline-flex items-center rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-600">
+            {entry.mode}
+          </span>
+        </td>
+        <td className="px-3 py-1.5 text-xs">
+          <EntryStatusBadge status={entry.status} />
+        </td>
+        <td className="max-w-sm px-3 py-1.5 text-xs">
+          <PathCell value={entry.projectSkillPath} label="project skill path" />
+        </td>
+        <td className="max-w-sm px-3 py-1.5 text-xs">
+          <PathCell value={entry.symlinkTargetPath} label="symlink target path" />
+        </td>
+        <td className="px-3 py-1.5 text-xs text-zinc-400">{entry.skillId ?? "—"}</td>
+        <td className="px-3 py-1.5 text-xs">
+          <button
+            onClick={() => onRemove(entry)}
+            disabled={!isRemovable(entry)}
+            title={isRemovable(entry) ? "Remove skill from project" : "Only current symlink installs can be removed in this slice"}
+            className="rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Remove
+          </button>
+        </td>
+      </tr>
+      <tr className="border-b border-zinc-100 bg-zinc-50/50">
+        <td colSpan={8} className="px-3 py-1.5">
+          <div className="flex flex-col gap-0.5">
+            <PathDetailLine label="project" value={entry.projectSkillPath} />
+            <PathDetailLine label="target" value={entry.symlinkTargetPath} />
+          </div>
+        </td>
+      </tr>
+    </>
   );
 }
 
