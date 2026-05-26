@@ -99,16 +99,16 @@ func ScanClaudeSettingsFile(filePath, allowedDir string) ClaudeSettingsScan {
 			}
 			boolVal, ok := val.(bool)
 			if !ok {
-				result.Warnings = append(result.Warnings, fmt.Sprintf("skipped non-bool value for key %q", key))
+				result.Warnings = append(result.Warnings, "skipped enabledPlugins entry: value is not a boolean")
 				continue
 			}
 			pName, mName, ok := parseClaudePluginKey(key)
 			if !ok {
-				result.Warnings = append(result.Warnings, fmt.Sprintf("skipped invalid plugin key %q: must be name@marketplace", key))
+				result.Warnings = append(result.Warnings, "skipped enabledPlugins entry: key format must be name@marketplace")
 				continue
 			}
 			if len(pName) > ClaudeSettingsMaxNameLen || len(mName) > ClaudeSettingsMaxNameLen {
-				result.Warnings = append(result.Warnings, fmt.Sprintf("skipped plugin key %q: name or marketplace exceeds %d chars", key, ClaudeSettingsMaxNameLen))
+				result.Warnings = append(result.Warnings, fmt.Sprintf("skipped enabledPlugins entry: name or marketplace exceeds %d chars", ClaudeSettingsMaxNameLen))
 				continue
 			}
 			result.Plugins = append(result.Plugins, ClaudePluginDecl{

@@ -191,6 +191,30 @@ func TestScanClaudeSettingsFile_InvalidPluginKeySkipped(t *testing.T) {
 	if len(result.Warnings) < 3 {
 		t.Errorf("warnings: got %d want >= 3", len(result.Warnings))
 	}
+	// Warnings must not contain raw key strings from the settings file.
+	for _, w := range result.Warnings {
+		for _, rawKey := range []string{"no-at-sign", "@npm", "plugin@"} {
+			if strings.Contains(w, rawKey) {
+				t.Errorf("warning exposes raw key content %q: %q", rawKey, w)
+			}
+		}
+	}
+}
+
+func TestScanClaudeSettingsFile_WarningsContainNoRawContent(t *testing.T) {
+	dir := t.TempDir()
+	sensitiveKey := "secret-plugin-name@internal-marketplace"
+	path := writeSettingsFile(t, dir, map[string]interface{}{
+		"enabledPlugins": map[string]interface{}{
+			sensitiveKey: "not-a-bool", // non-bool → warning
+		},
+	})
+	result := ScanClaudeSettingsFile(path, dir)
+	for _, w := range result.Warnings {
+		if strings.Contains(w, sensitiveKey) || strings.Contains(w, "secret") || strings.Contains(w, "internal") {
+			t.Errorf("warning leaks raw settings key: %q", w)
+		}
+	}
 }
 
 func TestScanClaudeSettingsFile_NameLengthCap(t *testing.T) {
