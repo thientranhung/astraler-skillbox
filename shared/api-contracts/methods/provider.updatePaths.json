@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProviderUpdatePathsMethod",
+  "description": "Contract for provider.updatePaths command. Stores user path overrides for a provider (scope+purpose) slot. Does not affect scan or install behavior — configuration metadata only (behavior integration is a later slice).",
+  "oneOf": [
+    { "$ref": "#/definitions/ProviderUpdatePathsRequest" },
+    { "$ref": "#/definitions/ProviderUpdatePathsResponse" }
+  ],
+  "definitions": {
+    "ProviderUpdatePathsRequest": {
+      "title": "ProviderUpdatePathsRequest",
+      "description": "Params for provider.updatePaths.",
+      "type": "object",
+      "properties": {
+        "providerKey": {
+          "type": "string",
+          "description": "Stable provider key (e.g. claude, generic_agents)"
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["project", "global"],
+          "description": "Whether override applies to project or global paths"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": ["detect", "skills", "config", "commands"],
+          "description": "Role of the path slot being overridden"
+        },
+        "paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Override paths. Project paths must be relative (no ..). Global paths must start with / or ~/."
+        }
+      },
+      "required": ["providerKey", "scope", "purpose", "paths"],
+      "additionalProperties": false
+    },
+    "ProviderUpdatePathsResponse": {
+      "title": "ProviderUpdatePathsResponse",
+      "description": "Result of provider.updatePaths. Errors: validation_error (1001), database_error (1004).",
+      "type": "object",
+      "properties": {
+        "updated": {
+          "type": "boolean",
+          "description": "True when the override was saved successfully"
+        }
+      },
+      "required": ["updated"],
+      "additionalProperties": false
+    }
+  }
+}

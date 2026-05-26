@@ -30,3 +30,5 @@ export * from './methods/skill-get.js';
 export * from './methods/global-scan.js';
 export * from './methods/global-list.js';
 export * from './methods/provider-list.js';
+export * from './methods/provider-update-paths.js';
+export * from './methods/provider-reset-paths.js';

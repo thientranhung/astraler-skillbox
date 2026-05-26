@@ -27,6 +27,8 @@
     { "input": "methods/skill.get.json", "output": "methods/skill-get.ts" },
     { "input": "methods/global.scan.json", "output": "methods/global-scan.ts" },
     { "input": "methods/global.list.json", "output": "methods/global-list.ts" },
-    { "input": "methods/provider.list.json", "output": "methods/provider-list.ts" }
+    { "input": "methods/provider.list.json", "output": "methods/provider-list.ts" },
+    { "input": "methods/provider.updatePaths.json", "output": "methods/provider-update-paths.ts" },
+    { "input": "methods/provider.resetPaths.json", "output": "methods/provider-reset-paths.ts" }
   ]
 }
