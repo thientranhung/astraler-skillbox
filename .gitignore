@@ -10,3 +10,4 @@ apps/desktop/dist/
 apps/desktop/resources/core/
 apps/desktop/build/icon.icns
 apps/desktop/build/.gen/
+.worktrees
