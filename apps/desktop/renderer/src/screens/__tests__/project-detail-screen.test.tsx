@@ -174,6 +174,15 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("/repo/demo/.agents/skills/current-skill");
   });
 
+  it("shows project and target path detail lines below each skill entry", () => {
+    render(<ProjectDetailScreen />);
+
+    expect(screen.getAllByText("project:").length).toBe(projectDetail.entries.length);
+    expect(screen.getAllByText("target:").length).toBe(projectDetail.entries.length);
+    expect(screen.getAllByText("/repo/demo/.agents/skills/current-skill").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("/host/.agents/skills/current-skill").length).toBeGreaterThan(1);
+  });
+
   it("does not mark copy as successful when clipboard is unavailable", () => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
