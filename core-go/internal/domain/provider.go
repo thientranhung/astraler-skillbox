@@ -67,13 +67,25 @@ type ProjectProviderSummary struct {
 // ProviderPathCandidate is a single path candidate for a provider, as stored in
 // provider_path_candidates. Scope and purpose classify how it is used.
 type ProviderPathCandidate struct {
-	ID                 int64
+	ID                   int64
 	ProviderDefinitionID int64
-	RelativePath       string
-	Scope              string // "project" or "global"
-	Purpose            string // "detect", "skills", "config", "commands"
-	Priority           int
-	VerificationStatus string // "verified", "assumed", "experimental"
+	RelativePath         string
+	Scope                string // "project" or "global"
+	Purpose              string // "detect", "skills", "config", "commands"
+	Priority             int
+	VerificationStatus   string // "verified", "assumed", "experimental"
+	Source               string // "builtin", "override", "custom"
+}
+
+// ProviderPathOverride stores a user path override for a provider's (scope, purpose) slot.
+// One row per (provider_definition_id, scope, purpose). Paths replaces all builtin candidates
+// for that slot.
+type ProviderPathOverride struct {
+	ID                   int64
+	ProviderDefinitionID int64
+	Scope                string
+	Purpose              string
+	Paths                []string
 }
 
 // ProviderRegistryEntry is the full read-only view of a provider definition with
