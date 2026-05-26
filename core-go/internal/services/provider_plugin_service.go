@@ -200,6 +200,7 @@ func (s *ProviderPluginService) scanGlobalInternal(ctx context.Context, pd *doma
 		ScanStatus:           domain.PluginLayerScanStatus(scanResult.Status),
 		SettingsFilePath:     filePath,
 		LastScannedAt:        time.Now().UTC(),
+		Warnings:             sanitizeWarnings(scanResult.Warnings),
 	}
 	entries, mps := pluginScanToEntries(scanResult)
 
@@ -223,6 +224,7 @@ func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project
 		ScanStatus:           domain.PluginLayerScanStatus(projectResult.Status),
 		SettingsFilePath:     projectFilePath,
 		LastScannedAt:        time.Now().UTC(),
+		Warnings:             sanitizeWarnings(projectResult.Warnings),
 	}
 	pe, pm := pluginScanToEntries(projectResult)
 	if err := s.repo.CommitLayerScan(ctx, projectScan, pe, pm); err != nil {
@@ -239,6 +241,7 @@ func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project
 		ScanStatus:           domain.PluginLayerScanStatus(localResult.Status),
 		SettingsFilePath:     localFilePath,
 		LastScannedAt:        time.Now().UTC(),
+		Warnings:             sanitizeWarnings(localResult.Warnings),
 	}
 	le, lm := pluginScanToEntries(localResult)
 	if err := s.repo.CommitLayerScan(ctx, localScan, le, lm); err != nil {
@@ -374,8 +377,33 @@ func buildProjectPluginView(
 	}
 }
 
+const (
+	maxScanWarnings   = 20
+	maxScanWarningLen = 512
+)
+
+// sanitizeWarnings caps the warning list and each string length before storage.
+// Keeps raw settings content out of persisted data.
+func sanitizeWarnings(warnings []string) []string {
+	if len(warnings) == 0 {
+		return nil
+	}
+	if len(warnings) > maxScanWarnings {
+		warnings = warnings[:maxScanWarnings]
+	}
+	result := make([]string, len(warnings))
+	for i, w := range warnings {
+		if len(w) > maxScanWarningLen {
+			w = w[:maxScanWarningLen]
+		}
+		result[i] = w
+	}
+	return result
+}
+
 // resolveEffectivePlugin computes the effective status for one plugin across layers (local > project > user).
-// A non-ok scan in any layer blocks inheritance from lower-precedence layers.
+// A missing settings file is treated as absent at that layer and does not block inheritance.
+// Other non-ok statuses (malformed, unreadable, too_large, symlink, path_escape) block inheritance.
 func resolveEffectivePlugin(
 	pluginName, marketplaceName string,
 	localScan, projectScan, userScan *domain.PluginLayerScan,
@@ -387,6 +415,12 @@ func resolveEffectivePlugin(
 		if sc == nil {
 			return false, domain.PluginEffectiveEntry{}
 		}
+		// Missing file = no entries at this layer; continue to next layer.
+		if sc.ScanStatus == domain.PluginLayerScanMissing {
+			breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: sc.ScanStatus})
+			return false, domain.PluginEffectiveEntry{}
+		}
+		// Any other non-ok status (malformed, unreadable, too_large, symlink, path_escape) blocks inheritance.
 		if sc.ScanStatus != domain.PluginLayerScanOK {
 			breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: sc.ScanStatus})
 			return true, domain.PluginEffectiveEntry{

@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -68,7 +69,7 @@ func (r *ProviderPluginRepo) CommitLayerScan(
 // ListLayerScansForProvider returns all layer scan rows for a provider definition, ordered by id.
 func (r *ProviderPluginRepo) ListLayerScansForProvider(ctx context.Context, provDefID int64) ([]domain.PluginLayerScan, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, provider_definition_id, project_id, settings_layer, scan_status, settings_file_path, last_scanned_at, source_operation_id
+		`SELECT id, provider_definition_id, project_id, settings_layer, scan_status, settings_file_path, last_scanned_at, source_operation_id, scan_warnings
 		   FROM provider_plugin_layer_scans
 		  WHERE provider_definition_id = ?
 		  ORDER BY id`,
@@ -132,6 +133,10 @@ func upsertPluginLayerScan(ctx context.Context, tx *sql.Tx, scan *domain.PluginL
 	if scan.SourceOperationID != nil {
 		opID = *scan.SourceOperationID
 	}
+	warningsJSON, err := marshalWarnings(scan.Warnings)
+	if err != nil {
+		return 0, fmt.Errorf("marshal warnings: %w", err)
+	}
 
 	var existingID int64
 	var queryErr error
@@ -149,20 +154,20 @@ func upsertPluginLayerScan(ctx context.Context, tx *sql.Tx, scan *domain.PluginL
 
 	if queryErr == sql.ErrNoRows {
 		var res sql.Result
-		var err error
+		var insertErr error
 		if scan.ProjectID == nil {
-			res, err = tx.ExecContext(ctx,
-				`INSERT INTO provider_plugin_layer_scans (provider_definition_id, project_id, settings_layer, scan_status, settings_file_path, last_scanned_at, source_operation_id)
-				 VALUES (?, NULL, ?, ?, ?, ?, ?)`,
-				scan.ProviderDefinitionID, string(scan.SettingsLayer), string(scan.ScanStatus), scan.SettingsFilePath, scannedAt, opID)
+			res, insertErr = tx.ExecContext(ctx,
+				`INSERT INTO provider_plugin_layer_scans (provider_definition_id, project_id, settings_layer, scan_status, settings_file_path, last_scanned_at, source_operation_id, scan_warnings)
+				 VALUES (?, NULL, ?, ?, ?, ?, ?, ?)`,
+				scan.ProviderDefinitionID, string(scan.SettingsLayer), string(scan.ScanStatus), scan.SettingsFilePath, scannedAt, opID, warningsJSON)
 		} else {
-			res, err = tx.ExecContext(ctx,
-				`INSERT INTO provider_plugin_layer_scans (provider_definition_id, project_id, settings_layer, scan_status, settings_file_path, last_scanned_at, source_operation_id)
-				 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-				scan.ProviderDefinitionID, *scan.ProjectID, string(scan.SettingsLayer), string(scan.ScanStatus), scan.SettingsFilePath, scannedAt, opID)
+			res, insertErr = tx.ExecContext(ctx,
+				`INSERT INTO provider_plugin_layer_scans (provider_definition_id, project_id, settings_layer, scan_status, settings_file_path, last_scanned_at, source_operation_id, scan_warnings)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+				scan.ProviderDefinitionID, *scan.ProjectID, string(scan.SettingsLayer), string(scan.ScanStatus), scan.SettingsFilePath, scannedAt, opID, warningsJSON)
 		}
-		if err != nil {
-			return 0, err
+		if insertErr != nil {
+			return 0, insertErr
 		}
 		return res.LastInsertId()
 	}
@@ -170,10 +175,21 @@ func upsertPluginLayerScan(ctx context.Context, tx *sql.Tx, scan *domain.PluginL
 		return 0, queryErr
 	}
 
-	_, err := tx.ExecContext(ctx,
-		`UPDATE provider_plugin_layer_scans SET scan_status = ?, settings_file_path = ?, last_scanned_at = ?, source_operation_id = ? WHERE id = ?`,
-		string(scan.ScanStatus), scan.SettingsFilePath, scannedAt, opID, existingID)
+	_, err = tx.ExecContext(ctx,
+		`UPDATE provider_plugin_layer_scans SET scan_status = ?, settings_file_path = ?, last_scanned_at = ?, source_operation_id = ?, scan_warnings = ? WHERE id = ?`,
+		string(scan.ScanStatus), scan.SettingsFilePath, scannedAt, opID, warningsJSON, existingID)
 	return existingID, err
+}
+
+func marshalWarnings(warnings []string) (string, error) {
+	if len(warnings) == 0 {
+		return "[]", nil
+	}
+	b, err := json.Marshal(warnings)
+	if err != nil {
+		return "[]", err
+	}
+	return string(b), nil
 }
 
 func scanPluginLayerRows(rows *sql.Rows) ([]domain.PluginLayerScan, error) {
@@ -183,10 +199,11 @@ func scanPluginLayerRows(rows *sql.Rows) ([]domain.PluginLayerScan, error) {
 		var projID sql.NullInt64
 		var opID sql.NullInt64
 		var scannedAt string
+		var warningsJSON string
 		if err := rows.Scan(
 			&s.ID, &s.ProviderDefinitionID, &projID,
 			(*string)(&s.SettingsLayer), (*string)(&s.ScanStatus),
-			&s.SettingsFilePath, &scannedAt, &opID,
+			&s.SettingsFilePath, &scannedAt, &opID, &warningsJSON,
 		); err != nil {
 			return nil, err
 		}
@@ -198,6 +215,9 @@ func scanPluginLayerRows(rows *sql.Rows) ([]domain.PluginLayerScan, error) {
 		}
 		t, _ := time.Parse(time.RFC3339, scannedAt)
 		s.LastScannedAt = t
+		if warningsJSON != "" && warningsJSON != "[]" {
+			_ = json.Unmarshal([]byte(warningsJSON), &s.Warnings)
+		}
 		result = append(result, s)
 	}
 	return result, rows.Err()

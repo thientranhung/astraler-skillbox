@@ -26,6 +26,7 @@ type ppGlobalView struct {
 	UserLayerPath     string          `json:"userLayerPath"`
 	UserLayerStatus   *string         `json:"userLayerStatus"`
 	LastScannedAt     *string         `json:"lastScannedAt"`
+	ScanWarnings      []string        `json:"scanWarnings"`
 	Plugins           []ppGlobalEntry `json:"plugins"`
 	Marketplaces      []ppMarketplace `json:"marketplaces"`
 	ManagedOutOfScope bool            `json:"managedOutOfScope"`
@@ -47,10 +48,11 @@ type ppProjectView struct {
 }
 
 type ppLayerStatus struct {
-	Layer      string  `json:"layer"`
-	ScanStatus string  `json:"scanStatus"`
-	FilePath   string  `json:"filePath"`
-	ScannedAt  *string `json:"lastScannedAt"`
+	Layer        string   `json:"layer"`
+	ScanStatus   string   `json:"scanStatus"`
+	FilePath     string   `json:"filePath"`
+	ScannedAt    *string  `json:"lastScannedAt"`
+	ScanWarnings []string `json:"scanWarnings"`
 }
 
 type ppProjectEntry struct {
@@ -90,6 +92,7 @@ func mapPPGlobalView(g domain.GlobalPluginView) ppGlobalView {
 	view := ppGlobalView{
 		ProviderKey:       g.ProviderKey,
 		UserLayerPath:     g.UserLayerPath,
+		ScanWarnings:      []string{},
 		Plugins:           []ppGlobalEntry{},
 		Marketplaces:      []ppMarketplace{},
 		ManagedOutOfScope: g.ManagedOutOfScope,
@@ -99,6 +102,9 @@ func mapPPGlobalView(g domain.GlobalPluginView) ppGlobalView {
 		view.UserLayerStatus = &s
 		t := g.Scan.LastScannedAt.UTC().Format(time.RFC3339)
 		view.LastScannedAt = &t
+		if len(g.Scan.Warnings) > 0 {
+			view.ScanWarnings = g.Scan.Warnings
+		}
 	}
 	for _, e := range g.Plugins {
 		view.Plugins = append(view.Plugins, ppGlobalEntry{
@@ -130,11 +136,16 @@ func mapPPProjectViews(projects []domain.ProjectPluginView) []ppProjectView {
 		}
 		for _, sc := range p.LayerScans {
 			t := sc.LastScannedAt.UTC().Format(time.RFC3339)
+			warnings := sc.Warnings
+			if warnings == nil {
+				warnings = []string{}
+			}
 			view.LayerStatuses = append(view.LayerStatuses, ppLayerStatus{
-				Layer:      string(sc.SettingsLayer),
-				ScanStatus: string(sc.ScanStatus),
-				FilePath:   sc.SettingsFilePath,
-				ScannedAt:  &t,
+				Layer:        string(sc.SettingsLayer),
+				ScanStatus:   string(sc.ScanStatus),
+				FilePath:     sc.SettingsFilePath,
+				ScannedAt:    &t,
+				ScanWarnings: warnings,
 			})
 		}
 		for _, e := range p.Plugins {

@@ -39,6 +39,11 @@
           "description": "null when never scanned"
         },
         "lastScannedAt": { "type": ["string", "null"], "description": "ISO-8601 timestamp or null" },
+        "scanWarnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Parse-time warnings (e.g. truncated entries, skipped keys). Empty when never scanned or no warnings."
+        },
         "plugins": {
           "type": "array",
           "items": { "$ref": "#/definitions/PPGlobalEntry" }
@@ -49,7 +54,7 @@
         },
         "managedOutOfScope": { "type": "boolean" }
       },
-      "required": ["providerKey", "userLayerPath", "userLayerStatus", "lastScannedAt", "plugins", "marketplaces", "managedOutOfScope"],
+      "required": ["providerKey", "userLayerPath", "userLayerStatus", "lastScannedAt", "scanWarnings", "plugins", "marketplaces", "managedOutOfScope"],
       "additionalProperties": false
     },
     "PPGlobalEntry": {
@@ -93,9 +98,14 @@
         "layer": { "type": "string", "enum": ["user", "project", "local"] },
         "scanStatus": { "type": "string", "enum": ["ok", "missing", "unreadable", "malformed", "too_large", "symlink", "path_escape"] },
         "filePath": { "type": "string" },
-        "lastScannedAt": { "type": ["string", "null"], "description": "ISO-8601 timestamp or null" }
+        "lastScannedAt": { "type": ["string", "null"], "description": "ISO-8601 timestamp or null" },
+        "scanWarnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Parse-time warnings for this layer."
+        }
       },
-      "required": ["layer", "scanStatus", "filePath", "lastScannedAt"],
+      "required": ["layer", "scanStatus", "filePath", "lastScannedAt", "scanWarnings"],
       "additionalProperties": false
     },
     "PPProjectEntry": {

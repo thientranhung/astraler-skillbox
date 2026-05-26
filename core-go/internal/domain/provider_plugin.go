@@ -52,6 +52,7 @@ type PluginLayerScan struct {
 	SettingsFilePath     string
 	LastScannedAt        time.Time
 	SourceOperationID    *int64
+	Warnings             []string // parse-time warnings; never raw file content; bounded
 }
 
 // PluginEntry is a single plugin declaration within a layer scan.
