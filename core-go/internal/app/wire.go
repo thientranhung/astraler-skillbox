@@ -26,6 +26,7 @@ func New(
 	dashboardSvc *services.DashboardService,
 	globalSvc *services.GlobalSkillsService,
 	providerRegistrySvc *services.ProviderRegistryService,
+	providerPluginSvc *services.ProviderPluginService,
 ) *App {
 	a := &App{
 		methods: handler.Map{
@@ -46,10 +47,13 @@ func New(
 			"dashboard.get":    rpchandlers.NewDashboardGetHandler(dashboardSvc),
 			"global.scan":      rpchandlers.NewGlobalScanHandler(globalSvc),
 			"global.list":      rpchandlers.NewGlobalListHandler(globalSvc),
-			"provider.list":       rpchandlers.NewProviderListHandler(providerRegistrySvc),
-			"provider.updatePaths": rpchandlers.NewProviderUpdatePathsHandler(providerRegistrySvc),
-			"provider.resetPaths":  rpchandlers.NewProviderResetPathsHandler(providerRegistrySvc),
-			"provider.setEnabled":  rpchandlers.NewProviderSetEnabledHandler(providerRegistrySvc),
+			"provider.list":           rpchandlers.NewProviderListHandler(providerRegistrySvc),
+			"provider.updatePaths":    rpchandlers.NewProviderUpdatePathsHandler(providerRegistrySvc),
+			"provider.resetPaths":     rpchandlers.NewProviderResetPathsHandler(providerRegistrySvc),
+			"provider.setEnabled":     rpchandlers.NewProviderSetEnabledHandler(providerRegistrySvc),
+			"providerPlugin.scanGlobal":  rpchandlers.NewProviderPluginScanGlobalHandler(providerPluginSvc),
+			"providerPlugin.scanProject": rpchandlers.NewProviderPluginScanProjectHandler(providerPluginSvc),
+			"providerPlugin.list":        rpchandlers.NewProviderPluginListHandler(providerPluginSvc),
 		},
 	}
 	return a

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProviderPluginScanGlobalMethod",
+  "description": "Contract for providerPlugin.scanGlobal JSON-RPC method. Starts a read-only scan of the Claude global user settings layer for plugin declarations.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProviderPluginScanGlobalRequest" },
+    { "$ref": "#/definitions/ProviderPluginScanGlobalResponse" }
+  ],
+  "definitions": {
+    "ProviderPluginScanGlobalRequest": {
+      "title": "ProviderPluginScanGlobalRequest",
+      "description": "Params for providerPlugin.scanGlobal (no params required).",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ProviderPluginScanGlobalResponse": {
+      "title": "ProviderPluginScanGlobalResponse",
+      "description": "Immediate response — the scan runs asynchronously. Errors: conflict_error (1005) if a scan is already running.",
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "integer",
+          "description": "ID of the created scan operation"
+        }
+      },
+      "required": ["operationId"],
+      "additionalProperties": false
+    }
+  }
+}
