@@ -30,7 +30,7 @@ func TestConventionalProviderAdapters_DetectFolders(t *testing.T) {
 				{Name: "skill-a", Path: c.skillPath + "/skill-a", IsDir: true},
 			}
 
-			result, err := c.adapter.Detect("/project", mfs)
+			result, err := c.adapter.Detect("/project", c.adapter.DefaultProjectPaths(), mfs)
 			if err != nil {
 				t.Fatalf("Detect: %v", err)
 			}
@@ -62,7 +62,7 @@ func TestConventionalProviderAdapters_MissingDoesNotWarn(t *testing.T) {
 		providers.NewGeminiAdapter(),
 		providers.NewAntigravityCLIAdapter(),
 	} {
-		result, err := adapter.Detect("/project", newMockFS())
+		result, err := adapter.Detect("/project", adapter.DefaultProjectPaths(), newMockFS())
 		if err != nil {
 			t.Fatalf("%s Detect: %v", adapter.Key(), err)
 		}

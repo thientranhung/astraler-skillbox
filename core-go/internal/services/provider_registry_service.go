@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
+	"github.com/astraler/skillbox/core-go/internal/providers"
 )
 
 var validScopes = map[string]bool{"project": true, "global": true}
@@ -162,6 +163,66 @@ func (s *ProviderRegistryService) ResetPaths(ctx context.Context, providerKey, s
 		return false, domain.NewDatabaseError("Could not reset path override", err.Error())
 	}
 	return deleted, nil
+}
+
+// ProjectPaths returns effective project-scope detect and skills relative paths for every
+// known provider: override.Paths[0] if a project-scope override exists, else the builtin
+// candidate from the DB. Callers use this map to pass resolved paths into adapter.Detect.
+// Global-scope overrides are intentionally excluded.
+func (s *ProviderRegistryService) ProjectPaths(ctx context.Context) (map[string]providers.ProjectScopePaths, error) {
+	entries, err := s.repo.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider registry", err.Error())
+	}
+	overrides, err := s.overrideRepo.ListAll(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider path overrides", err.Error())
+	}
+
+	// Index project-scope overrides: providerDefinitionID → purpose → first path.
+	type overrideKey struct {
+		provID  int64
+		purpose string
+	}
+	overrideFirst := make(map[overrideKey]string)
+	for _, o := range overrides {
+		if o.Scope != "project" || len(o.Paths) == 0 {
+			continue
+		}
+		k := overrideKey{o.ProviderDefinitionID, o.Purpose}
+		if _, seen := overrideFirst[k]; !seen {
+			overrideFirst[k] = o.Paths[0]
+		}
+	}
+
+	result := make(map[string]providers.ProjectScopePaths, len(entries))
+	for _, e := range entries {
+		var p providers.ProjectScopePaths
+		// Resolve detect rel.
+		if v, ok := overrideFirst[overrideKey{e.Definition.ID, "detect"}]; ok {
+			p.DetectRel = v
+		} else {
+			for _, c := range e.Candidates {
+				if c.Scope == "project" && c.Purpose == "detect" {
+					p.DetectRel = c.RelativePath
+					break
+				}
+			}
+		}
+		// Resolve skills rel.
+		if v, ok := overrideFirst[overrideKey{e.Definition.ID, "skills"}]; ok {
+			p.SkillsRel = v
+		} else {
+			for _, c := range e.Candidates {
+				if c.Scope == "project" && c.Purpose == "skills" {
+					p.SkillsRel = c.RelativePath
+					break
+				}
+			}
+		}
+		result[e.Definition.Key] = p
+	}
+	return result, nil
 }
 
 func validatePath(p, scope string) error {

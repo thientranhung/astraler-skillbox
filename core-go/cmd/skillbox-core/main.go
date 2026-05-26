@@ -69,19 +69,20 @@ func main() {
 	settingsSvc := services.NewSettingsService(appSettingsRepo, hostRepo)
 
 	providerRegistry := providers.NewDefaultRegistry()
+	providerRegistrySvc := services.NewProviderRegistryService(pdRepo, overrideRepo)
+
 	projectSvc := services.NewProjectService(projectRepo, ppRepo, warningRepo, installRepo, fs).
 		WithScanDeps(runner, projectScanRepo).
 		WithProviderDeps(providerRegistry, pdRepo, hostRepo, skillRepo).
 		WithInstallDeps(fs, hostRepo, skillRepo).
-		WithRemoveDeps(fs, installRepo)
+		WithRemoveDeps(fs, installRepo).
+		WithPathResolver(providerRegistrySvc)
 
 	dashboardSvc := services.NewDashboardService(appSettingsRepo, hostRepo, skillRepo, projectRepo, installRepo, warningRepo)
 
 	globalScanRepo := repositories.NewGlobalScanRepo(db)
 	globalLocationRepo := repositories.NewGlobalLocationRepo(db)
 	globalSvc := services.NewGlobalSkillsService(globalLocationRepo, globalScanRepo, appSettingsRepo, hostRepo, skillRepo, providerRegistry, fs, runner)
-
-	providerRegistrySvc := services.NewProviderRegistryService(pdRepo, overrideRepo)
 
 	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc)
 

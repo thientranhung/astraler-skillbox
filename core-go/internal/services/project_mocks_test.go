@@ -310,7 +310,10 @@ type mockAdapter struct {
 }
 
 func (m *mockAdapter) Key() string { return m.key }
-func (m *mockAdapter) Detect(_ string, _ providers.FsReader) (providers.DetectResult, error) {
+func (m *mockAdapter) DefaultProjectPaths() providers.ProjectScopePaths {
+	return providers.ProjectScopePaths{}
+}
+func (m *mockAdapter) Detect(_ string, _ providers.ProjectScopePaths, _ providers.FsReader) (providers.DetectResult, error) {
 	return m.result, m.err
 }
 

@@ -162,7 +162,16 @@ func (s *ProjectService) installSkillsInternal(
 	}
 
 	// 4. Resolve and bound the skills path under the project root.
-	skillsPath, err := s.fs.NormalizeAbs(filepath.Join(project.Path, target.RelativeSkillsPath))
+	// Use effective skills rel: override ?? builtin (from pathResolver), fall back to target default.
+	skillsRel := target.RelativeSkillsPath
+	if s.pathResolver != nil {
+		if pathsMap, resolveErr := s.pathResolver.ProjectPaths(ctx); resolveErr == nil {
+			if ep, ok := pathsMap[providerKey]; ok && ep.SkillsRel != "" {
+				skillsRel = ep.SkillsRel
+			}
+		}
+	}
+	skillsPath, err := s.fs.NormalizeAbs(filepath.Join(project.Path, skillsRel))
 	if err != nil {
 		return nil, domain.NewValidationError("Invalid skills path", err.Error())
 	}

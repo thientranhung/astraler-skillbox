@@ -77,7 +77,7 @@ func TestGenericAgentsAdapter_AgentsMissing(t *testing.T) {
 	a := providers.NewGenericAgentsAdapter()
 	fs := newMockFS() // all paths missing
 
-	result, err := a.Detect("/project", fs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), fs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestGenericAgentsAdapter_AgentsIsFile(t *testing.T) {
 	fs := newMockFS()
 	fs.setFile("/project/.agents")
 
-	result, err := a.Detect("/project", fs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), fs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestGenericAgentsAdapter_AgentsUnreadable(t *testing.T) {
 	fs := newMockFS()
 	fs.setUnreadableDir("/project/.agents")
 
-	result, err := a.Detect("/project", fs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), fs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestGenericAgentsAdapter_SkillsMissing(t *testing.T) {
 	fs.setDir("/project/.agents")
 	// .agents/skills not set → PathInfo returns Exists:false
 
-	result, err := a.Detect("/project", fs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), fs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestGenericAgentsAdapter_Detected_WithEntries(t *testing.T) {
 		{Name: "skill-b", Path: "/project/.agents/skills/skill-b", IsDir: false, IsSymlink: true, Broken: true},
 	}
 
-	result, err := a.Detect("/project", mfs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), mfs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
@@ -229,7 +229,7 @@ func TestGenericAgentsAdapter_Empty_Skills_Not_Error(t *testing.T) {
 	mfs.setDir("/project/.agents/skills")
 	// entries left empty
 
-	result, err := a.Detect("/project", mfs)
+	result, err := a.Detect("/project", a.DefaultProjectPaths(), mfs)
 	if err != nil {
 		t.Fatalf("Detect: %v", err)
 	}
