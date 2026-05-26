@@ -330,7 +330,7 @@ export function SettingsScreen(): React.JSX.Element {
       <div>
         <h3 className="text-sm font-semibold text-zinc-800">Providers</h3>
         <p className="mt-0.5 text-xs text-zinc-500">
-          Overrides replace the built-in path candidates used by project scan/install and global scan resolution. Reset a slot to return to built-in defaults.
+          Disabled providers are skipped during project scan, global scan, and installs. Overrides replace the built-in path candidates. Reset a slot to return to built-in defaults.
         </p>
 
         <div className="mt-3 overflow-x-auto rounded border border-zinc-200">

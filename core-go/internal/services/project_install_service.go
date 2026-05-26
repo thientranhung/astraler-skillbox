@@ -135,6 +135,20 @@ func (s *ProjectService) installSkillsInternal(
 		)
 	}
 
+	// 2b. Check provider enablement.
+	if s.enablementResolver != nil {
+		enabledMap, resolveErr := s.enablementResolver.EnabledMap(ctx)
+		if resolveErr != nil {
+			return nil, domain.NewDatabaseError("Could not resolve provider enablement", resolveErr.Error())
+		}
+		if enabled, ok := enabledMap[providerKey]; ok && !enabled {
+			return nil, domain.NewValidationError(
+				"Provider is disabled",
+				fmt.Sprintf("provider %q is disabled; enable it in Settings before installing skills", providerKey),
+			)
+		}
+	}
+
 	// 3. Locate the project_provider summary for this provider.
 	summaries, err := s.ppRepo.ListByProject(ctx, project.ID)
 	if err != nil {
