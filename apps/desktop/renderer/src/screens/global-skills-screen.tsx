@@ -4,6 +4,7 @@ import { useGlobalList } from "../features/global-skills/use-global-list.js";
 import { useScanGlobal } from "../features/global-skills/use-scan-global.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
+import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
 import type { GlobalListLocation, GlobalListEntry, GlobalListWarning } from "@contracts/index.js";
 
@@ -120,7 +121,10 @@ export function GlobalSkillsScreen(): React.JSX.Element {
                 {/* Location header */}
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-zinc-900">{loc.providerDisplayName}</span>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-900">
+                      <ProviderIcon providerKey={loc.providerKey} />
+                      {loc.providerDisplayName}
+                    </span>
                     <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${statusBadgeClass(loc.status)}`}>
                       {loc.status}
                     </span>

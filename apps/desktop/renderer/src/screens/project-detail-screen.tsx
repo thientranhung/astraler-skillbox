@@ -12,6 +12,7 @@ import { ProjectStatusBadge } from "../features/projects/project-status-badge.js
 import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
 import { useActiveHostSkills } from "../features/skills/use-active-host-skills.js";
 import { ErrorDisplay } from "../components/error-display.js";
+import { ProviderIcon } from "../components/provider-icon.js";
 import type { ProjectGetEntry, ProjectGetWarning, ProjectGetProvider } from "@contracts/index.js";
 
 const ENTRY_STATUS_CONFIG: Record<ProjectGetEntry["status"], { label: string; description: string; cls: string }> = {
@@ -79,7 +80,12 @@ function ProviderRow({ provider }: { provider: ProjectGetProvider }): React.JSX.
   const providerStatus = PROVIDER_STATUS_CONFIG[provider.providerStatus] ?? PROVIDER_STATUS_CONFIG.unsupported;
   return (
     <tr className="border-b border-zinc-100 hover:bg-zinc-50">
-      <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{provider.displayName}</td>
+      <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">
+        <span className="inline-flex items-center gap-1.5">
+          <ProviderIcon providerKey={provider.providerKey} />
+          {provider.displayName}
+        </span>
+      </td>
       <td className="px-3 py-1.5 text-xs">
         <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium ${DETECTION_CLS[provider.detectionStatus] ?? DETECTION_CLS.missing}`}>
           {provider.detectionStatus.replace("_", " ")}
@@ -166,15 +172,22 @@ function PathDetailLine({
 
 function EntryRow({
   entry,
+  providerDisplayName,
   onRemove,
 }: {
   entry: ProjectGetEntry;
+  providerDisplayName: string;
   onRemove: (entry: ProjectGetEntry) => void;
 }): React.JSX.Element {
   return (
     <>
       <tr className="border-b border-zinc-100 hover:bg-zinc-50">
-        <td className="px-3 py-1.5 text-xs text-zinc-500">{entry.providerKey}</td>
+        <td className="px-3 py-1.5 text-xs text-zinc-500">
+          <span className="inline-flex items-center gap-1.5">
+            <ProviderIcon providerKey={entry.providerKey} />
+            {providerDisplayName}
+          </span>
+        </td>
         <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{entry.name}</td>
         <td className="px-3 py-1.5 text-xs">
           <span className="inline-flex items-center rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-600">
@@ -432,14 +445,15 @@ export function ProjectDetailScreen(): React.JSX.Element {
                       key={provider.projectProviderId}
                       type="button"
                       onClick={() => setSelectedProviderId(provider.projectProviderId)}
-                      className={`rounded border px-2 py-1 text-xs font-medium ${
+                      className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium ${
                         selectedProviderId === provider.projectProviderId
                           ? "border-zinc-700 bg-zinc-900 text-white"
                           : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
                       }`}
                     >
+                      <ProviderIcon providerKey={provider.providerKey} />
                       {provider.displayName}
-                      <span className="ml-1 opacity-70">{provider.entryCount}</span>
+                      <span className="opacity-70">{provider.entryCount}</span>
                     </button>
                   ))}
                 </div>
@@ -472,6 +486,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
                         <EntryRow
                           key={entry.id}
                           entry={entry}
+                          providerDisplayName={providerDisplayNameFor(entry)}
                           onRemove={setRemoveTarget}
                         />
                       ))}

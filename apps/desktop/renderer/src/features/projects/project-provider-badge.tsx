@@ -1,5 +1,6 @@
 import React from "react";
 import type { ProjectListProviderSummary } from "@contracts/index.js";
+import { ProviderIcon } from "../../components/provider-icon.js";
 
 const DETECTION_CLASS: Record<ProjectListProviderSummary["detectionStatus"], string> = {
   detected: "bg-blue-100 text-blue-800",
@@ -15,7 +16,8 @@ interface ProjectProviderBadgeProps {
 export function ProjectProviderBadge({ provider }: ProjectProviderBadgeProps): React.JSX.Element {
   const cls = DETECTION_CLASS[provider.detectionStatus] ?? DETECTION_CLASS.missing;
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>
+      <ProviderIcon providerKey={provider.key} />
       {provider.displayName}
     </span>
   );

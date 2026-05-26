@@ -6,6 +6,7 @@ import { useScanHost } from "../features/skill-host/use-scan-host.js";
 import { SkillRow } from "../features/skills-library/skill-row.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
+import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
 
 type SkillStatus = "all" | "available" | "missing" | "unreadable" | "local_modified" | "unknown";
@@ -138,13 +139,14 @@ export function SkillsLibraryScreen(): React.JSX.Element {
             <button
               type="button"
               onClick={() => setProviderView("shared_agents")}
-              className={`cursor-pointer rounded border px-2 py-1 text-xs font-medium ${
+              className={`inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs font-medium ${
                 providerView === "shared_agents"
                   ? "border-zinc-700 bg-zinc-900 text-white"
                   : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
               }`}
             >
-              Shared Agent Skills <span className="ml-1 opacity-70">{sharedAgentSkills.length}</span>
+              <ProviderIcon providerKey="generic_agents" />
+              Shared Agent Skills <span className="opacity-70">{sharedAgentSkills.length}</span>
             </button>
           </div>
           <span className="text-xs text-zinc-400">

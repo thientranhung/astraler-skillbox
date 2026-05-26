@@ -4,6 +4,7 @@ import { ArrowLeft, AlertCircle, FolderOpen } from "lucide-react";
 import { useSkillDetail } from "../features/skills-library/use-skill-detail.js";
 import { SkillStatusBadge } from "../features/skills-library/skill-status-badge.js";
 import { ErrorDisplay } from "../components/error-display.js";
+import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
 import type { SkillGetProjectInstall } from "@contracts/index.js";
 
@@ -154,7 +155,12 @@ export function SkillDetailScreen(): React.JSX.Element {
                       {data.projects.map((p, i) => (
                         <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
                           <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{p.projectName}</td>
-                          <td className="px-3 py-1.5 text-xs text-zinc-600">{p.providerDisplayName}</td>
+                          <td className="px-3 py-1.5 text-xs text-zinc-600">
+                            <span className="inline-flex items-center gap-1.5">
+                              <ProviderIcon providerKey={p.providerKey} />
+                              {p.providerDisplayName}
+                            </span>
+                          </td>
                           <td className="px-3 py-1.5 text-xs">
                             <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium ${MODE_CLS[p.mode] ?? MODE_CLS.direct}`}>
                               {p.mode}
