@@ -106,8 +106,8 @@ project appearing under two providers yields two rows):
 | `projectProviderId`   | integer        | `project_providers.id`                            |
 | `providerKey`         | string         | `provider_definitions.key`                        |
 | `providerDisplayName` | string         | `provider_definitions.display_name` (see §7 label rule) |
-| `mode`                | string enum (`symlink`, `copy`, `direct`) | `installs.install_mode` |
-| `status`              | string enum (`current`, `missing`, `broken_symlink`, `needs_sync`, `unknown`) | `installs.install_status` |
+| `mode`                | string enum (`symlink`, `rsync_copy`, `direct`) | `installs.install_mode` |
+| `status`              | string enum (`current`, `outdated`, `missing`, `broken_symlink`, `old_host`, `external_symlink`, `conflict`, `needs_sync`, `error`) | `installs.install_status` |
 | `projectSkillPath`    | string         | `installs.project_skill_path`                     |
 
 Removed projects (`projects.status = 'removed'`) are excluded from `projects`.
@@ -183,6 +183,8 @@ must list `skill.get`.
 
 - `skill.get` with unknown `skillId` → `validation_error` (1001); Skill Detail shows
   the standard `ErrorDisplay`.
+- `skill.get` with `skillId <= 0` → `validation_error` (1001), not an internal
+  error.
 - Skill with zero installs → `projectsUsingCount = 0` and empty detail table (skill
   must still appear in the library and be openable).
 - `installs.skill_id IS NULL` (direct/unknown entries) contribute to **no** skill's
@@ -235,8 +237,11 @@ cd apps/desktop && pnpm generate:contracts && pnpm check:contracts-drift && pnpm
    and `projects.status != 'removed'`; never counts install rows or matches by name.
 2. New read-only `skill.get` returns skill metadata plus one row per project/provider
    install (`projectId, projectName, projectProviderId, providerKey, providerDisplayName,
-   mode, status, projectSkillPath`), excluding removed projects; unknown id →
-   `validation_error`.
+   mode, status, projectSkillPath`), using the `installs.install_mode` enum
+   (`symlink`, `rsync_copy`, `direct`) and full `installs.install_status` enum
+   (`current`, `outdated`, `missing`, `broken_symlink`, `old_host`,
+   `external_symlink`, `conflict`, `needs_sync`, `error`), excluding removed
+   projects; unknown or non-positive id → `validation_error`.
 3. Skills Library shows a Projects column, a working Search box and Status filter (over
    `available / missing / unreadable / local_modified / unknown` only), an Open Skill
    Host Folder button, and row-click navigation to `/skills/$skillId`.
@@ -260,7 +265,9 @@ cd apps/desktop && pnpm generate:contracts && pnpm check:contracts-drift && pnpm
 > excluding removed projects and never matching by name or counting install rows;
 > (2) read-only `skill.get` returns skill metadata plus one row per project/provider
 > install (projectId, projectName, projectProviderId, providerKey, providerDisplayName,
-> mode, status, projectSkillPath), excluding removed projects, with unknown id mapped to
+> mode, status, projectSkillPath), with mode enum `symlink|rsync_copy|direct`,
+> status enum `current|outdated|missing|broken_symlink|old_host|external_symlink|conflict|needs_sync|error`,
+> excluding removed projects, with unknown or non-positive id mapped to
 > `validation_error`; (3) Skills Library shows a Projects column, working Search + Status
 > filter (current statuses only), an Open Skill Host Folder button, and row-click
 > navigation to a new read-only Skill Detail screen at `/skills/$skillId`; (4) full
