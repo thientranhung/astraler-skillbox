@@ -20,6 +20,7 @@ const (
 	OperationTypeChangeSkillHostFolder OperationType = "change_skill_host_folder"
 	OperationTypeInstallSkill          OperationType = "install_skill"
 	OperationTypeRemoveSkill           OperationType = "remove_skill"
+	OperationTypeScanGlobalSkills      OperationType = "scan_global_skills"
 )
 
 type Operation struct {

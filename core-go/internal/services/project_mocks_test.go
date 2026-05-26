@@ -222,6 +222,15 @@ type mockProviderRegistry struct {
 
 func (m *mockProviderRegistry) All() []providers.ProviderAdapter { return m.adapters }
 
+func (m *mockProviderRegistry) Get(key string) (providers.ProviderAdapter, bool) {
+	for _, a := range m.adapters {
+		if a.Key() == key {
+			return a, true
+		}
+	}
+	return nil, false
+}
+
 // -- mock provider definition repo --
 
 type mockProviderDefRepo struct {

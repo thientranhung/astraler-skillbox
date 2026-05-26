@@ -1,5 +1,7 @@
 package filesystem
 
+import "os"
+
 // Gateway provides all filesystem operations used by services.
 // It is the single point through which services touch the filesystem.
 type Gateway struct{}
@@ -68,4 +70,9 @@ func (g *Gateway) ResolveEntry(path string) (EntryFacts, error) {
 // RemoveSymlink delegates to the package-level function.
 func (g *Gateway) RemoveSymlink(path string) error {
 	return RemoveSymlink(path)
+}
+
+// HomeDir returns the current user's home directory (read-only).
+func (g *Gateway) HomeDir() (string, error) {
+	return os.UserHomeDir()
 }

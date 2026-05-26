@@ -13,4 +13,7 @@ export const queryKeys = {
   dashboard: {
     root: () => ["dashboard"] as const,
   },
+  global: {
+    list: () => ["global", "list"] as const,
+  },
 };

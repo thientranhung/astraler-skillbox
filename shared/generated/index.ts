@@ -27,3 +27,5 @@ export * from './methods/install-skill.js';
 export * from './methods/remove-skill.js';
 export * from './methods/dashboard-get.js';
 export * from './methods/skill-get.js';
+export * from './methods/global-scan.js';
+export * from './methods/global-list.js';

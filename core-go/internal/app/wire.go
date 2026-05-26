@@ -24,6 +24,7 @@ func New(
 	runner *operations.Runner,
 	projectSvc *services.ProjectService,
 	dashboardSvc *services.DashboardService,
+	globalSvc *services.GlobalSkillsService,
 ) *App {
 	a := &App{
 		methods: handler.Map{
@@ -42,6 +43,8 @@ func New(
 			"install.skill":    rpchandlers.NewInstallSkillHandler(projectSvc),
 			"remove.skill":     rpchandlers.NewRemoveSkillHandler(projectSvc),
 			"dashboard.get":    rpchandlers.NewDashboardGetHandler(dashboardSvc),
+			"global.scan":      rpchandlers.NewGlobalScanHandler(globalSvc),
+			"global.list":      rpchandlers.NewGlobalListHandler(globalSvc),
 		},
 	}
 	return a

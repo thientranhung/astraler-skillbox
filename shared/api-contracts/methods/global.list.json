@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlobalListMethod",
+  "description": "Contract for global.list JSON-RPC method. Returns persisted global provider locations with entries and warnings.",
+  "oneOf": [
+    { "$ref": "#/definitions/GlobalListRequest" },
+    { "$ref": "#/definitions/GlobalListResponse" }
+  ],
+  "definitions": {
+    "GlobalListRequest": {
+      "title": "GlobalListRequest",
+      "description": "Params for global.list (no params required).",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "GlobalListResponse": {
+      "title": "GlobalListResponse",
+      "description": "Response containing all global provider locations.",
+      "type": "object",
+      "properties": {
+        "locations": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/GlobalListLocation" }
+        }
+      },
+      "required": ["locations"],
+      "additionalProperties": false
+    },
+    "GlobalListLocation": {
+      "title": "GlobalListLocation",
+      "type": "object",
+      "properties": {
+        "globalProviderLocationId": { "type": "integer" },
+        "providerKey": { "type": "string" },
+        "providerDisplayName": { "type": "string" },
+        "providerStatus": { "type": "string" },
+        "path": { "type": ["string", "null"] },
+        "skillsPath": { "type": ["string", "null"] },
+        "status": {
+          "type": "string",
+          "enum": ["active", "not_configured", "missing", "unreadable", "invalid_structure", "empty", "disabled"]
+        },
+        "lastScannedAt": { "type": ["string", "null"] },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/GlobalListEntry" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/GlobalListWarning" }
+        }
+      },
+      "required": ["globalProviderLocationId", "providerKey", "providerDisplayName", "providerStatus", "path", "skillsPath", "status", "lastScannedAt", "entries", "warnings"],
+      "additionalProperties": false
+    },
+    "GlobalListEntry": {
+      "title": "GlobalListEntry",
+      "type": "object",
+      "properties": {
+        "globalInstallId": { "type": "integer" },
+        "skillName": { "type": "string" },
+        "skillId": { "type": ["integer", "null"] },
+        "mode": {
+          "type": "string",
+          "enum": ["symlink", "rsync_copy", "direct"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["current", "outdated", "missing", "broken_symlink", "old_host", "external_symlink", "conflict", "needs_sync", "error"]
+        },
+        "globalSkillPath": { "type": "string" },
+        "sourceSkillPath": { "type": ["string", "null"] },
+        "symlinkTargetPath": { "type": ["string", "null"] }
+      },
+      "required": ["globalInstallId", "skillName", "skillId", "mode", "status", "globalSkillPath", "sourceSkillPath", "symlinkTargetPath"],
+      "additionalProperties": false
+    },
+    "GlobalListWarning": {
+      "title": "GlobalListWarning",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "severity": {
+          "type": "string",
+          "enum": ["info", "warning", "error", "blocking"]
+        },
+        "scopeType": {
+          "type": "string",
+          "enum": ["global_provider_location", "global_install"]
+        },
+        "scopeId": { "type": ["integer", "null"] },
+        "actionKey": { "type": ["string", "null"] },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "severity", "scopeType", "scopeId", "actionKey", "message"],
+      "additionalProperties": false
+    }
+  }
+}
