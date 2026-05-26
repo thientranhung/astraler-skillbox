@@ -135,6 +135,33 @@ describe("DashboardScreen", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/projects" });
   });
 
+  it("uses pointer cursor for clickable summary rows", () => {
+    mockUseDashboard.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: baseData,
+      refetch: vi.fn(),
+    });
+
+    render(<DashboardScreen />);
+    expect(screen.getByRole("button", { name: /^Skills 5$/i }).className).toContain("cursor-pointer");
+    expect(screen.getByRole("button", { name: /^Projects 3$/i }).className).toContain("cursor-pointer");
+    expect(screen.getByRole("button", { name: /^Warnings 2$/i }).className).toContain("cursor-pointer");
+  });
+
+  it("explains what warning means on the dashboard", () => {
+    mockUseDashboard.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: baseData,
+      refetch: vi.fn(),
+    });
+
+    render(<DashboardScreen />);
+    expect(screen.getByText(/Warning means Skillbox found something unusual/i)).toBeTruthy();
+    expect(screen.getByText(/The app can still run/i)).toBeTruthy();
+  });
+
   it("shows zero-data CTA when projects === 0", () => {
     const mockNavigate = vi.fn();
     mockUseNavigate.mockReturnValue(mockNavigate);

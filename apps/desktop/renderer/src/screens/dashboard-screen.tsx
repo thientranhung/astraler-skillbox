@@ -70,7 +70,7 @@ export function DashboardScreen(): React.JSX.Element {
         <ErrorDisplay error={error} />
         <button
           onClick={() => void refetch()}
-          className="mt-3 rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
+          className="mt-3 cursor-pointer rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
         >
           Retry
         </button>
@@ -84,7 +84,7 @@ export function DashboardScreen(): React.JSX.Element {
         <p className="text-sm text-zinc-500">No Skill Host Folder configured.</p>
         <button
           onClick={() => navigate({ to: "/setup" })}
-          className="mt-3 rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
+          className="mt-3 cursor-pointer rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
         >
           Go to Setup
         </button>
@@ -124,7 +124,7 @@ export function DashboardScreen(): React.JSX.Element {
           <button
             type="button"
             onClick={() => navigate({ to: "/skills" })}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+            className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
           >
             <span className="text-sm font-medium text-zinc-700">Skills</span>
             <span className="text-sm text-zinc-500">{data.summary.skills}</span>
@@ -132,7 +132,7 @@ export function DashboardScreen(): React.JSX.Element {
           <button
             type="button"
             onClick={() => navigate({ to: "/projects" })}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+            className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
           >
             <span className="text-sm font-medium text-zinc-700">Projects</span>
             <span className="text-sm text-zinc-500">{data.summary.projects}</span>
@@ -140,7 +140,7 @@ export function DashboardScreen(): React.JSX.Element {
           <button
             type="button"
             onClick={scrollToWarnings}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+            className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
           >
             <span className="text-sm font-medium text-zinc-700">Warnings</span>
             <span className="text-sm text-zinc-500">{data.summary.warnings}</span>
@@ -148,7 +148,7 @@ export function DashboardScreen(): React.JSX.Element {
           <button
             type="button"
             onClick={() => navigate({ to: "/global" })}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+            className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
           >
             <span className="text-sm font-medium text-zinc-700">Global Skills</span>
             <span className="text-xs text-zinc-500">Open global view</span>
@@ -184,13 +184,13 @@ export function DashboardScreen(): React.JSX.Element {
         <div className="flex gap-2">
           <button
             onClick={() => navigate({ to: "/projects" })}
-            className="rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
+            className="cursor-pointer rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
           >
             Add Project
           </button>
           <button
             onClick={() => navigate({ to: "/skills" })}
-            className="rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
+            className="cursor-pointer rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
           >
             View Skills
           </button>
@@ -201,7 +201,7 @@ export function DashboardScreen(): React.JSX.Element {
       <section ref={warningsRef}>
         <h2 className="text-base font-semibold text-zinc-900">Warnings</h2>
         <p className="mt-1 text-xs text-zinc-400">
-          Warnings point to places Skillbox could not read, classify, or validate during the last scan.
+          Warning means Skillbox found something unusual during a scan. The app can still run, but the affected skill, provider, or folder may need a rescan or manual check.
         </p>
         <div className="mt-2">
           {data.warnings.length === 0 ? (
@@ -224,7 +224,7 @@ export function DashboardScreen(): React.JSX.Element {
                     <button
                       type="button"
                       onClick={() => navigateForWarning(w)}
-                      className="shrink-0 rounded border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+                      className="shrink-0 cursor-pointer rounded border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
                     >
                       Open
                     </button>

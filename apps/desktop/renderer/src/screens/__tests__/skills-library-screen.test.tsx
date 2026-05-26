@@ -15,6 +15,7 @@ vi.mock("../../features/skill-host/use-scan-host.js", () => ({
 vi.mock("../../lib/core-client/methods.js", () => ({
   methods: {
     openPath: vi.fn(),
+    openTerminal: vi.fn(),
   },
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -29,6 +30,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { methods } from "../../lib/core-client/methods.js";
 
 const mockOpenPath = methods.openPath as ReturnType<typeof vi.fn>;
+const mockOpenTerminal = methods.openTerminal as ReturnType<typeof vi.fn>;
 
 const mockUseSkillsList = useSkillsList as ReturnType<typeof vi.fn>;
 const mockUseActiveHost = useActiveHost as ReturnType<typeof vi.fn>;
@@ -110,6 +112,22 @@ describe("SkillsLibraryScreen", () => {
     render(<SkillsLibraryScreen />);
     fireEvent.click(screen.getByRole("button", { name: /open folder/i }));
     expect(mockOpenPath).toHaveBeenCalledWith("/tmp/host");
+  });
+
+  it("Terminal button opens terminal at the host folder", () => {
+    mockUseSkillsList.mockReturnValue({ isPending: false, isError: false, data: baseData });
+
+    render(<SkillsLibraryScreen />);
+    fireEvent.click(screen.getByRole("button", { name: /terminal/i }));
+    expect(mockOpenTerminal).toHaveBeenCalledWith("/tmp/host");
+  });
+
+  it("shows provider tabs for the current host provider view", () => {
+    mockUseSkillsList.mockReturnValue({ isPending: false, isError: false, data: baseData });
+
+    render(<SkillsLibraryScreen />);
+    expect(screen.getByRole("button", { name: /All skills 2/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Shared Agent Skills 2/i })).toBeTruthy();
   });
 
   it("navigates to /skills/$skillId on row click", () => {
