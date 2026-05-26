@@ -6,9 +6,10 @@
 CREATE TABLE IF NOT EXISTS provider_path_overrides (
     id                     INTEGER PRIMARY KEY AUTOINCREMENT,
     provider_definition_id INTEGER NOT NULL REFERENCES provider_definitions(id),
-    scope                  TEXT NOT NULL,
-    purpose                TEXT NOT NULL,
-    paths_json             TEXT NOT NULL DEFAULT '[]',
+    scope                  TEXT NOT NULL CHECK (scope IN ('project', 'global')),
+    purpose                TEXT NOT NULL CHECK (purpose IN ('detect', 'skills', 'config', 'commands')),
+    paths_json             TEXT NOT NULL DEFAULT '[]'
+                               CHECK (json_valid(paths_json) AND json_type(paths_json) = 'array'),
     created_at             TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
     updated_at             TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
     UNIQUE(provider_definition_id, scope, purpose)

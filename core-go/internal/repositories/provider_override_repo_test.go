@@ -166,3 +166,39 @@ func TestProviderOverrideRepo_ListAll_EmptyWhenNoOverrides(t *testing.T) {
 		t.Errorf("expected 0 overrides in fresh DB, got %d", len(all))
 	}
 }
+
+func TestProviderOverrideRepo_Upsert_InvalidScope(t *testing.T) {
+	db := NewTestDB(t)
+	r := NewProviderOverrideRepo(db)
+	ctx := context.Background()
+
+	provID := providerIDByKey(t, r, ctx, "claude")
+
+	err := r.Upsert(ctx, domain.ProviderPathOverride{
+		ProviderDefinitionID: provID,
+		Scope:                "invalid_scope",
+		Purpose:              "detect",
+		Paths:                []string{".custom"},
+	})
+	if err == nil {
+		t.Error("expected CHECK constraint error for invalid scope, got nil")
+	}
+}
+
+func TestProviderOverrideRepo_Upsert_InvalidPurpose(t *testing.T) {
+	db := NewTestDB(t)
+	r := NewProviderOverrideRepo(db)
+	ctx := context.Background()
+
+	provID := providerIDByKey(t, r, ctx, "claude")
+
+	err := r.Upsert(ctx, domain.ProviderPathOverride{
+		ProviderDefinitionID: provID,
+		Scope:                "project",
+		Purpose:              "not_a_purpose",
+		Paths:                []string{".custom"},
+	})
+	if err == nil {
+		t.Error("expected CHECK constraint error for invalid purpose, got nil")
+	}
+}

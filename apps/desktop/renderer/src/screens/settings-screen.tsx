@@ -43,6 +43,16 @@ function hasOverride(provider: ProviderListProvider): boolean {
   return provider.candidates.some((c) => c.source === "override");
 }
 
+function slotHasOverride(
+  provider: ProviderListProvider,
+  scope: "project" | "global",
+  purpose: "detect" | "skills",
+): boolean {
+  return provider.candidates.some(
+    (c) => c.scope === scope && c.purpose === purpose && c.source === "override",
+  );
+}
+
 function candidatePathsWithSource(
   provider: ProviderListProvider,
   scope: "project" | "global",
@@ -54,32 +64,67 @@ function candidatePathsWithSource(
   return { paths: sorted.map((c) => c.relativePath), source };
 }
 
-function PathListWithSource({ data }: { data: { paths: string[]; source: string } }): React.JSX.Element {
-  if (data.paths.length === 0) return <span className="text-zinc-400">—</span>;
+function SlotCell({
+  data,
+  hasSlotOverride,
+  onEdit,
+  onReset,
+  isResetting,
+}: {
+  data: { paths: string[]; source: string };
+  hasSlotOverride: boolean;
+  onEdit: () => void;
+  onReset: () => void;
+  isResetting: boolean;
+}): React.JSX.Element {
+  const pathText =
+    data.paths.length === 0 ? (
+      <span className="text-zinc-400">—</span>
+    ) : (
+      <span className={`font-mono text-xs ${data.source === "override" ? "text-blue-600" : "text-zinc-600"}`}>
+        {data.paths.join(", ")}
+      </span>
+    );
   return (
-    <span className={`font-mono text-xs ${data.source === "override" ? "text-blue-600" : "text-zinc-600"}`}>
-      {data.paths.join(", ")}
-    </span>
+    <div className="flex items-center gap-1">
+      {pathText}
+      <button
+        onClick={onEdit}
+        className="shrink-0 rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+        aria-label="Edit paths"
+        title="Edit paths"
+      >
+        <Pencil size={11} />
+      </button>
+      {hasSlotOverride && (
+        <button
+          onClick={onReset}
+          disabled={isResetting}
+          className="shrink-0 rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-red-500 disabled:opacity-50"
+          aria-label="Reset to default"
+          title="Reset to default"
+        >
+          <RotateCcw size={11} />
+        </button>
+      )}
+    </div>
   );
 }
 
 function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JSX.Element {
-  const [editSlot, setEditSlot] = useState<{ scope: "project" | "global"; purpose: "detect" | "skills" | "config" | "commands"; paths: string[] } | null>(null);
+  const [editSlot, setEditSlot] = useState<{
+    scope: "project" | "global";
+    purpose: "detect" | "skills" | "config" | "commands";
+    paths: string[];
+  } | null>(null);
   const resetMutation = useResetProviderPaths();
 
   const projectDetect = candidatePathsWithSource(provider, "project", "detect");
   const projectSkills = candidatePathsWithSource(provider, "project", "skills");
   const globalSkills = provider.hasGlobalLevel ? candidatePathsWithSource(provider, "global", "skills") : null;
-  const overridden = hasOverride(provider);
 
-  function handleReset() {
-    const overrideCand = provider.candidates.find((c) => c.source === "override");
-    if (!overrideCand) return;
-    resetMutation.mutate({
-      providerKey: provider.key,
-      scope: overrideCand.scope as "project" | "global",
-      purpose: overrideCand.purpose,
-    });
+  function handleResetSlot(scope: "project" | "global", purpose: "detect" | "skills"): void {
+    resetMutation.mutate({ providerKey: provider.key, scope, purpose });
   }
 
   return (
@@ -89,7 +134,7 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
           <div className="flex items-center gap-2">
             <ProviderIcon providerKey={provider.key} iconKey={provider.iconKey} />
             <span className="font-medium text-zinc-800">{provider.displayName}</span>
-            {overridden && (
+            {hasOverride(provider) && (
               <span className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
                 Override
               </span>
@@ -101,40 +146,35 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
           <ProviderStatusBadge status={provider.status} />
         </td>
         <td className="px-3 py-2">
-          <PathListWithSource data={projectDetect} />
+          <SlotCell
+            data={projectDetect}
+            hasSlotOverride={slotHasOverride(provider, "project", "detect")}
+            onEdit={() => setEditSlot({ scope: "project", purpose: "detect", paths: projectDetect.paths })}
+            onReset={() => handleResetSlot("project", "detect")}
+            isResetting={resetMutation.isPending}
+          />
         </td>
         <td className="px-3 py-2">
-          <PathListWithSource data={projectSkills} />
+          <SlotCell
+            data={projectSkills}
+            hasSlotOverride={slotHasOverride(provider, "project", "skills")}
+            onEdit={() => setEditSlot({ scope: "project", purpose: "skills", paths: projectSkills.paths })}
+            onReset={() => handleResetSlot("project", "skills")}
+            isResetting={resetMutation.isPending}
+          />
         </td>
         <td className="px-3 py-2">
           {globalSkills != null ? (
-            <PathListWithSource data={globalSkills} />
+            <SlotCell
+              data={globalSkills}
+              hasSlotOverride={slotHasOverride(provider, "global", "skills")}
+              onEdit={() => setEditSlot({ scope: "global", purpose: "skills", paths: globalSkills.paths })}
+              onReset={() => handleResetSlot("global", "skills")}
+              isResetting={resetMutation.isPending}
+            />
           ) : (
             <span className="text-zinc-300">—</span>
           )}
-        </td>
-        <td className="px-3 py-2">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setEditSlot({ scope: "project", purpose: "detect", paths: projectDetect.paths })}
-              className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-              aria-label="Edit"
-              title="Edit project detect paths"
-            >
-              <Pencil size={12} />
-            </button>
-            {overridden && (
-              <button
-                onClick={handleReset}
-                disabled={resetMutation.isPending}
-                className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-red-500 disabled:opacity-50"
-                aria-label="Reset"
-                title="Reset to defaults"
-              >
-                <RotateCcw size={12} />
-              </button>
-            )}
-          </div>
         </td>
       </tr>
       {editSlot != null && (
@@ -246,7 +286,6 @@ export function SettingsScreen(): React.JSX.Element {
                 <th className="px-3 py-2 font-medium">Project detect</th>
                 <th className="px-3 py-2 font-medium">Project skills</th>
                 <th className="px-3 py-2 font-medium">Global skills</th>
-                <th className="px-3 py-2 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -255,7 +294,7 @@ export function SettingsScreen(): React.JSX.Element {
               ))}
               {(providerData?.providers ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-center text-zinc-400">
+                  <td colSpan={6} className="px-3 py-4 text-center text-zinc-400">
                     Loading providers…
                   </td>
                 </tr>
