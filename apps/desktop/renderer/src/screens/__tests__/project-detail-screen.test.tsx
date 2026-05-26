@@ -201,9 +201,25 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getByRole("button", { name: /scan plugins/i })).toBeTruthy();
   });
 
-  it("shows 'No plugin data' when provider plugin list returns null", () => {
+  it("shows 'No plugin data' when provider plugin list returns null data", () => {
+    mockUseProviderPluginList.mockReturnValue({ isPending: false, isError: false, data: null, error: null });
     render(<ProjectDetailScreen />);
     expect(screen.getByText(/No plugin data/i)).toBeTruthy();
+  });
+
+  it("shows loading state when provider plugin list is pending", () => {
+    mockUseProviderPluginList.mockReturnValue({ isPending: true, isError: false, data: null, error: null });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText(/Loading plugin data/i)).toBeTruthy();
+    expect(screen.queryByText(/No plugin data/i)).toBeNull();
+  });
+
+  it("shows error state when provider plugin list fails", () => {
+    const err = new Error("providerPlugin.list failed");
+    mockUseProviderPluginList.mockReturnValue({ isPending: false, isError: true, data: null, error: err });
+    render(<ProjectDetailScreen />);
+    expect(screen.queryByText(/No plugin data/i)).toBeNull();
+    expect(screen.queryByText(/Loading plugin data/i)).toBeNull();
   });
 
   it("shows layer statuses and plugins when provider plugin data is available", () => {
