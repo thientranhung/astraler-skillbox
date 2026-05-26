@@ -135,7 +135,7 @@ func TestProjectListHandler_WithProjects(t *testing.T) {
 				{
 					ProjectProviderID:   10,
 					ProviderKey:         "generic_agents",
-					ProviderDisplayName: "Shared Agent Skills (.agents)",
+					ProviderDisplayName: "Shared Agent Skills",
 					ProviderStatus:      domain.ProviderStatusSupported,
 					DetectionStatus:     domain.DetectionStatusDetected,
 					EntryCount:          2,
@@ -179,7 +179,7 @@ func TestProjectListHandler_WithProjects(t *testing.T) {
 	if resp.Projects[0].Providers[0].Key != "generic_agents" {
 		t.Errorf("provider key: got %q want generic_agents", resp.Projects[0].Providers[0].Key)
 	}
-	if resp.Projects[0].Providers[0].DisplayName != "Shared Agent Skills (.agents)" {
+	if resp.Projects[0].Providers[0].DisplayName != "Shared Agent Skills" {
 		t.Errorf("provider displayName: got %q", resp.Projects[0].Providers[0].DisplayName)
 	}
 	if resp.Projects[0].Providers[0].EntryCount != 2 {
@@ -203,7 +203,7 @@ func TestProjectGetHandler_Success(t *testing.T) {
 			{
 				ProjectProviderID:   20,
 				ProviderKey:         "generic_agents",
-				ProviderDisplayName: "Shared Agent Skills (.agents)",
+				ProviderDisplayName: "Shared Agent Skills",
 				ProviderStatus:      domain.ProviderStatusSupported,
 				DetectionStatus:     domain.DetectionStatusDetected,
 			},
@@ -240,7 +240,7 @@ func TestProjectGetHandler_Success(t *testing.T) {
 	if resp.Providers[0].ProviderKey != "generic_agents" {
 		t.Errorf("provider key: got %q want generic_agents", resp.Providers[0].ProviderKey)
 	}
-	if resp.Providers[0].DisplayName != "Shared Agent Skills (.agents)" {
+	if resp.Providers[0].DisplayName != "Shared Agent Skills" {
 		t.Errorf("provider displayName: got %q", resp.Providers[0].DisplayName)
 	}
 }

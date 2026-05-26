@@ -177,7 +177,7 @@ func TestContract_SkillGet_Response(t *testing.T) {
 				ProjectName:         "proj-alpha",
 				ProjectProviderID:   5,
 				ProviderKey:         "generic_agents",
-				ProviderDisplayName: "Shared Agent Skills (.agents)",
+				ProviderDisplayName: "Shared Agent Skills",
 				Mode:                "symlink",
 				Status:              "current",
 				ProjectSkillPath:    "/proj-alpha/.agents/skills/my-skill",
@@ -243,7 +243,7 @@ func TestContract_GlobalList_Response(t *testing.T) {
 			{
 				GlobalProviderLocationID: 1,
 				ProviderKey:              "generic_agents",
-				ProviderDisplayName:      "Shared Agent Skills (.agents)",
+				ProviderDisplayName:      "Shared Agent Skills",
 				ProviderStatus:           "supported",
 				Path:                     &agentsPath,
 				SkillsPath:               &skillsPath,

@@ -9,8 +9,8 @@ func TestMigration000004_SharedAgentDisplayNames(t *testing.T) {
 		key  string
 		name string
 	}{
-		{"generic_agents", "Shared Agent Skills (.agents)"},
-		{"claude", "Claude (.claude)"},
+		{"generic_agents", "Shared Agent Skills"},
+		{"claude", "Claude"},
 	}
 
 	for _, c := range cases {
@@ -27,8 +27,8 @@ func TestMigration000004_SharedAgentDisplayNames(t *testing.T) {
 	if err := db.QueryRow("SELECT database_version FROM app_settings WHERE id=1").Scan(&dbVersion); err != nil {
 		t.Fatalf("query database_version: %v", err)
 	}
-	if dbVersion != 7 {
-		t.Errorf("database_version: got %d want 7 (latest after all migrations)", dbVersion)
+	if dbVersion != 8 {
+		t.Errorf("database_version: got %d want 8 (latest after all migrations)", dbVersion)
 	}
 }
 
@@ -68,6 +68,12 @@ WHERE key = 'generic_agents' AND display_name = 'Generic Agents'`
 func TestMigration000004_DownRestoresSeededNames(t *testing.T) {
 	db := NewTestDB(t)
 
+	if _, err := db.Exec(`UPDATE provider_definitions SET display_name = 'Shared Agent Skills (.agents)' WHERE key = 'generic_agents'`); err != nil {
+		t.Fatalf("set generic_agents migrated name: %v", err)
+	}
+	if _, err := db.Exec(`UPDATE provider_definitions SET display_name = 'Claude (.claude)' WHERE key = 'claude'`); err != nil {
+		t.Fatalf("set claude migrated name: %v", err)
+	}
 	// Simulate a custom name on claude so we can verify the down guard too.
 	if _, err := db.Exec(`UPDATE provider_definitions SET display_name = 'My Claude Label' WHERE key = 'claude'`); err != nil {
 		t.Fatalf("set custom claude name: %v", err)

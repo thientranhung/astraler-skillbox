@@ -115,7 +115,7 @@ func TestSkillLibraryService_GetSkillDetail_Found(t *testing.T) {
 
 	skillRepo.usages = []domain.SkillProjectUsage{
 		{ProjectID: 1, ProjectName: "my-proj", ProjectProviderID: 1, ProviderKey: "generic_agents",
-			ProviderDisplayName: "Shared Agent Skills (.agents)", Mode: "symlink", Status: "current", ProjectSkillPath: "/tmp/proj/.agents/skills/skill-a"},
+			ProviderDisplayName: "Shared Agent Skills", Mode: "symlink", Status: "current", ProjectSkillPath: "/tmp/proj/.agents/skills/skill-a"},
 	}
 
 	svc := NewSkillLibraryService(skillRepo, hostRepo, &mockWarningRepo{})
@@ -132,7 +132,7 @@ func TestSkillLibraryService_GetSkillDetail_Found(t *testing.T) {
 	if len(view.Projects) != 1 {
 		t.Errorf("Projects: got %d want 1", len(view.Projects))
 	}
-	if view.Projects[0].ProviderDisplayName != "Shared Agent Skills (.agents)" {
+	if view.Projects[0].ProviderDisplayName != "Shared Agent Skills" {
 		t.Errorf("ProviderDisplayName: got %q", view.Projects[0].ProviderDisplayName)
 	}
 }

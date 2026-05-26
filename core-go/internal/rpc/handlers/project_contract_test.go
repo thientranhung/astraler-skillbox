@@ -26,7 +26,7 @@ func TestContract_ProjectList_Response(t *testing.T) {
 				Providers: []projectListProviderSummary{
 					{
 						Key:             "generic_agents",
-						DisplayName:     "Shared Agent Skills (.agents)",
+						DisplayName:     "Shared Agent Skills",
 						ProviderStatus:  "supported",
 						DetectionStatus: "detected",
 					},
@@ -62,7 +62,7 @@ func TestContract_ProjectGet_Response(t *testing.T) {
 			{
 				ProjectProviderID: 10,
 				ProviderKey:       "generic_agents",
-				DisplayName:       "Shared Agent Skills (.agents)",
+				DisplayName:       "Shared Agent Skills",
 				ProviderStatus:    "supported",
 				DetectionStatus:   "detected",
 				DetectedPath:      nil,
@@ -90,7 +90,7 @@ func TestContract_ProjectGet_WithEntry(t *testing.T) {
 			{
 				ProjectProviderID: 10,
 				ProviderKey:       "generic_agents",
-				DisplayName:       "Shared Agent Skills (.agents)",
+				DisplayName:       "Shared Agent Skills",
 				ProviderStatus:    "supported",
 				DetectionStatus:   "detected",
 				DetectedPath:      nil,

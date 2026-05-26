@@ -15,14 +15,14 @@ func InstallTargets() []InstallTarget {
 		{
 			ID:                 "shared_agents",
 			ProviderKey:        GenericAgentsKey,
-			DisplayName:        "Shared Agent Skills (.agents)",
+			DisplayName:        "Shared Agent Skills",
 			RelativeSkillsPath: GenericAgentsSkillsPath,
 			CompatibleLabels:   []string{"Codex", "Antigravity", "compatible agents"},
 		},
 		{
 			ID:                 ClaudeKey,
 			ProviderKey:        ClaudeKey,
-			DisplayName:        "Claude (.claude)",
+			DisplayName:        "Claude",
 			RelativeSkillsPath: ClaudeSkillsPath,
 			CompatibleLabels:   []string{"Claude"},
 		},

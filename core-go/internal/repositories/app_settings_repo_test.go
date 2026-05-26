@@ -19,8 +19,8 @@ func TestAppSettingsRepo_Get_Default(t *testing.T) {
 	if s.DefaultInstallMode != "symlink" {
 		t.Errorf("defaultInstallMode: got %q want %q", s.DefaultInstallMode, "symlink")
 	}
-	if s.DatabaseVersion != 7 {
-		t.Errorf("databaseVersion: got %d want 7", s.DatabaseVersion)
+	if s.DatabaseVersion != 8 {
+		t.Errorf("databaseVersion: got %d want 8", s.DatabaseVersion)
 	}
 }
 
