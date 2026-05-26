@@ -22,7 +22,7 @@ export interface ProviderSetEnabledRequest {
   enabled: boolean;
 }
 /**
- * Confirmation that the provider enablement preference was saved. Errors: validation_error (1002) if provider unknown or enabled=true for a canToggle=false provider; database_error (1004) if DB unavailable.
+ * Confirmation that the provider enablement preference was saved. Errors: validation_error (1001) if provider unknown or enabled=true for a canToggle=false provider; database_error (1004) if DB unavailable.
  */
 export interface ProviderSetEnabledResponse {
   /**

@@ -714,3 +714,44 @@ func TestProviderRegistryService_SetEnabled_EmptyKeyRejected(t *testing.T) {
 		t.Errorf("expected validation_error, got %v", err)
 	}
 }
+
+func TestProviderRegistryService_List_IsEnabled_ClampedForUnsupportedWithStaleStoredSetting(t *testing.T) {
+	// Regression: if a provider was previously supported+enabled then later became unsupported,
+	// a stale user setting of enabled=true must not leak through as isEnabled=true.
+	entries := []domain.ProviderRegistryEntry{makeEntryWithID(5, "prov", "unsupported")}
+	repo := &mockProviderRegistryRepo{entries: entries}
+	overrideRepo := &mockProviderOverrideRepo{}
+	userSettingsRepo := &mockProviderUserSettingsRepo{
+		settings: []domain.ProviderUserSetting{{ID: 1, ProviderDefinitionID: 5, Enabled: true}},
+	}
+	svc := NewProviderRegistryService(repo, overrideRepo, userSettingsRepo)
+
+	got, err := svc.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got[0].IsEnabled {
+		t.Error("IsEnabled must be false for unsupported provider even when stale user setting says enabled=true")
+	}
+	if got[0].CanToggle {
+		t.Error("CanToggle must be false for unsupported provider")
+	}
+}
+
+func TestProviderRegistryService_List_IsEnabled_ClampedForDisabledWithStaleStoredSetting(t *testing.T) {
+	entries := []domain.ProviderRegistryEntry{makeEntryWithID(6, "prov", "disabled")}
+	repo := &mockProviderRegistryRepo{entries: entries}
+	overrideRepo := &mockProviderOverrideRepo{}
+	userSettingsRepo := &mockProviderUserSettingsRepo{
+		settings: []domain.ProviderUserSetting{{ID: 1, ProviderDefinitionID: 6, Enabled: true}},
+	}
+	svc := NewProviderRegistryService(repo, overrideRepo, userSettingsRepo)
+
+	got, err := svc.List(context.Background())
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got[0].IsEnabled {
+		t.Error("IsEnabled must be false for disabled provider even when stale user setting says enabled=true")
+	}
+}

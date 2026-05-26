@@ -13,7 +13,7 @@ type providerEnablementService interface {
 
 type providerSetEnabledParams struct {
 	ProviderKey string `json:"providerKey"`
-	Enabled     bool   `json:"enabled"`
+	Enabled     *bool  `json:"enabled"`
 }
 
 type providerSetEnabledResponse struct {
@@ -26,7 +26,10 @@ func NewProviderSetEnabledHandler(svc providerEnablementService) jrpc2.Handler {
 		if err := req.UnmarshalParams(&params); err != nil {
 			return nil, jrpc2.Errorf(jrpc2.InvalidParams, "invalid params: %v", err)
 		}
-		if err := svc.SetEnabled(ctx, params.ProviderKey, params.Enabled); err != nil {
+		if params.Enabled == nil {
+			return nil, jrpc2.Errorf(jrpc2.InvalidParams, "invalid params: enabled is required")
+		}
+		if err := svc.SetEnabled(ctx, params.ProviderKey, *params.Enabled); err != nil {
 			return nil, wrapError(err)
 		}
 		return providerSetEnabledResponse{Updated: true}, nil
