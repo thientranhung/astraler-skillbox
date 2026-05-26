@@ -1433,7 +1433,7 @@ git commit -m "Add provider.updatePaths and provider.resetPaths RPC handlers (PR
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ProviderUpdatePathsMethod",
-  "description": "Contract for provider.updatePaths command. Stores user path overrides for a provider (scope+purpose) slot. Does not affect scan or install behavior — configuration metadata only (behavior integration is a later slice).",
+  "description": "Contract for provider.updatePaths command. Stores user path overrides for a provider (scope+purpose) slot. Project-scope overrides replace the built-in path candidates used during project scan and install. Global-scope overrides replace the built-in path candidates used during global scan path resolution.",
   "oneOf": [
     { "$ref": "#/definitions/ProviderUpdatePathsRequest" },
     { "$ref": "#/definitions/ProviderUpdatePathsResponse" }
@@ -1954,9 +1954,9 @@ describe("ProviderPathsEditor", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("shows a metadata note that overrides are config only", () => {
+  it("shows a note explaining paths affect scan and install", () => {
     render(<ProviderPathsEditor {...defaultProps} />);
-    expect(screen.getByText(/configuration metadata|behavior integration/i)).not.toBeNull();
+    expect(screen.getByText(/effective path candidates for future scans/i)).not.toBeNull();
   });
 });
 ```
@@ -2026,7 +2026,7 @@ export function ProviderPathsEditor({ providerKey, scope, purpose, currentPaths,
             onChange={(e) => setRawPaths(e.target.value)}
           />
           <p className="mt-2 text-xs text-zinc-400">
-            These are configuration metadata only. Behavior integration (scan, install) is a later slice.
+            Saving updates the effective path candidates used by future scans and installs.
           </p>
           {mutation.isError && mutation.error != null && (
             <p className="mt-1 text-xs text-red-500">{String(mutation.error)}</p>
@@ -2196,7 +2196,7 @@ Replace the provider table row `<tr>` content to include edit button, override b
     <h3 className="text-sm font-semibold text-zinc-800">Providers</h3>
   </div>
   <p className="mt-0.5 text-xs text-zinc-500">
-    Override paths are configuration metadata only — scan and install behavior integration is a later slice.
+    Overrides replace the built-in path candidates used by project scan/install and global scan resolution.
   </p>
 
   <div className="mt-3 overflow-x-auto rounded border border-zinc-200">

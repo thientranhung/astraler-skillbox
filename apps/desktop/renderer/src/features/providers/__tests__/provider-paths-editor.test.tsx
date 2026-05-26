@@ -41,8 +41,8 @@ describe("ProviderPathsEditor", () => {
 
   it("shows scope and purpose labels", () => {
     render(<ProviderPathsEditor {...defaultProps} />);
-    expect(screen.getByText(/project/i)).not.toBeNull();
-    expect(screen.getByText(/detect/i)).not.toBeNull();
+    expect(screen.getAllByText(/project/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/detect/i).length).toBeGreaterThan(0);
   });
 
   it("calls mutate on save", () => {
@@ -70,8 +70,8 @@ describe("ProviderPathsEditor", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("shows a metadata note that overrides are config only", () => {
+  it("shows a note explaining paths affect scan and install", () => {
     render(<ProviderPathsEditor {...defaultProps} />);
-    expect(screen.getByText(/configuration metadata|behavior integration/i)).not.toBeNull();
+    expect(screen.getByText(/effective path candidates for future scans/i)).not.toBeNull();
   });
 });

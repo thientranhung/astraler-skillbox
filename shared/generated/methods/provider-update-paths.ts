@@ -4,7 +4,7 @@
  */
 
 /**
- * Contract for provider.updatePaths command. Stores user path overrides for a provider (scope+purpose) slot. Does not affect scan or install behavior — configuration metadata only (behavior integration is a later slice).
+ * Contract for provider.updatePaths command. Stores user path overrides for a provider (scope+purpose) slot. Project-scope overrides replace the built-in path candidates used during project scan and install. Global-scope overrides replace the built-in path candidates used during global scan path resolution.
  */
 export type ProviderUpdatePathsMethod = ProviderUpdatePathsRequest | ProviderUpdatePathsResponse;
 
