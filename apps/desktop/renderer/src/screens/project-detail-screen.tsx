@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertTriangle, AlertCircle, Info, PlusCircle, Copy, Check } from "lucide-react";
+import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertCircle, PlusCircle, Copy, Check } from "lucide-react";
 import { useProjectDetail } from "../features/projects/use-project-detail.js";
 import { useScanProject } from "../features/projects/use-scan-project.js";
 import { useOpenProjectFolder } from "../features/projects/use-open-project-folder.js";
@@ -13,7 +13,7 @@ import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
 import { useActiveHostSkills } from "../features/skills/use-active-host-skills.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
-import type { ProjectGetEntry, ProjectGetWarning, ProjectGetProvider } from "@contracts/index.js";
+import type { ProjectGetEntry, ProjectGetProvider } from "@contracts/index.js";
 
 const ENTRY_STATUS_CONFIG: Record<ProjectGetEntry["status"], { label: string; description: string; cls: string }> = {
   current: { label: "Linked to active host", description: "This project entry points to the active Skill Host copy.", cls: "bg-green-100 text-green-800" },
@@ -22,15 +22,6 @@ const ENTRY_STATUS_CONFIG: Record<ProjectGetEntry["status"], { label: string; de
   broken_symlink: { label: "Broken link", description: "The symlink target no longer exists.", cls: "bg-red-100 text-red-800" },
   missing: { label: "Missing from disk", description: "Skillbox has a record for this entry, but it was not found during the last scan.", cls: "bg-red-100 text-red-800" },
   error: { label: "Needs attention", description: "Skillbox could not classify this entry cleanly.", cls: "bg-red-100 text-red-800" },
-};
-
-const WARNING_CONFIG: Record<
-  ProjectGetWarning["severity"],
-  { cls: string; Icon: React.ElementType }
-> = {
-  info: { cls: "border-blue-200 bg-blue-50 text-blue-800", Icon: Info },
-  warning: { cls: "border-yellow-200 bg-yellow-50 text-yellow-800", Icon: AlertTriangle },
-  error: { cls: "border-red-200 bg-red-50 text-red-800", Icon: AlertCircle },
 };
 
 const DETECTION_CLS: Record<ProjectGetProvider["detectionStatus"], string> = {
@@ -56,23 +47,6 @@ function EntryStatusBadge({ status }: { status: ProjectGetEntry["status"] }): Re
     >
       {cfg.label}
     </span>
-  );
-}
-
-function WarningBanner({ warning }: { warning: ProjectGetWarning }): React.JSX.Element {
-  const { cls, Icon } = WARNING_CONFIG[warning.severity] ?? WARNING_CONFIG.warning;
-  return (
-    <div className={`flex items-start gap-2 rounded border px-3 py-2 text-xs ${cls}`}>
-      <Icon size={13} className="mt-0.5 shrink-0" />
-      <div>
-        <span className="font-medium">{warning.code}</span>
-        {warning.scopeRef != null && (
-          <span className="ml-1 opacity-70">({warning.scopeRef})</span>
-        )}
-        {" — "}
-        {warning.message}
-      </div>
-    </div>
   );
 }
 
@@ -370,15 +344,6 @@ export function ProjectDetailScreen(): React.JSX.Element {
 
         {validId != null && !isPending && !isError && data != null && (
           <div className="flex flex-col gap-4 p-4">
-            {/* Warnings */}
-            {data.warnings.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                {data.warnings.map((w, i) => (
-                  <WarningBanner key={i} warning={w} />
-                ))}
-              </div>
-            )}
-
             {/* Providers */}
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">

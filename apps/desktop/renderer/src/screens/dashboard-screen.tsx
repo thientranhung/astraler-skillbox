@@ -4,62 +4,26 @@ import { useDashboard } from "../features/dashboard/use-dashboard.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import type { DashboardGetWarning } from "@contracts/index.js";
 
-const WARNING_SEVERITY_CLASS: Record<DashboardGetWarning["severity"], string> = {
-  info: "bg-blue-100 text-blue-700",
-  warning: "bg-yellow-100 text-yellow-700",
-  error: "bg-red-100 text-red-700",
-  blocking: "bg-red-100 text-red-800",
-};
-
 const HOST_STATUS_CLASS: Record<string, string> = {
   active: "bg-green-100 text-green-800",
   missing: "bg-red-100 text-red-800",
   error: "bg-red-100 text-red-800",
 };
 
-function scopeLabel(scopeType: DashboardGetWarning["scopeType"]): string {
-  switch (scopeType) {
-    case "project": return "Project warning";
-    case "skill_host_folder": return "Skill Host";
-    case "project_provider": return "Project provider";
-    case "install": return "Project skill";
-    default: return scopeType.replaceAll("_", " ");
-  }
-}
-
 export function DashboardScreen(): React.JSX.Element {
   const navigate = useNavigate();
   const { data, isPending, isError, error, refetch } = useDashboard();
-  const warningsRef = React.useRef<HTMLElement | null>(null);
 
-  function scrollToWarnings(): void {
-    warningsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function navigateForWarning(warning: DashboardGetWarning): void {
-    if (warning.scopeType === "project" && warning.scopeId != null) {
-      navigate({
-        to: "/projects/$projectId",
-        params: { projectId: String(warning.scopeId) },
-      });
+  function navigateToAttention(warnings: DashboardGetWarning[]): void {
+    if (warnings.some((warning) => warning.scopeType.startsWith("global_"))) {
+      navigate({ to: "/global" });
       return;
     }
-    if (warning.scopeType === "skill" && warning.scopeId != null) {
-      navigate({
-        to: "/skills/$skillId",
-        params: { skillId: String(warning.scopeId) },
-      });
-      return;
-    }
-    if (warning.scopeType === "skill_host_folder") {
+    if (warnings.some((warning) => warning.scopeType === "skill" || warning.scopeType === "skill_host_folder")) {
       navigate({ to: "/skills" });
       return;
     }
-    if (warning.scopeType === "project_provider" || warning.scopeType === "install") {
-      navigate({ to: "/projects" });
-      return;
-    }
-    scrollToWarnings();
+    navigate({ to: "/projects" });
   }
 
   if (isPending) {
@@ -143,14 +107,16 @@ export function DashboardScreen(): React.JSX.Element {
             <span className="text-sm font-medium text-zinc-700">Projects</span>
             <span className="text-sm text-zinc-500">{data.summary.projects}</span>
           </button>
-          <button
-            type="button"
-            onClick={scrollToWarnings}
-            className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
-          >
-            <span className="text-sm font-medium text-zinc-700">Warnings</span>
-            <span className="text-sm text-zinc-500">{data.summary.warnings}</span>
-          </button>
+          {data.summary.warnings > 0 && (
+            <button
+              type="button"
+              onClick={() => navigateToAttention(data.warnings)}
+              className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+            >
+              <span className="text-sm font-medium text-zinc-700">Attention needed</span>
+              <span className="text-sm text-zinc-500">{data.summary.warnings}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => navigate({ to: "/global" })}
@@ -203,44 +169,6 @@ export function DashboardScreen(): React.JSX.Element {
         </div>
       )}
 
-      {/* Warnings */}
-      <section ref={warningsRef}>
-        <h2 className="text-base font-semibold text-zinc-900">Warnings</h2>
-        <p className="mt-1 text-xs text-zinc-400">
-          Warning means Skillbox found something unusual during a scan. The app can still run, but the affected skill, provider, or folder may need a rescan or manual check.
-        </p>
-        <div className="mt-2">
-          {data.warnings.length === 0 ? (
-            <p className="text-sm text-zinc-500">No active warnings</p>
-          ) : (
-            <div className="divide-y divide-zinc-100 rounded border border-zinc-200">
-              {data.warnings.map((w) => (
-                <div key={`${w.scopeType}-${String(w.scopeId)}-${w.code}`} className="flex items-start justify-between gap-3 px-4 py-3">
-                  <div>
-                    <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                      <span className={`rounded px-1.5 py-0.5 text-xs font-medium uppercase ${WARNING_SEVERITY_CLASS[w.severity] ?? WARNING_SEVERITY_CLASS.warning}`}>
-                        {w.severity}
-                      </span>
-                      <span className="text-xs font-medium text-zinc-500">{scopeLabel(w.scopeType)}</span>
-                      <span className="font-mono text-[11px] text-zinc-400">{w.code}</span>
-                    </div>
-                    <p className="text-sm text-zinc-700">{w.message}</p>
-                  </div>
-                  {(w.scopeId != null || w.scopeType === "skill_host_folder" || w.scopeType === "project_provider" || w.scopeType === "install") && (
-                    <button
-                      type="button"
-                      onClick={() => navigateForWarning(w)}
-                      className="shrink-0 cursor-pointer rounded border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
-                    >
-                      Open
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
     </div>
   );
 }

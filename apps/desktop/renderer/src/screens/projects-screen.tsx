@@ -67,7 +67,6 @@ export function ProjectsScreen(): React.JSX.Element {
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500">Status</th>
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500">Providers</th>
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500">Skills</th>
-                <th className="px-3 py-2 text-xs font-medium text-zinc-500">Warnings</th>
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500">Last Scanned</th>
                 <th className="px-3 py-2 text-xs font-medium text-zinc-500" />
               </tr>
