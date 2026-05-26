@@ -26,6 +26,7 @@
     { "input": "methods/dashboard.get.json", "output": "methods/dashboard-get.ts" },
     { "input": "methods/skill.get.json", "output": "methods/skill-get.ts" },
     { "input": "methods/global.scan.json", "output": "methods/global-scan.ts" },
-    { "input": "methods/global.list.json", "output": "methods/global-list.ts" }
+    { "input": "methods/global.list.json", "output": "methods/global-list.ts" },
+    { "input": "methods/provider.list.json", "output": "methods/provider-list.ts" }
   ]
 }

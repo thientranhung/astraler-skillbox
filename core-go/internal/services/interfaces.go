@@ -118,6 +118,12 @@ type ProviderDefinitionRepo interface {
 	GetByKey(ctx context.Context, key string) (*domain.ProviderDefinition, error)
 }
 
+// ProviderRegistryRepo lists all provider definitions with their path candidates.
+// *repositories.ProviderDefinitionRepo satisfies this interface.
+type ProviderRegistryRepo interface {
+	ListAll(ctx context.Context) ([]domain.ProviderRegistryEntry, error)
+}
+
 // ProviderRegistry returns all registered provider adapters.
 type ProviderRegistry interface {
 	All() []providers.ProviderAdapter

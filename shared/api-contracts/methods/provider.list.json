@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProviderListMethod",
+  "description": "Contract for provider.list JSON-RPC method. Returns the read-only provider registry: all built-in providers with their metadata and path candidates.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProviderListRequest" },
+    { "$ref": "#/definitions/ProviderListResponse" }
+  ],
+  "definitions": {
+    "ProviderListRequest": {
+      "title": "ProviderListRequest",
+      "description": "Params for provider.list. Empty — no params needed.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ProviderListPathCandidate": {
+      "title": "ProviderListPathCandidate",
+      "description": "A single path candidate for a provider.",
+      "type": "object",
+      "properties": {
+        "relativePath": {
+          "type": "string",
+          "description": "Path relative to project root (project scope) or home dir (global scope). Global paths use ~ prefix."
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["project", "global"],
+          "description": "Whether this candidate applies to a project or the user's global environment"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": ["detect", "skills", "config", "commands"],
+          "description": "Role of this path: detect=presence check, skills=skills directory, config=config dir, commands=commands dir"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Ordering priority; higher values take precedence"
+        },
+        "source": {
+          "type": "string",
+          "enum": ["builtin", "override", "custom"],
+          "description": "Whether this candidate is a built-in default, user override, or custom provider path"
+        },
+        "verificationStatus": {
+          "type": "string",
+          "enum": ["verified", "assumed", "experimental"],
+          "description": "Confidence level: verified=confirmed from docs, assumed=convention-based, experimental=uncertain"
+        }
+      },
+      "required": ["relativePath", "scope", "purpose", "priority", "source", "verificationStatus"],
+      "additionalProperties": false
+    },
+    "ProviderListProvider": {
+      "title": "ProviderListProvider",
+      "description": "Full provider registry entry for one provider.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Stable provider key (e.g. generic_agents, claude, codex)"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Human-readable provider name"
+        },
+        "providerType": {
+          "type": "string",
+          "description": "Provider type identifier"
+        },
+        "iconKey": {
+          "type": ["string", "null"],
+          "description": "Icon key used to look up the provider icon SVG, or null if not set"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["supported", "experimental", "unsupported", "disabled"],
+          "description": "Skillbox support level for this provider"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether this provider is enabled. Derived as true for supported/experimental built-ins until override storage is available."
+        },
+        "canCreateStructure": {
+          "type": "boolean",
+          "description": "Whether Skillbox can create the provider directory structure in a project"
+        },
+        "hasGlobalLevel": {
+          "type": "boolean",
+          "description": "Whether this provider has a global-level skills location"
+        },
+        "candidates": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProviderListPathCandidate" },
+          "description": "All path candidates for this provider, ordered by priority descending"
+        }
+      },
+      "required": ["key", "displayName", "providerType", "iconKey", "status", "enabled", "canCreateStructure", "hasGlobalLevel", "candidates"],
+      "additionalProperties": false
+    },
+    "ProviderListResponse": {
+      "title": "ProviderListResponse",
+      "description": "List of all registered providers in the registry. Errors: database_error (1004) if DB unavailable.",
+      "type": "object",
+      "properties": {
+        "providers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProviderListProvider" },
+          "description": "All built-in providers ordered by registry insertion order"
+        }
+      },
+      "required": ["providers"],
+      "additionalProperties": false
+    }
+  }
+}

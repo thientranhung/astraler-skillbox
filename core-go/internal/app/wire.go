@@ -25,6 +25,7 @@ func New(
 	projectSvc *services.ProjectService,
 	dashboardSvc *services.DashboardService,
 	globalSvc *services.GlobalSkillsService,
+	providerRegistrySvc *services.ProviderRegistryService,
 ) *App {
 	a := &App{
 		methods: handler.Map{
@@ -45,6 +46,7 @@ func New(
 			"dashboard.get":    rpchandlers.NewDashboardGetHandler(dashboardSvc),
 			"global.scan":      rpchandlers.NewGlobalScanHandler(globalSvc),
 			"global.list":      rpchandlers.NewGlobalListHandler(globalSvc),
+			"provider.list":    rpchandlers.NewProviderListHandler(providerRegistrySvc),
 		},
 	}
 	return a

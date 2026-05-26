@@ -40,8 +40,8 @@ func TestMigration000002_Seed(t *testing.T) {
 	`).Scan(&candCount); err != nil {
 		t.Fatalf("provider_path_candidates query: %v", err)
 	}
-	if candCount != 2 {
-		t.Errorf("generic_agents candidate row count: got %d want 2", candCount)
+	if candCount != 4 {
+		t.Errorf("generic_agents candidate row count: got %d want 4 (2 project + 2 global from migration 009)", candCount)
 	}
 
 	var detectCount int

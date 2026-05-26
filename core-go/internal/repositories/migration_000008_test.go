@@ -30,8 +30,8 @@ func TestMigration000008_CleansProviderDisplayNames(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id = 1`).Scan(&dbVersion); err != nil {
 		t.Fatalf("select database version: %v", err)
 	}
-	if dbVersion != 8 {
-		t.Errorf("database_version: got %d want 8", dbVersion)
+	if dbVersion != 9 {
+		t.Errorf("database_version: got %d want 9", dbVersion)
 	}
 }
 
