@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, within, cleanup } from "@testing-library/react";
 import React from "react";
 
 vi.mock("../../features/dashboard/use-dashboard.js", () => ({
@@ -38,6 +38,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockUseNavigate.mockReturnValue(vi.fn());
 });
+
+afterEach(() => cleanup());
 
 describe("DashboardScreen", () => {
   it("shows spinner when loading", () => {
@@ -100,7 +102,9 @@ describe("DashboardScreen", () => {
     expect(within(summarySection).getByText("2")).not.toBeNull(); // warnings
   });
 
-  it("shows 'Not in this slice' placeholders for global skills and updates", () => {
+  it("opens global view from summary and keeps updates disabled", () => {
+    const mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
     mockUseDashboard.mockReturnValue({
       isPending: false,
       isError: false,
@@ -109,9 +113,26 @@ describe("DashboardScreen", () => {
     });
 
     render(<DashboardScreen />);
-    // Two muted placeholders: "Global Skills" and "Updates" rows
-    const placeholders = screen.getAllByText("Not in this slice");
-    expect(placeholders.length).toBeGreaterThanOrEqual(2);
+    fireEvent.click(screen.getByRole("button", { name: /Global Skills Open global view/i }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/global" });
+    expect(screen.getByText("Not in this slice")).toBeTruthy();
+  });
+
+  it("navigates to skills and projects from summary rows", () => {
+    const mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseDashboard.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: baseData,
+      refetch: vi.fn(),
+    });
+
+    render(<DashboardScreen />);
+    fireEvent.click(screen.getByRole("button", { name: /^Skills 5$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Projects 3$/i }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/skills" });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/projects" });
   });
 
   it("shows zero-data CTA when projects === 0", () => {
@@ -157,7 +178,9 @@ describe("DashboardScreen", () => {
     });
 
     render(<DashboardScreen />);
-    const warningBtn = screen.getByRole("button", { name: "error: Install broken" });
+    expect(screen.getByText("Project warning")).toBeTruthy();
+    expect(screen.getByText("install_broken")).toBeTruthy();
+    const warningBtn = screen.getByRole("button", { name: "Open" });
     fireEvent.click(warningBtn);
     expect(mockNavigate).toHaveBeenCalledWith({
       to: "/projects/$projectId",

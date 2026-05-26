@@ -110,6 +110,26 @@ describe("GlobalSkillsScreen", () => {
     expect(screen.getByText("Location missing")).toBeTruthy();
   });
 
+  it("explains read-only global warnings and shows warning metadata", () => {
+    const loc = makeLocation({
+      warnings: [{
+        code: "global_provider_location_missing",
+        severity: "warning",
+        scopeType: "global_provider_location",
+        scopeId: 1,
+        actionKey: null,
+        message: "~/.agents/skills directory not found",
+      }],
+    });
+    mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc] } });
+
+    render(<GlobalSkillsScreen />);
+    expect(screen.getByText(/Read-only scan of global provider folders/i)).toBeTruthy();
+    expect(screen.getByText("warning")).toBeTruthy();
+    expect(screen.getByText("global_provider_location_missing")).toBeTruthy();
+    expect(screen.getByText("~/.agents/skills")).toBeTruthy();
+  });
+
   it("Open Folder button calls methods.openPath with location skillsPath", () => {
     const loc = makeLocation({ path: "/Users/test/.agents" });
     mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc] } });

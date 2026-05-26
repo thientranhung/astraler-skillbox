@@ -2,10 +2,59 @@ import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useDashboard } from "../features/dashboard/use-dashboard.js";
 import { ErrorDisplay } from "../components/error-display.js";
+import type { DashboardGetWarning } from "@contracts/index.js";
+
+const WARNING_SEVERITY_CLASS: Record<DashboardGetWarning["severity"], string> = {
+  info: "bg-blue-100 text-blue-700",
+  warning: "bg-yellow-100 text-yellow-700",
+  error: "bg-red-100 text-red-700",
+  blocking: "bg-red-100 text-red-800",
+};
+
+function scopeLabel(scopeType: DashboardGetWarning["scopeType"]): string {
+  switch (scopeType) {
+    case "project": return "Project warning";
+    case "skill_host_folder": return "Skill Host";
+    case "project_provider": return "Project provider";
+    case "install": return "Project skill";
+    default: return scopeType.replaceAll("_", " ");
+  }
+}
 
 export function DashboardScreen(): React.JSX.Element {
   const navigate = useNavigate();
   const { data, isPending, isError, error, refetch } = useDashboard();
+  const warningsRef = React.useRef<HTMLElement | null>(null);
+
+  function scrollToWarnings(): void {
+    warningsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function navigateForWarning(warning: DashboardGetWarning): void {
+    if (warning.scopeType === "project" && warning.scopeId != null) {
+      navigate({
+        to: "/projects/$projectId",
+        params: { projectId: String(warning.scopeId) },
+      });
+      return;
+    }
+    if (warning.scopeType === "skill" && warning.scopeId != null) {
+      navigate({
+        to: "/skills/$skillId",
+        params: { skillId: String(warning.scopeId) },
+      });
+      return;
+    }
+    if (warning.scopeType === "skill_host_folder") {
+      navigate({ to: "/skills" });
+      return;
+    }
+    if (warning.scopeType === "project_provider" || warning.scopeType === "install") {
+      navigate({ to: "/projects" });
+      return;
+    }
+    scrollToWarnings();
+  }
 
   if (isPending) {
     return (
@@ -72,22 +121,38 @@ export function DashboardScreen(): React.JSX.Element {
       <section>
         <h2 className="text-base font-semibold text-zinc-900">Summary</h2>
         <div className="mt-2 divide-y divide-zinc-100 rounded border border-zinc-200">
-          <div className="flex items-center justify-between px-4 py-3">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/skills" })}
+            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+          >
             <span className="text-sm font-medium text-zinc-700">Skills</span>
             <span className="text-sm text-zinc-500">{data.summary.skills}</span>
-          </div>
-          <div className="flex items-center justify-between px-4 py-3">
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/projects" })}
+            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+          >
             <span className="text-sm font-medium text-zinc-700">Projects</span>
             <span className="text-sm text-zinc-500">{data.summary.projects}</span>
-          </div>
-          <div className="flex items-center justify-between px-4 py-3">
+          </button>
+          <button
+            type="button"
+            onClick={scrollToWarnings}
+            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+          >
             <span className="text-sm font-medium text-zinc-700">Warnings</span>
             <span className="text-sm text-zinc-500">{data.summary.warnings}</span>
-          </div>
-          <div className="flex items-center justify-between px-4 py-3">
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/global" })}
+            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+          >
             <span className="text-sm font-medium text-zinc-700">Global Skills</span>
-            <span className="text-xs text-zinc-400">Not in this slice</span>
-          </div>
+            <span className="text-xs text-zinc-500">Open global view</span>
+          </button>
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm font-medium text-zinc-700">Updates</span>
             <span className="text-xs text-zinc-400">Not in this slice</span>
@@ -133,31 +198,36 @@ export function DashboardScreen(): React.JSX.Element {
       )}
 
       {/* Warnings */}
-      <section>
+      <section ref={warningsRef}>
         <h2 className="text-base font-semibold text-zinc-900">Warnings</h2>
+        <p className="mt-1 text-xs text-zinc-400">
+          Warnings point to places Skillbox could not read, classify, or validate during the last scan.
+        </p>
         <div className="mt-2">
           {data.warnings.length === 0 ? (
             <p className="text-sm text-zinc-500">No active warnings</p>
           ) : (
             <div className="divide-y divide-zinc-100 rounded border border-zinc-200">
               {data.warnings.map((w) => (
-                <div key={`${w.scopeType}-${String(w.scopeId)}-${w.code}`} className="px-4 py-3">
-                  {w.scopeType === "project" && w.scopeId != null ? (
-                    <button
-                      onClick={() =>
-                        navigate({
-                          to: "/projects/$projectId",
-                          params: { projectId: String(w.scopeId) },
-                        })
-                      }
-                      className="text-left text-sm text-zinc-700 hover:text-zinc-900"
-                    >
-                      {w.severity}: {w.message}
-                    </button>
-                  ) : (
-                    <div className="text-sm text-zinc-700">
-                      {w.severity}: {w.message}
+                <div key={`${w.scopeType}-${String(w.scopeId)}-${w.code}`} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <div>
+                    <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                      <span className={`rounded px-1.5 py-0.5 text-xs font-medium uppercase ${WARNING_SEVERITY_CLASS[w.severity] ?? WARNING_SEVERITY_CLASS.warning}`}>
+                        {w.severity}
+                      </span>
+                      <span className="text-xs font-medium text-zinc-500">{scopeLabel(w.scopeType)}</span>
+                      <span className="font-mono text-[11px] text-zinc-400">{w.code}</span>
                     </div>
+                    <p className="text-sm text-zinc-700">{w.message}</p>
+                  </div>
+                  {(w.scopeId != null || w.scopeType === "skill_host_folder" || w.scopeType === "project_provider" || w.scopeType === "install") && (
+                    <button
+                      type="button"
+                      onClick={() => navigateForWarning(w)}
+                      className="shrink-0 rounded border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+                    >
+                      Open
+                    </button>
                   )}
                 </div>
               ))}

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertTriangle, AlertCircle, Info, PlusCircle } from "lucide-react";
+import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertTriangle, AlertCircle, Info, PlusCircle, Copy, Check, Eye, EyeOff } from "lucide-react";
 import { useProjectDetail } from "../features/projects/use-project-detail.js";
 import { useScanProject } from "../features/projects/use-scan-project.js";
 import { useOpenProjectFolder } from "../features/projects/use-open-project-folder.js";
@@ -14,13 +14,13 @@ import { useActiveHostSkills } from "../features/skills/use-active-host-skills.j
 import { ErrorDisplay } from "../components/error-display.js";
 import type { ProjectGetEntry, ProjectGetWarning, ProjectGetProvider } from "@contracts/index.js";
 
-const ENTRY_STATUS_CONFIG: Record<ProjectGetEntry["status"], { label: string; cls: string }> = {
-  current: { label: "Current", cls: "bg-green-100 text-green-800" },
-  old_host: { label: "Old Host", cls: "bg-yellow-100 text-yellow-700" },
-  external_symlink: { label: "External", cls: "bg-yellow-100 text-yellow-700" },
-  broken_symlink: { label: "Broken", cls: "bg-red-100 text-red-800" },
-  missing: { label: "Missing", cls: "bg-red-100 text-red-800" },
-  error: { label: "Error", cls: "bg-red-100 text-red-800" },
+const ENTRY_STATUS_CONFIG: Record<ProjectGetEntry["status"], { label: string; description: string; cls: string }> = {
+  current: { label: "Linked to active host", description: "This project entry points to the active Skill Host copy.", cls: "bg-green-100 text-green-800" },
+  old_host: { label: "Linked to old host", description: "The entry points to a previous Skill Host folder.", cls: "bg-yellow-100 text-yellow-700" },
+  external_symlink: { label: "Points outside host", description: "The symlink target is outside the active Skill Host folder.", cls: "bg-yellow-100 text-yellow-700" },
+  broken_symlink: { label: "Broken link", description: "The symlink target no longer exists.", cls: "bg-red-100 text-red-800" },
+  missing: { label: "Missing from disk", description: "Skillbox has a record for this entry, but it was not found during the last scan.", cls: "bg-red-100 text-red-800" },
+  error: { label: "Needs attention", description: "Skillbox could not classify this entry cleanly.", cls: "bg-red-100 text-red-800" },
 };
 
 const WARNING_CONFIG: Record<
@@ -39,17 +39,20 @@ const DETECTION_CLS: Record<ProjectGetProvider["detectionStatus"], string> = {
   invalid_structure: "bg-yellow-100 text-yellow-700",
 };
 
-const PROVIDER_STATUS_CLS: Record<ProjectGetProvider["providerStatus"], string> = {
-  supported: "bg-green-100 text-green-800",
-  experimental: "bg-yellow-100 text-yellow-700",
-  unsupported: "bg-zinc-100 text-zinc-500",
-  disabled: "bg-zinc-100 text-zinc-400",
+const PROVIDER_STATUS_CONFIG: Record<ProjectGetProvider["providerStatus"], { label: string; description: string; cls: string }> = {
+  supported: { label: "Ready", description: "Skillbox can manage this provider with the current feature set.", cls: "bg-green-100 text-green-800" },
+  experimental: { label: "Preview", description: "This provider is available, but behavior may still change.", cls: "bg-yellow-100 text-yellow-700" },
+  unsupported: { label: "Not supported", description: "Skillbox can display this provider but cannot manage it yet.", cls: "bg-zinc-100 text-zinc-500" },
+  disabled: { label: "Disabled", description: "This provider is currently turned off.", cls: "bg-zinc-100 text-zinc-400" },
 };
 
 function EntryStatusBadge({ status }: { status: ProjectGetEntry["status"] }): React.JSX.Element {
   const cfg = ENTRY_STATUS_CONFIG[status] ?? ENTRY_STATUS_CONFIG.error;
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${cfg.cls}`}>
+    <span
+      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${cfg.cls}`}
+      title={`${cfg.description} Raw status: ${status}`}
+    >
       {cfg.label}
     </span>
   );
@@ -73,6 +76,7 @@ function WarningBanner({ warning }: { warning: ProjectGetWarning }): React.JSX.E
 }
 
 function ProviderRow({ provider }: { provider: ProjectGetProvider }): React.JSX.Element {
+  const providerStatus = PROVIDER_STATUS_CONFIG[provider.providerStatus] ?? PROVIDER_STATUS_CONFIG.unsupported;
   return (
     <tr className="border-b border-zinc-100 hover:bg-zinc-50">
       <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{provider.displayName}</td>
@@ -82,15 +86,77 @@ function ProviderRow({ provider }: { provider: ProjectGetProvider }): React.JSX.
         </span>
       </td>
       <td className="px-3 py-1.5 text-xs">
-        <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium ${PROVIDER_STATUS_CLS[provider.providerStatus] ?? PROVIDER_STATUS_CLS.unsupported}`}>
-          {provider.providerStatus}
-        </span>
+        <div className="flex flex-col gap-0.5">
+          <span
+            className={`inline-flex w-fit items-center rounded px-1.5 py-0.5 font-medium ${providerStatus.cls}`}
+            title={`Raw status: ${provider.providerStatus}`}
+          >
+            {providerStatus.label}
+          </span>
+          <span className="text-[11px] leading-tight text-zinc-400">{providerStatus.description}</span>
+        </div>
       </td>
       <td className="max-w-xs truncate px-3 py-1.5 font-mono text-xs text-zinc-400" title={provider.detectedPath ?? undefined}>
         {provider.detectedPath ?? "—"}
       </td>
       <td className="px-3 py-1.5 text-xs text-zinc-500">{provider.entryCount}</td>
     </tr>
+  );
+}
+
+function PathCell({
+  value,
+  label,
+}: {
+  value: string | null;
+  label: string;
+}): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  if (value == null || value === "") {
+    return <span className="text-zinc-400">—</span>;
+  }
+
+  async function copyPath(): Promise<void> {
+    if (value == null) return;
+    if (navigator.clipboard == null) return;
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  }
+
+  return (
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-1">
+        <span className="truncate font-mono text-xs text-zinc-500" title={value}>
+          {value}
+        </span>
+        <button
+          type="button"
+          onClick={() => setExpanded((next) => !next)}
+          aria-label={`${expanded ? "Hide" : "Show"} full ${label}`}
+          title={`${expanded ? "Hide" : "Show"} full ${label}`}
+          className="shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+        >
+          {expanded ? <EyeOff size={12} /> : <Eye size={12} />}
+        </button>
+        <button
+          type="button"
+          onClick={() => void copyPath()}
+          aria-label={`Copy ${label}`}
+          title={`Copy ${label}`}
+          className="shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+        </button>
+      </div>
+      {expanded && (
+        <div className="mt-1 break-all rounded bg-zinc-50 px-2 py-1 font-mono text-[11px] leading-snug text-zinc-600">
+          {value}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -117,11 +183,11 @@ function EntryRow({
       <td className="px-3 py-1.5 text-xs">
         <EntryStatusBadge status={entry.status} />
       </td>
-      <td className="max-w-xs truncate px-3 py-1.5 font-mono text-xs text-zinc-400" title={entry.projectSkillPath}>
-        {entry.projectSkillPath}
+      <td className="max-w-sm px-3 py-1.5 text-xs">
+        <PathCell value={entry.projectSkillPath} label="project skill path" />
       </td>
-      <td className="max-w-xs truncate px-3 py-1.5 font-mono text-xs text-zinc-400" title={entry.symlinkTargetPath ?? undefined}>
-        {entry.symlinkTargetPath ?? "—"}
+      <td className="max-w-sm px-3 py-1.5 text-xs">
+        <PathCell value={entry.symlinkTargetPath} label="symlink target path" />
       </td>
       <td className="px-3 py-1.5 text-xs text-zinc-400">{entry.skillId ?? "—"}</td>
       <td className="px-3 py-1.5 text-xs">
@@ -153,11 +219,24 @@ export function ProjectDetailScreen(): React.JSX.Element {
   const [removeTarget, setRemoveTarget] = useState<ProjectGetEntry | null>(null);
   const activeHostSkills = useActiveHostSkills();
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [selectedProviderId, setSelectedProviderId] = useState<"all" | number>("all");
 
   const providerDisplayNameFor = (entry: ProjectGetEntry): string => {
     const match = data?.providers.find((p) => p.projectProviderId === entry.projectProviderId);
     return match?.displayName ?? entry.providerKey;
   };
+
+  const filteredEntries =
+    data == null || selectedProviderId === "all"
+      ? data?.entries ?? []
+      : data.entries.filter((entry) => entry.projectProviderId === selectedProviderId);
+
+  React.useEffect(() => {
+    if (selectedProviderId === "all" || data == null) return;
+    if (!data.providers.some((provider) => provider.projectProviderId === selectedProviderId)) {
+      setSelectedProviderId("all");
+    }
+  }, [data, selectedProviderId, validId]);
 
   function confirmRemoveSkill(): void {
     if (removeTarget == null || validId == null) return;
@@ -320,13 +399,48 @@ export function ProjectDetailScreen(): React.JSX.Element {
                 Skill Entries
                 {data.entries.length > 0 && (
                   <span className="ml-1 font-normal normal-case text-zinc-400">
-                    ({data.entries.length})
+                    ({filteredEntries.length} of {data.entries.length})
                   </span>
                 )}
               </h3>
+              {data.providers.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProviderId("all")}
+                    className={`rounded border px-2 py-1 text-xs font-medium ${
+                      selectedProviderId === "all"
+                        ? "border-zinc-700 bg-zinc-900 text-white"
+                        : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                    }`}
+                  >
+                    All providers
+                    <span className="ml-1 opacity-70">{data.entries.length}</span>
+                  </button>
+                  {data.providers.map((provider) => (
+                    <button
+                      key={provider.projectProviderId}
+                      type="button"
+                      onClick={() => setSelectedProviderId(provider.projectProviderId)}
+                      className={`rounded border px-2 py-1 text-xs font-medium ${
+                        selectedProviderId === provider.projectProviderId
+                          ? "border-zinc-700 bg-zinc-900 text-white"
+                          : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                      }`}
+                    >
+                      {provider.displayName}
+                      <span className="ml-1 opacity-70">{provider.entryCount}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {data.entries.length === 0 ? (
                 <p className="text-xs text-zinc-400">
                   No skill entries observed. Run a scan to populate entries.
+                </p>
+              ) : filteredEntries.length === 0 ? (
+                <p className="text-xs text-zinc-400">
+                  No skill entries for this provider.
                 </p>
               ) : (
                 <div className="overflow-x-auto rounded border border-zinc-200">
@@ -344,7 +458,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.entries.map((entry) => (
+                      {filteredEntries.map((entry) => (
                         <EntryRow
                           key={entry.id}
                           entry={entry}
