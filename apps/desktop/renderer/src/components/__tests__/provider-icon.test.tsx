@@ -8,8 +8,9 @@ describe("ProviderIcon", () => {
   it("renders a brand SVG asset for known brand providers", () => {
     const { container } = render(<ProviderIcon providerKey="claude" />);
 
-    expect(container.querySelector("img")).not.toBeNull();
-    expect(container.querySelector("svg")).toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("svg")).not.toBeNull();
+    expect(container.innerHTML).toContain("Claude");
   });
 
   it("renders the generic agent fallback for generic_agents", () => {
