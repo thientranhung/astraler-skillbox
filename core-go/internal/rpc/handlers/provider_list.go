@@ -50,12 +50,16 @@ func NewProviderListHandler(svc providerRegistryService) jrpc2.Handler {
 			d := e.Definition
 			candidates := make([]providerListPathCandidate, len(e.Candidates))
 			for j, c := range e.Candidates {
+				source := c.Source
+				if source == "" {
+					source = "builtin"
+				}
 				candidates[j] = providerListPathCandidate{
 					RelativePath:       c.RelativePath,
 					Scope:              c.Scope,
 					Purpose:            c.Purpose,
 					Priority:           c.Priority,
-					Source:             "builtin",
+					Source:             source,
 					VerificationStatus: c.VerificationStatus,
 				}
 			}

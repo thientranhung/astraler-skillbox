@@ -1,6 +1,14 @@
 package handlers
 
-import "time"
+import (
+	"time"
+
+	"github.com/astraler/skillbox/core-go/internal/domain"
+)
+
+func newValidationError(detail string) error {
+	return domain.NewValidationError(detail, detail)
+}
 
 func formatTimePtr(t *time.Time) *string {
 	if t == nil {
