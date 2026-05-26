@@ -46,9 +46,10 @@ func New(
 			"dashboard.get":    rpchandlers.NewDashboardGetHandler(dashboardSvc),
 			"global.scan":      rpchandlers.NewGlobalScanHandler(globalSvc),
 			"global.list":      rpchandlers.NewGlobalListHandler(globalSvc),
-			"provider.list":        rpchandlers.NewProviderListHandler(providerRegistrySvc),
+			"provider.list":       rpchandlers.NewProviderListHandler(providerRegistrySvc),
 			"provider.updatePaths": rpchandlers.NewProviderUpdatePathsHandler(providerRegistrySvc),
 			"provider.resetPaths":  rpchandlers.NewProviderResetPathsHandler(providerRegistrySvc),
+			"provider.setEnabled":  rpchandlers.NewProviderSetEnabledHandler(providerRegistrySvc),
 		},
 	}
 	return a

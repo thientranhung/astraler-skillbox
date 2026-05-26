@@ -79,7 +79,15 @@
         },
         "isAvailable": {
           "type": "boolean",
-          "description": "Whether this provider is available for use. Derived from support status: true for supported/experimental, false for unsupported/disabled. Not a user preference — override storage is deferred."
+          "description": "Whether this provider is available based on Skillbox support level. True for supported/experimental, false for unsupported/disabled. Reflects capability, not user preference."
+        },
+        "isEnabled": {
+          "type": "boolean",
+          "description": "Effective user preference: true if the user has enabled this provider (or if no preference is set and it is supported/experimental). False if explicitly disabled or status is unsupported/disabled."
+        },
+        "canToggle": {
+          "type": "boolean",
+          "description": "Whether the user can toggle this provider on or off. True for supported and experimental providers; false for unsupported and disabled providers."
         },
         "canCreateStructure": {
           "type": "boolean",
@@ -95,7 +103,7 @@
           "description": "All path candidates for this provider, ordered by priority descending"
         }
       },
-      "required": ["key", "displayName", "providerType", "iconKey", "status", "isAvailable", "canCreateStructure", "hasGlobalLevel", "candidates"],
+      "required": ["key", "displayName", "providerType", "iconKey", "status", "isAvailable", "isEnabled", "canToggle", "canCreateStructure", "hasGlobalLevel", "candidates"],
       "additionalProperties": false
     },
     "ProviderListResponse": {

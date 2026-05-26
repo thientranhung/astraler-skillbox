@@ -88,9 +88,22 @@ type ProviderPathOverride struct {
 	Paths                []string
 }
 
+// ProviderUserSetting stores the user's explicit enabled/disabled preference for a provider.
+// Absence of a row means default (derived from provider status).
+type ProviderUserSetting struct {
+	ID                   int64
+	ProviderDefinitionID int64
+	Enabled              bool
+}
+
 // ProviderRegistryEntry is the full read-only view of a provider definition with
-// its path candidates. Used by provider.list.
+// its path candidates and computed user preference fields. Used by provider.list.
 type ProviderRegistryEntry struct {
 	Definition ProviderDefinition
 	Candidates []ProviderPathCandidate
+	// IsEnabled reflects the effective enabled state: user setting if present, else
+	// default derived from status (supported/experimental → true, otherwise → false).
+	IsEnabled bool
+	// CanToggle is true for supported and experimental providers; false for unsupported/disabled.
+	CanToggle bool
 }

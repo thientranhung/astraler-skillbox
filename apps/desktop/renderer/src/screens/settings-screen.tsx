@@ -5,6 +5,7 @@ import { useAppSettings } from "../features/app-settings/use-app-settings.js";
 import { useChooseHost } from "../features/skill-host/use-choose-host.js";
 import { useProviderList } from "../features/providers/use-provider-list.js";
 import { useResetProviderPaths } from "../features/providers/use-reset-provider-paths.js";
+import { useSetProviderEnabled } from "../features/providers/use-set-provider-enabled.js";
 import { ProviderPathsEditor } from "../features/providers/provider-paths-editor.js";
 import { methods } from "../lib/core-client/methods.js";
 import { ErrorDisplay } from "../components/error-display.js";
@@ -111,6 +112,55 @@ function SlotCell({
   );
 }
 
+function EnableToggle({
+  providerKey,
+  isEnabled,
+  canToggle,
+}: {
+  providerKey: string;
+  isEnabled: boolean;
+  canToggle: boolean;
+}): React.JSX.Element {
+  const setEnabledMutation = useSetProviderEnabled();
+
+  if (!canToggle) {
+    return (
+      <div
+        className="inline-flex h-5 w-9 cursor-not-allowed items-center rounded-full bg-zinc-200 opacity-50"
+        aria-label="Provider cannot be toggled"
+        role="switch"
+        aria-checked={false}
+        aria-disabled="true"
+      >
+        <span className="inline-block h-3.5 w-3.5 translate-x-0.5 rounded-full bg-white shadow" />
+      </div>
+    );
+  }
+
+  function handleToggle(): void {
+    setEnabledMutation.mutate({ providerKey, enabled: !isEnabled });
+  }
+
+  return (
+    <button
+      role="switch"
+      aria-checked={isEnabled}
+      aria-label={isEnabled ? "Disable provider" : "Enable provider"}
+      onClick={handleToggle}
+      disabled={setEnabledMutation.isPending}
+      className={`inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
+        isEnabled ? "bg-green-500" : "bg-zinc-300"
+      }`}
+    >
+      <span
+        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+          isEnabled ? "translate-x-4" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
 function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JSX.Element {
   const [editSlot, setEditSlot] = useState<{
     scope: "project" | "global";
@@ -144,6 +194,13 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
         <td className="px-3 py-2 font-mono text-zinc-500">{provider.key}</td>
         <td className="px-3 py-2">
           <ProviderStatusBadge status={provider.status} />
+        </td>
+        <td className="px-3 py-2">
+          <EnableToggle
+            providerKey={provider.key}
+            isEnabled={provider.isEnabled}
+            canToggle={provider.canToggle}
+          />
         </td>
         <td className="px-3 py-2">
           <SlotCell
@@ -283,6 +340,7 @@ export function SettingsScreen(): React.JSX.Element {
                 <th className="px-3 py-2 font-medium">Provider</th>
                 <th className="px-3 py-2 font-medium">Key</th>
                 <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium">Enabled</th>
                 <th className="px-3 py-2 font-medium">Project detect</th>
                 <th className="px-3 py-2 font-medium">Project skills</th>
                 <th className="px-3 py-2 font-medium">Global skills</th>
@@ -294,7 +352,7 @@ export function SettingsScreen(): React.JSX.Element {
               ))}
               {(providerData?.providers ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-4 text-center text-zinc-400">
+                  <td colSpan={7} className="px-3 py-4 text-center text-zinc-400">
                     Loading providers…
                   </td>
                 </tr>

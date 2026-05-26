@@ -30,6 +30,9 @@ vi.mock("../../features/providers/provider-paths-editor.js", () => ({
 vi.mock("../../features/providers/use-reset-provider-paths.js", () => ({
   useResetProviderPaths: vi.fn(),
 }));
+vi.mock("../../features/providers/use-set-provider-enabled.js", () => ({
+  useSetProviderEnabled: vi.fn(),
+}));
 
 import { SettingsScreen } from "../settings-screen.js";
 import { useAppSettings } from "../../features/app-settings/use-app-settings.js";
@@ -37,12 +40,14 @@ import { useChooseHost } from "../../features/skill-host/use-choose-host.js";
 import { useProviderList } from "../../features/providers/use-provider-list.js";
 import { useNavigate } from "@tanstack/react-router";
 import { useResetProviderPaths } from "../../features/providers/use-reset-provider-paths.js";
+import { useSetProviderEnabled } from "../../features/providers/use-set-provider-enabled.js";
 
 const mockUseAppSettings = useAppSettings as ReturnType<typeof vi.fn>;
 const mockUseChooseHost = useChooseHost as ReturnType<typeof vi.fn>;
 const mockUseProviderList = useProviderList as ReturnType<typeof vi.fn>;
 const mockUseNavigate = useNavigate as ReturnType<typeof vi.fn>;
 const mockUseResetProviderPaths = useResetProviderPaths as ReturnType<typeof vi.fn>;
+const mockUseSetProviderEnabled = useSetProviderEnabled as ReturnType<typeof vi.fn>;
 
 const baseSettings = {
   activeSkillHostFolderId: 1,
@@ -64,6 +69,8 @@ const makeProvider = (overrides = {}) => ({
   iconKey: "generic_agents",
   status: "supported" as const,
   isAvailable: true,
+  isEnabled: true,
+  canToggle: true,
   canCreateStructure: false,
   hasGlobalLevel: true,
   candidates: [
@@ -79,6 +86,7 @@ beforeEach(() => {
   mockUseNavigate.mockReturnValue(vi.fn());
   mockUseChooseHost.mockReturnValue({ isPending: false, mutate: vi.fn(), error: null });
   mockUseResetProviderPaths.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  mockUseSetProviderEnabled.mockReturnValue({ mutate: vi.fn(), isPending: false });
 });
 
 afterEach(() => cleanup());
@@ -223,5 +231,42 @@ describe("SettingsScreen", () => {
     });
     render(<SettingsScreen />);
     expect(screen.getByRole("button", { name: /reset/i })).not.toBeNull();
+  });
+
+  it("renders enabled toggle switch for supported provider", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({
+      data: { providers: [makeProvider({ isEnabled: true, canToggle: true })] },
+    });
+    render(<SettingsScreen />);
+    const toggle = screen.getByRole("switch", { name: /disable provider/i });
+    expect(toggle).not.toBeNull();
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("renders disabled non-interactive toggle for unsupported provider", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({
+      data: {
+        providers: [makeProvider({ key: "opencode", displayName: "OpenCode", status: "unsupported", isAvailable: false, isEnabled: false, canToggle: false, hasGlobalLevel: false, candidates: [] })],
+      },
+    });
+    render(<SettingsScreen />);
+    const toggle = screen.getByRole("switch", { name: /cannot be toggled/i });
+    expect(toggle).not.toBeNull();
+    expect(toggle.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("calls setProviderEnabled when toggle clicked", () => {
+    const mutateFn = vi.fn();
+    mockUseSetProviderEnabled.mockReturnValue({ mutate: mutateFn, isPending: false });
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({
+      data: { providers: [makeProvider({ isEnabled: true, canToggle: true })] },
+    });
+    render(<SettingsScreen />);
+    const toggle = screen.getByRole("switch", { name: /disable provider/i });
+    fireEvent.click(toggle);
+    expect(mutateFn).toHaveBeenCalledWith({ providerKey: "generic_agents", enabled: false });
   });
 });

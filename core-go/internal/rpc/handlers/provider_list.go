@@ -29,6 +29,8 @@ type providerListProvider struct {
 	IconKey            *string                     `json:"iconKey"`
 	Status             string                      `json:"status"`
 	IsAvailable        bool                        `json:"isAvailable"`
+	IsEnabled          bool                        `json:"isEnabled"`
+	CanToggle          bool                        `json:"canToggle"`
 	CanCreateStructure bool                        `json:"canCreateStructure"`
 	HasGlobalLevel     bool                        `json:"hasGlobalLevel"`
 	Candidates         []providerListPathCandidate `json:"candidates"`
@@ -70,6 +72,8 @@ func NewProviderListHandler(svc providerRegistryService) jrpc2.Handler {
 				IconKey:            d.IconKey,
 				Status:             string(d.Status),
 				IsAvailable:        deriveIsAvailable(d.Status),
+				IsEnabled:          e.IsEnabled,
+				CanToggle:          e.CanToggle,
 				CanCreateStructure: d.CanCreateStructure,
 				HasGlobalLevel:     d.HasGlobalLevel,
 				Candidates:         candidates,

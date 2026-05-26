@@ -126,6 +126,14 @@ type ProviderRegistryRepo interface {
 	GetByKey(ctx context.Context, key string) (*domain.ProviderDefinition, error)
 }
 
+// ProviderUserSettingsRepo stores user enablement preferences for built-in providers.
+// A missing row means the default (supported/experimental → enabled, otherwise → disabled).
+// *repositories.ProviderUserSettingsRepo satisfies this interface.
+type ProviderUserSettingsRepo interface {
+	ListAll(ctx context.Context) ([]domain.ProviderUserSetting, error)
+	Upsert(ctx context.Context, providerDefinitionID int64, enabled bool) error
+}
+
 // ProviderOverrideRepo stores user path overrides for built-in providers.
 // *repositories.ProviderOverrideRepo satisfies this interface.
 type ProviderOverrideRepo interface {
