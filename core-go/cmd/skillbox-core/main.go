@@ -88,6 +88,7 @@ func main() {
 
 	providerPluginRepo := repositories.NewProviderPluginRepo(db)
 	providerPluginSvc := services.NewProviderPluginService(providerPluginRepo, pdRepo, projectRepo, providerRegistrySvc, runner)
+	projectSvc.WithPluginDeps(providerPluginSvc, providerPluginSvc)
 
 	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc, providerPluginSvc)
 
