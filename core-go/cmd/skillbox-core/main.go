@@ -77,16 +77,14 @@ func main() {
 		WithProviderDeps(providerRegistry, pdRepo, hostRepo, skillRepo).
 		WithInstallDeps(fs, hostRepo, skillRepo).
 		WithRemoveDeps(fs, installRepo).
-		WithPathResolver(providerRegistrySvc).
-		WithEnablementResolver(providerRegistrySvc)
+		WithPathResolver(providerRegistrySvc)
 
 	dashboardSvc := services.NewDashboardService(appSettingsRepo, hostRepo, skillRepo, projectRepo, installRepo, warningRepo)
 
 	globalScanRepo := repositories.NewGlobalScanRepo(db)
 	globalLocationRepo := repositories.NewGlobalLocationRepo(db)
 	globalSvc := services.NewGlobalSkillsService(globalLocationRepo, globalScanRepo, appSettingsRepo, hostRepo, skillRepo, providerRegistry, fs, runner).
-		WithGlobalPathResolver(providerRegistrySvc).
-		WithEnablementResolver(providerRegistrySvc)
+		WithGlobalPathResolver(providerRegistrySvc)
 
 	providerPluginRepo := repositories.NewProviderPluginRepo(db)
 	providerPluginSvc := services.NewProviderPluginService(providerPluginRepo, pdRepo, projectRepo, providerRegistrySvc, runner)

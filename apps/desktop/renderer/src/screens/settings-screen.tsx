@@ -5,7 +5,6 @@ import { useAppSettings } from "../features/app-settings/use-app-settings.js";
 import { useChooseHost } from "../features/skill-host/use-choose-host.js";
 import { useProviderList } from "../features/providers/use-provider-list.js";
 import { useResetProviderPaths } from "../features/providers/use-reset-provider-paths.js";
-import { useSetProviderEnabled } from "../features/providers/use-set-provider-enabled.js";
 import { ProviderPathsEditor } from "../features/providers/provider-paths-editor.js";
 import { methods } from "../lib/core-client/methods.js";
 import { ErrorDisplay } from "../components/error-display.js";
@@ -19,29 +18,6 @@ const INSTALL_MODE_LABEL: Record<string, string> = {
   symlink: "Symlink",
   rsync_copy: "Copy (rsync)",
 };
-
-const PROVIDER_STATUS_CONFIG: Record<
-  ProviderListProvider["status"],
-  { label: string; className: string }
-> = {
-  supported: { label: "Supported", className: "bg-green-100 text-green-700" },
-  experimental: { label: "Experimental", className: "bg-yellow-100 text-yellow-700" },
-  unsupported: { label: "Unsupported", className: "bg-zinc-100 text-zinc-500" },
-  disabled: { label: "Disabled", className: "bg-zinc-100 text-zinc-400" },
-};
-
-function ProviderStatusBadge({
-  status,
-}: {
-  status: ProviderListProvider["status"];
-}): React.JSX.Element {
-  const cfg = PROVIDER_STATUS_CONFIG[status] ?? PROVIDER_STATUS_CONFIG.unsupported;
-  return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${cfg.className}`}>
-      {cfg.label}
-    </span>
-  );
-}
 
 function hasOverride(provider: ProviderListProvider): boolean {
   return provider.candidates.some((c) => c.source === "override");
@@ -154,55 +130,6 @@ function OptionalSlotCell({
   );
 }
 
-function EnableToggle({
-  providerKey,
-  isEnabled,
-  canToggle,
-}: {
-  providerKey: string;
-  isEnabled: boolean;
-  canToggle: boolean;
-}): React.JSX.Element {
-  const setEnabledMutation = useSetProviderEnabled();
-
-  if (!canToggle) {
-    return (
-      <div
-        className="inline-flex h-5 w-9 cursor-not-allowed items-center rounded-full bg-zinc-200 opacity-50"
-        aria-label="Provider cannot be toggled"
-        role="switch"
-        aria-checked={false}
-        aria-disabled="true"
-      >
-        <span className="inline-block h-3.5 w-3.5 translate-x-0.5 rounded-full bg-white shadow" />
-      </div>
-    );
-  }
-
-  function handleToggle(): void {
-    setEnabledMutation.mutate({ providerKey, enabled: !isEnabled });
-  }
-
-  return (
-    <button
-      role="switch"
-      aria-checked={isEnabled}
-      aria-label={isEnabled ? "Disable provider" : "Enable provider"}
-      onClick={handleToggle}
-      disabled={setEnabledMutation.isPending}
-      className={`inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${
-        isEnabled ? "bg-green-500" : "bg-zinc-300"
-      }`}
-    >
-      <span
-        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
-          isEnabled ? "translate-x-4" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
-}
-
 function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JSX.Element {
   const [editSlot, setEditSlot] = useState<{
     scope: ProviderPathScope;
@@ -223,7 +150,7 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
 
   return (
     <>
-      <tr className={!provider.isAvailable ? "opacity-50" : ""}>
+      <tr>
         <td className="px-3 py-2">
           <div className="flex items-center gap-2">
             <ProviderIcon providerKey={provider.key} iconKey={provider.iconKey} />
@@ -236,16 +163,6 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
           </div>
         </td>
         <td className="px-3 py-2 font-mono text-zinc-500">{provider.key}</td>
-        <td className="px-3 py-2">
-          <ProviderStatusBadge status={provider.status} />
-        </td>
-        <td className="px-3 py-2">
-          <EnableToggle
-            providerKey={provider.key}
-            isEnabled={provider.isEnabled}
-            canToggle={provider.canToggle}
-          />
-        </td>
         <td className="px-3 py-2">
           <SlotCell
             data={projectDetect}
@@ -388,7 +305,7 @@ export function SettingsScreen(): React.JSX.Element {
       <div>
         <h3 className="text-sm font-semibold text-zinc-800">Providers</h3>
         <p className="mt-0.5 text-xs text-zinc-500">
-          Disabled providers are skipped during project scan, global scan, and installs. Overrides replace the built-in path candidates. Reset a slot to return to built-in defaults.
+          Providers are activated by folder presence on disk. Overrides replace the built-in path candidates. Reset a slot to return to built-in defaults.
         </p>
 
         <div className="mt-3 overflow-x-auto rounded border border-zinc-200">
@@ -397,9 +314,7 @@ export function SettingsScreen(): React.JSX.Element {
               <tr className="border-b border-zinc-100 bg-zinc-50 text-left text-zinc-500">
                 <th className="px-3 py-2 font-medium">Provider</th>
                 <th className="px-3 py-2 font-medium">Key</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Enabled</th>
-                <th className="px-3 py-2 font-medium">Project detect</th>
+                <th className="px-3 py-2 font-medium">Provider detection path</th>
                 <th className="px-3 py-2 font-medium">Project skills</th>
                 <th className="px-3 py-2 font-medium">Project config</th>
                 <th className="px-3 py-2 font-medium">Global skills</th>
@@ -412,7 +327,7 @@ export function SettingsScreen(): React.JSX.Element {
               ))}
               {(providerData?.providers ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-4 text-center text-zinc-400">
+                  <td colSpan={7} className="px-3 py-4 text-center text-zinc-400">
                     Loading providers…
                   </td>
                 </tr>

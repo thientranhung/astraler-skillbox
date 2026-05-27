@@ -30,7 +30,6 @@ type GlobalSkillsService struct {
 	fs                 GlobalFilesystem
 	runner             OperationRunner
 	pathResolver       GlobalProviderPathResolver
-	enablementResolver ProviderEnablementResolver
 }
 
 func NewGlobalSkillsService(
@@ -58,12 +57,6 @@ func NewGlobalSkillsService(
 // WithGlobalPathResolver injects an optional path resolver that overrides builtin paths.
 func (s *GlobalSkillsService) WithGlobalPathResolver(r GlobalProviderPathResolver) *GlobalSkillsService {
 	s.pathResolver = r
-	return s
-}
-
-// WithEnablementResolver injects an optional provider enablement resolver.
-func (s *GlobalSkillsService) WithEnablementResolver(r ProviderEnablementResolver) *GlobalSkillsService {
-	s.enablementResolver = r
 	return s
 }
 
@@ -101,15 +94,6 @@ func (s *GlobalSkillsService) scanGlobalInternal(ctx context.Context, progress o
 		}
 	}
 
-	// Resolve provider enablement once per scan.
-	var enabledMap map[string]bool
-	if s.enablementResolver != nil {
-		enabledMap, err = s.enablementResolver.EnabledMap(ctx)
-		if err != nil {
-			return nil, domain.NewDatabaseError("Could not resolve provider enablement", err.Error())
-		}
-	}
-
 	// Build host summaries for classification (active host first).
 	hosts, err := s.hostLister.ListAll(ctx)
 	if err != nil {
@@ -137,17 +121,6 @@ func (s *GlobalSkillsService) scanGlobalInternal(ctx context.Context, progress o
 		if defID == 0 {
 			// Provider not seeded in DB → skip silently.
 			continue
-		}
-
-		// If the provider is disabled, commit a disabled row to clear stale entries.
-		if enabledMap != nil {
-			if enabled, found := enabledMap[adapter.Key()]; found && !enabled {
-				if commitErr := s.scanRepo.CommitGlobalScan(ctx, defID, nil, nil,
-					domain.GlobalLocationStatusDisabled, nil, nil, time.Now().UTC()); commitErr != nil {
-					return nil, domain.NewDatabaseError("Could not commit disabled global scan for "+adapter.Key(), commitErr.Error())
-				}
-				continue
-			}
 		}
 
 		// Resolve effective paths: resolver result ?? adapter defaults.
