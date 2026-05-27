@@ -22,6 +22,10 @@ type pluginProjectRepo interface {
 	GetByID(ctx context.Context, id int64) (*domain.Project, error)
 }
 
+type providerRegistrySvc interface {
+	List(ctx context.Context) ([]domain.ProviderRegistryEntry, error)
+}
+
 // pluginWriterFn is the signature for plugin file writers (JSON and TOML).
 type pluginWriterFn func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error
 
@@ -30,6 +34,7 @@ type ProviderPluginService struct {
 	repo         *repositories.ProviderPluginRepo
 	pdRepo       pluginDefRepo
 	projRepo     pluginProjectRepo
+	registry     providerRegistrySvc
 	runner       OperationRunner
 	pluginWriter pluginWriterFn
 	tomlWriter   pluginWriterFn
@@ -39,12 +44,14 @@ func NewProviderPluginService(
 	repo *repositories.ProviderPluginRepo,
 	pdRepo pluginDefRepo,
 	projRepo pluginProjectRepo,
+	registry providerRegistrySvc,
 	runner OperationRunner,
 ) *ProviderPluginService {
 	return &ProviderPluginService{
 		repo:         repo,
 		pdRepo:       pdRepo,
 		projRepo:     projRepo,
+		registry:     registry,
 		runner:       runner,
 		pluginWriter: providers.WriteJSONPluginEnabled,
 		tomlWriter:   providers.WriteTOMLPluginEnabled,
@@ -275,12 +282,11 @@ func (s *ProviderPluginService) SetPluginEnabled(
 			return 0, domain.NewValidationError("Project not found", fmt.Sprintf("projectId %d does not exist", projectID))
 		}
 
-		allowedDir := def.ProjectAllowedDir(project.Path)
 		filePath := def.ProjectFilePath(project.Path)
-		if !confinedPath(allowedDir, filePath) {
+		if !confinedPath(project.Path, filePath) {
 			return 0, domain.NewValidationError(
 				"Path confinement violation",
-				fmt.Sprintf("resolved path %q is outside allowed directory %q", filepath.Clean(filePath), filepath.Clean(allowedDir)),
+				fmt.Sprintf("resolved path %q is outside project directory %q", filepath.Clean(filePath), filepath.Clean(project.Path)),
 			)
 		}
 
@@ -323,12 +329,8 @@ func (s *ProviderPluginService) setPluginEnabledUserInternal(
 	writer pluginWriterFn,
 	progress operations.ProgressFn,
 ) error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return domain.NewValidationError("Cannot resolve home directory", err.Error())
-	}
-	allowedDir := filepath.Join(homeDir, def.GlobalDir)
 	filePath := def.UserFilePath()
+	allowedDir := filepath.Dir(filePath)
 
 	progress("writing_plugin_setting", 0, 1, "")
 	if err := writer(filePath, allowedDir, pluginName, marketplaceName, enabled); err != nil {
@@ -348,15 +350,14 @@ func (s *ProviderPluginService) setPluginEnabledProjectInternal(
 	writer pluginWriterFn,
 	progress operations.ProgressFn,
 ) error {
-	allowedDir := def.ProjectAllowedDir(project.Path)
 	filePath := def.ProjectFilePath(project.Path)
-
-	if !confinedPath(allowedDir, filePath) {
+	if !confinedPath(project.Path, filePath) {
 		return domain.NewValidationError(
 			"Path confinement violation",
-			fmt.Sprintf("resolved path %q is outside allowed directory %q", filepath.Clean(filePath), filepath.Clean(allowedDir)),
+			fmt.Sprintf("resolved path %q is outside project directory %q", filepath.Clean(filePath), filepath.Clean(project.Path)),
 		)
 	}
+	allowedDir := def.ProjectAllowedDir(project.Path)
 
 	progress("writing_plugin_setting", 0, 1, "")
 	if err := writer(filePath, allowedDir, pluginName, marketplaceName, enabled); err != nil {
@@ -377,33 +378,44 @@ func confinedPath(allowedDir, filePath string) bool {
 // ---- internal scan logic ----
 
 type pluginProviderDef struct {
-	Provider    *domain.ProviderDefinition
-	GlobalDir   string
-	UserFile    string
-	ProjectDir  string
-	ProjectFile string
-	LocalFile   string
-	Scanner     func(filePath, allowedDir string) providers.ClaudeSettingsScan
+	Provider       *domain.ProviderDefinition
+	GlobalRelPath  string
+	ProjectRelPath string
+	LocalRelPath   string
+	Scanner        func(filePath, allowedDir string) providers.ClaudeSettingsScan
 }
 
 func (d pluginProviderDef) UserFilePath() string {
 	homeDir, _ := os.UserHomeDir()
-	return filepath.Join(homeDir, d.GlobalDir, d.UserFile)
+	return expandGlobalPath(homeDir, d.GlobalRelPath)
 }
 
 func (d pluginProviderDef) ProjectAllowedDir(projectPath string) string {
-	return filepath.Join(projectPath, d.ProjectDir)
+	return filepath.Dir(d.ProjectFilePath(projectPath))
 }
 
 func (d pluginProviderDef) ProjectFilePath(projectPath string) string {
-	return filepath.Join(d.ProjectAllowedDir(projectPath), d.ProjectFile)
+	return filepath.Join(projectPath, d.ProjectRelPath)
 }
 
 func (d pluginProviderDef) LocalFilePath(projectPath string) string {
-	if d.LocalFile == "" {
+	if d.LocalRelPath == "" {
 		return ""
 	}
-	return filepath.Join(d.ProjectAllowedDir(projectPath), d.LocalFile)
+	return filepath.Join(projectPath, d.LocalRelPath)
+}
+
+func expandGlobalPath(homeDir, rel string) string {
+	if rel == "" {
+		return ""
+	}
+	if strings.HasPrefix(rel, "~/") {
+		return homeDir + "/" + rel[2:]
+	}
+	if strings.HasPrefix(rel, "/") {
+		return rel
+	}
+	return homeDir + "/" + rel
 }
 
 func (s *ProviderPluginService) pluginProviderDefs(ctx context.Context) ([]pluginProviderDef, error) {
@@ -417,19 +429,79 @@ func (s *ProviderPluginService) pluginProviderDefs(ctx context.Context) ([]plugi
 	return defs, nil
 }
 
+var pluginScanners = map[string]func(filePath, allowedDir string) providers.ClaudeSettingsScan{
+	"claude":          providers.ScanClaudeSettingsFile,
+	"codex":           providers.ScanCodexConfigFile,
+	"antigravity_cli": providers.ScanAntigravityCLISettingsFile,
+}
+
 func (s *ProviderPluginService) pluginProviderDefsAllowMissing(ctx context.Context) ([]pluginProviderDef, error) {
+	if s.registry == nil {
+		return s.pluginProviderDefsFromHardcoded(ctx)
+	}
+	entries, err := s.registry.List(ctx)
+	if err != nil {
+		return nil, domain.NewDatabaseError("Could not load provider registry", err.Error())
+	}
+	defs := make([]pluginProviderDef, 0, len(entries))
+	for _, entry := range entries {
+		scanner, ok := pluginScanners[entry.Definition.Key]
+		if !ok {
+			continue
+		}
+		var globalRelPath, projectRelPath, localRelPath string
+		for _, c := range entry.Candidates {
+			if c.Scope == "global" && c.Purpose == "config" {
+				globalRelPath = c.RelativePath
+			}
+		}
+		// Collect project config candidates sorted by priority descending.
+		type candidate struct {
+			path     string
+			priority int
+		}
+		var projectCandidates []candidate
+		for _, c := range entry.Candidates {
+			if c.Scope == "project" && c.Purpose == "config" {
+				projectCandidates = append(projectCandidates, candidate{c.RelativePath, c.Priority})
+			}
+		}
+		// Sort descending by priority.
+		for i := 0; i < len(projectCandidates)-1; i++ {
+			for j := i + 1; j < len(projectCandidates); j++ {
+				if projectCandidates[j].priority > projectCandidates[i].priority {
+					projectCandidates[i], projectCandidates[j] = projectCandidates[j], projectCandidates[i]
+				}
+			}
+		}
+		if len(projectCandidates) > 0 {
+			projectRelPath = projectCandidates[0].path
+		}
+		if len(projectCandidates) > 1 {
+			localRelPath = projectCandidates[1].path
+		}
+		def := entry.Definition
+		defs = append(defs, pluginProviderDef{
+			Provider:       &def,
+			GlobalRelPath:  globalRelPath,
+			ProjectRelPath: projectRelPath,
+			LocalRelPath:   localRelPath,
+			Scanner:        scanner,
+		})
+	}
+	return defs, nil
+}
+
+func (s *ProviderPluginService) pluginProviderDefsFromHardcoded(ctx context.Context) ([]pluginProviderDef, error) {
 	templates := []struct {
-		key         string
-		globalDir   string
-		userFile    string
-		projectDir  string
-		projectFile string
-		localFile   string
-		scanner     func(filePath, allowedDir string) providers.ClaudeSettingsScan
+		key            string
+		globalRelPath  string
+		projectRelPath string
+		localRelPath   string
 	}{
-		{"claude", ".claude", "settings.json", ".claude", "settings.json", "settings.local.json", providers.ScanClaudeSettingsFile},
-		{"codex", ".codex", "config.toml", ".codex", "config.toml", "", providers.ScanCodexConfigFile},
-		{"antigravity_cli", filepath.Join(".gemini", "antigravity-cli"), "settings.json", filepath.Join(".gemini", "antigravity-cli"), "settings.json", "", providers.ScanAntigravityCLISettingsFile},
+		{"claude", ".claude/settings.json", ".claude/settings.json", ".claude/settings.local.json"},
+		{"codex", ".codex/config.toml", ".codex/config.toml", ""},
+		{"antigravity_cli", ".gemini/antigravity-cli/settings.json", ".gemini/antigravity-cli/settings.json", ""},
 	}
 	defs := make([]pluginProviderDef, 0, len(templates))
 	for _, tmpl := range templates {
@@ -441,9 +513,11 @@ func (s *ProviderPluginService) pluginProviderDefsAllowMissing(ctx context.Conte
 			continue
 		}
 		defs = append(defs, pluginProviderDef{
-			Provider: pd, GlobalDir: tmpl.globalDir, UserFile: tmpl.userFile,
-			ProjectDir: tmpl.projectDir, ProjectFile: tmpl.projectFile, LocalFile: tmpl.localFile,
-			Scanner: tmpl.scanner,
+			Provider:       pd,
+			GlobalRelPath:  tmpl.globalRelPath,
+			ProjectRelPath: tmpl.projectRelPath,
+			LocalRelPath:   tmpl.localRelPath,
+			Scanner:        pluginScanners[tmpl.key],
 		})
 	}
 	return defs, nil
@@ -453,13 +527,9 @@ func (s *ProviderPluginService) scanGlobalInternal(ctx context.Context, defs []p
 	total := len(defs)
 	progress("scanning_user_layer", 0, total, "")
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return domain.NewValidationError("Cannot resolve home directory", err.Error())
-	}
 	for i, def := range defs {
-		allowedDir := filepath.Join(homeDir, def.GlobalDir)
-		filePath := filepath.Join(allowedDir, def.UserFile)
+		filePath := def.UserFilePath()
+		allowedDir := filepath.Dir(filePath)
 		scanResult := def.Scanner(filePath, allowedDir)
 		scan := &domain.PluginLayerScan{
 			ProviderDefinitionID: def.Provider.ID,

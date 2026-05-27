@@ -89,7 +89,7 @@ func main() {
 		WithEnablementResolver(providerRegistrySvc)
 
 	providerPluginRepo := repositories.NewProviderPluginRepo(db)
-	providerPluginSvc := services.NewProviderPluginService(providerPluginRepo, pdRepo, projectRepo, runner)
+	providerPluginSvc := services.NewProviderPluginService(providerPluginRepo, pdRepo, projectRepo, providerRegistrySvc, runner)
 
 	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc, providerPluginSvc)
 

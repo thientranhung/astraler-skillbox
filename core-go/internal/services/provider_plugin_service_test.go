@@ -345,8 +345,116 @@ func (m *mockPluginProjectRepo) GetByID(_ context.Context, _ int64) (*domain.Pro
 	return m.project, m.err
 }
 
+type mockProviderRegistrySvc struct {
+	entries []domain.ProviderRegistryEntry
+	err     error
+}
+
+func (m *mockProviderRegistrySvc) List(_ context.Context) ([]domain.ProviderRegistryEntry, error) {
+	return m.entries, m.err
+}
+
+// ---- registry-driven path resolution tests ----
+
+func TestPluginProviderDefsAllowMissing_UsesRegistryPaths(t *testing.T) {
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: 1, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: "custom/global.json", Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: "custom/project.json", Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: "custom/local.json", Priority: 5},
+			},
+		},
+	}}
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, registry, nil)
+	defs, err := svc.pluginProviderDefsAllowMissing(context.Background())
+	if err != nil {
+		t.Fatalf("pluginProviderDefsAllowMissing: %v", err)
+	}
+	if len(defs) != 1 {
+		t.Fatalf("defs count: got %d want 1", len(defs))
+	}
+	d := defs[0]
+	if d.GlobalRelPath != "custom/global.json" {
+		t.Errorf("GlobalRelPath: got %q want custom/global.json", d.GlobalRelPath)
+	}
+	if d.ProjectRelPath != "custom/project.json" {
+		t.Errorf("ProjectRelPath: got %q want custom/project.json", d.ProjectRelPath)
+	}
+	if d.LocalRelPath != "custom/local.json" {
+		t.Errorf("LocalRelPath: got %q want custom/local.json", d.LocalRelPath)
+	}
+}
+
+func TestPluginProviderDefsAllowMissing_ProjectCandidatesSortedByPriority(t *testing.T) {
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: 1, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				// Intentionally out of order — local.json has higher priority number and should be ProjectRelPath.
+				{Scope: "project", Purpose: "config", RelativePath: "settings.local.json", Priority: 5},
+				{Scope: "project", Purpose: "config", RelativePath: "settings.json", Priority: 10},
+			},
+		},
+	}}
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, registry, nil)
+	defs, err := svc.pluginProviderDefsAllowMissing(context.Background())
+	if err != nil {
+		t.Fatalf("pluginProviderDefsAllowMissing: %v", err)
+	}
+	if len(defs) != 1 {
+		t.Fatalf("defs count: got %d want 1", len(defs))
+	}
+	// Highest priority → ProjectRelPath; second highest → LocalRelPath.
+	if defs[0].ProjectRelPath != "settings.json" {
+		t.Errorf("ProjectRelPath: got %q want settings.json", defs[0].ProjectRelPath)
+	}
+	if defs[0].LocalRelPath != "settings.local.json" {
+		t.Errorf("LocalRelPath: got %q want settings.local.json", defs[0].LocalRelPath)
+	}
+}
+
+func TestPluginProviderDefsAllowMissing_SkipsUnknownProviderKeys(t *testing.T) {
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: 99, Key: "unknown_provider"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: "some/path.json", Priority: 10},
+			},
+		},
+	}}
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, registry, nil)
+	defs, err := svc.pluginProviderDefsAllowMissing(context.Background())
+	if err != nil {
+		t.Fatalf("pluginProviderDefsAllowMissing: %v", err)
+	}
+	if len(defs) != 0 {
+		t.Errorf("expected no defs for unknown provider, got %d", len(defs))
+	}
+}
+
+func TestExpandGlobalPath_TildeExpansion(t *testing.T) {
+	home := "/Users/tester"
+	cases := []struct {
+		rel  string
+		want string
+	}{
+		{"~/foo/bar.json", "/Users/tester/foo/bar.json"},
+		{"/absolute/path.json", "/absolute/path.json"},
+		{"relative/path.json", "/Users/tester/relative/path.json"},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		got := expandGlobalPath(home, tc.rel)
+		if got != tc.want {
+			t.Errorf("expandGlobalPath(%q, %q): got %q want %q", home, tc.rel, got, tc.want)
+		}
+	}
+}
+
 func TestProviderPluginService_List_NilWhenProviderNotFound(t *testing.T) {
-	svc := NewProviderPluginService(nil, &mockPluginDefRepo{def: nil}, &mockPluginProjectRepo{}, nil)
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{def: nil}, &mockPluginProjectRepo{}, nil, nil)
 	global, projects, err := svc.List(context.Background())
 	if err != nil {
 		t.Fatalf("List: %v", err)
@@ -363,10 +471,24 @@ func TestProviderPluginService_List_NilWhenProviderNotFound(t *testing.T) {
 }
 
 func TestProviderPluginService_PluginProviderDefsIncludesCodex(t *testing.T) {
-	svc := NewProviderPluginService(nil, &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{
-		"claude": {ID: 1, Key: "claude"},
-		"codex":  {ID: 2, Key: "codex"},
-	}}, &mockPluginProjectRepo{}, nil)
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: 1, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".claude/settings.local.json", Priority: 5},
+			},
+		},
+		{
+			Definition: domain.ProviderDefinition{ID: 2, Key: "codex"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: ".codex/config.toml", Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".codex/config.toml", Priority: 10},
+			},
+		},
+	}}
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, registry, nil)
 
 	defs, err := svc.pluginProviderDefs(context.Background())
 	if err != nil {
@@ -378,11 +500,14 @@ func TestProviderPluginService_PluginProviderDefsIncludesCodex(t *testing.T) {
 	if defs[0].Provider.Key != "claude" || defs[1].Provider.Key != "codex" {
 		t.Fatalf("provider order: got %q, %q", defs[0].Provider.Key, defs[1].Provider.Key)
 	}
-	if defs[1].GlobalDir != ".codex" || defs[1].UserFile != "config.toml" {
-		t.Errorf("codex global path parts: got %q/%q", defs[1].GlobalDir, defs[1].UserFile)
+	if defs[1].GlobalRelPath != ".codex/config.toml" {
+		t.Errorf("codex GlobalRelPath: got %q want .codex/config.toml", defs[1].GlobalRelPath)
 	}
-	if defs[1].ProjectDir != ".codex" || defs[1].ProjectFile != "config.toml" || defs[1].LocalFile != "" {
-		t.Errorf("codex project path parts: got dir=%q project=%q local=%q", defs[1].ProjectDir, defs[1].ProjectFile, defs[1].LocalFile)
+	if defs[1].ProjectRelPath != ".codex/config.toml" {
+		t.Errorf("codex ProjectRelPath: got %q want .codex/config.toml", defs[1].ProjectRelPath)
+	}
+	if defs[1].LocalRelPath != "" {
+		t.Errorf("codex LocalRelPath: got %q want empty", defs[1].LocalRelPath)
 	}
 }
 
@@ -390,7 +515,7 @@ func TestProviderPluginService_ScanProject_ProjectNotFound(t *testing.T) {
 	svc := NewProviderPluginService(nil,
 		&mockPluginDefRepo{def: &domain.ProviderDefinition{ID: 1, Key: "claude"}},
 		&mockPluginProjectRepo{project: nil},
-		nil)
+		nil, nil)
 	_, err := svc.ScanProject(context.Background(), 999)
 	if err == nil {
 		t.Fatal("expected error for missing project")
@@ -424,7 +549,7 @@ func TestSetPluginEnabled_CodexIsNowSupported(t *testing.T) {
 	// Codex was previously rejected; with TOML write support it now passes provider validation.
 	// Expect "provider not configured" (validation) because no DB entry, not "unsupported provider".
 	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{}}
-	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, &mockRunner{})
+	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
 	_, err := svc.SetPluginEnabled(context.Background(), "codex", "p", "m", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected error (provider not in DB), got nil")
@@ -439,7 +564,7 @@ func TestSetPluginEnabled_CodexIsNowSupported(t *testing.T) {
 }
 
 func TestSetPluginEnabled_UnknownProviderReturnsValidationError(t *testing.T) {
-	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
 	_, err := svc.SetPluginEnabled(context.Background(), "openai", "p", "m", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected error for unknown provider, got nil")
@@ -451,7 +576,7 @@ func TestSetPluginEnabled_UnknownProviderReturnsValidationError(t *testing.T) {
 }
 
 func TestSetPluginEnabled_EmptyNameReturnsValidationError(t *testing.T) {
-	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
 	_, err := svc.SetPluginEnabled(context.Background(), "claude", "", "market", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected error for empty pluginName, got nil")
@@ -462,9 +587,8 @@ func TestSetPluginEnabled_EmptyNameReturnsValidationError(t *testing.T) {
 }
 
 func TestSetPluginEnabled_ProviderNotInDB_ReturnsValidationError(t *testing.T) {
-	// claude key allowed but not present in DB → provider not configured
-	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{}}
-	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, &mockRunner{})
+	// claude key allowed but not present in registry → provider not configured
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
 	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected error for missing DB entry, got nil")
@@ -479,11 +603,23 @@ func TestSetPluginEnabled_WritesFileAndReturnsOpID(t *testing.T) {
 	var capturedPath string
 	var capturedEnabled bool
 
-	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{
-		"claude":          {ID: 1, Key: "claude"},
-		"antigravity_cli": {ID: 2, Key: "antigravity_cli"},
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: 1, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+			},
+		},
+		{
+			Definition: domain.ProviderDefinition{ID: 2, Key: "antigravity_cli"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: ".gemini/antigravity-cli/settings.json", Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".gemini/antigravity-cli/settings.json", Priority: 10},
+			},
+		},
 	}}
-	svc2 := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, &mockRunner{
+	svc2 := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, registry, &mockRunner{
 		startFn: func(ctx context.Context, target operations.Target, opType domain.OperationType, fn operations.WorkFn) (int64, error) {
 			return 42, nil // skip execution
 		},
@@ -512,10 +648,15 @@ func TestSetPluginEnabled_RunnerConflict_ReturnsConflictError(t *testing.T) {
 			return 0, domain.NewConflictError("already running", "target locked")
 		},
 	}
-	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{
-		"claude": {ID: 1, Key: "claude"},
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: 1, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+			},
+		},
 	}}
-	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, conflictRunner)
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, registry, conflictRunner)
 	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected conflict error, got nil")
@@ -526,7 +667,7 @@ func TestSetPluginEnabled_RunnerConflict_ReturnsConflictError(t *testing.T) {
 }
 
 func TestSetPluginEnabled_LocalLayerReturnsValidationError(t *testing.T) {
-	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
 	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "local", 0, true)
 	if err == nil {
 		t.Fatal("expected validation error for local layer, got nil")
@@ -538,7 +679,7 @@ func TestSetPluginEnabled_LocalLayerReturnsValidationError(t *testing.T) {
 }
 
 func TestSetPluginEnabled_UnknownLayerReturnsValidationError(t *testing.T) {
-	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
 	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "unknown", 0, true)
 	if err == nil {
 		t.Fatal("expected validation error for unknown layer, got nil")
@@ -550,10 +691,15 @@ func TestSetPluginEnabled_UnknownLayerReturnsValidationError(t *testing.T) {
 }
 
 func TestSetPluginEnabled_ProjectMissingReturnsValidationError(t *testing.T) {
-	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{
-		"claude": {ID: 1, Key: "claude"},
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: 1, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "project", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+			},
+		},
 	}}
-	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{project: nil}, &mockRunner{})
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{project: nil}, registry, &mockRunner{})
 	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "project", 999, true)
 	if err == nil {
 		t.Fatal("expected error for missing project, got nil")
@@ -565,11 +711,16 @@ func TestSetPluginEnabled_ProjectMissingReturnsValidationError(t *testing.T) {
 }
 
 func TestSetPluginEnabled_ProjectLayer_WritesAndReturnsOpID(t *testing.T) {
-	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{
-		"claude": {ID: 1, Key: "claude"},
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: 1, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "project", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+			},
+		},
 	}}
 	project := &domain.Project{ID: 42, Path: t.TempDir()}
-	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{project: project}, &mockRunner{
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{project: project}, registry, &mockRunner{
 		startFn: func(ctx context.Context, target operations.Target, opType domain.OperationType, fn operations.WorkFn) (int64, error) {
 			if target.Type != "provider_plugin_project" {
 				return 0, fmt.Errorf("unexpected target type: %s", target.Type)
@@ -593,14 +744,12 @@ func TestSetPluginEnabled_PathConfinementEscape_ReturnsValidationError(t *testin
 	pd := &domain.ProviderDefinition{ID: 1, Key: "claude"}
 	project := &domain.Project{ID: 1, Path: "/tmp/proj"}
 
-	// Craft a def where ProjectFile contains ".." to escape the allowed directory.
+	// Craft a def where ProjectRelPath contains ".." to escape the project root.
 	escapeDef := pluginProviderDef{
-		Provider:    pd,
-		GlobalDir:   ".claude",
-		UserFile:    "settings.json",
-		ProjectDir:  ".claude",
-		ProjectFile: "../escape.json",
-		Scanner:     nil,
+		Provider:       pd,
+		GlobalRelPath:  ".claude/settings.json",
+		ProjectRelPath: "../escape.json",
+		Scanner:        nil,
 	}
 
 	writerCalled := false
