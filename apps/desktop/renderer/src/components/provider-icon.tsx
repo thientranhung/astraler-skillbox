@@ -5,6 +5,7 @@ import claudeIcon from "../assets/provider-icons/claude-color.svg?raw";
 import codexIcon from "../assets/provider-icons/codex-color.svg?raw";
 import geminiIcon from "../assets/provider-icons/gemini-color.svg?raw";
 import opencodeIcon from "../assets/provider-icons/opencode-color.svg?raw";
+import piIcon from "../assets/provider-icons/pi-color.svg?raw";
 
 const BRAND_PROVIDER_ICONS: Record<string, string> = {
   antigravity: antigravityIcon,
@@ -17,6 +18,8 @@ const BRAND_PROVIDER_ICONS: Record<string, string> = {
   gemini_cli: geminiIcon,
   geminicli: geminiIcon,
   opencode: opencodeIcon,
+  pi: piIcon,
+  pi_dev: piIcon,
 };
 
 interface ProviderIconProps {

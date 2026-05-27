@@ -4,8 +4,8 @@
 ------------------------------------------------------------------------
 -- 1. Restore gemini provider definition
 ------------------------------------------------------------------------
-INSERT OR IGNORE INTO provider_definitions (key, display_name, status, icon_key, has_global_level)
-VALUES ('gemini', 'Gemini', 'unsupported', 'gemini', 1);
+INSERT OR IGNORE INTO provider_definitions (key, display_name, provider_type, icon_key, status, can_create_structure, has_global_level)
+VALUES ('gemini', 'Gemini', 'gemini', 'gemini', 'unsupported', 0, 1);
 
 -- Restore gemini path candidates (as set by migration 016)
 INSERT OR IGNORE INTO provider_path_candidates (provider_definition_id, relative_path, scope, purpose, priority, verification_status)

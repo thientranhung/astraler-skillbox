@@ -17,7 +17,7 @@ func TestProviderDefinitionRepo_ListAll_ReturnsAllBuiltins(t *testing.T) {
 		t.Fatalf("ListAll: %v", err)
 	}
 
-	wantKeys := []string{"generic_agents", "claude", "codex", "antigravity_cli", "opencode"}
+	wantKeys := []string{"generic_agents", "claude", "codex", "antigravity_cli", "opencode", "pi"}
 	if len(entries) != len(wantKeys) {
 		t.Errorf("entry count: got %d want %d", len(entries), len(wantKeys))
 	}
