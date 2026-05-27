@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
@@ -190,18 +191,16 @@ func (s *ProviderPluginService) listProvider(ctx context.Context, def pluginProv
 	return global, projectViews, nil
 }
 
-// SetPluginEnabled writes the enabled/disabled state of a plugin to the user-layer
-// settings file for the given provider, then rescans that layer so the persisted
-// view reflects the change. Only Claude and Antigravity CLI are supported in this
-// slice; Codex writes return a validation_error. Only the "user" (global) layer is
-// supported; project and local layer writes are deferred.
+// SetPluginEnabled writes the enabled/disabled state of a plugin to the specified
+// layer settings file for the given provider, then rescans that layer so the persisted
+// view reflects the change. Only Claude and Antigravity CLI are supported; Codex returns
+// a validation_error. Layers "user" and "project" are supported; "local" returns an error.
 func (s *ProviderPluginService) SetPluginEnabled(
 	ctx context.Context,
-	providerKey, pluginName, marketplaceName string,
+	providerKey, pluginName, marketplaceName, layer string,
+	projectID int64,
 	enabled bool,
 ) (int64, error) {
-	const supportedLayer = "user"
-
 	// Validate provider — only JSON-format providers supported in this slice.
 	switch providerKey {
 	case "claude", "antigravity_cli":
@@ -215,6 +214,22 @@ func (s *ProviderPluginService) SetPluginEnabled(
 		return 0, domain.NewValidationError(
 			"Unknown provider",
 			fmt.Sprintf("providerKey %q does not support plugin writes", providerKey),
+		)
+	}
+
+	// Validate layer.
+	switch layer {
+	case "user", "project":
+		// OK
+	case "local":
+		return 0, domain.NewValidationError(
+			"Local-layer plugin writes are not supported",
+			"Local-layer plugin writes are not supported in this version",
+		)
+	default:
+		return 0, domain.NewValidationError(
+			"Unknown layer",
+			fmt.Sprintf("layer %q is not supported; only user and project layers support writes", layer),
 		)
 	}
 
@@ -243,10 +258,43 @@ func (s *ProviderPluginService) SetPluginEnabled(
 
 	def := *targetDef
 
+	if layer == "project" {
+		project, err := s.projRepo.GetByID(ctx, projectID)
+		if err != nil {
+			return 0, domain.NewDatabaseError("Could not fetch project", err.Error())
+		}
+		if project == nil {
+			return 0, domain.NewValidationError("Project not found", fmt.Sprintf("projectId %d does not exist", projectID))
+		}
+
+		allowedDir := def.ProjectAllowedDir(project.Path)
+		filePath := def.ProjectFilePath(project.Path)
+		if !confinedPath(allowedDir, filePath) {
+			return 0, domain.NewValidationError(
+				"Path confinement violation",
+				fmt.Sprintf("resolved path %q is outside allowed directory %q", filepath.Clean(filePath), filepath.Clean(allowedDir)),
+			)
+		}
+
+		target := operations.Target{Type: "provider_plugin_project", ID: projectID}
+		opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
+			func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
+				return nil, s.setPluginEnabledProjectInternal(opCtx, def, project, pluginName, marketplaceName, enabled, progress)
+			})
+		if err != nil {
+			if _, ok := err.(*domain.AppError); ok {
+				return 0, err
+			}
+			return 0, domain.NewDatabaseError("Could not start plugin write operation", err.Error())
+		}
+		return opID, nil
+	}
+
+	// layer == "user"
 	target := operations.Target{Type: "provider_plugin_global", ID: 0}
 	opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
 		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
-			return nil, s.setPluginEnabledInternal(opCtx, def, pluginName, marketplaceName, enabled, progress)
+			return nil, s.setPluginEnabledUserInternal(opCtx, def, pluginName, marketplaceName, enabled, progress)
 		})
 	if err != nil {
 		if _, ok := err.(*domain.AppError); ok {
@@ -257,7 +305,7 @@ func (s *ProviderPluginService) SetPluginEnabled(
 	return opID, nil
 }
 
-func (s *ProviderPluginService) setPluginEnabledInternal(
+func (s *ProviderPluginService) setPluginEnabledUserInternal(
 	ctx context.Context,
 	def pluginProviderDef,
 	pluginName, marketplaceName string,
@@ -277,8 +325,41 @@ func (s *ProviderPluginService) setPluginEnabledInternal(
 	}
 	progress("writing_plugin_setting", 1, 1, def.Provider.Key)
 
-	// Rescan the user layer so the persisted view reflects the new state.
 	return s.scanGlobalInternal(ctx, []pluginProviderDef{def}, progress)
+}
+
+func (s *ProviderPluginService) setPluginEnabledProjectInternal(
+	ctx context.Context,
+	def pluginProviderDef,
+	project *domain.Project,
+	pluginName, marketplaceName string,
+	enabled bool,
+	progress operations.ProgressFn,
+) error {
+	allowedDir := def.ProjectAllowedDir(project.Path)
+	filePath := def.ProjectFilePath(project.Path)
+
+	if !confinedPath(allowedDir, filePath) {
+		return domain.NewValidationError(
+			"Path confinement violation",
+			fmt.Sprintf("resolved path %q is outside allowed directory %q", filepath.Clean(filePath), filepath.Clean(allowedDir)),
+		)
+	}
+
+	progress("writing_plugin_setting", 0, 1, "")
+	if err := s.pluginWriter(filePath, allowedDir, pluginName, marketplaceName, enabled); err != nil {
+		return domain.NewFilesystemError("Could not write plugin setting", err.Error())
+	}
+	progress("writing_plugin_setting", 1, 1, def.Provider.Key)
+
+	return s.scanProjectInternal(ctx, project, []pluginProviderDef{def}, progress)
+}
+
+// confinedPath reports whether filePath is strictly inside allowedDir.
+func confinedPath(allowedDir, filePath string) bool {
+	cleanDir := filepath.Clean(allowedDir)
+	cleanFile := filepath.Clean(filePath)
+	return strings.HasPrefix(cleanFile, cleanDir+string(os.PathSeparator))
 }
 
 // ---- internal scan logic ----

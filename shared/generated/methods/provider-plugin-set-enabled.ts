@@ -25,9 +25,13 @@ export interface ProviderPluginSetEnabledRequest {
    */
   marketplaceName: string;
   /**
-   * Settings layer to write. Only user (global) is supported in this version.
+   * Settings layer to write. user writes to the global user settings; project writes to the project-local settings.
    */
-  layer: 'user';
+  layer: 'user' | 'project';
+  /**
+   * Required when layer=project. The project ID whose settings file will be written.
+   */
+  projectId?: number;
   /**
    * Whether to enable (true) or disable (false) the plugin
    */

@@ -49,6 +49,9 @@ export function useSetProviderPluginEnabled() {
           );
         }
         void queryClient.invalidateQueries({ queryKey: queryKeys.providerPlugins.list() });
+        if (req.projectId != null) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(req.projectId) });
+        }
         return;
       }
 
@@ -68,6 +71,9 @@ export function useSetProviderPluginEnabled() {
 
         if (isTerminal(event.status)) {
           void queryClient.invalidateQueries({ queryKey: queryKeys.providerPlugins.list() });
+          if (req.projectId != null) {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(req.projectId) });
+          }
           setOperationId(null);
           unsub();
           unsubRef.current = null;

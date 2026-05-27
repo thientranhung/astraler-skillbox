@@ -34,6 +34,9 @@ vi.mock("../../features/provider-plugins/use-provider-plugin-list.js", () => ({
 vi.mock("../../features/provider-plugins/use-scan-provider-plugins-project.js", () => ({
   useScanProviderPluginsProject: vi.fn(),
 }));
+vi.mock("../../features/provider-plugins/use-set-provider-plugin-enabled.js", () => ({
+  useSetProviderPluginEnabled: vi.fn(),
+}));
 
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { ProjectDetailScreen } from "../project-detail-screen.js";
@@ -46,6 +49,7 @@ import { useRemoveSkill } from "../../features/projects/use-remove-skill.js";
 import { useActiveHostSkills } from "../../features/skills/use-active-host-skills.js";
 import { useProviderPluginList } from "../../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsProject } from "../../features/provider-plugins/use-scan-provider-plugins-project.js";
+import { useSetProviderPluginEnabled } from "../../features/provider-plugins/use-set-provider-plugin-enabled.js";
 import type { ProjectGetResponse } from "@contracts/index.js";
 
 const mockUseParams = useParams as ReturnType<typeof vi.fn>;
@@ -59,6 +63,7 @@ const mockUseRemoveSkill = useRemoveSkill as ReturnType<typeof vi.fn>;
 const mockUseActiveHostSkills = useActiveHostSkills as ReturnType<typeof vi.fn>;
 const mockUseProviderPluginList = useProviderPluginList as ReturnType<typeof vi.fn>;
 const mockUseScanProviderPluginsProject = useScanProviderPluginsProject as ReturnType<typeof vi.fn>;
+const mockUseSetProviderPluginEnabled = useSetProviderPluginEnabled as ReturnType<typeof vi.fn>;
 
 const projectDetail: ProjectGetResponse = {
   project: { id: 7, name: "demo", path: "/repo/demo", status: "active", lastScannedAt: null },
@@ -124,6 +129,7 @@ beforeEach(() => {
   mockUseActiveHostSkills.mockReturnValue({ skills: [] });
   mockUseProviderPluginList.mockReturnValue({ isPending: false, isError: false, data: null });
   mockUseScanProviderPluginsProject.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
+  mockUseSetProviderPluginEnabled.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -303,5 +309,112 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getAllByRole("button", { name: /copy project skill path/i }).length).toBeGreaterThan(0);
     expect(timeoutSpy).not.toHaveBeenCalled();
     timeoutSpy.mockRestore();
+  });
+
+  function makeProjectPluginData(providerKey: string, plugins: Array<{ pluginName: string; marketplaceName: string; effectiveStatus: string; provenanceLayer: string | null }>) {
+    return {
+      globals: [],
+      global: {
+        providerKey: "claude",
+        userLayerPath: "/Users/test/.claude/settings.json",
+        userLayerStatus: null,
+        lastScannedAt: null,
+        scanWarnings: [],
+        plugins: [],
+        marketplaces: [],
+        managedOutOfScope: false,
+      },
+      projects: [{
+        projectId: 7,
+        providerKey,
+        layerStatuses: [
+          { layer: "project", scanStatus: "ok", filePath: `/repo/demo/.${providerKey}/settings.json`, lastScannedAt: null, scanWarnings: [] },
+        ],
+        plugins,
+        marketplaces: [],
+        managedOutOfScope: false,
+      }],
+    };
+  }
+
+  it("shows Enable/Disable buttons for claude project plugins", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "plugin-a", marketplaceName: "npm", effectiveStatus: "enabled", provenanceLayer: "project" },
+        { pluginName: "plugin-b", marketplaceName: "npm", effectiveStatus: "disabled", provenanceLayer: "user" },
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
+  });
+
+  it("shows Enable/Disable buttons for antigravity_cli project plugins", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("antigravity_cli", [
+        { pluginName: "ag-plugin", marketplaceName: "market", effectiveStatus: "disabled", provenanceLayer: "project" },
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
+  });
+
+  it("does not show toggle buttons for codex project plugins", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("codex", [
+        { pluginName: "codex-plugin", marketplaceName: "openai", effectiveStatus: "enabled", provenanceLayer: "project" },
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.queryByRole("button", { name: "Disable" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Enable" })).toBeNull();
+  });
+
+  it("toggle button calls mutation with layer=project and projectId", () => {
+    const mutateFn = vi.fn();
+    mockUseSetProviderPluginEnabled.mockReturnValue({ mutate: mutateFn, operationId: null, isPending: false });
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "my-plugin", marketplaceName: "my-market", effectiveStatus: "enabled", provenanceLayer: "project" },
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+    expect(mutateFn).toHaveBeenCalledWith({
+      providerKey: "claude",
+      pluginName: "my-plugin",
+      marketplaceName: "my-market",
+      layer: "project",
+      projectId: 7,
+      enabled: false,
+    });
+  });
+
+  it("toggle button is disabled when provenance is local", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "local-plugin", marketplaceName: "npm", effectiveStatus: "enabled", provenanceLayer: "local" },
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.queryByRole("button", { name: "Disable" })).toBeNull();
+    expect(screen.getByText("Overridden locally")).toBeTruthy();
+  });
+
+  it("toggle button is disabled when an operation is in flight", () => {
+    mockUseSetProviderPluginEnabled.mockReturnValue({ mutate: vi.fn(), operationId: 5, isPending: false });
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "p", marketplaceName: "m", effectiveStatus: "enabled", provenanceLayer: "project" },
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByRole("button", { name: "Disable" }).hasAttribute("disabled")).toBe(true);
   });
 });
