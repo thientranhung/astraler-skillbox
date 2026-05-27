@@ -375,6 +375,37 @@ func confinedPath(allowedDir, filePath string) bool {
 	return strings.HasPrefix(cleanFile, cleanDir+string(os.PathSeparator))
 }
 
+// aggregatePluginCounts sums effective plugin counts per project across all providers.
+// ListAll yields one ProjectPluginView per (provider, project), so a project with several
+// plugin-capable providers produces several views sharing the same ProjectID; accumulating
+// into counts[pv.ProjectID] across them is intentional — the column shows one project-wide
+// enabled/total summed over all providers. Each view's Plugins already excludes absent
+// entries, so len(Plugins) is the per-view non-absent total.
+func aggregatePluginCounts(projects []domain.ProjectPluginView) map[int64]domain.PluginCount {
+	counts := make(map[int64]domain.PluginCount)
+	for _, pv := range projects {
+		c := counts[pv.ProjectID]
+		for _, p := range pv.Plugins {
+			c.Total++
+			if p.EffectiveStatus == domain.PluginEffectiveEnabled {
+				c.Enabled++
+			}
+		}
+		counts[pv.ProjectID] = c
+	}
+	return counts
+}
+
+// PluginCountsByProject returns per-project effective plugin counts (enabled/total)
+// across all plugin-capable providers, derived from persisted scan data.
+func (s *ProviderPluginService) PluginCountsByProject(ctx context.Context) (map[int64]domain.PluginCount, error) {
+	_, projects, err := s.ListAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return aggregatePluginCounts(projects), nil
+}
+
 // ---- internal scan logic ----
 
 type pluginProviderDef struct {

@@ -740,6 +740,48 @@ func TestSetPluginEnabled_ProjectLayer_WritesAndReturnsOpID(t *testing.T) {
 	}
 }
 
+func TestAggregatePluginCounts_SumsEnabledAndTotalAcrossProviders(t *testing.T) {
+	enabled := domain.PluginEffectiveEnabled
+	disabled := domain.PluginEffectiveDisabled
+	unknown := domain.PluginEffectiveUnknown
+
+	views := []domain.ProjectPluginView{
+		{ProjectID: 1, ProviderKey: "claude", Plugins: []domain.PluginEffectiveEntry{
+			{PluginName: "a", EffectiveStatus: enabled},
+			{PluginName: "b", EffectiveStatus: disabled},
+		}},
+		{ProjectID: 1, ProviderKey: "codex", Plugins: []domain.PluginEffectiveEntry{
+			{PluginName: "c", EffectiveStatus: enabled},
+			{PluginName: "d", EffectiveStatus: unknown},
+		}},
+		{ProjectID: 2, ProviderKey: "claude", Plugins: []domain.PluginEffectiveEntry{
+			{PluginName: "e", EffectiveStatus: disabled},
+		}},
+	}
+
+	got := aggregatePluginCounts(views)
+
+	if got[1].Enabled != 2 {
+		t.Errorf("project 1 Enabled: got %d want 2", got[1].Enabled)
+	}
+	if got[1].Total != 4 {
+		t.Errorf("project 1 Total: got %d want 4 (enabled+disabled+unknown)", got[1].Total)
+	}
+	if got[2].Enabled != 0 {
+		t.Errorf("project 2 Enabled: got %d want 0", got[2].Enabled)
+	}
+	if got[2].Total != 1 {
+		t.Errorf("project 2 Total: got %d want 1", got[2].Total)
+	}
+}
+
+func TestAggregatePluginCounts_EmptyIsEmptyMap(t *testing.T) {
+	got := aggregatePluginCounts(nil)
+	if len(got) != 0 {
+		t.Errorf("expected empty map, got %d entries", len(got))
+	}
+}
+
 func TestSetPluginEnabled_PathConfinementEscape_ReturnsValidationError(t *testing.T) {
 	pd := &domain.ProviderDefinition{ID: 1, Key: "claude"}
 	project := &domain.Project{ID: 1, Path: "/tmp/proj"}
