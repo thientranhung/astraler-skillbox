@@ -78,44 +78,7 @@ func TestMigration000016_CodexUsesAgentsPaths(t *testing.T) {
 	}
 }
 
-func TestMigration000016_GeminiGlobalPaths(t *testing.T) {
-	db := NewTestDB(t)
-
-	// has_global_level should be 1
-	var hasGlobal int
-	if err := db.QueryRow(`SELECT has_global_level FROM provider_definitions WHERE key='gemini'`).Scan(&hasGlobal); err != nil {
-		t.Fatalf("query: %v", err)
-	}
-	if hasGlobal != 1 {
-		t.Errorf("gemini has_global_level: got %d want 1", hasGlobal)
-	}
-
-	cases := []struct {
-		scope   string
-		purpose string
-		path    string
-	}{
-		{"global", "detect", "~/.gemini"},
-		{"global", "skills", "~/.gemini/skills"},
-		{"project", "skills", ".agents/skills"},  // alias
-		{"global", "skills", "~/.agents/skills"},  // alias
-	}
-
-	for _, c := range cases {
-		var count int
-		err := db.QueryRow(`
-			SELECT COUNT(*) FROM provider_path_candidates ppc
-			JOIN provider_definitions pd ON pd.id = ppc.provider_definition_id
-			WHERE pd.key = 'gemini' AND ppc.scope = ? AND ppc.purpose = ? AND ppc.relative_path = ?
-		`, c.scope, c.purpose, c.path).Scan(&count)
-		if err != nil {
-			t.Fatalf("gemini %s %s query: %v", c.scope, c.purpose, err)
-		}
-		if count != 1 {
-			t.Errorf("gemini %s %s %q: got %d want 1", c.scope, c.purpose, c.path, count)
-		}
-	}
-}
+// TestMigration000016_GeminiGlobalPaths removed — gemini provider deleted by migration 017.
 
 func TestMigration000016_OpenCodeCompatPaths(t *testing.T) {
 	db := NewTestDB(t)
@@ -153,7 +116,7 @@ func TestMigration000016_DatabaseVersion(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&dbVersion); err != nil {
 		t.Fatalf("query database_version: %v", err)
 	}
-	if dbVersion != 16 {
-		t.Errorf("database_version: got %d want 16", dbVersion)
+	if dbVersion != 17 {
+		t.Errorf("database_version: got %d want 17", dbVersion)
 	}
 }

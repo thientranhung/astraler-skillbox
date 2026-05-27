@@ -11,12 +11,9 @@ const (
 	CodexKey              = "codex"
 	CodexDetectPath       = ".agents"
 	CodexSkillsPath       = ".agents/skills"
-	GeminiKey             = "gemini"
-	GeminiDetectPath      = ".gemini"
-	GeminiSkillsPath      = ".gemini/skills"
 	AntigravityCLIKey     = "antigravity_cli"
 	AntigravityDetectPath = ".antigravity-cli"
-	AntigravitySkillsPath = ".antigravity-cli/skills"
+	AntigravitySkillsPath = ".agents/skills"
 )
 
 type conventionalProviderAdapter struct {
@@ -27,10 +24,6 @@ type conventionalProviderAdapter struct {
 
 func NewCodexAdapter() ProviderAdapter {
 	return newConventionalProviderAdapter(CodexKey, CodexDetectPath, CodexSkillsPath)
-}
-
-func NewGeminiAdapter() ProviderAdapter {
-	return newConventionalProviderAdapter(GeminiKey, GeminiDetectPath, GeminiSkillsPath)
 }
 
 func NewAntigravityCLIAdapter() ProviderAdapter {

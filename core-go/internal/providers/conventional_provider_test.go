@@ -17,8 +17,8 @@ func TestConventionalProviderAdapters_DetectFolders(t *testing.T) {
 		skillPath string
 	}{
 		{"codex", providers.NewCodexAdapter(), providers.CodexKey, "/project/.agents", "/project/.agents/skills"},
-		{"gemini", providers.NewGeminiAdapter(), providers.GeminiKey, "/project/.gemini", "/project/.gemini/skills"},
-		{"antigravity", providers.NewAntigravityCLIAdapter(), providers.AntigravityCLIKey, "/project/.antigravity-cli", "/project/.antigravity-cli/skills"},
+		// gemini provider removed by migration 017
+		{"antigravity", providers.NewAntigravityCLIAdapter(), providers.AntigravityCLIKey, "/project/.antigravity-cli", "/project/.agents/skills"},
 	}
 
 	for _, c := range cases {
@@ -59,7 +59,6 @@ func TestConventionalProviderAdapters_DetectFolders(t *testing.T) {
 func TestConventionalProviderAdapters_MissingDoesNotWarn(t *testing.T) {
 	for _, adapter := range []providers.ProviderAdapter{
 		providers.NewCodexAdapter(),
-		providers.NewGeminiAdapter(),
 		providers.NewAntigravityCLIAdapter(),
 	} {
 		result, err := adapter.Detect("/project", adapter.DefaultProjectPaths(), newMockFS())

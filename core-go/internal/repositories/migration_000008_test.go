@@ -12,7 +12,7 @@ func TestMigration000008_CleansProviderDisplayNames(t *testing.T) {
 		{"generic_agents", "Shared Agent Skills"},
 		{"claude", "Claude"},
 		{"codex", "Codex"},
-		{"gemini", "Gemini"},
+		// gemini removed by migration 017
 		{"antigravity_cli", "Antigravity CLI"},
 	}
 
@@ -30,8 +30,8 @@ func TestMigration000008_CleansProviderDisplayNames(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id = 1`).Scan(&dbVersion); err != nil {
 		t.Fatalf("select database version: %v", err)
 	}
-	if dbVersion != 16 {
-		t.Errorf("database_version: got %d want 16", dbVersion)
+	if dbVersion != 17 {
+		t.Errorf("database_version: got %d want 17", dbVersion)
 	}
 }
 
