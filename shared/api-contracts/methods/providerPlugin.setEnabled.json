@@ -26,8 +26,12 @@
         },
         "layer": {
           "type": "string",
-          "enum": ["user"],
-          "description": "Settings layer to write. Only user (global) is supported in this version."
+          "enum": ["user", "project"],
+          "description": "Settings layer to write. user writes to the global user settings; project writes to the project-local settings."
+        },
+        "projectId": {
+          "type": "integer",
+          "description": "Required when layer=project. The project ID whose settings file will be written."
         },
         "enabled": {
           "type": "boolean",

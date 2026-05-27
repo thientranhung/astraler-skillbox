@@ -10,7 +10,7 @@ import (
 )
 
 type providerPluginSetEnabledSvc interface {
-	SetPluginEnabled(ctx context.Context, providerKey, pluginName, marketplaceName string, enabled bool) (int64, error)
+	SetPluginEnabled(ctx context.Context, providerKey, pluginName, marketplaceName, layer string, projectID int64, enabled bool) (int64, error)
 }
 
 type providerPluginSetEnabledRequest struct {
@@ -18,6 +18,7 @@ type providerPluginSetEnabledRequest struct {
 	PluginName      string `json:"pluginName"`
 	MarketplaceName string `json:"marketplaceName"`
 	Layer           string `json:"layer"`
+	ProjectID       int64  `json:"projectId"`
 	Enabled         bool   `json:"enabled"`
 }
 
@@ -40,14 +41,28 @@ func NewProviderPluginSetEnabledHandler(svc providerPluginSetEnabledSvc) jrpc2.H
 		if p.MarketplaceName == "" {
 			return nil, wrapError(domain.NewValidationError("marketplaceName is required", "marketplaceName field is empty"))
 		}
-		if p.Layer != "user" {
+		switch p.Layer {
+		case "user", "project":
+			// valid
+		case "local":
 			return nil, wrapError(domain.NewValidationError(
-				"Only user-layer plugin writes are supported",
-				"only layer=user is supported in this version; project and local layer writes are not yet available",
+				"Local-layer plugin writes are not supported",
+				"Local-layer plugin writes are not supported in this version",
+			))
+		default:
+			return nil, wrapError(domain.NewValidationError(
+				"Invalid layer",
+				"layer must be user or project",
+			))
+		}
+		if p.Layer == "project" && p.ProjectID == 0 {
+			return nil, wrapError(domain.NewValidationError(
+				"projectId is required for project-layer writes",
+				"projectId must be non-zero when layer=project",
 			))
 		}
 
-		opID, err := svc.SetPluginEnabled(ctx, p.ProviderKey, p.PluginName, p.MarketplaceName, p.Enabled)
+		opID, err := svc.SetPluginEnabled(ctx, p.ProviderKey, p.PluginName, p.MarketplaceName, p.Layer, p.ProjectID, p.Enabled)
 		if err != nil {
 			return nil, wrapError(err)
 		}

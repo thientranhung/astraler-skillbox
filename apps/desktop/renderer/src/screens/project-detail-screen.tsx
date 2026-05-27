@@ -10,12 +10,15 @@ import { useRemoveSkill } from "../features/projects/use-remove-skill.js";
 import { RemoveSkillDialog } from "../features/projects/remove-skill-dialog.js";
 import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsProject } from "../features/provider-plugins/use-scan-provider-plugins-project.js";
+import { useSetProviderPluginEnabled } from "../features/provider-plugins/use-set-provider-plugin-enabled.js";
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
 import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
 import { useActiveHostSkills } from "../features/skills/use-active-host-skills.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import type { ProjectGetEntry, ProjectGetProvider, PPLayerStatus, PPProjectEntry } from "@contracts/index.js";
+
+const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli"]);
 
 const ENTRY_STATUS_CONFIG: Record<ProjectGetEntry["status"], { label: string; description: string; cls: string }> = {
   current: { label: "Linked to active host", description: "This project entry points to the active Skill Host copy.", cls: "bg-green-100 text-green-800" },
@@ -225,7 +228,14 @@ function effectiveStatusClass(status: PPProjectEntry["effectiveStatus"]): string
 function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.Element {
   const { data, isPending, isError, error } = useProviderPluginList();
   const scanMutation = useScanProviderPluginsProject();
+  const setEnabledMutation = useSetProviderPluginEnabled();
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
+  const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
+  const isOperationInFlight = isScanning || isTogglingPlugin;
+
+  function handleTogglePlugin(providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean): void {
+    setEnabledMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "project", projectId, enabled });
+  }
 
   const projectViews = data?.projects.filter((p) => p.projectId === projectId) ?? [];
 
@@ -314,21 +324,46 @@ function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.E
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Marketplace</th>
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Effective</th>
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Provenance</th>
+                    {JSON_WRITE_PROVIDERS.has(projectView.providerKey) && (
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Action</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
-                  {projectView.plugins.map((p, i) => (
-                    <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                      <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{p.pluginName}</td>
-                      <td className="px-3 py-1.5 text-xs text-zinc-500">{p.marketplaceName || "—"}</td>
-                      <td className="px-3 py-1.5 text-xs">
-                        <span className={`rounded px-1.5 py-0.5 font-medium ${effectiveStatusClass(p.effectiveStatus)}`}>
-                          {p.effectiveStatus}
-                        </span>
-                      </td>
-                      <td className="px-3 py-1.5 text-xs text-zinc-500">{p.provenanceLayer ?? "—"}</td>
-                    </tr>
-                  ))}
+                  {projectView.plugins.map((p, i) => {
+                    const isLocalOverride = p.provenanceLayer === "local";
+                    const canToggle = JSON_WRITE_PROVIDERS.has(projectView.providerKey);
+                    const isEnabled = p.effectiveStatus === "enabled";
+                    return (
+                      <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                        <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{p.pluginName}</td>
+                        <td className="px-3 py-1.5 text-xs text-zinc-500">{p.marketplaceName || "—"}</td>
+                        <td className="px-3 py-1.5 text-xs">
+                          <span className={`rounded px-1.5 py-0.5 font-medium ${effectiveStatusClass(p.effectiveStatus)}`}>
+                            {p.effectiveStatus}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 text-xs text-zinc-500">{p.provenanceLayer ?? "—"}</td>
+                        {canToggle && (
+                          <td className="px-3 py-1.5 text-xs">
+                            {isLocalOverride ? (
+                              <span className="text-xs text-zinc-400" title="This plugin is overridden by a local settings file">
+                                Overridden locally
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleTogglePlugin(projectView.providerKey, p.pluginName, p.marketplaceName, !isEnabled)}
+                                disabled={isOperationInFlight}
+                                className="rounded border border-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                {isEnabled ? "Disable" : "Enable"}
+                              </button>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

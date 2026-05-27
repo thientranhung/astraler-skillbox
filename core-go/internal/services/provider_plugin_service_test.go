@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
@@ -421,7 +422,7 @@ func makeSyncRunner() *mockRunner {
 
 func TestSetPluginEnabled_CodexReturnsValidationError(t *testing.T) {
 	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
-	_, err := svc.SetPluginEnabled(context.Background(), "codex", "p", "m", true)
+	_, err := svc.SetPluginEnabled(context.Background(), "codex", "p", "m", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected error for codex, got nil")
 	}
@@ -436,7 +437,7 @@ func TestSetPluginEnabled_CodexReturnsValidationError(t *testing.T) {
 
 func TestSetPluginEnabled_UnknownProviderReturnsValidationError(t *testing.T) {
 	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
-	_, err := svc.SetPluginEnabled(context.Background(), "openai", "p", "m", true)
+	_, err := svc.SetPluginEnabled(context.Background(), "openai", "p", "m", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected error for unknown provider, got nil")
 	}
@@ -448,7 +449,7 @@ func TestSetPluginEnabled_UnknownProviderReturnsValidationError(t *testing.T) {
 
 func TestSetPluginEnabled_EmptyNameReturnsValidationError(t *testing.T) {
 	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
-	_, err := svc.SetPluginEnabled(context.Background(), "claude", "", "market", true)
+	_, err := svc.SetPluginEnabled(context.Background(), "claude", "", "market", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected error for empty pluginName, got nil")
 	}
@@ -461,7 +462,7 @@ func TestSetPluginEnabled_ProviderNotInDB_ReturnsValidationError(t *testing.T) {
 	// claude key allowed but not present in DB → provider not configured
 	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{}}
 	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, &mockRunner{})
-	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", true)
+	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected error for missing DB entry, got nil")
 	}
@@ -479,19 +480,6 @@ func TestSetPluginEnabled_WritesFileAndReturnsOpID(t *testing.T) {
 		"claude":          {ID: 1, Key: "claude"},
 		"antigravity_cli": {ID: 2, Key: "antigravity_cli"},
 	}}
-	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, makeSyncRunner())
-	// Override home resolution indirectly: inject a stub writer that captures the call.
-	svc.pluginWriter = func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error {
-		capturedPath = filePath
-		capturedEnabled = enabled
-		return nil
-	}
-	// Also replace scanGlobal to avoid real filesystem access in the rescan step.
-	// We do this by injecting a writer that succeeds and stubbing the internal scan:
-	// The rescan after write calls scanGlobalInternal which calls svc.pluginWriter... no,
-	// scanGlobalInternal calls def.Scanner (read-only) then CommitLayerScan on the repo.
-	// repo is nil here, so CommitLayerScan would panic. Use a custom runner that doesn't
-	// execute the full work fn — just the validation path.
 	svc2 := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, &mockRunner{
 		startFn: func(ctx context.Context, target operations.Target, opType domain.OperationType, fn operations.WorkFn) (int64, error) {
 			return 42, nil // skip execution
@@ -504,14 +492,13 @@ func TestSetPluginEnabled_WritesFileAndReturnsOpID(t *testing.T) {
 	}
 	_ = dir
 
-	opID, err := svc2.SetPluginEnabled(context.Background(), "claude", "my-plugin", "my-market", true)
+	opID, err := svc2.SetPluginEnabled(context.Background(), "claude", "my-plugin", "my-market", "user", 0, true)
 	if err != nil {
 		t.Fatalf("SetPluginEnabled: %v", err)
 	}
 	if opID != 42 {
 		t.Errorf("operationId: got %d want 42", opID)
 	}
-	// Validation path passed (capturedPath not populated since runner skipped execution).
 	_ = capturedPath
 	_ = capturedEnabled
 }
@@ -526,11 +513,117 @@ func TestSetPluginEnabled_RunnerConflict_ReturnsConflictError(t *testing.T) {
 		"claude": {ID: 1, Key: "claude"},
 	}}
 	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, conflictRunner)
-	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", true)
+	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "user", 0, true)
 	if err == nil {
 		t.Fatal("expected conflict error, got nil")
 	}
 	if err.(*domain.AppError).Code != domain.CodeConflict {
 		t.Errorf("code: got %q want conflict_error", err.(*domain.AppError).Code)
+	}
+}
+
+func TestSetPluginEnabled_LocalLayerReturnsValidationError(t *testing.T) {
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
+	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "local", 0, true)
+	if err == nil {
+		t.Fatal("expected validation error for local layer, got nil")
+	}
+	appErr := err.(*domain.AppError)
+	if appErr.Code != domain.CodeValidation {
+		t.Errorf("code: got %q want validation_error", appErr.Code)
+	}
+}
+
+func TestSetPluginEnabled_UnknownLayerReturnsValidationError(t *testing.T) {
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
+	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "unknown", 0, true)
+	if err == nil {
+		t.Fatal("expected validation error for unknown layer, got nil")
+	}
+	appErr := err.(*domain.AppError)
+	if appErr.Code != domain.CodeValidation {
+		t.Errorf("code: got %q want validation_error", appErr.Code)
+	}
+}
+
+func TestSetPluginEnabled_ProjectMissingReturnsValidationError(t *testing.T) {
+	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{
+		"claude": {ID: 1, Key: "claude"},
+	}}
+	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{project: nil}, &mockRunner{})
+	_, err := svc.SetPluginEnabled(context.Background(), "claude", "p", "m", "project", 999, true)
+	if err == nil {
+		t.Fatal("expected error for missing project, got nil")
+	}
+	appErr := err.(*domain.AppError)
+	if appErr.Code != domain.CodeValidation {
+		t.Errorf("code: got %q want validation_error, got %q", appErr.Code, appErr.Code)
+	}
+}
+
+func TestSetPluginEnabled_ProjectLayer_WritesAndReturnsOpID(t *testing.T) {
+	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{
+		"claude": {ID: 1, Key: "claude"},
+	}}
+	project := &domain.Project{ID: 42, Path: t.TempDir()}
+	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{project: project}, &mockRunner{
+		startFn: func(ctx context.Context, target operations.Target, opType domain.OperationType, fn operations.WorkFn) (int64, error) {
+			if target.Type != "provider_plugin_project" {
+				return 0, fmt.Errorf("unexpected target type: %s", target.Type)
+			}
+			if target.ID != 42 {
+				return 0, fmt.Errorf("unexpected target ID: %d", target.ID)
+			}
+			return 77, nil
+		},
+	})
+	opID, err := svc.SetPluginEnabled(context.Background(), "claude", "my-plugin", "market", "project", 42, true)
+	if err != nil {
+		t.Fatalf("SetPluginEnabled: %v", err)
+	}
+	if opID != 77 {
+		t.Errorf("operationId: got %d want 77", opID)
+	}
+}
+
+func TestSetPluginEnabled_PathConfinementEscape_ReturnsValidationError(t *testing.T) {
+	pd := &domain.ProviderDefinition{ID: 1, Key: "claude"}
+	project := &domain.Project{ID: 1, Path: "/tmp/proj"}
+
+	// Craft a def where ProjectFile contains ".." to escape the allowed directory.
+	escapeDef := pluginProviderDef{
+		Provider:    pd,
+		GlobalDir:   ".claude",
+		UserFile:    "settings.json",
+		ProjectDir:  ".claude",
+		ProjectFile: "../escape.json",
+		Scanner:     nil,
+	}
+
+	writerCalled := false
+	svc := &ProviderPluginService{
+		pluginWriter: func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error {
+			writerCalled = true
+			return nil
+		},
+	}
+
+	err := svc.setPluginEnabledProjectInternal(
+		context.Background(),
+		escapeDef,
+		project,
+		"plugin", "market",
+		true,
+		func(string, int, int, string) {},
+	)
+	if err == nil {
+		t.Fatal("expected confinement error, got nil")
+	}
+	appErr, ok := err.(*domain.AppError)
+	if !ok || appErr.Code != domain.CodeValidation {
+		t.Errorf("expected validation_error, got %T: %v", err, err)
+	}
+	if writerCalled {
+		t.Error("writer should not be called when confinement check fails")
 	}
 }
