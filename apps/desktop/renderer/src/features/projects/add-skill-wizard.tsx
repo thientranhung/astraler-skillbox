@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import type { ProjectGetProvider, SkillListSkill } from "@contracts/index.js";
 import { ProviderIcon } from "../../components/provider-icon.js";
@@ -32,6 +32,15 @@ export function AddSkillWizard({
     installableProviders.length === 1 ? installableProviders[0].providerKey : "",
   );
 
+  useEffect(() => {
+    setSelectedProviderKey(installableProviders.length === 1 ? installableProviders[0].providerKey : "");
+  }, [installableProviders]);
+
+  const canInstall =
+    installableProviders.length > 0 &&
+    selectedSkillIds.size > 0 &&
+    selectedProviderKey !== "";
+
   function handleToggleSkill(id: number): void {
     setSelectedSkillIds((prev) => {
       const next = new Set(prev);
@@ -45,21 +54,14 @@ export function AddSkillWizard({
   }
 
   function handleInstall(): void {
-    if (installableProviders.length === 0 || selectedSkillIds.size === 0) return;
-    const providerKey = selectedProviderKey !== "" ? selectedProviderKey : "";
-    if (providerKey === "") return;
+    if (!canInstall) return;
     installSkill.mutate({
       projectId,
-      providerKey: providerKey as "generic_agents" | "claude",
+      providerKey: selectedProviderKey as "generic_agents" | "claude",
       skillIds: [...selectedSkillIds] as [number, ...number[]],
     });
     onClose();
   }
-
-  const canInstall =
-    installableProviders.length > 0 &&
-    selectedSkillIds.size > 0 &&
-    selectedProviderKey !== "";
 
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
