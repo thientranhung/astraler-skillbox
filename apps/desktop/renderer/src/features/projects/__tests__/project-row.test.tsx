@@ -57,6 +57,38 @@ beforeEach(() => {
 
 afterEach(() => cleanup());
 
+const filledProject: ProjectListItem = {
+  ...project,
+  lastScannedAt: "2025-01-01T00:00:00.000Z",
+  providers: [
+    { key: "generic_agents", displayName: "Shared Agent Skills", providerStatus: "supported", detectionStatus: "detected", entryCount: 2 },
+  ],
+};
+
+describe("ProjectRow plugin stats", () => {
+  it("renders enabled/total when plugins present", () => {
+    render(
+      <table>
+        <tbody>
+          <ProjectRow project={{ ...filledProject, pluginEnabledCount: 2, pluginTotalCount: 5 }} />
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByText("2/5")).toBeTruthy();
+  });
+
+  it("renders an em dash when no plugins", () => {
+    render(
+      <table>
+        <tbody>
+          <ProjectRow project={{ ...filledProject, pluginEnabledCount: 0, pluginTotalCount: 0 }} />
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByText("—")).toBeTruthy();
+  });
+});
+
 describe("ProjectRow", () => {
   it("renders the project path without a separate path sub-row", () => {
     render(
