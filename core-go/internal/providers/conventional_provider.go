@@ -9,8 +9,8 @@ import (
 
 const (
 	CodexKey              = "codex"
-	CodexDetectPath       = ".codex"
-	CodexSkillsPath       = ".codex/skills"
+	CodexDetectPath       = ".agents"
+	CodexSkillsPath       = ".agents/skills"
 	GeminiKey             = "gemini"
 	GeminiDetectPath      = ".gemini"
 	GeminiSkillsPath      = ".gemini/skills"
