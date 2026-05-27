@@ -13,6 +13,18 @@ import (
 	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
+// ProjectPluginScanner scans a project's plugin settings layers within the caller's
+// operation context (no new operation). Implemented by *ProviderPluginService.
+type ProjectPluginScanner interface {
+	ScanProjectLayers(ctx context.Context, project *domain.Project, progress operations.ProgressFn) error
+}
+
+// ProjectPluginCounter returns per-project effective plugin counts.
+// Implemented by *ProviderPluginService.
+type ProjectPluginCounter interface {
+	PluginCountsByProject(ctx context.Context) (map[int64]domain.PluginCount, error)
+}
+
 // ProjectRemoveResult is returned by RemoveProject.
 type ProjectRemoveResult struct {
 	Removed bool
@@ -33,9 +45,11 @@ type ProjectListItem struct {
 	Path          string
 	Status        domain.ProjectStatus
 	Providers     []domain.ProjectProviderSummary
-	SkillCount    int
-	WarningCount  int
-	LastScannedAt *time.Time
+	SkillCount         int
+	WarningCount       int
+	LastScannedAt      *time.Time
+	PluginEnabledCount int
+	PluginTotalCount   int
 }
 
 // ProjectDetailView is the full project detail response.
@@ -71,6 +85,9 @@ type ProjectService struct {
 	// remove deps — nil until WithRemoveDeps is called
 	removeFS       RemoveFilesystem
 	installDeleter RemoveInstallDeleter
+	// plugin deps — nil until WithPluginDeps is called
+	pluginScanner ProjectPluginScanner
+	pluginCounter ProjectPluginCounter
 }
 
 // NewProjectService constructs a ProjectService for read/add operations.
@@ -144,6 +161,17 @@ func (s *ProjectService) WithRemoveDeps(
 	return s
 }
 
+// WithPluginDeps attaches the plugin scanner (folded into project scan) and the
+// plugin counter (used by ListProjects). Either may be nil. Returns the receiver.
+func (s *ProjectService) WithPluginDeps(
+	scanner ProjectPluginScanner,
+	counter ProjectPluginCounter,
+) *ProjectService {
+	s.pluginScanner = scanner
+	s.pluginCounter = counter
+	return s
+}
+
 // AddProject validates path, normalizes it, and persists the project idempotently.
 func (s *ProjectService) AddProject(ctx context.Context, path string) (*AddProjectResult, error) {
 	normalized, err := s.fs.NormalizeAbs(path)
@@ -192,6 +220,14 @@ func (s *ProjectService) ListProjects(ctx context.Context) ([]ProjectListItem, e
 		return nil, domain.NewDatabaseError("Could not list projects", err.Error())
 	}
 
+	var pluginCounts map[int64]domain.PluginCount
+	if s.pluginCounter != nil {
+		pluginCounts, err = s.pluginCounter.PluginCountsByProject(ctx)
+		if err != nil {
+			return nil, domain.NewDatabaseError("Could not count plugins", err.Error())
+		}
+	}
+
 	items := make([]ProjectListItem, 0, len(projects))
 	for _, p := range projects {
 		providers, err := s.ppRepo.ListByProject(ctx, p.ID)
@@ -210,14 +246,16 @@ func (s *ProjectService) ListProjects(ctx context.Context) ([]ProjectListItem, e
 		}
 
 		items = append(items, ProjectListItem{
-			ID:            p.ID,
-			Name:          p.Name,
-			Path:          p.Path,
-			Status:        p.Status,
-			Providers:     providers,
-			SkillCount:    skillCount,
-			WarningCount:  warningCount,
-			LastScannedAt: p.LastScannedAt,
+			ID:                 p.ID,
+			Name:               p.Name,
+			Path:               p.Path,
+			Status:             p.Status,
+			Providers:          providers,
+			SkillCount:         skillCount,
+			WarningCount:       warningCount,
+			LastScannedAt:      p.LastScannedAt,
+			PluginEnabledCount: pluginCounts[p.ID].Enabled,
+			PluginTotalCount:   pluginCounts[p.ID].Total,
 		})
 	}
 	return items, nil

@@ -420,6 +420,54 @@ func TestInstallSkills_RunnerConflict(t *testing.T) {
 	requireAppError(t, err, domain.CodeConflict)
 }
 
+// --- plugin counter tests ---
+
+type fakePluginCounter struct {
+	counts map[int64]domain.PluginCount
+	err    error
+}
+
+func (f *fakePluginCounter) PluginCountsByProject(_ context.Context) (map[int64]domain.PluginCount, error) {
+	return f.counts, f.err
+}
+
+func TestListProjects_PopulatesPluginCounts(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
+
+	counter := &fakePluginCounter{counts: map[int64]domain.PluginCount{1: {Enabled: 2, Total: 5}}}
+	svc := NewProjectService(projRepo, &mockProjectProviderRepo{byProject: make(map[int64][]domain.ProjectProviderSummary)},
+		&mockProjectWarningRepo{}, &mockProjectInstallRepo{}, &mockProjectFS{}).
+		WithPluginDeps(nil, counter)
+
+	items, err := svc.ListProjects(ctx)
+	if err != nil {
+		t.Fatalf("ListProjects: %v", err)
+	}
+	if items[0].PluginEnabledCount != 2 {
+		t.Errorf("PluginEnabledCount: got %d want 2", items[0].PluginEnabledCount)
+	}
+	if items[0].PluginTotalCount != 5 {
+		t.Errorf("PluginTotalCount: got %d want 5", items[0].PluginTotalCount)
+	}
+}
+
+func TestListProjects_NoPluginCounter_CountsZero(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
+
+	svc := newProjectSvc(&mockProjectFS{}, projRepo) // no WithPluginDeps
+	items, err := svc.ListProjects(ctx)
+	if err != nil {
+		t.Fatalf("ListProjects: %v", err)
+	}
+	if items[0].PluginEnabledCount != 0 || items[0].PluginTotalCount != 0 {
+		t.Errorf("expected zero counts, got %d/%d", items[0].PluginEnabledCount, items[0].PluginTotalCount)
+	}
+}
+
 // --- helpers ---
 
 func requireAppError(t *testing.T, err error, wantCode string) {
