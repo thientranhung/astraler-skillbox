@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useUpdateProviderPaths } from "./use-update-provider-paths.js";
 
@@ -23,7 +24,7 @@ export function ProviderPathsEditor({ providerKey, scope, purpose, currentPaths,
     );
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div className="w-full max-w-sm rounded border border-zinc-200 bg-white shadow-lg">
         <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
@@ -76,6 +77,7 @@ export function ProviderPathsEditor({ providerKey, scope, purpose, currentPaths,
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
