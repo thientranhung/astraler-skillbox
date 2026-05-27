@@ -6,15 +6,15 @@ Updated: 2026-05-27
 
 Path: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox`
 
-Current branch state at handoff: `main...origin/main [ahead 250]`
+Current branch state at handoff: `main...origin/main [ahead 256]`
 
 Recent commits:
 
+- `1e163ea Update playbook to support agy reviewer process`
+- `e350b3a Implement global plugin enable/disable for JSON-format providers`
+- `5cb2bc6 Keep Antigravity lead note out of playbook`
+- `f1bc9c0 Update handoff for Antigravity lead workflow`
 - `e636a4e Add Antigravity CLI provider plugin scanning`
-- `1d6b394 Add current project handoff`
-- `70e0872 Tighten orchestration implementation boundary`
-- `cc81a1f Show provider plugins by provider`
-- `050daf8 Add Codex plugin config visibility`
 
 ## Operating Model
 
@@ -43,30 +43,19 @@ tmux capture-pane -t agent-lead-skillbox -p | tail -80
 
 ## Completed Recently
 
-- Added editable empty provider path slots in Settings.
-- Added Codex plugin config visibility from `~/.codex/config.toml` and project `.codex/config.toml`.
-- Updated plugin screens to show provider plugins by provider instead of Claude-only.
-- Updated Project Detail plugin display for provider sections.
-- Hardened the orchestration playbook so tech implements and lead reviews by default.
-- Added Antigravity CLI plugin scanning for global and project settings.
-
-Recent verification reported passing:
-
-```sh
-go test ./...
-pnpm test
-pnpm typecheck
-pnpm check:contracts-drift
-git diff --check
-```
+- Implemented global (user-layer) plugin enable/disable write actions for JSON-format providers (`claude` and `antigravity_cli`) in commit `e350b3a`.
+- Added Enable/Disable action buttons on the global plugins UI screen.
+- Added comprehensive unit tests for filesystem write operations, JSON modifier, and provider plugin services.
+- Updated the agent orchestration playbook to support both `agy` and `codex` reviewer processes in commit `1e163ea`.
+- Verified packaging dry-run (`pnpm release:mac:dry-run`) and ad-hoc code signature verification successfully.
 
 ## Next Work
 
 | Priority | Task | Notes |
 | --- | --- | --- |
 | P0 | Check repo and tmux health | Ensure clean state and both agents are usable |
-| P1 | Add plugin enable/disable write actions | Support global and project plugin toggles |
-| P1 | Full smoke/package verification | Include macOS app build flow |
+| P1 | Add project-level plugin enable/disable writes | Support project and local plugin toggles for JSON providers |
+| P1 | Codex/TOML write support | Support TOML comment-preserving writes for Codex config |
 | P2 | Apple Developer ID and notarization | Accepted release/distribution tech debt |
 
 ## Suggested Tech Prompt
@@ -74,7 +63,7 @@ git diff --check
 Use a task file if the prompt becomes long.
 
 ```text
-Implement plugin enable/disable write actions for provider plugin settings. Scope the first implementation safely: support global and project plugin toggles for the providers whose plugin settings formats are already scanned. Preserve read-only scan behavior and existing list UI. Add tests for write behavior and run the relevant Go/frontend checks. Commit one focused implementation commit and report SHA.
+Implement project-level and local-level plugin enable/disable write actions for JSON-format providers. Scope the implementation safely: support project and local layer toggles for Claude and Antigravity CLI. Update the backend service write logic, RPC handlers, and frontend hooks. Add unit and UI tests. Commit one focused implementation commit and report SHA.
 ```
 
 ## Suggested Lead Prompt
@@ -82,5 +71,5 @@ Implement plugin enable/disable write actions for provider plugin settings. Scop
 Use after the tech agent reports a commit.
 
 ```text
-Review the latest tech commit only. Do not edit files. Findings first. Check correctness, tests, regressions, and whether plugin enable/disable writes are scoped and safe. Approve or block.
+Review the latest tech commit only. Do not edit files. Findings first. Check correctness, tests, regressions, and whether project-level plugin enable/disable writes are scoped and safe. Approve or block.
 ```
