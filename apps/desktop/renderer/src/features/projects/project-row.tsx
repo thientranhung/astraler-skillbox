@@ -25,7 +25,7 @@ function ProjectPluginProviderStats({ project }: { project: ProjectListItem }): 
           className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
           title={`${pp.displayName}: ${pp.enabledCount} enabled of ${pp.totalCount} plugin${pp.totalCount === 1 ? "" : "s"}`}
         >
-          <span className="font-mono text-[11px]">{pp.enabledCount}/{pp.totalCount}</span>
+          <span className="font-mono text-[11px]">{pp.enabledCount}</span>
           <span className="max-w-24 truncate">{pp.displayName}</span>
         </span>
       ))}

@@ -84,10 +84,14 @@ describe("ProjectRow plugin stats", () => {
         </tbody>
       </table>,
     );
-    expect(screen.getByTitle("Claude: 2 enabled of 5 plugins")).toBeTruthy();
-    expect(screen.getByTitle("Codex: 3 enabled of 3 plugins")).toBeTruthy();
-    expect(screen.getByText("2/5")).toBeTruthy();
-    expect(screen.getByText("3/3")).toBeTruthy();
+    const claudeBadge = screen.getByTitle("Claude: 2 enabled of 5 plugins");
+    const codexBadge = screen.getByTitle("Codex: 3 enabled of 3 plugins");
+    expect(claudeBadge).toBeTruthy();
+    expect(codexBadge).toBeTruthy();
+    expect(claudeBadge.textContent).toContain("2");
+    expect(claudeBadge.textContent).toContain("Claude");
+    expect(codexBadge.textContent).toContain("3");
+    expect(codexBadge.textContent).toContain("Codex");
   });
 
   it("renders an em dash when pluginProviders is empty", () => {
