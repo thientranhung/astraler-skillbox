@@ -16,7 +16,7 @@ func TestConventionalProviderAdapters_DetectFolders(t *testing.T) {
 		rootPath  string
 		skillPath string
 	}{
-		{"codex", providers.NewCodexAdapter(), providers.CodexKey, "/project/.codex", "/project/.codex/skills"},
+		{"codex", providers.NewCodexAdapter(), providers.CodexKey, "/project/.agents", "/project/.agents/skills"},
 		{"gemini", providers.NewGeminiAdapter(), providers.GeminiKey, "/project/.gemini", "/project/.gemini/skills"},
 		{"antigravity", providers.NewAntigravityCLIAdapter(), providers.AntigravityCLIKey, "/project/.antigravity-cli", "/project/.antigravity-cli/skills"},
 	}
