@@ -6,16 +6,16 @@ Updated: 2026-05-27
 
 Path: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox`
 
-Current branch state at handoff: `main...origin/main [ahead 261]`
+Current branch state at handoff: `main...origin/main [ahead 263]`
 
 Recent commits:
 
+- `f059c16 Connect plugin scans to settings registry for dynamic path resolution`
+- `c0b3d20 Update current handoff after adding plugin toggle smoke docs`
 - `65ed5df Add provider plugin toggle smoke test checklist`
 - `f14e23e Add TOML plugin write support for Codex`
 - `d6a02a6 Update current handoff after project-level toggles`
 - `32a561f Implement project-level plugin toggles for JSON providers`
-- `d137801 Update current handoff document`
-- `1e163ea Update playbook to support agy reviewer process`
 
 ## Operating Model
 
@@ -44,27 +44,25 @@ tmux capture-pane -t agent-lead-skillbox -p | tail -80
 
 ## Completed Recently
 
+- Connected global and project plugin scans to the database settings registry (commit `f059c16`). Config files paths are now resolved dynamically from `provider_path_candidates` (by matching scope, purpose: `"config"`, and sorting by priority) rather than using hardcoded maps.
+- Hardened security in `SetPluginEnabled` project-level writes by verifying path confinement against the project root container (`project.Path`) directly.
 - Created manual UI smoke test checklist section in `SMOKE.md` (commit `65ed5df`).
 - Implemented write support for Codex config files (TOML format) under `providerPlugin.setEnabled` in commit `f14e23e`.
 - Created a comment-preserving TOML editor in the Go backend (`toml_plugin_writer.go`) using line-based regex replacements and double validation passes via `toml.Unmarshal`.
-- Enabled Codex plugin Enable/Disable toggling in the React frontend UI by whitelisting `"codex"` in both `plugins-screen.tsx` and `project-detail-screen.tsx`.
-- Audited the implementation commit via `agent-lead-skillbox` (`agy` reviewer) and received full approval.
-- Implemented project-level plugin enable/disable write actions for JSON-format providers (`claude` and `antigravity_cli`) in commit `32a561f`.
 
 ## Next Work
 
 | Priority | Task | Notes |
 | --- | --- | --- |
 | P0 | Check repo and tmux health | Ensure clean state and both agents are usable |
-| P1 | Connect Global/Project Scans to the Registry | Ensure scans read paths from settings registry instead of hardcoded paths |
-| P2 | Apple Developer ID and notarization | Accepted release/distribution tech debt |
+| P1 | Apple Developer ID and notarization | Accepted release/distribution tech debt |
 
 ## Suggested Tech Prompt
 
 Use a task file if the prompt becomes long.
 
 ```text
-Implement connecting global and project scans to the settings registry. The scanner must resolve paths using definitions from the settings registry database table instead of hardcoded paths. Add validation and unit/Vitest tests. Commit one focused implementation commit and report SHA.
+Inspect release scripts and codesigning configurations. Standardize environment checking and prepare Apple Developer ID notarization steps.
 ```
 
 ## Suggested Lead Prompt
@@ -72,5 +70,5 @@ Implement connecting global and project scans to the settings registry. The scan
 Use after the tech agent reports a commit.
 
 ```text
-Review the latest tech commit only. Do not edit files. Findings first. Check correctness, tests, regressions, and whether paths resolution via registry is correct and safe. Approve or block.
+Review the latest tech commit only. Do not edit files. Findings first. Check correctness, tests, regressions. Approve or block.
 ```
