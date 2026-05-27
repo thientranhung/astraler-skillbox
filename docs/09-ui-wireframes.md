@@ -272,6 +272,32 @@ Installed Skills
   Claude          manual-note           direct      current           [Open]
 ```
 
+Provider Plugins (per provider):
+
+```text
+Provider Plugins — Claude
+
+  Layers
+    Layer    Status          File                                    Last Scanned
+    local    not configured  .claude/settings.local.json             5/28/2026
+    project  ok              .claude/settings.json                   5/28/2026
+    user     ok              ~/.claude/settings.json                 5/27/2026
+
+  Plugin              Marketplace              Project          User         Effective
+  superpowers          claude-plugins-official   —  (not set)    [enabled]    enabled
+  my-plugin            custom                   [disabled]       [enabled]    disabled
+  other-plugin         official                 [enabled]        [disabled]   enabled
+```
+
+Plugin column rules:
+
+- Project column: 3-state cycle toggle (not set → enabled → disabled → not set).
+  "not set" means no override at project layer — user layer value takes effect.
+- User column: 2-state toggle (enabled/disabled). Visually dimmed when project
+  layer has a value (project overrides user).
+- Effective column: read-only, shows resolved status after layer precedence.
+- When provenance is local, both Project and User columns show "overridden" (no toggle).
+
 Grouping:
 
 - Group by provider by default.
