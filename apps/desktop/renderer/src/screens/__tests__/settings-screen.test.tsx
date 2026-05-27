@@ -197,7 +197,7 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("~/.codex/config.toml")).not.toBeNull();
   });
 
-  it("does not show edit controls for empty optional global skills slots", () => {
+  it("shows edit controls for empty optional global skills slots", () => {
     mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
     mockUseProviderList.mockReturnValue({
       data: {
@@ -218,7 +218,8 @@ describe("SettingsScreen", () => {
     });
 
     render(<SettingsScreen />);
-    expect(screen.getAllByRole("button", { name: /edit paths/i })).toHaveLength(4);
+    expect(screen.getByText("Not set")).not.toBeNull();
+    expect(screen.getAllByRole("button", { name: /edit paths/i })).toHaveLength(5);
   });
 
   it("shows global skills path for providers with hasGlobalLevel", () => {
