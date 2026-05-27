@@ -33,8 +33,6 @@ import type {
   ProviderSetEnabledRequest,
   ProviderSetEnabledResponse,
   ProviderPluginScanGlobalResponse,
-  ProviderPluginScanProjectRequest,
-  ProviderPluginScanProjectResponse,
   ProviderPluginListResponse,
   ProviderPluginSetEnabledRequest,
   ProviderPluginSetEnabledResponse,
@@ -111,9 +109,6 @@ export const methods = {
 
   scanProviderPluginsGlobal: () =>
     invoke<ProviderPluginScanGlobalResponse>("providerPlugin.scanGlobal", {}),
-
-  scanProviderPluginsProject: (req: ProviderPluginScanProjectRequest) =>
-    invoke<ProviderPluginScanProjectResponse>("providerPlugin.scanProject", req),
 
   listProviderPlugins: () =>
     invoke<ProviderPluginListResponse>("providerPlugin.list", {}),
