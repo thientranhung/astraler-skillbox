@@ -278,6 +278,20 @@ capabilities
 global locations if applicable
 ```
 
+Plugin config writers and removers cũng nằm trong `providers/` vì chúng là
+provider-specific logic (JSON cho Claude, TOML cho Codex):
+
+```text
+pluginWriterFn  func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error
+pluginRemoverFn func(filePath, allowedDir, pluginName, marketplaceName string) error
+```
+
+- `WriteJSONPluginEnabled` / `RemoveJSONPlugin`: cho JSON-based providers (Claude).
+- `WriteTOMLPluginEnabled` / `RemoveTOMLPlugin`: cho TOML-based providers (Codex).
+- Tất cả enforce path confinement, symlink checks, file size cap (1 MiB).
+- `ProviderPluginService.writerFor(providerKey)` / `removerFor(providerKey)` chọn
+  implementation dựa trên provider config format.
+
 ## 9. Source Adapter Pattern
 
 Nơi áp dụng:

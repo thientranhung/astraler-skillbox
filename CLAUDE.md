@@ -171,4 +171,5 @@ Skillbox là operational desktop tool, không phải SaaS dashboard. Tránh: her
 - Projects use `project.add`, `project.list`, `project.get`, `project.scan`, and `project.remove`.
 - Project remove is a soft-remove (`projects.status = removed`); it must never delete project files.
 - Project Open Folder is Electron-native (`dialog.openPath`) and should map shell failures to `unknown_error`.
-- Provider detection implemented so far is `generic_agents` (`.agents/skills`) only.
+- Provider detection: `generic_agents`, `claude`, `codex`, `antigravity_cli`.
+- Plugin system: `providerPlugin.setEnabled` toggles plugins per layer (user/project), `providerPlugin.removeOverride` clears project-layer overrides. Project detail shows per-layer columns (Project 3-state cycle, User 2-state toggle, Effective read-only). Global plugins screen uses "Disable globally"/"Enable globally" labels.

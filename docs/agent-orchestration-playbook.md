@@ -6,7 +6,7 @@ This playbook hardens the multi-agent workflow used for Astraler Skillbox. It ex
 
 - `agent-tech-skillbox`: senior developer and implementor. Use for scoped drafting, specs, plans, and implementation.
 - `agent-lead-skillbox`: reviewer, QA, and tester. Use for code review, spec review, risk review, and smoke-test validation.
-- Orchestrator: coordinates work, owns scope control, decides when to advance phases, and prevents agents from editing the same file at the same time.
+- Orchestrator: coordinates work, owns scope control, decides when to advance phases, and prevents agents from editing the same file at the same time. **Orchestrator không có ý kiến kỹ thuật.** Mọi phân tích, đánh giá, đề xuất thiết kế hoặc kỹ thuật — dù user hỏi trực tiếp — đều phải route cho agent tương ứng. Orchestrator chỉ quyết định **ai làm** và **khi nào**, không bao giờ quyết định **làm gì** hay **làm thế nào**.
 
 ## Phase Gates
 
@@ -34,7 +34,7 @@ git status --short
 
 Confirm the target pane is in the expected app, not a shell. Confirm there is no stale prompt in the input area. If the agent is in a shell, start the TUI first and verify it loaded before sending work.
 
-For `agent-lead-skillbox`, the active reviewer process (`cmd=agy` or `cmd=codex`) and the correct `cwd` are necessary but not sufficient. The TUI can be running while its input area still contains a suggestion or stale text such as `Run /review on my current changes` or `Summarize recent commits`. Treat that state as not ready.
+For `agent-lead-skillbox`, the active reviewer process (`cmd=agy`, `cmd=codex`, or `cmd=claude`) and the correct `cwd` are necessary but not sufficient. The TUI can be running while its input area still contains a suggestion or stale text such as `Run /review on my current changes` or `Summarize recent commits`. Treat that state as not ready.
 
 Before every lead handoff:
 
@@ -187,7 +187,7 @@ If a prompt is accidentally sent to the shell, stop immediately. Do not try to c
 
 If the pane shows a suggestion or placeholder such as `Summarize recent commits`, treat it as unsafe until verified. Clear or exit before sending a real task.
 
-If `C-c` exits the reviewer TUI to a shell, restart with the approved reviewer command (`agy --dangerously-skip-permissions` or `codex --yolo`), then capture the pane again before sending work. Do not trust the process name alone; inspect the visible input area.
+If `C-c` exits the reviewer TUI to a shell, restart with the approved reviewer command (`agy --dangerously-skip-permissions`, `codex --yolo`, or `claude --dangerously-skip-permissions`), then capture the pane again before sending work. Do not trust the process name alone; inspect the visible input area.
 
 ### Tech Agent Degraded Procedure
 
@@ -220,6 +220,37 @@ When lead findings identify docs/source-of-truth drift, fix the documentation be
 rg "old provider label|stale UI text" docs apps core-go
 ```
 
+## Smoke Test Automation
+
+`agent-lead-skillbox` is responsible for smoke test automation in addition to code review. Smoke tests verify that the app works end-to-end after implementation, not just that tests pass.
+
+### When To Run Smoke Tests
+
+- After every implementation slice that changes UI or user-facing behavior.
+- After a fix commit that addresses a lead review finding.
+- Before closing a slice as done.
+
+### Smoke Test Prompt Shape
+
+Always use a normal prompt, never `/goal`:
+
+```text
+Smoke test commit abc123. Scope: [feature/screen].
+Steps: 1) pnpm dev  2) [user actions to verify]  3) report pass/fail with screenshot or terminal output.
+Do not edit files. Report findings only.
+```
+
+### Smoke Test Report
+
+Lead must report:
+
+1. What was tested (feature, screen, flow).
+2. Steps executed.
+3. Result: pass or fail with evidence (error output, screenshot path, or observed behavior).
+4. Blockers found, if any.
+
+If smoke test fails, orchestrator routes the failure to `agent-tech-skillbox` as a scoped fix task. Do not ask lead to fix — lead does not edit files.
+
 ## Migration And Bulk Edit Safety
 
 When adding a later migration that changes data created by an older migration, keep the older migration test faithful to the old SQL. Add a new test for the new migration and update only latest-state expectations where appropriate.
@@ -237,3 +268,4 @@ Every orchestration failure should become a rule here. Typical hardening updates
 - recovery steps for shell/TUI drift,
 - ownership rules for shared files.
 - orchestrator implementation boundary violations.
+- orchestrator opinion boundary violations (technical analysis, design decisions).

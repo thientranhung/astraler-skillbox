@@ -242,6 +242,7 @@ ProviderService
 GlobalSkillsService
 InstallService
 UpdateService
+ProviderPluginService
 OperationService
 WarningService
 ```
@@ -257,6 +258,9 @@ Mapping:
 - `GlobalSkillsService`: scan global locations, list global entries, remediation.
 - `InstallService`: install, sync, switch mode, remove project install.
 - `UpdateService`: fetch all, update host copy, impact preview.
+- `ProviderPluginService`: scan, toggle, and remove plugin overrides across
+  layers (user/project/local). Owns `pluginWriterFn` and `pluginRemoverFn`
+  abstractions for JSON and TOML config files.
 - `OperationService`: start/read/cancel operation records.
 - `WarningService`: list/resolve/dismiss warning state nếu cần.
 
@@ -281,6 +285,8 @@ Command:
   installSkillToProject(input)
   syncInstall(installId)
   updateSkill(skillId)
+  providerPlugin.setEnabled(input)
+  providerPlugin.removeOverride(input)
 ```
 
 Query không nên tạo side effect. Command có thể tạo `operations` record, ghi DB,
