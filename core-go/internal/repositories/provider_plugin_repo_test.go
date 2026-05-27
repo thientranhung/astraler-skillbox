@@ -28,8 +28,8 @@ func TestMigration000012_DatabaseVersion(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&v); err != nil {
 		t.Fatalf("database_version query: %v", err)
 	}
-	if v != 17 {
-		t.Errorf("database_version: got %d want 17", v)
+	if v != 18 {
+		t.Errorf("database_version: got %d want 18", v)
 	}
 }
 
@@ -39,8 +39,8 @@ func TestMigration000013_ScanWarningsColumn(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&v); err != nil {
 		t.Fatalf("database_version query: %v", err)
 	}
-	if v != 17 {
-		t.Errorf("database_version: got %d want 17", v)
+	if v != 18 {
+		t.Errorf("database_version: got %d want 18", v)
 	}
 
 	// Column must exist with default value of '[]'
