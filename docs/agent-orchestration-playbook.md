@@ -34,7 +34,7 @@ git status --short
 
 Confirm the target pane is in the expected app, not a shell. Confirm there is no stale prompt in the input area. If the agent is in a shell, start the TUI first and verify it loaded before sending work.
 
-For `agent-lead-skillbox`, `cmd=codex-aarch64-a` and the correct `cwd` are necessary but not sufficient. Codex can be running while its input area still contains a suggestion or stale text such as `Run /review on my current changes` or `Summarize recent commits`. Treat that state as not ready.
+For `agent-lead-skillbox`, the active reviewer process (`cmd=agy` or `cmd=codex`) and the correct `cwd` are necessary but not sufficient. The TUI can be running while its input area still contains a suggestion or stale text such as `Run /review on my current changes` or `Summarize recent commits`. Treat that state as not ready.
 
 Before every lead handoff:
 
@@ -187,7 +187,7 @@ If a prompt is accidentally sent to the shell, stop immediately. Do not try to c
 
 If the pane shows a suggestion or placeholder such as `Summarize recent commits`, treat it as unsafe until verified. Clear or exit before sending a real task.
 
-If `C-c` exits Codex to a shell, restart with `codex --yolo`, then capture the pane again before sending work. Do not trust the process name alone; inspect the visible input area.
+If `C-c` exits the reviewer TUI to a shell, restart with the approved reviewer command (`agy --dangerously-skip-permissions` or `codex --yolo`), then capture the pane again before sending work. Do not trust the process name alone; inspect the visible input area.
 
 ### Tech Agent Degraded Procedure
 
