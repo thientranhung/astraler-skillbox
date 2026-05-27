@@ -10,6 +10,7 @@ import { useRemoveSkill } from "../features/projects/use-remove-skill.js";
 import { RemoveSkillDialog } from "../features/projects/remove-skill-dialog.js";
 import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
 import { useSetProviderPluginEnabled } from "../features/provider-plugins/use-set-provider-plugin-enabled.js";
+import { useRemoveProviderPluginOverride } from "../features/provider-plugins/use-remove-provider-plugin-override.js";
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
 import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
 import { useActiveHostSkills } from "../features/skills/use-active-host-skills.js";
@@ -224,14 +225,59 @@ function effectiveStatusClass(status: PPProjectEntry["effectiveStatus"]): string
   }
 }
 
+type ProjectLayerState = "enabled" | "disabled" | "not-set";
+
+function getLayerDeclaration(
+  layerBreakdown: Array<{ layer: string; scanStatus: string; declaration: string | null }>,
+  layer: string,
+): string | null {
+  const entry = layerBreakdown.find((lb) => lb.layer === layer);
+  return entry?.declaration ?? null;
+}
+
+function projectLayerState(
+  layerBreakdown: Array<{ layer: string; scanStatus: string; declaration: string | null }>,
+): ProjectLayerState {
+  const decl = getLayerDeclaration(layerBreakdown, "project");
+  if (decl === "enabled") return "enabled";
+  if (decl === "disabled") return "disabled";
+  return "not-set";
+}
+
+function projectStateBadgeClass(state: ProjectLayerState): string {
+  switch (state) {
+    case "enabled": return "bg-green-100 text-green-700";
+    case "disabled": return "bg-zinc-100 text-zinc-500";
+    case "not-set": return "";
+  }
+}
+
+function projectStateLabel(state: ProjectLayerState): string {
+  switch (state) {
+    case "enabled": return "enabled";
+    case "disabled": return "disabled";
+    case "not-set": return "—";
+  }
+}
+
 function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; scanInFlight: boolean }): React.JSX.Element {
   const { data, isPending, isError, error } = useProviderPluginList();
   const setEnabledMutation = useSetProviderPluginEnabled();
+  const removeOverrideMutation = useRemoveProviderPluginOverride();
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
-  const isOperationInFlight = isTogglingPlugin || scanInFlight;
+  const isRemovingOverride = removeOverrideMutation.isPending || removeOverrideMutation.operationId != null;
+  const isOperationInFlight = isTogglingPlugin || isRemovingOverride || scanInFlight;
 
-  function handleTogglePlugin(providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean): void {
+  function handleToggleProjectPlugin(providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean): void {
     setEnabledMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "project", projectId, enabled });
+  }
+
+  function handleToggleUserPlugin(providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean): void {
+    setEnabledMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "user", projectId: 0, enabled });
+  }
+
+  function handleRemoveProjectOverride(providerKey: string, pluginName: string, marketplaceName: string): void {
+    removeOverrideMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "project", projectId });
   }
 
   const projectViews = data?.projects.filter((p) => p.projectId === projectId) ?? [];
@@ -303,60 +349,117 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
             </table>
           </div>
 
-          {/* Effective plugins */}
-          {projectView.plugins.length > 0 && (
+          {/* Plugin layer table */}
+          {projectView.plugins.length > 0 && (() => {
+            const canToggle = JSON_WRITE_PROVIDERS.has(projectView.providerKey);
+            return (
             <div className="overflow-x-auto rounded border border-zinc-200">
               <table className="w-full text-left">
                 <thead className="border-b border-zinc-200 bg-zinc-50">
                   <tr>
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Plugin</th>
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Marketplace</th>
-                    <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Effective</th>
-                    <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Provenance</th>
-                    {JSON_WRITE_PROVIDERS.has(projectView.providerKey) && (
-                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Action</th>
+                    {canToggle && (
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Project</th>
                     )}
+                    {canToggle && (
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">User</th>
+                    )}
+                    <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Effective</th>
                   </tr>
                 </thead>
                 <tbody>
                   {projectView.plugins.map((p, i) => {
                     const isLocalOverride = p.provenanceLayer === "local";
-                    const canToggle = JSON_WRITE_PROVIDERS.has(projectView.providerKey);
-                    const isEnabled = p.effectiveStatus === "enabled";
+                    const projState = projectLayerState(p.layerBreakdown);
+                    const userDecl = getLayerDeclaration(p.layerBreakdown, "user");
+                    const isUserEnabled = userDecl === "enabled";
+                    const projectHasValue = projState !== "not-set";
                     return (
                       <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
                         <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{p.pluginName}</td>
                         <td className="px-3 py-1.5 text-xs text-zinc-500">{p.marketplaceName || "—"}</td>
+
+                        {/* Project column — 3-state cycle */}
+                        {canToggle && (
+                          <td className="px-3 py-1.5 text-xs">
+                            {isLocalOverride ? (
+                              <span className="text-xs text-zinc-400 opacity-40">overridden</span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  if (projState === "not-set") {
+                                    handleToggleProjectPlugin(projectView.providerKey, p.pluginName, p.marketplaceName, true);
+                                  } else if (projState === "enabled") {
+                                    handleToggleProjectPlugin(projectView.providerKey, p.pluginName, p.marketplaceName, false);
+                                  } else {
+                                    handleRemoveProjectOverride(projectView.providerKey, p.pluginName, p.marketplaceName);
+                                  }
+                                }}
+                                disabled={isOperationInFlight}
+                                title={
+                                  projState === "not-set"
+                                    ? "Click to enable at project level"
+                                    : projState === "enabled"
+                                      ? "Click to disable at project level"
+                                      : "Click to clear project override"
+                                }
+                                className={`rounded px-1.5 py-0.5 font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
+                                  projState === "not-set"
+                                    ? "text-zinc-400 hover:bg-zinc-100"
+                                    : projectStateBadgeClass(projState) + " hover:opacity-80"
+                                }`}
+                              >
+                                {projectStateLabel(projState)}
+                              </button>
+                            )}
+                          </td>
+                        )}
+
+                        {/* User column — 2-state toggle */}
+                        {canToggle && (
+                          <td className="px-3 py-1.5 text-xs">
+                            {isLocalOverride ? (
+                              <span className="text-xs text-zinc-400 opacity-40">overridden</span>
+                            ) : (
+                              <div className={projectHasValue ? "opacity-40" : ""}>
+                                <button
+                                  onClick={() => handleToggleUserPlugin(projectView.providerKey, p.pluginName, p.marketplaceName, !isUserEnabled)}
+                                  disabled={isOperationInFlight}
+                                  title={
+                                    projectHasValue
+                                      ? "Project layer overrides this setting"
+                                      : isUserEnabled
+                                        ? "Disable globally"
+                                        : "Enable globally"
+                                  }
+                                  className={`rounded px-1.5 py-0.5 font-medium hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 ${
+                                    isUserEnabled
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-zinc-100 text-zinc-500"
+                                  }`}
+                                >
+                                  {isUserEnabled ? "enabled" : "disabled"}
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Effective column — read-only */}
                         <td className="px-3 py-1.5 text-xs">
                           <span className={`rounded px-1.5 py-0.5 font-medium ${effectiveStatusClass(p.effectiveStatus)}`}>
                             {p.effectiveStatus}
                           </span>
                         </td>
-                        <td className="px-3 py-1.5 text-xs text-zinc-500">{p.provenanceLayer ?? "—"}</td>
-                        {canToggle && (
-                          <td className="px-3 py-1.5 text-xs">
-                            {isLocalOverride ? (
-                              <span className="text-xs text-zinc-400" title="This plugin is overridden by a local settings file">
-                                Overridden locally
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handleTogglePlugin(projectView.providerKey, p.pluginName, p.marketplaceName, !isEnabled)}
-                                disabled={isOperationInFlight}
-                                className="rounded border border-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                {isEnabled ? "Disable" : "Enable"}
-                              </button>
-                            )}
-                          </td>
-                        )}
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
-          )}
+            );
+          })()}
 
           {projectView.plugins.length === 0 && (
             <p className="text-xs text-zinc-400">No plugins found across layers.</p>
