@@ -18,11 +18,11 @@ function ProjectPluginProviderStats({ project }: { project: ProjectListItem }): 
     return <span className="text-xs text-zinc-400">—</span>;
   }
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-col gap-0.5">
       {project.pluginProviders.map((pp) => (
         <span
           key={pp.key}
-          className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
+          className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600 w-fit"
           title={`${pp.displayName}: ${pp.enabledCount} enabled of ${pp.totalCount} plugin${pp.totalCount === 1 ? "" : "s"}`}
         >
           <span className="font-mono text-[11px]">{pp.enabledCount}</span>
