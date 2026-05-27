@@ -76,3 +76,13 @@ func (g *Gateway) RemoveSymlink(path string) error {
 func (g *Gateway) HomeDir() (string, error) {
 	return os.UserHomeDir()
 }
+
+// EnsureDirSafe delegates to the package-level function.
+func (g *Gateway) EnsureDirSafe(path string) error {
+	return EnsureDirSafe(path)
+}
+
+// WriteFileAtomic delegates to the package-level function.
+func (g *Gateway) WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
+	return WriteFileAtomic(path, data, perm)
+}

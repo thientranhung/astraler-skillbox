@@ -89,6 +89,83 @@ func TestEnsureDir(t *testing.T) {
 	})
 }
 
+func TestEnsureDirSafe(t *testing.T) {
+	t.Run("creates nested directories", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "a", "b", "c")
+		if err := EnsureDirSafe(target); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		info, err := os.Stat(target)
+		if err != nil || !info.IsDir() {
+			t.Errorf("expected directory at %q", target)
+		}
+	})
+
+	t.Run("idempotent on existing real directory", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := EnsureDirSafe(dir); err != nil {
+			t.Fatalf("unexpected error on existing dir: %v", err)
+		}
+	})
+
+	t.Run("rejects existing symlink at target path", func(t *testing.T) {
+		dir := t.TempDir()
+		realDir := filepath.Join(dir, "real")
+		if err := os.Mkdir(realDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		link := filepath.Join(dir, "link")
+		if err := os.Symlink(realDir, link); err != nil {
+			t.Skipf("symlink unavailable: %v", err)
+		}
+		if err := EnsureDirSafe(link); err == nil {
+			t.Error("expected error for symlink target, got nil")
+		}
+	})
+}
+
+func TestWriteFileAtomic(t *testing.T) {
+	t.Run("creates file with expected content", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "out.json")
+		data := []byte(`{"hello":"world"}`)
+		if err := WriteFileAtomic(path, data, 0o644); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		got, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read error: %v", err)
+		}
+		if string(got) != string(data) {
+			t.Errorf("content mismatch: got %q want %q", got, data)
+		}
+	})
+
+	t.Run("overwrites existing file atomically", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "out.json")
+		if err := os.WriteFile(path, []byte("old"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := WriteFileAtomic(path, []byte("new"), 0o644); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		got, _ := os.ReadFile(path)
+		if string(got) != "new" {
+			t.Errorf("expected %q got %q", "new", got)
+		}
+	})
+
+	t.Run("fails when parent directory does not exist", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "nonexistent", "out.json")
+		if err := WriteFileAtomic(path, []byte("x"), 0o644); err == nil {
+			t.Error("expected error for missing parent dir, got nil")
+		}
+	})
+}
+
 func TestCreateSymlink(t *testing.T) {
 	t.Run("creates symlink successfully", func(t *testing.T) {
 		dir := t.TempDir()

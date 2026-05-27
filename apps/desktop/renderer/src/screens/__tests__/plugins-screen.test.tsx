@@ -9,14 +9,19 @@ vi.mock("../../features/provider-plugins/use-provider-plugin-list.js", () => ({
 vi.mock("../../features/provider-plugins/use-scan-provider-plugins-global.js", () => ({
   useScanProviderPluginsGlobal: vi.fn(),
 }));
+vi.mock("../../features/provider-plugins/use-set-provider-plugin-enabled.js", () => ({
+  useSetProviderPluginEnabled: vi.fn(),
+}));
 
 import { PluginsScreen } from "../plugins-screen.js";
 import { useProviderPluginList } from "../../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsGlobal } from "../../features/provider-plugins/use-scan-provider-plugins-global.js";
+import { useSetProviderPluginEnabled } from "../../features/provider-plugins/use-set-provider-plugin-enabled.js";
 import type { PPGlobalView } from "@contracts/index.js";
 
 const mockUseList = useProviderPluginList as ReturnType<typeof vi.fn>;
 const mockUseScan = useScanProviderPluginsGlobal as ReturnType<typeof vi.fn>;
+const mockUseSetEnabled = useSetProviderPluginEnabled as ReturnType<typeof vi.fn>;
 
 function makeGlobal(overrides: Partial<PPGlobalView> = {}): PPGlobalView {
   return {
@@ -35,6 +40,7 @@ function makeGlobal(overrides: Partial<PPGlobalView> = {}): PPGlobalView {
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseScan.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
+  mockUseSetEnabled.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
 });
 
 afterEach(() => cleanup());
@@ -155,5 +161,75 @@ describe("PluginsScreen", () => {
     render(<PluginsScreen />);
     expect(screen.getByRole("button", { name: /scanning/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /scanning/i }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("shows Enable/Disable buttons for claude provider when status is ok", () => {
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [
+        { pluginName: "plugin-a", marketplaceName: "npm", status: "enabled" },
+        { pluginName: "plugin-b", marketplaceName: "npm", status: "disabled" },
+      ],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
+  });
+
+  it("shows Enable/Disable buttons for antigravity_cli provider when status is ok", () => {
+    const global = makeGlobal({
+      providerKey: "antigravity_cli",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "ag-plugin", marketplaceName: "market", status: "disabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
+  });
+
+  it("does not show toggle buttons for codex provider", () => {
+    const global = makeGlobal({
+      providerKey: "codex",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "codex-plugin", marketplaceName: "openai", status: "enabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.queryByRole("button", { name: "Disable" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Enable" })).toBeNull();
+  });
+
+  it("toggle button calls setEnabled mutation with correct args", () => {
+    const mutateFn = vi.fn();
+    mockUseSetEnabled.mockReturnValue({ mutate: mutateFn, operationId: null, isPending: false });
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "my-plugin", marketplaceName: "my-market", status: "enabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+    expect(mutateFn).toHaveBeenCalledWith({
+      providerKey: "claude",
+      pluginName: "my-plugin",
+      marketplaceName: "my-market",
+      layer: "user",
+      enabled: false,
+    });
+  });
+
+  it("toggle button is disabled when a plugin operation is in flight", () => {
+    mockUseSetEnabled.mockReturnValue({ mutate: vi.fn(), operationId: 7, isPending: false });
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "p", marketplaceName: "m", status: "enabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getByRole("button", { name: "Disable" }).hasAttribute("disabled")).toBe(true);
   });
 });
