@@ -18,7 +18,7 @@ import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import type { ProjectGetEntry, ProjectGetProvider, PPLayerStatus, PPProjectEntry } from "@contracts/index.js";
 
-const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli"]);
+const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli", "codex"]);
 
 const ENTRY_STATUS_CONFIG: Record<ProjectGetEntry["status"], { label: string; description: string; cls: string }> = {
   current: { label: "Linked to active host", description: "This project entry points to the active Skill Host copy.", cls: "bg-green-100 text-green-800" },

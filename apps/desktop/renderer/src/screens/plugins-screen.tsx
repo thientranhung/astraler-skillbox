@@ -8,7 +8,7 @@ import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import type { PPGlobalView, PPGlobalEntry, PPMarketplace } from "@contracts/index.js";
 
-const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli"]);
+const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli", "codex"]);
 
 const LAYER_STATUS_LABEL: Record<string, string> = {
   ok: "ok",

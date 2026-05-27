@@ -361,7 +361,7 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
   });
 
-  it("does not show toggle buttons for codex project plugins", () => {
+  it("shows toggle buttons for codex project plugins (TOML write support added)", () => {
     mockUseProviderPluginList.mockReturnValue({
       isPending: false, isError: false,
       data: makeProjectPluginData("codex", [
@@ -369,8 +369,7 @@ describe("ProjectDetailScreen UX clarity", () => {
       ]),
     });
     render(<ProjectDetailScreen />);
-    expect(screen.queryByRole("button", { name: "Disable" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Enable" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy();
   });
 
   it("toggle button calls mutation with layer=project and projectId", () => {

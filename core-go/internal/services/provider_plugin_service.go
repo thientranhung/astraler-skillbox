@@ -22,13 +22,17 @@ type pluginProjectRepo interface {
 	GetByID(ctx context.Context, id int64) (*domain.Project, error)
 }
 
+// pluginWriterFn is the signature for plugin file writers (JSON and TOML).
+type pluginWriterFn func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error
+
 // ProviderPluginService handles scanning and listing provider plugin declarations.
 type ProviderPluginService struct {
 	repo         *repositories.ProviderPluginRepo
 	pdRepo       pluginDefRepo
 	projRepo     pluginProjectRepo
 	runner       OperationRunner
-	pluginWriter func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error
+	pluginWriter pluginWriterFn
+	tomlWriter   pluginWriterFn
 }
 
 func NewProviderPluginService(
@@ -43,7 +47,16 @@ func NewProviderPluginService(
 		projRepo:     projRepo,
 		runner:       runner,
 		pluginWriter: providers.WriteJSONPluginEnabled,
+		tomlWriter:   providers.WriteTOMLPluginEnabled,
 	}
+}
+
+// writerFor returns the appropriate file writer for the given provider.
+func (s *ProviderPluginService) writerFor(providerKey string) pluginWriterFn {
+	if providerKey == "codex" {
+		return s.tomlWriter
+	}
+	return s.pluginWriter
 }
 
 // ScanGlobal starts an async scan of configured provider user layers.
@@ -201,15 +214,10 @@ func (s *ProviderPluginService) SetPluginEnabled(
 	projectID int64,
 	enabled bool,
 ) (int64, error) {
-	// Validate provider — only JSON-format providers supported in this slice.
+	// Validate provider — only JSON and TOML format providers supported.
 	switch providerKey {
-	case "claude", "antigravity_cli":
+	case "claude", "antigravity_cli", "codex":
 		// OK
-	case "codex":
-		return 0, domain.NewValidationError(
-			"Codex plugin writes not supported",
-			"Codex uses TOML format; write support is deferred to a future slice",
-		)
 	default:
 		return 0, domain.NewValidationError(
 			"Unknown provider",
@@ -276,10 +284,11 @@ func (s *ProviderPluginService) SetPluginEnabled(
 			)
 		}
 
+		writer := s.writerFor(providerKey)
 		target := operations.Target{Type: "provider_plugin_project", ID: projectID}
 		opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
 			func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
-				return nil, s.setPluginEnabledProjectInternal(opCtx, def, project, pluginName, marketplaceName, enabled, progress)
+				return nil, s.setPluginEnabledProjectInternal(opCtx, def, project, pluginName, marketplaceName, enabled, writer, progress)
 			})
 		if err != nil {
 			if _, ok := err.(*domain.AppError); ok {
@@ -291,10 +300,11 @@ func (s *ProviderPluginService) SetPluginEnabled(
 	}
 
 	// layer == "user"
+	writer := s.writerFor(providerKey)
 	target := operations.Target{Type: "provider_plugin_global", ID: 0}
 	opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
 		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
-			return nil, s.setPluginEnabledUserInternal(opCtx, def, pluginName, marketplaceName, enabled, progress)
+			return nil, s.setPluginEnabledUserInternal(opCtx, def, pluginName, marketplaceName, enabled, writer, progress)
 		})
 	if err != nil {
 		if _, ok := err.(*domain.AppError); ok {
@@ -310,6 +320,7 @@ func (s *ProviderPluginService) setPluginEnabledUserInternal(
 	def pluginProviderDef,
 	pluginName, marketplaceName string,
 	enabled bool,
+	writer pluginWriterFn,
 	progress operations.ProgressFn,
 ) error {
 	homeDir, err := os.UserHomeDir()
@@ -320,7 +331,7 @@ func (s *ProviderPluginService) setPluginEnabledUserInternal(
 	filePath := def.UserFilePath()
 
 	progress("writing_plugin_setting", 0, 1, "")
-	if err := s.pluginWriter(filePath, allowedDir, pluginName, marketplaceName, enabled); err != nil {
+	if err := writer(filePath, allowedDir, pluginName, marketplaceName, enabled); err != nil {
 		return domain.NewFilesystemError("Could not write plugin setting", err.Error())
 	}
 	progress("writing_plugin_setting", 1, 1, def.Provider.Key)
@@ -334,6 +345,7 @@ func (s *ProviderPluginService) setPluginEnabledProjectInternal(
 	project *domain.Project,
 	pluginName, marketplaceName string,
 	enabled bool,
+	writer pluginWriterFn,
 	progress operations.ProgressFn,
 ) error {
 	allowedDir := def.ProjectAllowedDir(project.Path)
@@ -347,7 +359,7 @@ func (s *ProviderPluginService) setPluginEnabledProjectInternal(
 	}
 
 	progress("writing_plugin_setting", 0, 1, "")
-	if err := s.pluginWriter(filePath, allowedDir, pluginName, marketplaceName, enabled); err != nil {
+	if err := writer(filePath, allowedDir, pluginName, marketplaceName, enabled); err != nil {
 		return domain.NewFilesystemError("Could not write plugin setting", err.Error())
 	}
 	progress("writing_plugin_setting", 1, 1, def.Provider.Key)
