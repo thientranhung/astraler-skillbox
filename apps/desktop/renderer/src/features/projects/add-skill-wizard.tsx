@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import type { ProjectGetProvider, SkillListSkill } from "@contracts/index.js";
 import { ProviderIcon } from "../../components/provider-icon.js";
@@ -19,21 +19,29 @@ export function AddSkillWizard({
 }: AddSkillWizardProps): React.JSX.Element {
   const installSkill = useInstallSkill();
 
-  const installableProviders = providers.filter(
-    (p) =>
-      (p.providerStatus === "supported" || p.providerStatus === "experimental") &&
-      (p.detectionStatus === "detected" || p.detectionStatus === "configured"),
+  const installableProviders = useMemo(
+    () =>
+      providers.filter(
+        (p) =>
+          (p.providerStatus === "supported" || p.providerStatus === "experimental") &&
+          (p.detectionStatus === "detected" || p.detectionStatus === "configured"),
+      ),
+    [providers],
   );
 
   const availableSkills = skills.filter((s) => s.status === "available");
 
   const [selectedSkillIds, setSelectedSkillIds] = useState<Set<number>>(new Set());
-  const [selectedProviderKey, setSelectedProviderKey] = useState<string>(
-    installableProviders.length === 1 ? installableProviders[0].providerKey : "",
-  );
+  const [selectedProviderKey, setSelectedProviderKey] = useState<string>("");
 
   useEffect(() => {
-    setSelectedProviderKey(installableProviders.length === 1 ? installableProviders[0].providerKey : "");
+    setSelectedProviderKey((prev) =>
+      installableProviders.some((p) => p.providerKey === prev)
+        ? prev
+        : installableProviders.length === 1
+          ? installableProviders[0].providerKey
+          : "",
+    );
   }, [installableProviders]);
 
   const canInstall =
