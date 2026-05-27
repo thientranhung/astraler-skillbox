@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
+	"github.com/astraler/skillbox/core-go/internal/operations"
 	"github.com/astraler/skillbox/core-go/internal/providers"
 	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
@@ -415,5 +416,124 @@ func TestScanProjectInternal_MetadataCounts(t *testing.T) {
 	}
 	if summary.WarningsCreated != 2 {
 		t.Errorf("WarningsCreated: got %d want 2 (1 provider + 1 install)", summary.WarningsCreated)
+	}
+}
+
+type fakeProjectPluginScanner struct {
+	called     int
+	gotProject *domain.Project
+	err        error
+}
+
+func (f *fakeProjectPluginScanner) ScanProjectLayers(_ context.Context, project *domain.Project, progress operations.ProgressFn) error {
+	f.called++
+	f.gotProject = project
+	progress("scanning_plugins", 1, 1, "")
+	return f.err
+}
+
+func TestScanProjectInternal_InvokesPluginScannerAfterCommit(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "myproject", "/tmp/myproject") //nolint:errcheck
+
+	adapter := &mockAdapter{
+		key: "generic_agents",
+		result: providers.DetectResult{
+			Present:         true,
+			DetectedPath:    "/tmp/myproject/.agents",
+			SkillsPath:      "/tmp/myproject/.agents/skills",
+			DetectionStatus: domain.DetectionStatusDetected,
+		},
+	}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{adapter}}
+	pdRepo := &mockProviderDefRepo{defs: map[string]*domain.ProviderDefinition{
+		"generic_agents": {ID: 42, Key: "generic_agents"},
+	}}
+	scanRepo := &mockProjectScanCommitter{}
+	scanner := &fakeProjectPluginScanner{}
+
+	svc := newFullScanSvc(
+		projRepo, &mockProjectFS{}, &mockRunner{}, scanRepo,
+		registry, pdRepo, &mockHostLister{}, &mockSkillsByHostLister{},
+	).WithPluginDeps(scanner, nil)
+
+	project, _ := projRepo.GetByID(ctx, 1)
+	_, err := svc.scanProjectInternal(ctx, project, func(string, int, int, string) {})
+	if err != nil {
+		t.Fatalf("scanProjectInternal: %v", err)
+	}
+
+	if scanner.called != 1 {
+		t.Fatalf("plugin scanner calls: got %d want 1", scanner.called)
+	}
+	if scanRepo.fullScanCallCount != 1 {
+		t.Errorf("CommitProjectScan calls: got %d want 1", scanRepo.fullScanCallCount)
+	}
+	if scanner.gotProject == nil || scanner.gotProject.ID != project.ID {
+		t.Errorf("scanner got wrong project: %v", scanner.gotProject)
+	}
+}
+
+func TestScanProjectInternal_NoPluginScanner_Succeeds(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "myproject", "/tmp/myproject") //nolint:errcheck
+
+	adapter := &mockAdapter{key: "generic_agents", result: providers.DetectResult{
+		Present: true, DetectedPath: "/tmp/myproject/.agents",
+		SkillsPath: "/tmp/myproject/.agents/skills", DetectionStatus: domain.DetectionStatusDetected,
+	}}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{adapter}}
+	pdRepo := &mockProviderDefRepo{defs: map[string]*domain.ProviderDefinition{
+		"generic_agents": {ID: 42, Key: "generic_agents"},
+	}}
+	scanRepo := &mockProjectScanCommitter{}
+
+	svc := newFullScanSvc(projRepo, &mockProjectFS{}, &mockRunner{}, scanRepo,
+		registry, pdRepo, &mockHostLister{}, &mockSkillsByHostLister{}) // no WithPluginDeps
+
+	project, _ := projRepo.GetByID(ctx, 1)
+	if _, err := svc.scanProjectInternal(ctx, project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("scanProjectInternal without plugin scanner: %v", err)
+	}
+	if scanRepo.fullScanCallCount != 1 {
+		t.Errorf("CommitProjectScan calls: got %d want 1", scanRepo.fullScanCallCount)
+	}
+}
+
+func TestScanProjectInternal_PluginError_StillReturnsSkillSummary(t *testing.T) {
+	projRepo := newMockProjectRepo()
+	ctx := context.Background()
+	projRepo.UpsertByPath(ctx, "myproject", "/tmp/myproject") //nolint:errcheck
+
+	adapter := &mockAdapter{key: "generic_agents", result: providers.DetectResult{
+		Present: true, DetectedPath: "/tmp/myproject/.agents",
+		SkillsPath: "/tmp/myproject/.agents/skills", DetectionStatus: domain.DetectionStatusDetected,
+	}}
+	registry := &mockProviderRegistry{adapters: []providers.ProviderAdapter{adapter}}
+	pdRepo := &mockProviderDefRepo{defs: map[string]*domain.ProviderDefinition{
+		"generic_agents": {ID: 42, Key: "generic_agents"},
+	}}
+	scanRepo := &mockProjectScanCommitter{}
+	scanner := &fakeProjectPluginScanner{err: domain.NewDatabaseError("boom", "plugin commit failed")}
+
+	svc := newFullScanSvc(projRepo, &mockProjectFS{}, &mockRunner{}, scanRepo,
+		registry, pdRepo, &mockHostLister{}, &mockSkillsByHostLister{}).
+		WithPluginDeps(scanner, nil)
+
+	project, _ := projRepo.GetByID(ctx, 1)
+	meta, err := svc.scanProjectInternal(ctx, project, func(string, int, int, string) {})
+	if err == nil {
+		t.Fatal("expected plugin-step error to propagate")
+	}
+	if meta == nil {
+		t.Fatal("expected skill-scan summary metadata alongside the error, got nil (F3)")
+	}
+	if _, ok := meta.(*projectScanSummary); !ok {
+		t.Errorf("metadata type: got %T want *projectScanSummary", meta)
+	}
+	if scanRepo.fullScanCallCount != 1 {
+		t.Errorf("CommitProjectScan calls: got %d want 1 (skills committed before plugin step)", scanRepo.fullScanCallCount)
 	}
 }
