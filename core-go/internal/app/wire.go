@@ -53,7 +53,8 @@ func New(
 			"provider.setEnabled":     rpchandlers.NewProviderSetEnabledHandler(providerRegistrySvc),
 			"providerPlugin.scanGlobal":   rpchandlers.NewProviderPluginScanGlobalHandler(providerPluginSvc),
 			"providerPlugin.list":         rpchandlers.NewProviderPluginListHandler(providerPluginSvc),
-			"providerPlugin.setEnabled":   rpchandlers.NewProviderPluginSetEnabledHandler(providerPluginSvc),
+			"providerPlugin.setEnabled":     rpchandlers.NewProviderPluginSetEnabledHandler(providerPluginSvc),
+			"providerPlugin.removeOverride": rpchandlers.NewProviderPluginRemoveOverrideHandler(providerPluginSvc),
 		},
 	}
 	return a
