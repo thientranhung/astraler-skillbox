@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -119,6 +120,13 @@ func ScanClaudeSettingsFile(filePath, allowedDir string) ClaudeSettingsScan {
 			count++
 		}
 	}
+
+	sort.Slice(result.Plugins, func(i, j int) bool {
+		if result.Plugins[i].PluginName != result.Plugins[j].PluginName {
+			return result.Plugins[i].PluginName < result.Plugins[j].PluginName
+		}
+		return result.Plugins[i].MarketplaceName < result.Plugins[j].MarketplaceName
+	})
 
 	// extraKnownMarketplaces is an optional array of objects
 	if ekm, exists := raw["extraKnownMarketplaces"]; exists {

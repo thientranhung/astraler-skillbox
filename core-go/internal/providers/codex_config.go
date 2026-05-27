@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -51,6 +52,15 @@ func ScanCodexConfigFile(filePath, allowedDir string) ClaudeSettingsScan {
 	result := ClaudeSettingsScan{Status: "ok"}
 	parseCodexPlugins(raw, &result)
 	parseCodexMarketplaces(raw, &result)
+	sort.Slice(result.Plugins, func(i, j int) bool {
+		if result.Plugins[i].PluginName != result.Plugins[j].PluginName {
+			return result.Plugins[i].PluginName < result.Plugins[j].PluginName
+		}
+		return result.Plugins[i].MarketplaceName < result.Plugins[j].MarketplaceName
+	})
+	sort.Slice(result.Marketplaces, func(i, j int) bool {
+		return result.Marketplaces[i].MarketplaceName < result.Marketplaces[j].MarketplaceName
+	})
 	return result
 }
 
