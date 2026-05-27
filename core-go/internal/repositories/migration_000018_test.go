@@ -41,7 +41,9 @@ func TestMigration000018_PiPaths(t *testing.T) {
 		{"global", "skills", "~/.config/opencode/skills"},
 		{"global", "skills", "~/.claude/skills"},
 		{"global", "skills", "~/.agents/skills"},
-		{"global", "config", "~/.config/opencode/config.json"},
+		// global config changed to ~/.pi/agent/settings.json by migration 019
+		{"global", "config", "~/.pi/agent/settings.json"},
+		{"project", "config", ".pi/settings.json"},
 	}
 
 	for _, c := range cases {
@@ -67,7 +69,7 @@ func TestMigration000018_DatabaseVersion(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&dbVersion); err != nil {
 		t.Fatalf("query database_version: %v", err)
 	}
-	if dbVersion != 18 {
-		t.Errorf("database_version: got %d want 18", dbVersion)
+	if dbVersion != 19 {
+		t.Errorf("database_version: got %d want 19", dbVersion)
 	}
 }
