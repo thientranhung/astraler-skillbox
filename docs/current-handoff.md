@@ -6,15 +6,16 @@ Updated: 2026-05-27
 
 Path: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox`
 
-Current branch state at handoff: `main...origin/main [ahead 258]`
+Current branch state at handoff: `main...origin/main [ahead 261]`
 
 Recent commits:
 
+- `65ed5df Add provider plugin toggle smoke test checklist`
+- `f14e23e Add TOML plugin write support for Codex`
+- `d6a02a6 Update current handoff after project-level toggles`
 - `32a561f Implement project-level plugin toggles for JSON providers`
 - `d137801 Update current handoff document`
 - `1e163ea Update playbook to support agy reviewer process`
-- `e350b3a Implement global plugin enable/disable for JSON-format providers`
-- `5cb2bc6 Keep Antigravity lead note out of playbook`
 
 ## Operating Model
 
@@ -43,18 +44,18 @@ tmux capture-pane -t agent-lead-skillbox -p | tail -80
 
 ## Completed Recently
 
+- Created manual UI smoke test checklist section in `SMOKE.md` (commit `65ed5df`).
+- Implemented write support for Codex config files (TOML format) under `providerPlugin.setEnabled` in commit `f14e23e`.
+- Created a comment-preserving TOML editor in the Go backend (`toml_plugin_writer.go`) using line-based regex replacements and double validation passes via `toml.Unmarshal`.
+- Enabled Codex plugin Enable/Disable toggling in the React frontend UI by whitelisting `"codex"` in both `plugins-screen.tsx` and `project-detail-screen.tsx`.
+- Audited the implementation commit via `agent-lead-skillbox` (`agy` reviewer) and received full approval.
 - Implemented project-level plugin enable/disable write actions for JSON-format providers (`claude` and `antigravity_cli`) in commit `32a561f`.
-- Added Enable/Disable action toggles on the Project Detail screen, with automatic local override warnings and button disabling.
-- Updated `useSetProviderPluginEnabled` hook to invalidate project detail queries on mutation success.
-- Implemented global (user-layer) plugin enable/disable write actions for JSON-format providers in commit `e350b3a`.
-- Updated the agent orchestration playbook to support both `agy` and `codex` reviewer processes in commit `1e163ea`.
 
 ## Next Work
 
 | Priority | Task | Notes |
 | --- | --- | --- |
 | P0 | Check repo and tmux health | Ensure clean state and both agents are usable |
-| P1 | Codex/TOML write support | Support TOML comment-preserving writes for Codex config |
 | P1 | Connect Global/Project Scans to the Registry | Ensure scans read paths from settings registry instead of hardcoded paths |
 | P2 | Apple Developer ID and notarization | Accepted release/distribution tech debt |
 
@@ -63,7 +64,7 @@ tmux capture-pane -t agent-lead-skillbox -p | tail -80
 Use a task file if the prompt becomes long.
 
 ```text
-Implement write support for Codex config files (TOML format) under providerPlugin.setEnabled. The implementation should preserve comments, formatting, and unrelated keys in the TOML file. Add boundary validation, error handling, and unit/Vitest tests. Commit one focused implementation commit and report SHA.
+Implement connecting global and project scans to the settings registry. The scanner must resolve paths using definitions from the settings registry database table instead of hardcoded paths. Add validation and unit/Vitest tests. Commit one focused implementation commit and report SHA.
 ```
 
 ## Suggested Lead Prompt
@@ -71,5 +72,5 @@ Implement write support for Codex config files (TOML format) under providerPlugi
 Use after the tech agent reports a commit.
 
 ```text
-Review the latest tech commit only. Do not edit files. Findings first. Check correctness, tests, regressions, and whether Codex/TOML comment-preserving config writes are safe and correctly scoped. Approve or block.
+Review the latest tech commit only. Do not edit files. Findings first. Check correctness, tests, regressions, and whether paths resolution via registry is correct and safe. Approve or block.
 ```
