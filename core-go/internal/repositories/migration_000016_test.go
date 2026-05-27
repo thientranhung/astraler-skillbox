@@ -63,18 +63,19 @@ func TestMigration000016_CodexUsesAgentsPaths(t *testing.T) {
 		}
 	}
 
-	// Old .codex paths should be gone
+	// Old .codex detect/skills paths should be gone (config paths restored by migration 020)
 	var oldCount int
 	err := db.QueryRow(`
 		SELECT COUNT(*) FROM provider_path_candidates ppc
 		JOIN provider_definitions pd ON pd.id = ppc.provider_definition_id
 		WHERE pd.key = 'codex' AND ppc.relative_path LIKE '.codex%'
+		  AND ppc.purpose IN ('detect', 'skills')
 	`).Scan(&oldCount)
 	if err != nil {
 		t.Fatalf("query old codex paths: %v", err)
 	}
 	if oldCount != 0 {
-		t.Errorf("old .codex paths should be gone: got %d", oldCount)
+		t.Errorf("old .codex detect/skills paths should be gone: got %d", oldCount)
 	}
 }
 
@@ -116,7 +117,7 @@ func TestMigration000016_DatabaseVersion(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&dbVersion); err != nil {
 		t.Fatalf("query database_version: %v", err)
 	}
-	if dbVersion != 19 {
-		t.Errorf("database_version: got %d want 19", dbVersion)
+	if dbVersion != 20 {
+		t.Errorf("database_version: got %d want 20", dbVersion)
 	}
 }
