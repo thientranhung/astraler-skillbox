@@ -71,7 +71,7 @@ func TestMigration000011_DatabaseVersion(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&dbVersion); err != nil {
 		t.Fatalf("query database_version: %v", err)
 	}
-	if dbVersion != 16 {
-		t.Errorf("database_version: got %d want 16", dbVersion)
+	if dbVersion != 17 {
+		t.Errorf("database_version: got %d want 17", dbVersion)
 	}
 }

@@ -18,7 +18,7 @@ func TestMigration000006_ProjectProviderSeeds(t *testing.T) {
 		skillsRel string
 	}{
 		{providers.CodexKey, "unsupported", providers.CodexDetectPath, providers.CodexSkillsPath},
-		{providers.GeminiKey, "unsupported", providers.GeminiDetectPath, providers.GeminiSkillsPath},
+		// gemini removed by migration 017
 		{providers.AntigravityCLIKey, "unsupported", providers.AntigravityDetectPath, providers.AntigravitySkillsPath},
 	}
 

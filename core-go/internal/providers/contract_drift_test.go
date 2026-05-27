@@ -66,7 +66,6 @@ func TestContractDrift_RegisteredAdapterKeys(t *testing.T) {
 		providers.GenericAgentsKey:  true,
 		providers.ClaudeKey:         true,
 		providers.CodexKey:          true,
-		providers.GeminiKey:         true,
 		providers.AntigravityCLIKey: true,
 	}
 	for key := range wantKeys {
