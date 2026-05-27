@@ -52,7 +52,6 @@ func New(
 			"provider.resetPaths":     rpchandlers.NewProviderResetPathsHandler(providerRegistrySvc),
 			"provider.setEnabled":     rpchandlers.NewProviderSetEnabledHandler(providerRegistrySvc),
 			"providerPlugin.scanGlobal":   rpchandlers.NewProviderPluginScanGlobalHandler(providerPluginSvc),
-			"providerPlugin.scanProject":  rpchandlers.NewProviderPluginScanProjectHandler(providerPluginSvc),
 			"providerPlugin.list":         rpchandlers.NewProviderPluginListHandler(providerPluginSvc),
 			"providerPlugin.setEnabled":   rpchandlers.NewProviderPluginSetEnabledHandler(providerPluginSvc),
 		},
