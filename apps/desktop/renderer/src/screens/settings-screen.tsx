@@ -129,7 +129,19 @@ function OptionalSlotCell({
   isResetting: boolean;
 }): React.JSX.Element {
   if (data.paths.length === 0 && !hasSlotOverride) {
-    return <span className="text-zinc-300">—</span>;
+    return (
+      <div className="flex items-center gap-1">
+        <span className="text-zinc-400">Not set</span>
+        <button
+          onClick={onEdit}
+          className="shrink-0 rounded p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+          aria-label="Edit paths"
+          title="Edit paths"
+        >
+          <Pencil size={11} />
+        </button>
+      </div>
+    );
   }
   return (
     <SlotCell
