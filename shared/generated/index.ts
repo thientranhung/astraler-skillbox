@@ -34,6 +34,5 @@ export * from './methods/provider-update-paths.js';
 export * from './methods/provider-reset-paths.js';
 export * from './methods/provider-set-enabled.js';
 export * from './methods/provider-plugin-scan-global.js';
-export * from './methods/provider-plugin-scan-project.js';
 export * from './methods/provider-plugin-list.js';
 export * from './methods/provider-plugin-set-enabled.js';

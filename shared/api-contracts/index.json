@@ -32,7 +32,6 @@
     { "input": "methods/provider.resetPaths.json", "output": "methods/provider-reset-paths.ts" },
     { "input": "methods/provider.setEnabled.json", "output": "methods/provider-set-enabled.ts" },
     { "input": "methods/providerPlugin.scanGlobal.json", "output": "methods/provider-plugin-scan-global.ts" },
-    { "input": "methods/providerPlugin.scanProject.json", "output": "methods/provider-plugin-scan-project.ts" },
     { "input": "methods/providerPlugin.list.json", "output": "methods/provider-plugin-list.ts" },
     { "input": "methods/providerPlugin.setEnabled.json", "output": "methods/provider-plugin-set-enabled.ts" }
   ]

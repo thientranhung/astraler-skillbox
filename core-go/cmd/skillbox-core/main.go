@@ -101,7 +101,7 @@ func main() {
 	if err := srv.Notify(sigCtx, "server.ready", map[string]interface{}{
 		"version":      "0.1.0-m3",
 		"pid":          os.Getpid(),
-		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "skill.get", "settings.get", "operation.cancel", "project.add", "project.list", "project.get", "project.scan", "project.remove", "install.skill", "remove.skill", "dashboard.get", "global.scan", "global.list", "provider.list", "provider.updatePaths", "provider.resetPaths", "provider.setEnabled", "providerPlugin.scanGlobal", "providerPlugin.scanProject", "providerPlugin.list", "providerPlugin.setEnabled"},
+		"capabilities": []string{"ping", "host.choose", "host.scan", "skill.list", "skill.get", "settings.get", "operation.cancel", "project.add", "project.list", "project.get", "project.scan", "project.remove", "install.skill", "remove.skill", "dashboard.get", "global.scan", "global.list", "provider.list", "provider.updatePaths", "provider.resetPaths", "provider.setEnabled", "providerPlugin.scanGlobal", "providerPlugin.list", "providerPlugin.setEnabled"},
 	}); err != nil {
 		slog.Error("failed to send server.ready", "err", err)
 		os.Exit(1)
