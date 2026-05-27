@@ -117,9 +117,15 @@ Default ownership:
 
 - `agent-tech-skillbox` implements approved work, including small fixes, using normal prompts or `/goal` depending on scope.
 - `agent-lead-skillbox` reviews, tests, and QA-checks using normal prompts.
-- Orchestrator writes plans/specs, manages scope, verifies independently, handles tmux hygiene, and only edits code directly for emergency unblock, tiny documentation/playbook changes, or user-approved inline fixes.
+- Orchestrator writes plans/specs, manages scope, verifies independently, handles tmux hygiene, and maintains the operating system.
+- Orchestrator must not silently self-assign product implementation. If implementation is needed, first route it through `agent-tech-skillbox`.
+- Direct orchestrator edits are allowed for playbook/harness hardening, tiny documentation fixes, or explicitly user-approved exceptions.
 
 If the orchestrator has already created partial local changes before handing off, state that clearly in the tech prompt and ask tech to continue from the current worktree state.
+
+Agent failure is not automatic permission for the orchestrator to implement. If `agent-tech-skillbox` is degraded, stale, context-poisoned, or ignoring scope, the orchestrator must restore the agent workflow first: interrupt, clear, restart, split the task smaller, switch model, or ask the user for an exception.
+
+If the user authorizes an exception and the orchestrator edits app code directly, report the reason, keep the change narrowly scoped, and hand the result to `agent-lead-skillbox` for review before closing the work.
 
 ## `/goal` Prompt Shape
 
@@ -183,6 +189,17 @@ If the pane shows a suggestion or placeholder such as `Summarize recent commits`
 
 If `C-c` exits Codex to a shell, restart with `codex --yolo`, then capture the pane again before sending work. Do not trust the process name alone; inspect the visible input area.
 
+### Tech Agent Degraded Procedure
+
+Use this procedure when `agent-tech-skillbox` repeats stale behavior, ignores the scope, uses the wrong workflow, or carries corrupted context:
+
+1. Stop the current task with `C-c` and capture the pane.
+2. Clear any active autonomous loop, for example `/goal clear`, when applicable.
+3. Run `/clear`; if the session is still noisy, restart Claude with `claude --dangerously-skip-permissions`.
+4. Re-send a smaller task brief with one checkpoint and an explicit stop condition.
+5. If the same failure repeats, pause implementation and ask the user whether to restart the agent/model or authorize an orchestrator exception.
+6. Do not silently self-implement product work because the tech agent was inconvenient to operate.
+
 ## Review Loop
 
 Lead reviews must be scoped to a commit or file and must start with findings. Example:
@@ -219,3 +236,4 @@ Every orchestration failure should become a rule here. Typical hardening updates
 - review-only guardrails,
 - recovery steps for shell/TUI drift,
 - ownership rules for shared files.
+- orchestrator implementation boundary violations.
