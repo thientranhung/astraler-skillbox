@@ -189,7 +189,7 @@ describe("PluginsScreen", () => {
     expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
   });
 
-  it("does not show toggle buttons for codex provider", () => {
+  it("shows toggle buttons for codex provider (TOML write support added)", () => {
     const global = makeGlobal({
       providerKey: "codex",
       userLayerStatus: "ok",
@@ -197,8 +197,7 @@ describe("PluginsScreen", () => {
     });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
-    expect(screen.queryByRole("button", { name: "Disable" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Enable" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy();
   });
 
   it("toggle button calls setEnabled mutation with correct args", () => {

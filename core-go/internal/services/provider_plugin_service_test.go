@@ -420,11 +420,14 @@ func makeSyncRunner() *mockRunner {
 	}
 }
 
-func TestSetPluginEnabled_CodexReturnsValidationError(t *testing.T) {
-	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockRunner{})
+func TestSetPluginEnabled_CodexIsNowSupported(t *testing.T) {
+	// Codex was previously rejected; with TOML write support it now passes provider validation.
+	// Expect "provider not configured" (validation) because no DB entry, not "unsupported provider".
+	pdRepo := &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{}}
+	svc := NewProviderPluginService(nil, pdRepo, &mockPluginProjectRepo{}, &mockRunner{})
 	_, err := svc.SetPluginEnabled(context.Background(), "codex", "p", "m", "user", 0, true)
 	if err == nil {
-		t.Fatal("expected error for codex, got nil")
+		t.Fatal("expected error (provider not in DB), got nil")
 	}
 	appErr, ok := err.(*domain.AppError)
 	if !ok {
@@ -601,12 +604,11 @@ func TestSetPluginEnabled_PathConfinementEscape_ReturnsValidationError(t *testin
 	}
 
 	writerCalled := false
-	svc := &ProviderPluginService{
-		pluginWriter: func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error {
-			writerCalled = true
-			return nil
-		},
-	}
+	stubWriter := pluginWriterFn(func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error {
+		writerCalled = true
+		return nil
+	})
+	svc := &ProviderPluginService{}
 
 	err := svc.setPluginEnabledProjectInternal(
 		context.Background(),
@@ -614,6 +616,7 @@ func TestSetPluginEnabled_PathConfinementEscape_ReturnsValidationError(t *testin
 		project,
 		"plugin", "market",
 		true,
+		stubWriter,
 		func(string, int, int, string) {},
 	)
 	if err == nil {
