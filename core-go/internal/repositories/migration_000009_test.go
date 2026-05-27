@@ -79,8 +79,8 @@ func TestMigration000009_OpenCodeProvider(t *testing.T) {
 	if iconKey != "opencode" {
 		t.Errorf("icon_key: got %q want opencode", iconKey)
 	}
-	if hasGlobal != 0 {
-		t.Errorf("has_global_level: got %d want 0", hasGlobal)
+	if hasGlobal != 1 {
+		t.Errorf("has_global_level: got %d want 1", hasGlobal)
 	}
 
 	var candCount int
@@ -115,7 +115,7 @@ func TestMigration000009_DatabaseVersion(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&dbVersion); err != nil {
 		t.Fatalf("query database_version: %v", err)
 	}
-	if dbVersion != 14 {
-		t.Errorf("database_version: got %d want 14", dbVersion)
+	if dbVersion != 15 {
+		t.Errorf("database_version: got %d want 15", dbVersion)
 	}
 }
