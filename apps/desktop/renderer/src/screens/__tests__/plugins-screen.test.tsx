@@ -69,14 +69,14 @@ describe("PluginsScreen", () => {
 
   it("shows never scanned status when userLayerStatus is null", () => {
     const global = makeGlobal({ userLayerStatus: null });
-    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { global, projects: [] } });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
     expect(screen.getByText("never scanned")).toBeTruthy();
   });
 
   it("shows 'not configured' for missing status — not error language", () => {
     const global = makeGlobal({ userLayerStatus: "missing" });
-    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { global, projects: [] } });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
     expect(screen.getByText("not configured")).toBeTruthy();
     expect(screen.queryByText(/error/i)).toBeNull();
@@ -87,7 +87,7 @@ describe("PluginsScreen", () => {
       userLayerStatus: "ok",
       plugins: [{ pluginName: "my-plugin", marketplaceName: "npm", status: "enabled" }],
     });
-    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { global, projects: [] } });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
     expect(screen.getByText("my-plugin")).toBeTruthy();
     expect(screen.getByText("enabled")).toBeTruthy();
@@ -99,7 +99,7 @@ describe("PluginsScreen", () => {
       userLayerStatus: "ok",
       marketplaces: [{ marketplaceName: "my-marketplace", sourceType: "npm", sourceSummary: "registry.npmjs.org" }],
     });
-    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { global, projects: [] } });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
     expect(screen.getByText("my-marketplace")).toBeTruthy();
     expect(screen.getByText("registry.npmjs.org")).toBeTruthy();
@@ -110,7 +110,7 @@ describe("PluginsScreen", () => {
       userLayerStatus: "ok",
       scanWarnings: ["Truncated entry at line 42"],
     });
-    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { global, projects: [] } });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
     expect(screen.getByText("Truncated entry at line 42")).toBeTruthy();
     expect(screen.getByText("Scan notes")).toBeTruthy();
@@ -121,16 +121,32 @@ describe("PluginsScreen", () => {
       userLayerStatus: "missing",
       scanWarnings: ["some warning"],
     });
-    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { global, projects: [] } });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
     expect(screen.queryByText("Scan notes")).toBeNull();
   });
 
   it("shows managedOutOfScope note concisely", () => {
     const global = makeGlobal({ userLayerStatus: "ok", managedOutOfScope: true });
-    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { global, projects: [] } });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
     expect(screen.getByText(/managed outside Skillbox/i)).toBeTruthy();
+  });
+
+  it("renders multiple provider global views", () => {
+    const claude = makeGlobal({ providerKey: "claude", userLayerPath: "/Users/test/.claude/settings.json" });
+    const codex = makeGlobal({
+      providerKey: "codex",
+      userLayerPath: "/Users/test/.codex/config.toml",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "github", marketplaceName: "openai-curated", status: "enabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [claude, codex], global: claude, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getAllByText("Claude").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Codex").length).toBeGreaterThan(0);
+    expect(screen.getByText("/Users/test/.codex/config.toml")).toBeTruthy();
+    expect(screen.getByText("github")).toBeTruthy();
   });
 
   it("shows scanning state when operationId is set", () => {
