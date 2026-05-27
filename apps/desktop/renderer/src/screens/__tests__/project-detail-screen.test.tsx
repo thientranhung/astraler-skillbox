@@ -31,9 +31,6 @@ vi.mock("../../features/skills/use-active-host-skills.js", () => ({
 vi.mock("../../features/provider-plugins/use-provider-plugin-list.js", () => ({
   useProviderPluginList: vi.fn(),
 }));
-vi.mock("../../features/provider-plugins/use-scan-provider-plugins-project.js", () => ({
-  useScanProviderPluginsProject: vi.fn(),
-}));
 vi.mock("../../features/provider-plugins/use-set-provider-plugin-enabled.js", () => ({
   useSetProviderPluginEnabled: vi.fn(),
 }));
@@ -48,7 +45,6 @@ import { useRemoveProject } from "../../features/projects/use-remove-project.js"
 import { useRemoveSkill } from "../../features/projects/use-remove-skill.js";
 import { useActiveHostSkills } from "../../features/skills/use-active-host-skills.js";
 import { useProviderPluginList } from "../../features/provider-plugins/use-provider-plugin-list.js";
-import { useScanProviderPluginsProject } from "../../features/provider-plugins/use-scan-provider-plugins-project.js";
 import { useSetProviderPluginEnabled } from "../../features/provider-plugins/use-set-provider-plugin-enabled.js";
 import type { ProjectGetResponse } from "@contracts/index.js";
 
@@ -62,7 +58,6 @@ const mockUseRemoveProject = useRemoveProject as ReturnType<typeof vi.fn>;
 const mockUseRemoveSkill = useRemoveSkill as ReturnType<typeof vi.fn>;
 const mockUseActiveHostSkills = useActiveHostSkills as ReturnType<typeof vi.fn>;
 const mockUseProviderPluginList = useProviderPluginList as ReturnType<typeof vi.fn>;
-const mockUseScanProviderPluginsProject = useScanProviderPluginsProject as ReturnType<typeof vi.fn>;
 const mockUseSetProviderPluginEnabled = useSetProviderPluginEnabled as ReturnType<typeof vi.fn>;
 
 const projectDetail: ProjectGetResponse = {
@@ -128,7 +123,6 @@ beforeEach(() => {
   mockUseRemoveSkill.mockReturnValue({ mutate: vi.fn(), isPending: false });
   mockUseActiveHostSkills.mockReturnValue({ skills: [] });
   mockUseProviderPluginList.mockReturnValue({ isPending: false, isError: false, data: null });
-  mockUseScanProviderPluginsProject.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
   mockUseSetProviderPluginEnabled.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
@@ -201,10 +195,22 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getByText("/host/.agents/skills/current-skill")).toBeTruthy();
   });
 
-  it("renders Provider Plugins section with Scan Plugins button", () => {
+  it("does not render a separate Scan Plugins button", () => {
     render(<ProjectDetailScreen />);
+    expect(screen.queryByRole("button", { name: /scan plugins/i })).toBeNull();
     expect(screen.getByText("Provider Plugins")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /scan plugins/i })).toBeTruthy();
+  });
+
+  it("disables plugin toggle while the unified scan is in flight (F1)", () => {
+    mockUseScanProject.mockReturnValue({ mutate: vi.fn(), isPending: true, operationId: 1 });
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "p", marketplaceName: "m", effectiveStatus: "enabled", provenanceLayer: "project" },
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByRole("button", { name: "Disable" }).hasAttribute("disabled")).toBe(true);
   });
 
   it("shows 'No plugin data' when provider plugin list returns null data", () => {
