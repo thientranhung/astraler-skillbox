@@ -247,6 +247,9 @@ func (s *ProviderPluginService) listProvider(ctx context.Context, def pluginProv
 		view := buildProjectPluginView(projectID, def.Provider.Key, projectScans, userScan, entryMap, marketplaceMap)
 		projectViews = append(projectViews, view)
 	}
+	sort.Slice(projectViews, func(i, j int) bool {
+		return projectViews[i].ProjectID < projectViews[j].ProjectID
+	})
 
 	return global, projectViews, nil
 }
@@ -884,10 +887,19 @@ func buildProjectPluginView(
 	}
 
 	// Compute effective state for each plugin key
-	var effectivePlugins []domain.PluginEffectiveEntry
+	sortedKeys := make([]pluginKey, 0, len(allKeys))
 	for key := range allKeys {
+		sortedKeys = append(sortedKeys, key)
+	}
+	sort.Slice(sortedKeys, func(i, j int) bool {
+		if sortedKeys[i].PluginName != sortedKeys[j].PluginName {
+			return sortedKeys[i].PluginName < sortedKeys[j].PluginName
+		}
+		return sortedKeys[i].MarketplaceName < sortedKeys[j].MarketplaceName
+	})
+	var effectivePlugins []domain.PluginEffectiveEntry
+	for _, key := range sortedKeys {
 		effective := resolveEffectivePlugin(key.PluginName, key.MarketplaceName, localScan, projectLayerScan, userScan, entryMap)
-		// Absent plugins (all layers absent) are not surfaced in project view
 		if effective.EffectiveStatus != domain.PluginEffectiveAbsent {
 			effectivePlugins = append(effectivePlugins, effective)
 		}
