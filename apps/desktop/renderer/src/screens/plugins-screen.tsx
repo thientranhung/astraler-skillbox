@@ -34,6 +34,15 @@ function pluginStatusClass(status: PPGlobalEntry["status"]): string {
   return status === "enabled" ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500";
 }
 
+function providerLabel(providerKey: string): string {
+  switch (providerKey) {
+    case "claude": return "Claude";
+    case "codex": return "Codex";
+    case "antigravity_cli": return "Antigravity CLI";
+    default: return providerKey;
+  }
+}
+
 function MarketplaceRow({ m }: { m: PPMarketplace }): React.JSX.Element {
   return (
     <tr className="border-b border-zinc-100">
@@ -58,7 +67,7 @@ function GlobalPluginView({ global: g }: { global: PPGlobalView }): React.JSX.El
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-900">
             <ProviderIcon providerKey={g.providerKey} />
-            {g.providerKey === "claude" ? "Claude" : g.providerKey}
+            {providerLabel(g.providerKey)}
           </span>
           <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${statusClass}`}>
             {statusLabel}
@@ -164,7 +173,7 @@ export function PluginsScreen(): React.JSX.Element {
         <div>
           <h2 className="text-sm font-semibold text-zinc-900">Provider Plugins</h2>
           <p className="mt-0.5 text-xs text-zinc-400">
-            Read-only view of Claude plugin settings. Scan to refresh.
+            Read-only view of provider plugin settings. Scan to refresh.
           </p>
         </div>
         <button
@@ -194,13 +203,15 @@ export function PluginsScreen(): React.JSX.Element {
         {!isPending && !isError && data == null && (
           <EmptyState
             message="No plugin data."
-            description="Run Scan Global to read Claude plugin settings."
+            description="Run Scan Global to read provider plugin settings."
           />
         )}
 
         {!isPending && !isError && data != null && (
-          <div className="p-4">
-            <GlobalPluginView global={data.global} />
+          <div className="flex flex-col gap-6 p-4">
+            {(data.globals.length > 0 ? data.globals : [data.global]).map((global) => (
+              <GlobalPluginView key={global.providerKey} global={global} />
+            ))}
           </div>
         )}
       </div>

@@ -227,6 +227,7 @@ describe("ProjectDetailScreen UX clarity", () => {
       isPending: false,
       isError: false,
       data: {
+        globals: [],
         global: {
           providerKey: "claude",
           userLayerPath: "/Users/test/.claude/settings.json",
@@ -262,6 +263,7 @@ describe("ProjectDetailScreen UX clarity", () => {
       isPending: false,
       isError: false,
       data: {
+        globals: [],
         global: {
           providerKey: "claude",
           userLayerPath: "/Users/test/.claude/settings.json",

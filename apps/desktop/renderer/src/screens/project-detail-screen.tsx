@@ -227,7 +227,7 @@ function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.E
   const scanMutation = useScanProviderPluginsProject();
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
 
-  const projectView = data?.projects.find((p) => p.projectId === projectId) ?? null;
+  const projectViews = data?.projects.filter((p) => p.projectId === projectId) ?? [];
 
   return (
     <div>
@@ -253,12 +253,18 @@ function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.E
         <ErrorDisplay error={error} />
       )}
 
-      {!isPending && !isError && projectView == null && (
+      {!isPending && !isError && projectViews.length === 0 && (
         <p className="text-xs text-zinc-400">No plugin data. Run Scan Plugins to populate.</p>
       )}
 
-      {!isPending && !isError && projectView != null && (
-        <div className="flex flex-col gap-3">
+      {!isPending && !isError && projectViews.length > 0 && (
+        <div className="flex flex-col gap-5">
+          {projectViews.map((projectView) => (
+            <div key={projectView.providerKey} className="flex flex-col gap-3">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-700">
+                <ProviderIcon providerKey={projectView.providerKey} />
+                <span>{projectView.providerKey === "codex" ? "Codex" : projectView.providerKey === "claude" ? "Claude" : projectView.providerKey}</span>
+              </div>
           {/* Layer statuses */}
           <div className="overflow-x-auto rounded border border-zinc-200">
             <table className="w-full text-left">
@@ -337,6 +343,8 @@ function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.E
               Some settings in this project are managed outside Skillbox.
             </p>
           )}
+            </div>
+          ))}
         </div>
       )}
     </div>
