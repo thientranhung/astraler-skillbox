@@ -500,6 +500,15 @@ func (s *ProjectService) scanProjectInternal(
 		return nil, domain.NewDatabaseError("Could not commit project scan", err.Error())
 	}
 
+	if s.pluginScanner != nil {
+		progress("scanning_plugins", 0, 0, "")
+		if err := s.pluginScanner.ScanProjectLayers(ctx, project, progress); err != nil {
+			// F3: skills already committed — return the summary WITH the error so the runner
+			// persists it as operation metadata (partial failure), instead of discarding it.
+			return buildScanSummary(providerResults, projectWarnings), err
+		}
+	}
+
 	progress("done", 0, 0, "")
 	return buildScanSummary(providerResults, projectWarnings), nil
 }
