@@ -27,9 +27,11 @@ type projectListItem struct {
 	Path          string                       `json:"path"`
 	Status        string                       `json:"status"`
 	Providers     []projectListProviderSummary `json:"providers"`
-	SkillCount    int                          `json:"skillCount"`
-	WarningCount  int                          `json:"warningCount"`
-	LastScannedAt *string                      `json:"lastScannedAt"`
+	SkillCount         int                          `json:"skillCount"`
+	WarningCount       int                          `json:"warningCount"`
+	LastScannedAt      *string                      `json:"lastScannedAt"`
+	PluginEnabledCount int                          `json:"pluginEnabledCount"`
+	PluginTotalCount   int                          `json:"pluginTotalCount"`
 }
 
 type projectListResponse struct {
@@ -58,14 +60,16 @@ func NewProjectListHandler(svc projectListService) jrpc2.Handler {
 				})
 			}
 			resp.Projects = append(resp.Projects, projectListItem{
-				ID:            item.ID,
-				Name:          item.Name,
-				Path:          item.Path,
-				Status:        string(item.Status),
-				Providers:     providers,
-				SkillCount:    item.SkillCount,
-				WarningCount:  item.WarningCount,
-				LastScannedAt: formatTimePtr(item.LastScannedAt),
+				ID:                 item.ID,
+				Name:               item.Name,
+				Path:               item.Path,
+				Status:             string(item.Status),
+				Providers:          providers,
+				SkillCount:         item.SkillCount,
+				WarningCount:       item.WarningCount,
+				LastScannedAt:      formatTimePtr(item.LastScannedAt),
+				PluginEnabledCount: item.PluginEnabledCount,
+				PluginTotalCount:   item.PluginTotalCount,
 			})
 		}
 

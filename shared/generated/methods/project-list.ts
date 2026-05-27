@@ -57,6 +57,14 @@ export interface ProjectListItem {
    * ISO 8601 timestamp of the most recent completed scan, or null
    */
   lastScannedAt: string | null;
+  /**
+   * Count of effectively-enabled plugins across all providers for this project
+   */
+  pluginEnabledCount: number;
+  /**
+   * Count of distinct effective plugins (enabled + disabled + unknown) across all providers; 0 when no plugin scan data
+   */
+  pluginTotalCount: number;
 }
 /**
  * Brief provider info for the projects list view
