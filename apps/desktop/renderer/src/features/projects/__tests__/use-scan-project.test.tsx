@@ -100,6 +100,7 @@ describe("useScanProject — normal flow", () => {
 
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 3] });
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["providerPlugins", "list"] });
     expect(result.current.operationId).toBeNull();
     expect(toast.success).toHaveBeenCalledWith("Project scanned", expect.objectContaining({ id: "mock-toast-id" }));
   });
@@ -130,6 +131,7 @@ describe("useScanProject — normal flow", () => {
     );
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 3] });
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["providerPlugins", "list"] });
     expect(result.current.operationId).toBeNull();
   });
 
@@ -154,6 +156,9 @@ describe("useScanProject — normal flow", () => {
     });
 
     expect(toast.dismiss).toHaveBeenCalledWith("mock-toast-id");
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 3] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["providerPlugins", "list"] });
     expect(result.current.operationId).toBeNull();
   });
 });
@@ -179,6 +184,7 @@ describe("useScanProject — race condition: terminal event arrives before respo
     expect(mockSubscribeOpProgress).not.toHaveBeenCalled();
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 5] });
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["providerPlugins", "list"] });
     expect(toast.success).toHaveBeenCalledWith("Project scanned");
   });
 
@@ -220,6 +226,7 @@ describe("useScanProject — race condition: terminal event arrives before respo
     expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("io error"));
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "detail", 8] });
     expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["projects", "list"] });
+    expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["providerPlugins", "list"] });
   });
 });
 

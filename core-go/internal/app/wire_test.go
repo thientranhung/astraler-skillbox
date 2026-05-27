@@ -21,7 +21,6 @@ func TestAllMethodsRegistered(t *testing.T) {
 		"global.list",
 		"provider.list",
 		"providerPlugin.scanGlobal",
-		"providerPlugin.scanProject",
 		"providerPlugin.list",
 	} {
 		if !a.HasMethod(method) {

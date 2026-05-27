@@ -740,8 +740,9 @@ func TestSetPluginEnabled_ProjectLayer_WritesAndReturnsOpID(t *testing.T) {
 	}
 }
 
-// Compile-time assertion that *ProviderPluginService satisfies ProjectPluginScanner.
+// Compile-time assertions that *ProviderPluginService satisfies both plugin service interfaces.
 var _ ProjectPluginScanner = (*ProviderPluginService)(nil)
+var _ ProjectPluginCounter = (*ProviderPluginService)(nil)
 
 // F2: zero plugin-capable providers must be a no-op (nil), NOT a validation error,
 // so a project scan on a fresh/partial DB does not fail.
