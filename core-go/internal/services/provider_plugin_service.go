@@ -243,6 +243,7 @@ func (s *ProviderPluginService) pluginProviderDefsAllowMissing(ctx context.Conte
 	}{
 		{"claude", ".claude", "settings.json", ".claude", "settings.json", "settings.local.json", providers.ScanClaudeSettingsFile},
 		{"codex", ".codex", "config.toml", ".codex", "config.toml", "", providers.ScanCodexConfigFile},
+		{"antigravity_cli", filepath.Join(".gemini", "antigravity-cli"), "settings.json", filepath.Join(".gemini", "antigravity-cli"), "settings.json", "", providers.ScanAntigravityCLISettingsFile},
 	}
 	defs := make([]pluginProviderDef, 0, len(templates))
 	for _, tmpl := range templates {
