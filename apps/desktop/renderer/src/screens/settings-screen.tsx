@@ -12,6 +12,9 @@ import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import type { ProviderListProvider } from "@contracts/index.js";
 
+type ProviderPathScope = "project" | "global";
+type ProviderPathPurpose = "detect" | "skills" | "config" | "commands";
+
 const INSTALL_MODE_LABEL: Record<string, string> = {
   symlink: "Symlink",
   rsync_copy: "Copy (rsync)",
@@ -46,8 +49,8 @@ function hasOverride(provider: ProviderListProvider): boolean {
 
 function slotHasOverride(
   provider: ProviderListProvider,
-  scope: "project" | "global",
-  purpose: "detect" | "skills",
+  scope: ProviderPathScope,
+  purpose: ProviderPathPurpose,
 ): boolean {
   return provider.candidates.some(
     (c) => c.scope === scope && c.purpose === purpose && c.source === "override",
@@ -56,8 +59,8 @@ function slotHasOverride(
 
 function candidatePathsWithSource(
   provider: ProviderListProvider,
-  scope: "project" | "global",
-  purpose: "detect" | "skills",
+  scope: ProviderPathScope,
+  purpose: ProviderPathPurpose,
 ): { paths: string[]; source: string } {
   const cands = provider.candidates.filter((c) => c.scope === scope && c.purpose === purpose);
   const sorted = [...cands].sort((a, b) => b.priority - a.priority);
@@ -112,6 +115,33 @@ function SlotCell({
   );
 }
 
+function OptionalSlotCell({
+  data,
+  hasSlotOverride,
+  onEdit,
+  onReset,
+  isResetting,
+}: {
+  data: { paths: string[]; source: string };
+  hasSlotOverride: boolean;
+  onEdit: () => void;
+  onReset: () => void;
+  isResetting: boolean;
+}): React.JSX.Element {
+  if (data.paths.length === 0 && !hasSlotOverride) {
+    return <span className="text-zinc-300">—</span>;
+  }
+  return (
+    <SlotCell
+      data={data}
+      hasSlotOverride={hasSlotOverride}
+      onEdit={onEdit}
+      onReset={onReset}
+      isResetting={isResetting}
+    />
+  );
+}
+
 function EnableToggle({
   providerKey,
   isEnabled,
@@ -163,17 +193,19 @@ function EnableToggle({
 
 function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JSX.Element {
   const [editSlot, setEditSlot] = useState<{
-    scope: "project" | "global";
-    purpose: "detect" | "skills" | "config" | "commands";
+    scope: ProviderPathScope;
+    purpose: ProviderPathPurpose;
     paths: string[];
   } | null>(null);
   const resetMutation = useResetProviderPaths();
 
   const projectDetect = candidatePathsWithSource(provider, "project", "detect");
   const projectSkills = candidatePathsWithSource(provider, "project", "skills");
+  const projectConfig = candidatePathsWithSource(provider, "project", "config");
+  const globalConfig = provider.hasGlobalLevel ? candidatePathsWithSource(provider, "global", "config") : null;
   const globalSkills = provider.hasGlobalLevel ? candidatePathsWithSource(provider, "global", "skills") : null;
 
-  function handleResetSlot(scope: "project" | "global", purpose: "detect" | "skills"): void {
+  function handleResetSlot(scope: ProviderPathScope, purpose: ProviderPathPurpose): void {
     resetMutation.mutate({ providerKey: provider.key, scope, purpose });
   }
 
@@ -221,17 +253,31 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
           />
         </td>
         <td className="px-3 py-2">
-          {globalSkills != null ? (
-            <SlotCell
-              data={globalSkills}
-              hasSlotOverride={slotHasOverride(provider, "global", "skills")}
-              onEdit={() => setEditSlot({ scope: "global", purpose: "skills", paths: globalSkills.paths })}
-              onReset={() => handleResetSlot("global", "skills")}
-              isResetting={resetMutation.isPending}
-            />
-          ) : (
-            <span className="text-zinc-300">—</span>
-          )}
+          <OptionalSlotCell
+            data={projectConfig}
+            hasSlotOverride={slotHasOverride(provider, "project", "config")}
+            onEdit={() => setEditSlot({ scope: "project", purpose: "config", paths: projectConfig.paths })}
+            onReset={() => handleResetSlot("project", "config")}
+            isResetting={resetMutation.isPending}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <OptionalSlotCell
+            data={globalSkills ?? { paths: [], source: "builtin" }}
+            hasSlotOverride={slotHasOverride(provider, "global", "skills")}
+            onEdit={() => setEditSlot({ scope: "global", purpose: "skills", paths: globalSkills?.paths ?? [] })}
+            onReset={() => handleResetSlot("global", "skills")}
+            isResetting={resetMutation.isPending}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <OptionalSlotCell
+            data={globalConfig ?? { paths: [], source: "builtin" }}
+            hasSlotOverride={slotHasOverride(provider, "global", "config")}
+            onEdit={() => setEditSlot({ scope: "global", purpose: "config", paths: globalConfig?.paths ?? [] })}
+            onReset={() => handleResetSlot("global", "config")}
+            isResetting={resetMutation.isPending}
+          />
         </td>
       </tr>
       {editSlot != null && (
@@ -343,7 +389,9 @@ export function SettingsScreen(): React.JSX.Element {
                 <th className="px-3 py-2 font-medium">Enabled</th>
                 <th className="px-3 py-2 font-medium">Project detect</th>
                 <th className="px-3 py-2 font-medium">Project skills</th>
+                <th className="px-3 py-2 font-medium">Project config</th>
                 <th className="px-3 py-2 font-medium">Global skills</th>
+                <th className="px-3 py-2 font-medium">Global config</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -352,7 +400,7 @@ export function SettingsScreen(): React.JSX.Element {
               ))}
               {(providerData?.providers ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-center text-zinc-400">
+                  <td colSpan={9} className="px-3 py-4 text-center text-zinc-400">
                     Loading providers…
                   </td>
                 </tr>

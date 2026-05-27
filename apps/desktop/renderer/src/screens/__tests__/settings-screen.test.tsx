@@ -76,7 +76,9 @@ const makeProvider = (overrides = {}) => ({
   candidates: [
     { relativePath: ".agents", scope: "project" as const, purpose: "detect" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
     { relativePath: ".agents/skills", scope: "project" as const, purpose: "skills" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+    { relativePath: ".agents/settings.json", scope: "project" as const, purpose: "config" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
     { relativePath: "~/.agents/skills", scope: "global" as const, purpose: "skills" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+    { relativePath: "~/.agents/settings.json", scope: "global" as const, purpose: "config" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
   ],
   ...overrides,
 });
@@ -168,6 +170,55 @@ describe("SettingsScreen", () => {
     render(<SettingsScreen />);
     expect(screen.getByText(".agents")).not.toBeNull();
     expect(screen.getByText(".agents/skills")).not.toBeNull();
+  });
+
+  it("shows project and global config paths from candidates", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({
+      data: {
+        providers: [
+          makeProvider({
+            key: "codex",
+            displayName: "Codex",
+            iconKey: "codex",
+            candidates: [
+              { relativePath: ".codex", scope: "project" as const, purpose: "detect" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+              { relativePath: ".codex/skills", scope: "project" as const, purpose: "skills" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+              { relativePath: ".codex/config.toml", scope: "project" as const, purpose: "config" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+              { relativePath: "~/.codex/config.toml", scope: "global" as const, purpose: "config" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+            ],
+          }),
+        ],
+      },
+    });
+
+    render(<SettingsScreen />);
+    expect(screen.getByText(".codex/config.toml")).not.toBeNull();
+    expect(screen.getByText("~/.codex/config.toml")).not.toBeNull();
+  });
+
+  it("does not show edit controls for empty optional global skills slots", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({
+      data: {
+        providers: [
+          makeProvider({
+            key: "antigravity_cli",
+            displayName: "Antigravity CLI",
+            iconKey: "antigravity",
+            candidates: [
+              { relativePath: ".antigravity-cli", scope: "project" as const, purpose: "detect" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+              { relativePath: ".antigravity-cli/skills", scope: "project" as const, purpose: "skills" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+              { relativePath: ".gemini/antigravity-cli/settings.json", scope: "project" as const, purpose: "config" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+              { relativePath: "~/.gemini/antigravity-cli/settings.json", scope: "global" as const, purpose: "config" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+            ],
+          }),
+        ],
+      },
+    });
+
+    render(<SettingsScreen />);
+    expect(screen.getAllByRole("button", { name: /edit paths/i })).toHaveLength(4);
   });
 
   it("shows global skills path for providers with hasGlobalLevel", () => {
