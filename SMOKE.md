@@ -693,6 +693,43 @@ Expected: `clean`.
 
 ---
 
+## 10. Provider Plugin Toggle Smoke (Slice 3)
+
+This checklist verifies the ability to enable and disable plugins for Claude, Antigravity CLI, and Codex at both the global (user) and project layers.
+
+### Global Plugin Toggles
+- [ ] Run the app: `(cd apps/desktop && pnpm dev)`
+- [ ] Navigate to the **Plugins** screen from the sidebar.
+- [ ] Locate a plugin for Claude, Antigravity CLI, or Codex.
+- [ ] Click the **Disable** button.
+  - [ ] The button is disabled during the write operation.
+  - [ ] The button text changes to **Enable** once the operation finishes.
+- [ ] Open the corresponding global settings file (e.g., `~/.claude/settings.json` or `~/.codex/config.toml`).
+  - [ ] Verify that the key for the plugin is disabled.
+  - [ ] For Codex (`config.toml`), verify that all comments (global, section, inline) and unrelated settings are preserved.
+- [ ] Click the **Enable** button on the UI.
+  - [ ] The button text changes to **Disable**.
+  - [ ] Verify that the settings file now shows the plugin as enabled.
+
+### Project Plugin Toggles
+- [ ] Open a project detail screen from the dashboard or sidebar.
+- [ ] Scroll to the **Project Plugins** section.
+- [ ] Verify that Claude, Antigravity CLI, and Codex plugins display action buttons (Enable/Disable).
+- [ ] Click the **Disable** button on a plugin.
+  - [ ] The button is disabled while writing and scanning.
+  - [ ] The status updates to disabled.
+- [ ] Open the project's settings file (e.g., `<project_path>/.claude/settings.json` or `<project_path>/.codex/config.toml`).
+  - [ ] Verify that the settings are updated inside the project folder.
+  - [ ] For Codex (`config.toml`), verify that all comments are preserved.
+- [ ] Verify that other projects are not affected by this change.
+
+### Local Layer Overrides
+- [ ] Create a local override settings file (e.g., `<project_path>/.claude/settings.local.json`) and disable/enable a plugin in it.
+- [ ] Navigate to the **Project Detail** screen for that project.
+- [ ] Verify that the action button next to the overridden plugin is disabled and displays **"Overridden locally"**.
+
+---
+
 ## Notes
 
 Manual smoke **cannot be fully automated** in a headless environment because it requires:
