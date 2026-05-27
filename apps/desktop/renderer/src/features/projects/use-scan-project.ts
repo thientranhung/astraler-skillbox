@@ -51,6 +51,7 @@ export function useScanProject() {
         }
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.list() });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.providerPlugins.list() });
         return;
       }
 
@@ -75,6 +76,7 @@ export function useScanProject() {
         if (isTerminal(event.status)) {
           void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
           void queryClient.invalidateQueries({ queryKey: queryKeys.projects.list() });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.providerPlugins.list() });
           setOperationId(null);
           unsub();
           unsubRef.current = null;

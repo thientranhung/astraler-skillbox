@@ -9,7 +9,6 @@ import { useRemoveProject } from "../features/projects/use-remove-project.js";
 import { useRemoveSkill } from "../features/projects/use-remove-skill.js";
 import { RemoveSkillDialog } from "../features/projects/remove-skill-dialog.js";
 import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
-import { useScanProviderPluginsProject } from "../features/provider-plugins/use-scan-provider-plugins-project.js";
 import { useSetProviderPluginEnabled } from "../features/provider-plugins/use-set-provider-plugin-enabled.js";
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
 import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
@@ -225,13 +224,11 @@ function effectiveStatusClass(status: PPProjectEntry["effectiveStatus"]): string
   }
 }
 
-function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.Element {
+function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; scanInFlight: boolean }): React.JSX.Element {
   const { data, isPending, isError, error } = useProviderPluginList();
-  const scanMutation = useScanProviderPluginsProject();
   const setEnabledMutation = useSetProviderPluginEnabled();
-  const isScanning = scanMutation.operationId != null || scanMutation.isPending;
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
-  const isOperationInFlight = isScanning || isTogglingPlugin;
+  const isOperationInFlight = isTogglingPlugin || scanInFlight;
 
   function handleTogglePlugin(providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean): void {
     setEnabledMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "project", projectId, enabled });
@@ -241,18 +238,10 @@ function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.E
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
           Provider Plugins
         </h3>
-        <button
-          onClick={() => scanMutation.mutate(projectId)}
-          disabled={isScanning}
-          className="flex items-center gap-1.5 rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
-        >
-          <RefreshCw size={11} className={isScanning ? "animate-spin" : ""} />
-          {isScanning ? "Scanning…" : "Scan Plugins"}
-        </button>
       </div>
 
       {isPending && (
@@ -264,7 +253,7 @@ function ProjectPluginSection({ projectId }: { projectId: number }): React.JSX.E
       )}
 
       {!isPending && !isError && projectViews.length === 0 && (
-        <p className="text-xs text-zinc-400">No plugin data. Run Scan Plugins to populate.</p>
+        <p className="text-xs text-zinc-400">No plugin data. Run a scan to populate.</p>
       )}
 
       {!isPending && !isError && projectViews.length > 0 && (
@@ -567,7 +556,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
             </div>
 
             {/* Provider Plugins */}
-            <ProjectPluginSection projectId={validId} />
+            <ProjectPluginSection projectId={validId} scanInFlight={isScanning} />
 
             {/* Skill Entries */}
             <div>
