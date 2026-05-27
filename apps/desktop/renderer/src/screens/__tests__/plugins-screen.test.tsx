@@ -174,8 +174,8 @@ describe("PluginsScreen", () => {
     });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
-    expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Disable globally" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enable globally" })).toBeTruthy();
   });
 
   it("shows Enable/Disable buttons for antigravity_cli provider when status is ok", () => {
@@ -186,7 +186,7 @@ describe("PluginsScreen", () => {
     });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
-    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enable globally" })).toBeTruthy();
   });
 
   it("shows toggle buttons for codex provider (TOML write support added)", () => {
@@ -197,7 +197,7 @@ describe("PluginsScreen", () => {
     });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
-    expect(screen.getByRole("button", { name: "Disable" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Disable globally" })).toBeTruthy();
   });
 
   it("toggle button calls setEnabled mutation with correct args", () => {
@@ -210,7 +210,7 @@ describe("PluginsScreen", () => {
     });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
-    fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+    fireEvent.click(screen.getByRole("button", { name: "Disable globally" }));
     expect(mutateFn).toHaveBeenCalledWith({
       providerKey: "claude",
       pluginName: "my-plugin",
@@ -229,6 +229,6 @@ describe("PluginsScreen", () => {
     });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
-    expect(screen.getByRole("button", { name: "Disable" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Disable globally" }).hasAttribute("disabled")).toBe(true);
   });
 });
