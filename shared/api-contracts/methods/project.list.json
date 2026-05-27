@@ -14,6 +14,31 @@
       "properties": {},
       "additionalProperties": false
     },
+    "ProjectListPluginProviderSummary": {
+      "title": "ProjectListPluginProviderSummary",
+      "description": "Per-provider plugin stats for the projects list",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Provider key (e.g. claude, codex)"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Human-readable provider name"
+        },
+        "enabledCount": {
+          "type": "integer",
+          "description": "Number of effectively-enabled plugins for this provider in this project"
+        },
+        "totalCount": {
+          "type": "integer",
+          "description": "Number of non-absent plugins for this provider in this project"
+        }
+      },
+      "required": ["key", "displayName", "enabledCount", "totalCount"],
+      "additionalProperties": false
+    },
     "ProjectListProviderSummary": {
       "title": "ProjectListProviderSummary",
       "description": "Brief provider info for the projects list view",
@@ -91,6 +116,12 @@
         "pluginTotalCount": {
           "type": "integer",
           "description": "Count of distinct effective plugins (enabled + disabled + unknown) across all providers; 0 when no plugin scan data"
+        },
+        "pluginProviders": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ProjectListPluginProviderSummary" },
+          "description": "Per-provider plugin stats; empty array when no plugin scan data",
+          "default": []
         }
       },
       "required": ["id", "name", "path", "status", "providers", "skillCount", "warningCount", "lastScannedAt", "pluginEnabledCount", "pluginTotalCount"],

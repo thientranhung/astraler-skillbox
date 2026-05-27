@@ -436,7 +436,14 @@ func TestListProjects_PopulatesPluginCounts(t *testing.T) {
 	ctx := context.Background()
 	projRepo.UpsertByPath(ctx, "proj-a", "/tmp/proj-a") //nolint:errcheck
 
-	counter := &fakePluginCounter{counts: map[int64]domain.PluginCount{1: {Enabled: 2, Total: 5}}}
+	counter := &fakePluginCounter{counts: map[int64]domain.PluginCount{
+		1: {
+			Enabled: 2, Total: 5,
+			ByProvider: []domain.PluginProviderCount{
+				{ProviderKey: "claude", DisplayName: "Claude", Enabled: 2, Total: 5},
+			},
+		},
+	}}
 	svc := NewProjectService(projRepo, &mockProjectProviderRepo{byProject: make(map[int64][]domain.ProjectProviderSummary)},
 		&mockProjectWarningRepo{}, &mockProjectInstallRepo{}, &mockProjectFS{}).
 		WithPluginDeps(nil, counter)
@@ -450,6 +457,12 @@ func TestListProjects_PopulatesPluginCounts(t *testing.T) {
 	}
 	if items[0].PluginTotalCount != 5 {
 		t.Errorf("PluginTotalCount: got %d want 5", items[0].PluginTotalCount)
+	}
+	if len(items[0].PluginProviders) != 1 {
+		t.Fatalf("PluginProviders len: got %d want 1", len(items[0].PluginProviders))
+	}
+	if items[0].PluginProviders[0].ProviderKey != "claude" || items[0].PluginProviders[0].DisplayName != "Claude" {
+		t.Errorf("PluginProviders[0]: got %+v", items[0].PluginProviders[0])
 	}
 }
 

@@ -99,11 +99,20 @@ type GlobalPluginView struct {
 	ManagedOutOfScope bool // always true in Slice 1; managed settings not implemented
 }
 
+// PluginProviderCount is the per-provider contribution within a project's plugin aggregate.
+type PluginProviderCount struct {
+	ProviderKey string
+	DisplayName string
+	Enabled     int
+	Total       int
+}
+
 // PluginCount is the per-project aggregate of effective plugins across all providers.
 // Total counts effective entries that are not absent (enabled + disabled + unknown).
 type PluginCount struct {
-	Enabled int
-	Total   int
+	Enabled    int
+	Total      int
+	ByProvider []PluginProviderCount
 }
 
 // ProjectPluginView is the resolved view for a project (merges local + project + user layers).

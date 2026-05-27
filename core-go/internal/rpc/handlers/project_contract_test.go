@@ -40,6 +40,25 @@ func TestContract_ProjectList_Response(t *testing.T) {
 	validateAgainstSchema(t, schema, resp)
 }
 
+func TestContract_ProjectList_WithPluginProviders(t *testing.T) {
+	schema := loadSchema(t, "methods/project.list.json")
+	ts := "2025-05-25T00:00:00Z"
+	resp := projectListResponse{
+		Projects: []projectListItem{
+			{
+				ID: 1, Name: "alpha", Path: "/home/user/alpha", Status: "active",
+				Providers: []projectListProviderSummary{},
+				SkillCount: 0, WarningCount: 0, LastScannedAt: &ts,
+				PluginEnabledCount: 2, PluginTotalCount: 5,
+				PluginProviders: []projectListPluginProviderSummary{
+					{Key: "claude", DisplayName: "Claude", EnabledCount: 2, TotalCount: 5},
+				},
+			},
+		},
+	}
+	validateAgainstSchema(t, schema, resp)
+}
+
 func TestContract_ProjectList_EmptyResponse(t *testing.T) {
 	schema := loadSchema(t, "methods/project.list.json")
 	resp := projectListResponse{

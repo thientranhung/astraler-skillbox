@@ -66,18 +66,49 @@ const filledProject: ProjectListItem = {
 };
 
 describe("ProjectRow plugin stats", () => {
-  it("renders enabled/total when plugins present", () => {
+  it("renders per-provider badges when pluginProviders is populated", () => {
     render(
       <table>
         <tbody>
-          <ProjectRow project={{ ...filledProject, pluginEnabledCount: 2, pluginTotalCount: 5 }} />
+          <ProjectRow
+            project={{
+              ...filledProject,
+              pluginEnabledCount: 5,
+              pluginTotalCount: 8,
+              pluginProviders: [
+                { key: "claude", displayName: "Claude", enabledCount: 2, totalCount: 5 },
+                { key: "codex", displayName: "Codex", enabledCount: 3, totalCount: 3 },
+              ],
+            }}
+          />
         </tbody>
       </table>,
     );
+    expect(screen.getByTitle("Claude: 2 enabled of 5 plugins")).toBeTruthy();
+    expect(screen.getByTitle("Codex: 3 enabled of 3 plugins")).toBeTruthy();
     expect(screen.getByText("2/5")).toBeTruthy();
+    expect(screen.getByText("3/3")).toBeTruthy();
   });
 
-  it("renders an em dash when no plugins", () => {
+  it("renders an em dash when pluginProviders is empty", () => {
+    render(
+      <table>
+        <tbody>
+          <ProjectRow
+            project={{
+              ...filledProject,
+              pluginEnabledCount: 0,
+              pluginTotalCount: 0,
+              pluginProviders: [],
+            }}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByText("—")).toBeTruthy();
+  });
+
+  it("renders an em dash when pluginProviders is absent", () => {
     render(
       <table>
         <tbody>
