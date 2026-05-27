@@ -42,6 +42,8 @@ const project: ProjectListItem = {
   skillCount: 2,
   warningCount: 0,
   lastScannedAt: null,
+  pluginEnabledCount: 0,
+  pluginTotalCount: 0,
 };
 
 beforeEach(() => {

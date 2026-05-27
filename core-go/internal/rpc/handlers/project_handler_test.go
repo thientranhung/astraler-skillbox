@@ -548,3 +548,32 @@ func TestRemoveSkillHandler_ConflictError_MapsTo1005(t *testing.T) {
 		t.Fatalf("expected *jrpc2.Error, got %T", err)
 	}
 }
+
+func TestProjectListHandler_IncludesPluginCounts(t *testing.T) {
+	svc := &stubProjectList{items: []services.ProjectListItem{
+		{
+			ID: 1, Name: "p", Path: "/tmp/p", Status: domain.ProjectStatusActive,
+			PluginEnabledCount: 2, PluginTotalCount: 5,
+		},
+	}}
+	cli := startServer(t, handler.Map{"project.list": handlers.NewProjectListHandler(svc)})
+
+	var resp struct {
+		Projects []struct {
+			PluginEnabledCount int `json:"pluginEnabledCount"`
+			PluginTotalCount   int `json:"pluginTotalCount"`
+		} `json:"projects"`
+	}
+	if err := cli.CallResult(context.Background(), "project.list", map[string]interface{}{}, &resp); err != nil {
+		t.Fatalf("project.list: %v", err)
+	}
+	if len(resp.Projects) != 1 {
+		t.Fatalf("projects: got %d want 1", len(resp.Projects))
+	}
+	if resp.Projects[0].PluginEnabledCount != 2 {
+		t.Errorf("pluginEnabledCount: got %d want 2", resp.Projects[0].PluginEnabledCount)
+	}
+	if resp.Projects[0].PluginTotalCount != 5 {
+		t.Errorf("pluginTotalCount: got %d want 5", resp.Projects[0].PluginTotalCount)
+	}
+}
