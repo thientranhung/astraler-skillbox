@@ -36,6 +36,8 @@ import type {
   ProviderPluginListResponse,
   ProviderPluginSetEnabledRequest,
   ProviderPluginSetEnabledResponse,
+  ProviderPluginRemoveOverrideRequest,
+  ProviderPluginRemoveOverrideResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -115,4 +117,7 @@ export const methods = {
 
   setProviderPluginEnabled: (req: ProviderPluginSetEnabledRequest) =>
     invoke<ProviderPluginSetEnabledResponse>("providerPlugin.setEnabled", req),
+
+  removeProviderPluginOverride: (req: ProviderPluginRemoveOverrideRequest) =>
+    invoke<ProviderPluginRemoveOverrideResponse>("providerPlugin.removeOverride", req),
 };

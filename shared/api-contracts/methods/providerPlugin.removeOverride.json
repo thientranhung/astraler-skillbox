@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProviderPluginRemoveOverrideMethod",
+  "description": "Contract for providerPlugin.removeOverride JSON-RPC method. Removes a project-layer plugin override from the provider's settings file, then rescans the project layer.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProviderPluginRemoveOverrideRequest" },
+    { "$ref": "#/definitions/ProviderPluginRemoveOverrideResponse" }
+  ],
+  "definitions": {
+    "ProviderPluginRemoveOverrideRequest": {
+      "title": "ProviderPluginRemoveOverrideRequest",
+      "description": "Params for providerPlugin.removeOverride.",
+      "type": "object",
+      "properties": {
+        "providerKey": {
+          "type": "string",
+          "description": "Provider key (e.g. claude, antigravity_cli, codex)."
+        },
+        "pluginName": {
+          "type": "string",
+          "description": "Plugin name (the part before @ in name@marketplace)"
+        },
+        "marketplaceName": {
+          "type": "string",
+          "description": "Marketplace name (the part after @ in name@marketplace)"
+        },
+        "layer": {
+          "type": "string",
+          "enum": ["project"],
+          "description": "Settings layer. Only project is supported."
+        },
+        "projectId": {
+          "type": "integer",
+          "description": "Required. The project ID whose settings file will be modified."
+        }
+      },
+      "required": ["providerKey", "pluginName", "marketplaceName", "layer", "projectId"],
+      "additionalProperties": false
+    },
+    "ProviderPluginRemoveOverrideResponse": {
+      "title": "ProviderPluginRemoveOverrideResponse",
+      "description": "Immediate response — the remove and rescan run asynchronously. Errors: validation_error (1001) for invalid params; filesystem_error (1002) if the settings file cannot be modified; conflict_error (1005) if an operation is already running.",
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "integer",
+          "description": "ID of the created remove+rescan operation"
+        }
+      },
+      "required": ["operationId"],
+      "additionalProperties": false
+    }
+  }
+}
