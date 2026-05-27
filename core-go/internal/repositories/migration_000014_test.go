@@ -14,7 +14,8 @@ func TestMigration000014_ProviderPluginConfigPaths(t *testing.T) {
 		{"claude", "global", "~/.claude/settings.json", "config"},
 		{"claude", "project", ".claude/settings.json", "config"},
 		{"claude", "project", ".claude/settings.local.json", "config"},
-		// codex config paths removed by migration 016 (codex uses .agents/ natively)
+		{"codex", "global", "~/.codex/config.toml", "config"},
+		{"codex", "project", ".codex/config.toml", "config"},
 		{"antigravity_cli", "global", "~/.gemini/antigravity-cli/settings.json", "config"},
 		{"antigravity_cli", "project", ".gemini/antigravity-cli/settings.json", "config"},
 	}
