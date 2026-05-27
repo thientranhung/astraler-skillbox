@@ -287,3 +287,132 @@ func isJRPCError(err error, out **jrpc2.Error) bool {
 	}
 	return false
 }
+
+// ---- stub for removeOverride ----
+
+type stubPluginRemoveOverrideSvc struct {
+	opID     int64
+	err      error
+	lastCall removeOverrideCall
+}
+
+type removeOverrideCall struct {
+	providerKey     string
+	pluginName      string
+	marketplaceName string
+	layer           string
+	projectID       int64
+}
+
+func (s *stubPluginRemoveOverrideSvc) RemoveOverride(_ context.Context, providerKey, pluginName, marketplaceName, layer string, projectID int64) (int64, error) {
+	s.lastCall = removeOverrideCall{providerKey, pluginName, marketplaceName, layer, projectID}
+	return s.opID, s.err
+}
+
+// ---- removeOverride tests ----
+
+func TestProviderPluginRemoveOverrideHandler_Success(t *testing.T) {
+	svc := &stubPluginRemoveOverrideSvc{opID: 99}
+	cli := startServer(t, handler.Map{"providerPlugin.removeOverride": handlers.NewProviderPluginRemoveOverrideHandler(svc)})
+
+	var resp struct {
+		OperationID int64 `json:"operationId"`
+	}
+	params := map[string]interface{}{
+		"providerKey":     "claude",
+		"pluginName":      "test-plugin",
+		"marketplaceName": "npm",
+		"layer":           "project",
+		"projectId":       5,
+	}
+	if err := cli.CallResult(context.Background(), "providerPlugin.removeOverride", params, &resp); err != nil {
+		t.Fatalf("removeOverride: %v", err)
+	}
+	if resp.OperationID != 99 {
+		t.Errorf("operationId: got %d want 99", resp.OperationID)
+	}
+	if svc.lastCall.providerKey != "claude" {
+		t.Errorf("providerKey: got %q want claude", svc.lastCall.providerKey)
+	}
+}
+
+func TestProviderPluginRemoveOverrideHandler_MissingProviderKey(t *testing.T) {
+	svc := &stubPluginRemoveOverrideSvc{}
+	cli := startServer(t, handler.Map{"providerPlugin.removeOverride": handlers.NewProviderPluginRemoveOverrideHandler(svc)})
+
+	params := map[string]interface{}{
+		"pluginName":      "test",
+		"marketplaceName": "npm",
+		"layer":           "project",
+		"projectId":       5,
+	}
+	err := cli.CallResult(context.Background(), "providerPlugin.removeOverride", params, nil)
+	if err == nil {
+		t.Fatal("expected error for missing providerKey")
+	}
+}
+
+func TestProviderPluginRemoveOverrideHandler_InvalidLayer(t *testing.T) {
+	svc := &stubPluginRemoveOverrideSvc{}
+	cli := startServer(t, handler.Map{"providerPlugin.removeOverride": handlers.NewProviderPluginRemoveOverrideHandler(svc)})
+
+	params := map[string]interface{}{
+		"providerKey":     "claude",
+		"pluginName":      "test",
+		"marketplaceName": "npm",
+		"layer":           "user",
+		"projectId":       5,
+	}
+	err := cli.CallResult(context.Background(), "providerPlugin.removeOverride", params, nil)
+	if err == nil {
+		t.Fatal("expected error for non-project layer")
+	}
+}
+
+func TestProviderPluginRemoveOverrideHandler_MissingProjectId(t *testing.T) {
+	svc := &stubPluginRemoveOverrideSvc{}
+	cli := startServer(t, handler.Map{"providerPlugin.removeOverride": handlers.NewProviderPluginRemoveOverrideHandler(svc)})
+
+	params := map[string]interface{}{
+		"providerKey":     "claude",
+		"pluginName":      "test",
+		"marketplaceName": "npm",
+		"layer":           "project",
+	}
+	err := cli.CallResult(context.Background(), "providerPlugin.removeOverride", params, nil)
+	if err == nil {
+		t.Fatal("expected error for missing projectId")
+	}
+}
+
+func TestProviderPluginRemoveOverrideHandler_MissingPluginName(t *testing.T) {
+	svc := &stubPluginRemoveOverrideSvc{}
+	cli := startServer(t, handler.Map{"providerPlugin.removeOverride": handlers.NewProviderPluginRemoveOverrideHandler(svc)})
+
+	params := map[string]interface{}{
+		"providerKey":     "claude",
+		"marketplaceName": "npm",
+		"layer":           "project",
+		"projectId":       5,
+	}
+	err := cli.CallResult(context.Background(), "providerPlugin.removeOverride", params, nil)
+	if err == nil {
+		t.Fatal("expected error for missing pluginName")
+	}
+}
+
+func TestProviderPluginRemoveOverrideHandler_MissingMarketplaceName(t *testing.T) {
+	svc := &stubPluginRemoveOverrideSvc{}
+	cli := startServer(t, handler.Map{"providerPlugin.removeOverride": handlers.NewProviderPluginRemoveOverrideHandler(svc)})
+
+	params := map[string]interface{}{
+		"providerKey": "claude",
+		"pluginName":  "test",
+		"layer":       "project",
+		"projectId":   5,
+	}
+	err := cli.CallResult(context.Background(), "providerPlugin.removeOverride", params, nil)
+	if err == nil {
+		t.Fatal("expected error for missing marketplaceName")
+	}
+}

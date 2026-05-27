@@ -3,10 +3,14 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/operations"
+	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
 // ---- effective state resolution tests (pure logic, no DB needed) ----
@@ -858,5 +862,105 @@ func TestSetPluginEnabled_PathConfinementEscape_ReturnsValidationError(t *testin
 	}
 	if writerCalled {
 		t.Error("writer should not be called when confinement check fails")
+	}
+}
+
+// ---- RemoveOverride tests ----
+
+func TestRemoveOverride_UnknownProvider_ReturnsValidationError(t *testing.T) {
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
+	_, err := svc.RemoveOverride(context.Background(), "unknown_provider", "p", "m", "project", 1)
+	if err == nil {
+		t.Fatal("expected validation error for unknown provider, got nil")
+	}
+	appErr, ok := err.(*domain.AppError)
+	if !ok || appErr.Code != domain.CodeValidation {
+		t.Errorf("expected validation_error, got %T: %v", err, err)
+	}
+}
+
+func TestRemoveOverride_NonProjectLayer_ReturnsValidationError(t *testing.T) {
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
+	_, err := svc.RemoveOverride(context.Background(), "claude", "p", "m", "user", 0)
+	if err == nil {
+		t.Fatal("expected validation error for non-project layer, got nil")
+	}
+	appErr, ok := err.(*domain.AppError)
+	if !ok || appErr.Code != domain.CodeValidation {
+		t.Errorf("expected validation_error, got %T: %v", err, err)
+	}
+}
+
+func TestRemoveOverride_EmptyPluginName_ReturnsValidationError(t *testing.T) {
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{}, &mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
+	_, err := svc.RemoveOverride(context.Background(), "claude", "", "market", "project", 1)
+	if err == nil {
+		t.Fatal("expected validation error for empty pluginName, got nil")
+	}
+	appErr, ok := err.(*domain.AppError)
+	if !ok || appErr.Code != domain.CodeValidation {
+		t.Errorf("expected validation_error, got %T: %v", err, err)
+	}
+}
+
+func TestRemoveOverride_ProjectLayer_RemovesPluginFromFile(t *testing.T) {
+	// Real SQLite DB with migrations applied (provider_definitions seeded by migration).
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	db, err := repositories.OpenDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("OpenDatabase: %v", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+
+	// Migration seeds the claude provider definition; retrieve its ID.
+	var claudeDefID int64
+	if err := db.QueryRowContext(ctx, `SELECT id FROM provider_definitions WHERE key = 'claude'`).Scan(&claudeDefID); err != nil {
+		t.Fatalf("query claude def: %v", err)
+	}
+
+	// Insert a project row (project_id FK required by provider_plugin_layer_scans).
+	projectDir := t.TempDir()
+	res, err := db.ExecContext(ctx, `INSERT INTO projects (name, path, status) VALUES ('test-proj', ?, 'active')`, projectDir)
+	if err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+	projectID, _ := res.LastInsertId()
+
+	// Write a settings.json with the plugin entry.
+	settingsDir := filepath.Join(projectDir, ".claude")
+	if err := os.MkdirAll(settingsDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	settingsPath := filepath.Join(settingsDir, "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"enabledPlugins":{"my-plugin@market":true}}`), 0o644); err != nil {
+		t.Fatalf("write settings: %v", err)
+	}
+
+	pluginRepo := repositories.NewProviderPluginRepo(db)
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: claudeDefID, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "project", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+			},
+		},
+	}}
+	project := &domain.Project{ID: projectID, Path: projectDir}
+	svc := NewProviderPluginService(pluginRepo, &mockPluginDefRepo{}, &mockPluginProjectRepo{project: project}, registry, makeSyncRunner())
+
+	_, err = svc.RemoveOverride(ctx, "claude", "my-plugin", "market", "project", projectID)
+	if err != nil {
+		t.Fatalf("RemoveOverride: %v", err)
+	}
+
+	// Verify the plugin was removed from the settings file.
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read settings: %v", err)
+	}
+	if strings.Contains(string(data), "my-plugin@market") {
+		t.Error("plugin should have been removed from the settings file after RemoveOverride")
 	}
 }

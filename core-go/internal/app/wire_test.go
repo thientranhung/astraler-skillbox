@@ -22,6 +22,8 @@ func TestAllMethodsRegistered(t *testing.T) {
 		"provider.list",
 		"providerPlugin.scanGlobal",
 		"providerPlugin.list",
+		"providerPlugin.setEnabled",
+		"providerPlugin.removeOverride",
 	} {
 		if !a.HasMethod(method) {
 			t.Errorf("method %q not registered", method)
