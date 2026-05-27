@@ -740,6 +740,22 @@ func TestSetPluginEnabled_ProjectLayer_WritesAndReturnsOpID(t *testing.T) {
 	}
 }
 
+// Compile-time assertion that *ProviderPluginService satisfies ProjectPluginScanner.
+var _ ProjectPluginScanner = (*ProviderPluginService)(nil)
+
+// F2: zero plugin-capable providers must be a no-op (nil), NOT a validation error,
+// so a project scan on a fresh/partial DB does not fail.
+func TestScanProjectLayers_NoPluginProviders_IsNoOp(t *testing.T) {
+	// mockProviderRegistrySvc{} returns an empty registry → no plugin-capable defs.
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{},
+		&mockPluginProjectRepo{}, &mockProviderRegistrySvc{}, &mockRunner{})
+
+	project := &domain.Project{ID: 1, Path: t.TempDir()}
+	if err := svc.ScanProjectLayers(context.Background(), project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("expected no-op nil for zero plugin providers, got %v", err)
+	}
+}
+
 func TestAggregatePluginCounts_SumsEnabledAndTotalAcrossProviders(t *testing.T) {
 	enabled := domain.PluginEffectiveEnabled
 	disabled := domain.PluginEffectiveDisabled

@@ -115,6 +115,30 @@ func (s *ProviderPluginService) ScanProject(ctx context.Context, projectID int64
 	return opID, nil
 }
 
+// ScanProjectLayers scans the project + local settings layers for all plugin-capable
+// providers and commits the results. Unlike ScanProject, it runs within the caller's
+// operation context and does NOT start its own operation — used by ProjectService so a
+// single project.scan covers skills and plugins together.
+//
+// It uses pluginProviderDefsAllowMissing (not the strict pluginProviderDefs): zero
+// plugin-capable providers is a legitimate no-op, not an error. The strict variant returns
+// a validation_error on zero defs, which — propagated through scanProjectInternal — would
+// fail the entire project scan on a fresh/partial DB (F2).
+func (s *ProviderPluginService) ScanProjectLayers(
+	ctx context.Context,
+	project *domain.Project,
+	progress operations.ProgressFn,
+) error {
+	defs, err := s.pluginProviderDefsAllowMissing(ctx)
+	if err != nil {
+		return err
+	}
+	if len(defs) == 0 {
+		return nil // no plugin-capable providers configured — nothing to scan
+	}
+	return s.scanProjectInternal(ctx, project, defs, progress)
+}
+
 // List returns the current global plugin view and per-project plugin views from persisted scan data.
 func (s *ProviderPluginService) List(ctx context.Context) (domain.GlobalPluginView, []domain.ProjectPluginView, error) {
 	globals, projects, err := s.ListAll(ctx)
