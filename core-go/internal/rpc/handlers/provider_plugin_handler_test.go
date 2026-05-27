@@ -22,17 +22,6 @@ func (s *stubPluginScanGlobalSvc) ScanGlobal(_ context.Context) (int64, error) {
 	return s.opID, s.err
 }
 
-type stubPluginScanProjectSvc struct {
-	opID      int64
-	err       error
-	gotProjID int64
-}
-
-func (s *stubPluginScanProjectSvc) ScanProject(_ context.Context, projectID int64) (int64, error) {
-	s.gotProjID = projectID
-	return s.opID, s.err
-}
-
 type stubPluginListSvc struct {
 	global   domain.GlobalPluginView
 	globals  []domain.GlobalPluginView
@@ -79,63 +68,6 @@ func TestProviderPluginScanGlobalHandler_ConflictError(t *testing.T) {
 	var rpcErr *jrpc2.Error
 	if ok := isJRPCError(err, &rpcErr); !ok {
 		t.Fatalf("expected jrpc2.Error, got %T: %v", err, err)
-	}
-}
-
-// ---- scanProject tests ----
-
-func TestProviderPluginScanProjectHandler_Success(t *testing.T) {
-	svc := &stubPluginScanProjectSvc{opID: 7}
-	cli := startServer(t, handler.Map{"providerPlugin.scanProject": handlers.NewProviderPluginScanProjectHandler(svc)})
-
-	var resp struct {
-		OperationID int64 `json:"operationId"`
-	}
-	if err := cli.CallResult(context.Background(), "providerPlugin.scanProject", map[string]interface{}{"projectId": 5}, &resp); err != nil {
-		t.Fatalf("scanProject: %v", err)
-	}
-	if resp.OperationID != 7 {
-		t.Errorf("operationId: got %d want 7", resp.OperationID)
-	}
-	if svc.gotProjID != 5 {
-		t.Errorf("service received projectId: got %d want 5", svc.gotProjID)
-	}
-}
-
-func TestProviderPluginScanProjectHandler_ZeroProjectID(t *testing.T) {
-	svc := &stubPluginScanProjectSvc{}
-	cli := startServer(t, handler.Map{"providerPlugin.scanProject": handlers.NewProviderPluginScanProjectHandler(svc)})
-
-	err := cli.CallResult(context.Background(), "providerPlugin.scanProject", map[string]interface{}{"projectId": 0}, nil)
-	if err == nil {
-		t.Fatal("expected error for projectId=0")
-	}
-	var rpcErr *jrpc2.Error
-	if ok := isJRPCError(err, &rpcErr); !ok {
-		t.Fatalf("expected jrpc2.Error: %v", err)
-	}
-	if rpcErr.Code != jrpc2.InvalidParams {
-		t.Errorf("code: got %d want InvalidParams", rpcErr.Code)
-	}
-}
-
-func TestProviderPluginScanProjectHandler_NegativeProjectID(t *testing.T) {
-	svc := &stubPluginScanProjectSvc{}
-	cli := startServer(t, handler.Map{"providerPlugin.scanProject": handlers.NewProviderPluginScanProjectHandler(svc)})
-
-	err := cli.CallResult(context.Background(), "providerPlugin.scanProject", map[string]interface{}{"projectId": -1}, nil)
-	if err == nil {
-		t.Fatal("expected error for projectId=-1")
-	}
-}
-
-func TestProviderPluginScanProjectHandler_NotFound(t *testing.T) {
-	svc := &stubPluginScanProjectSvc{err: domain.NewValidationError("Project not found", "projectId 999 does not exist")}
-	cli := startServer(t, handler.Map{"providerPlugin.scanProject": handlers.NewProviderPluginScanProjectHandler(svc)})
-
-	err := cli.CallResult(context.Background(), "providerPlugin.scanProject", map[string]interface{}{"projectId": 999}, nil)
-	if err == nil {
-		t.Fatal("expected error for not found")
 	}
 }
 
