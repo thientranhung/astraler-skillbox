@@ -76,7 +76,7 @@ export function AddSkillWizard({
 
       {installableProviders.length === 0 ? (
         <p className="mb-4 text-xs text-zinc-500">No provider is ready for install.</p>
-      ) : installableProviders.length > 1 ? (
+      ) : (
         <div className="mb-4">
           <label className="mb-1 block text-xs font-medium text-zinc-700">Provider</label>
           <div className="flex flex-col gap-1">
@@ -98,7 +98,7 @@ export function AddSkillWizard({
             ))}
           </div>
         </div>
-      ) : null}
+      )}
 
       <div className="mb-4">
         <label className="mb-1 block text-xs font-medium text-zinc-700">Skills</label>
