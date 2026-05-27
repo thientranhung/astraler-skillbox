@@ -146,6 +146,40 @@ describe("AddSkillWizard", () => {
     });
   });
 
+  it("two installable providers: user selects second radio, selection persists and Install enables after skill selected", () => {
+    const mutate = vi.fn();
+    mockUseInstallSkill.mockReturnValue({ mutate, isPending: false });
+
+    const providers: ProjectGetProvider[] = [
+      makeProvider({ providerKey: "generic_agents", displayName: "Generic Agents" }),
+      makeProvider({ providerKey: "claude", displayName: "Claude", providerStatus: "supported", detectionStatus: "detected" }),
+    ];
+    const skills: SkillListSkill[] = [makeSkill({ id: 7, name: "Skill D" })];
+
+    render(
+      <AddSkillWizard
+        projectId={3}
+        providers={providers}
+        skills={skills}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const claudeRadio = screen.getByRole("radio", { name: /Claude/i });
+    fireEvent.click(claudeRadio);
+    expect((claudeRadio as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("radio", { name: /Generic Agents/i }) as HTMLInputElement).checked).toBe(false);
+
+    const installButton = screen.getByRole("button", { name: /^install$/i });
+    expect((installButton as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Skill D/i }));
+    expect((installButton as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(installButton);
+    expect(mutate).toHaveBeenCalledWith({ projectId: 3, providerKey: "claude", skillIds: [7] });
+  });
+
   it("single installable provider: radio visible and pre-selected without user interaction", () => {
     render(
       <AddSkillWizard
