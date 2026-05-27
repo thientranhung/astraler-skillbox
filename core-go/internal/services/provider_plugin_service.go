@@ -30,6 +30,9 @@ type providerRegistrySvc interface {
 // pluginWriterFn is the signature for plugin file writers (JSON and TOML).
 type pluginWriterFn func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error
 
+// pluginRemoverFn is the signature for plugin file removers (JSON and TOML).
+type pluginRemoverFn func(filePath, allowedDir, pluginName, marketplaceName string) error
+
 // ProviderPluginService handles scanning and listing provider plugin declarations.
 type ProviderPluginService struct {
 	repo         *repositories.ProviderPluginRepo
@@ -39,6 +42,8 @@ type ProviderPluginService struct {
 	runner       OperationRunner
 	pluginWriter pluginWriterFn
 	tomlWriter   pluginWriterFn
+	pluginRemover pluginRemoverFn
+	tomlRemover   pluginRemoverFn
 }
 
 func NewProviderPluginService(
@@ -49,13 +54,15 @@ func NewProviderPluginService(
 	runner OperationRunner,
 ) *ProviderPluginService {
 	return &ProviderPluginService{
-		repo:         repo,
-		pdRepo:       pdRepo,
-		projRepo:     projRepo,
-		registry:     registry,
-		runner:       runner,
-		pluginWriter: providers.WriteJSONPluginEnabled,
-		tomlWriter:   providers.WriteTOMLPluginEnabled,
+		repo:          repo,
+		pdRepo:        pdRepo,
+		projRepo:      projRepo,
+		registry:      registry,
+		runner:        runner,
+		pluginWriter:  providers.WriteJSONPluginEnabled,
+		tomlWriter:    providers.WriteTOMLPluginEnabled,
+		pluginRemover: providers.RemoveJSONPlugin,
+		tomlRemover:   providers.RemoveTOMLPlugin,
 	}
 }
 
@@ -65,6 +72,14 @@ func (s *ProviderPluginService) writerFor(providerKey string) pluginWriterFn {
 		return s.tomlWriter
 	}
 	return s.pluginWriter
+}
+
+// removerFor returns the appropriate file remover for the given provider.
+func (s *ProviderPluginService) removerFor(providerKey string) pluginRemoverFn {
+	if providerKey == "codex" {
+		return s.tomlRemover
+	}
+	return s.pluginRemover
 }
 
 // ScanGlobal starts an async scan of configured provider user layers.
@@ -389,6 +404,112 @@ func (s *ProviderPluginService) setPluginEnabledProjectInternal(
 		return domain.NewFilesystemError("Could not write plugin setting", err.Error())
 	}
 	progress("writing_plugin_setting", 1, 1, def.Provider.Key)
+
+	return s.scanProjectInternal(ctx, project, []pluginProviderDef{def}, progress)
+}
+
+// RemoveOverride removes a plugin's declaration from a project-layer settings file,
+// returning it to "not set" so the user layer takes effect. Only layer="project" is
+// supported.
+func (s *ProviderPluginService) RemoveOverride(
+	ctx context.Context,
+	providerKey, pluginName, marketplaceName, layer string,
+	projectID int64,
+) (int64, error) {
+	switch providerKey {
+	case "claude", "antigravity_cli", "codex":
+		// OK
+	default:
+		return 0, domain.NewValidationError(
+			"Unknown provider",
+			fmt.Sprintf("providerKey %q does not support plugin writes", providerKey),
+		)
+	}
+
+	if layer != "project" {
+		return 0, domain.NewValidationError(
+			"Only project layer is supported",
+			fmt.Sprintf("layer %q is not supported for removeOverride; only project layer is allowed", layer),
+		)
+	}
+
+	if pluginName == "" || marketplaceName == "" {
+		return 0, domain.NewValidationError("Plugin name and marketplace are required", "pluginName and marketplaceName must be non-empty")
+	}
+
+	defs, err := s.pluginProviderDefsAllowMissing(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var targetDef *pluginProviderDef
+	for i := range defs {
+		if defs[i].Provider.Key == providerKey {
+			targetDef = &defs[i]
+			break
+		}
+	}
+	if targetDef == nil {
+		return 0, domain.NewValidationError(
+			"Provider not configured",
+			fmt.Sprintf("provider %q not found in database", providerKey),
+		)
+	}
+
+	def := *targetDef
+
+	project, err := s.projRepo.GetByID(ctx, projectID)
+	if err != nil {
+		return 0, domain.NewDatabaseError("Could not fetch project", err.Error())
+	}
+	if project == nil {
+		return 0, domain.NewValidationError("Project not found", fmt.Sprintf("projectId %d does not exist", projectID))
+	}
+
+	filePath := def.ProjectFilePath(project.Path)
+	if !confinedPath(project.Path, filePath) {
+		return 0, domain.NewValidationError(
+			"Path confinement violation",
+			fmt.Sprintf("resolved path %q is outside project directory %q", filepath.Clean(filePath), filepath.Clean(project.Path)),
+		)
+	}
+
+	remover := s.removerFor(providerKey)
+	target := operations.Target{Type: "provider_plugin_project", ID: projectID}
+	opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
+		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
+			return nil, s.removeOverrideProjectInternal(opCtx, def, project, pluginName, marketplaceName, remover, progress)
+		})
+	if err != nil {
+		if _, ok := err.(*domain.AppError); ok {
+			return 0, err
+		}
+		return 0, domain.NewDatabaseError("Could not start plugin remove operation", err.Error())
+	}
+	return opID, nil
+}
+
+func (s *ProviderPluginService) removeOverrideProjectInternal(
+	ctx context.Context,
+	def pluginProviderDef,
+	project *domain.Project,
+	pluginName, marketplaceName string,
+	remover pluginRemoverFn,
+	progress operations.ProgressFn,
+) error {
+	filePath := def.ProjectFilePath(project.Path)
+	if !confinedPath(project.Path, filePath) {
+		return domain.NewValidationError(
+			"Path confinement violation",
+			fmt.Sprintf("resolved path %q is outside project directory %q", filepath.Clean(filePath), filepath.Clean(project.Path)),
+		)
+	}
+	allowedDir := def.ProjectAllowedDir(project.Path)
+
+	progress("removing_plugin_override", 0, 1, "")
+	if err := remover(filePath, allowedDir, pluginName, marketplaceName); err != nil {
+		return domain.NewFilesystemError("Could not remove plugin override", err.Error())
+	}
+	progress("removing_plugin_override", 1, 1, def.Provider.Key)
 
 	return s.scanProjectInternal(ctx, project, []pluginProviderDef{def}, progress)
 }
