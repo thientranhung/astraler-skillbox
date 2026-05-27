@@ -51,9 +51,10 @@ func New(
 			"provider.updatePaths":    rpchandlers.NewProviderUpdatePathsHandler(providerRegistrySvc),
 			"provider.resetPaths":     rpchandlers.NewProviderResetPathsHandler(providerRegistrySvc),
 			"provider.setEnabled":     rpchandlers.NewProviderSetEnabledHandler(providerRegistrySvc),
-			"providerPlugin.scanGlobal":  rpchandlers.NewProviderPluginScanGlobalHandler(providerPluginSvc),
-			"providerPlugin.scanProject": rpchandlers.NewProviderPluginScanProjectHandler(providerPluginSvc),
-			"providerPlugin.list":        rpchandlers.NewProviderPluginListHandler(providerPluginSvc),
+			"providerPlugin.scanGlobal":   rpchandlers.NewProviderPluginScanGlobalHandler(providerPluginSvc),
+			"providerPlugin.scanProject":  rpchandlers.NewProviderPluginScanProjectHandler(providerPluginSvc),
+			"providerPlugin.list":         rpchandlers.NewProviderPluginListHandler(providerPluginSvc),
+			"providerPlugin.setEnabled":   rpchandlers.NewProviderPluginSetEnabledHandler(providerPluginSvc),
 		},
 	}
 	return a

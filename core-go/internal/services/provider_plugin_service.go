@@ -23,23 +23,25 @@ type pluginProjectRepo interface {
 
 // ProviderPluginService handles scanning and listing provider plugin declarations.
 type ProviderPluginService struct {
-	repo     *repositories.ProviderPluginRepo
-	pdRepo   pluginDefRepo
-	projRepo pluginProjectRepo
-	runner   *operations.Runner
+	repo         *repositories.ProviderPluginRepo
+	pdRepo       pluginDefRepo
+	projRepo     pluginProjectRepo
+	runner       OperationRunner
+	pluginWriter func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error
 }
 
 func NewProviderPluginService(
 	repo *repositories.ProviderPluginRepo,
 	pdRepo pluginDefRepo,
 	projRepo pluginProjectRepo,
-	runner *operations.Runner,
+	runner OperationRunner,
 ) *ProviderPluginService {
 	return &ProviderPluginService{
-		repo:     repo,
-		pdRepo:   pdRepo,
-		projRepo: projRepo,
-		runner:   runner,
+		repo:         repo,
+		pdRepo:       pdRepo,
+		projRepo:     projRepo,
+		runner:       runner,
+		pluginWriter: providers.WriteJSONPluginEnabled,
 	}
 }
 
@@ -186,6 +188,97 @@ func (s *ProviderPluginService) listProvider(ctx context.Context, def pluginProv
 	}
 
 	return global, projectViews, nil
+}
+
+// SetPluginEnabled writes the enabled/disabled state of a plugin to the user-layer
+// settings file for the given provider, then rescans that layer so the persisted
+// view reflects the change. Only Claude and Antigravity CLI are supported in this
+// slice; Codex writes return a validation_error. Only the "user" (global) layer is
+// supported; project and local layer writes are deferred.
+func (s *ProviderPluginService) SetPluginEnabled(
+	ctx context.Context,
+	providerKey, pluginName, marketplaceName string,
+	enabled bool,
+) (int64, error) {
+	const supportedLayer = "user"
+
+	// Validate provider — only JSON-format providers supported in this slice.
+	switch providerKey {
+	case "claude", "antigravity_cli":
+		// OK
+	case "codex":
+		return 0, domain.NewValidationError(
+			"Codex plugin writes not supported",
+			"Codex uses TOML format; write support is deferred to a future slice",
+		)
+	default:
+		return 0, domain.NewValidationError(
+			"Unknown provider",
+			fmt.Sprintf("providerKey %q does not support plugin writes", providerKey),
+		)
+	}
+
+	if pluginName == "" || marketplaceName == "" {
+		return 0, domain.NewValidationError("Plugin name and marketplace are required", "pluginName and marketplaceName must be non-empty")
+	}
+
+	// Load the provider definition (must exist in DB).
+	defs, err := s.pluginProviderDefsAllowMissing(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var targetDef *pluginProviderDef
+	for i := range defs {
+		if defs[i].Provider.Key == providerKey {
+			targetDef = &defs[i]
+			break
+		}
+	}
+	if targetDef == nil {
+		return 0, domain.NewValidationError(
+			"Provider not configured",
+			fmt.Sprintf("provider %q not found in database", providerKey),
+		)
+	}
+
+	def := *targetDef
+
+	target := operations.Target{Type: "provider_plugin_global", ID: 0}
+	opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
+		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
+			return nil, s.setPluginEnabledInternal(opCtx, def, pluginName, marketplaceName, enabled, progress)
+		})
+	if err != nil {
+		if _, ok := err.(*domain.AppError); ok {
+			return 0, err
+		}
+		return 0, domain.NewDatabaseError("Could not start plugin write operation", err.Error())
+	}
+	return opID, nil
+}
+
+func (s *ProviderPluginService) setPluginEnabledInternal(
+	ctx context.Context,
+	def pluginProviderDef,
+	pluginName, marketplaceName string,
+	enabled bool,
+	progress operations.ProgressFn,
+) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return domain.NewValidationError("Cannot resolve home directory", err.Error())
+	}
+	allowedDir := filepath.Join(homeDir, def.GlobalDir)
+	filePath := def.UserFilePath()
+
+	progress("writing_plugin_setting", 0, 1, "")
+	if err := s.pluginWriter(filePath, allowedDir, pluginName, marketplaceName, enabled); err != nil {
+		return domain.NewFilesystemError("Could not write plugin setting", err.Error())
+	}
+	progress("writing_plugin_setting", 1, 1, def.Provider.Key)
+
+	// Rescan the user layer so the persisted view reflects the new state.
+	return s.scanGlobalInternal(ctx, []pluginProviderDef{def}, progress)
 }
 
 // ---- internal scan logic ----

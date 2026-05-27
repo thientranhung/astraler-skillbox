@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProviderPluginSetEnabledMethod",
+  "description": "Contract for providerPlugin.setEnabled JSON-RPC method. Enables or disables a provider plugin at the specified layer by writing to the provider's settings file, then rescans the layer. Only layer=user is supported in this slice.",
+  "oneOf": [
+    { "$ref": "#/definitions/ProviderPluginSetEnabledRequest" },
+    { "$ref": "#/definitions/ProviderPluginSetEnabledResponse" }
+  ],
+  "definitions": {
+    "ProviderPluginSetEnabledRequest": {
+      "title": "ProviderPluginSetEnabledRequest",
+      "description": "Params for providerPlugin.setEnabled.",
+      "type": "object",
+      "properties": {
+        "providerKey": {
+          "type": "string",
+          "description": "Provider key (e.g. claude, antigravity_cli). Codex returns validation_error."
+        },
+        "pluginName": {
+          "type": "string",
+          "description": "Plugin name (the part before @ in name@marketplace)"
+        },
+        "marketplaceName": {
+          "type": "string",
+          "description": "Marketplace name (the part after @ in name@marketplace)"
+        },
+        "layer": {
+          "type": "string",
+          "enum": ["user"],
+          "description": "Settings layer to write. Only user (global) is supported in this version."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether to enable (true) or disable (false) the plugin"
+        }
+      },
+      "required": ["providerKey", "pluginName", "marketplaceName", "layer", "enabled"],
+      "additionalProperties": false
+    },
+    "ProviderPluginSetEnabledResponse": {
+      "title": "ProviderPluginSetEnabledResponse",
+      "description": "Immediate response — the write and rescan run asynchronously. Errors: validation_error (1001) for unknown/unsupported provider or layer; filesystem_error (1002) if the settings file cannot be written; conflict_error (1005) if a scan or write is already running.",
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "integer",
+          "description": "ID of the created write+rescan operation"
+        }
+      },
+      "required": ["operationId"],
+      "additionalProperties": false
+    }
+  }
+}

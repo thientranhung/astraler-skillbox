@@ -36,6 +36,8 @@ import type {
   ProviderPluginScanProjectRequest,
   ProviderPluginScanProjectResponse,
   ProviderPluginListResponse,
+  ProviderPluginSetEnabledRequest,
+  ProviderPluginSetEnabledResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -115,4 +117,7 @@ export const methods = {
 
   listProviderPlugins: () =>
     invoke<ProviderPluginListResponse>("providerPlugin.list", {}),
+
+  setProviderPluginEnabled: (req: ProviderPluginSetEnabledRequest) =>
+    invoke<ProviderPluginSetEnabledResponse>("providerPlugin.setEnabled", req),
 };

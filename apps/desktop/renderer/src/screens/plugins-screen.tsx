@@ -2,10 +2,13 @@ import React from "react";
 import { RefreshCw } from "lucide-react";
 import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsGlobal } from "../features/provider-plugins/use-scan-provider-plugins-global.js";
+import { useSetProviderPluginEnabled } from "../features/provider-plugins/use-set-provider-plugin-enabled.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import type { PPGlobalView, PPGlobalEntry, PPMarketplace } from "@contracts/index.js";
+
+const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli"]);
 
 const LAYER_STATUS_LABEL: Record<string, string> = {
   ok: "ok",
@@ -53,7 +56,43 @@ function MarketplaceRow({ m }: { m: PPMarketplace }): React.JSX.Element {
   );
 }
 
-function GlobalPluginView({ global: g }: { global: PPGlobalView }): React.JSX.Element {
+function PluginToggleButton({
+  plugin,
+  providerKey,
+  disabled,
+  onToggle,
+}: {
+  plugin: PPGlobalEntry;
+  providerKey: string;
+  disabled: boolean;
+  onToggle: (pluginName: string, marketplaceName: string, enabled: boolean) => void;
+}): React.JSX.Element {
+  const isEnabled = plugin.status === "enabled";
+  return (
+    <button
+      onClick={() => onToggle(plugin.pluginName, plugin.marketplaceName, !isEnabled)}
+      disabled={disabled}
+      className="rounded border border-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {isEnabled ? "Disable" : "Enable"}
+    </button>
+  );
+}
+
+function GlobalPluginView({
+  global: g,
+  isOperationInFlight,
+  onTogglePlugin,
+}: {
+  global: PPGlobalView;
+  isOperationInFlight: boolean;
+  onTogglePlugin: (providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean) => void;
+}): React.JSX.Element {
+  const canToggle = JSON_WRITE_PROVIDERS.has(g.providerKey) && g.userLayerStatus === "ok";
+
+  function handleToggle(pluginName: string, marketplaceName: string, enabled: boolean) {
+    onTogglePlugin(g.providerKey, pluginName, marketplaceName, enabled);
+  }
   const neverScanned = g.userLayerStatus == null;
   const statusLabel = neverScanned
     ? "never scanned"
@@ -109,6 +148,9 @@ function GlobalPluginView({ global: g }: { global: PPGlobalView }): React.JSX.El
                   <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Plugin</th>
                   <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Marketplace</th>
                   <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Status</th>
+                  {canToggle && (
+                    <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Action</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -121,6 +163,16 @@ function GlobalPluginView({ global: g }: { global: PPGlobalView }): React.JSX.El
                         {p.status}
                       </span>
                     </td>
+                    {canToggle && (
+                      <td className="px-3 py-1.5 text-xs">
+                        <PluginToggleButton
+                          plugin={p}
+                          providerKey={g.providerKey}
+                          disabled={isOperationInFlight}
+                          onToggle={handleToggle}
+                        />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -164,7 +216,13 @@ function GlobalPluginView({ global: g }: { global: PPGlobalView }): React.JSX.El
 export function PluginsScreen(): React.JSX.Element {
   const { data, isPending, isError, error } = useProviderPluginList();
   const scanMutation = useScanProviderPluginsGlobal();
+  const setEnabledMutation = useSetProviderPluginEnabled();
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
+  const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
+
+  function handleTogglePlugin(providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean) {
+    setEnabledMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "user", enabled });
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -210,7 +268,12 @@ export function PluginsScreen(): React.JSX.Element {
         {!isPending && !isError && data != null && (
           <div className="flex flex-col gap-6 p-4">
             {(data.globals.length > 0 ? data.globals : [data.global]).map((global) => (
-              <GlobalPluginView key={global.providerKey} global={global} />
+              <GlobalPluginView
+                key={global.providerKey}
+                global={global}
+                isOperationInFlight={isScanning || isTogglingPlugin}
+                onTogglePlugin={handleTogglePlugin}
+              />
             ))}
           </div>
         )}

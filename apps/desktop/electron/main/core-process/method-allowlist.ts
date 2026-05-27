@@ -27,4 +27,5 @@ export const ALLOWLIST = new Set([
   "providerPlugin.scanGlobal",
   "providerPlugin.scanProject",
   "providerPlugin.list",
+  "providerPlugin.setEnabled",
 ]);
