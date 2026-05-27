@@ -12,11 +12,13 @@ import (
 
 type providerPluginListSvc interface {
 	List(ctx context.Context) (domain.GlobalPluginView, []domain.ProjectPluginView, error)
+	ListAll(ctx context.Context) ([]domain.GlobalPluginView, []domain.ProjectPluginView, error)
 }
 
 // -- response types --
 
 type ppListResponse struct {
+	Globals  []ppGlobalView  `json:"globals"`
 	Global   ppGlobalView    `json:"global"`
 	Projects []ppProjectView `json:"projects"`
 }
@@ -77,15 +79,29 @@ type ppMarketplace struct {
 
 func NewProviderPluginListHandler(svc providerPluginListSvc) jrpc2.Handler {
 	return handler.New(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
-		global, projects, err := svc.List(ctx)
+		globals, projects, err := svc.ListAll(ctx)
 		if err != nil {
 			return nil, wrapError(err)
 		}
+		mappedGlobals := mapPPGlobalViews(globals)
+		var global ppGlobalView
+		if len(mappedGlobals) > 0 {
+			global = mappedGlobals[0]
+		}
 		return ppListResponse{
-			Global:   mapPPGlobalView(global),
+			Globals:  mappedGlobals,
+			Global:   global,
 			Projects: mapPPProjectViews(projects),
 		}, nil
 	})
+}
+
+func mapPPGlobalViews(globals []domain.GlobalPluginView) []ppGlobalView {
+	result := make([]ppGlobalView, 0, len(globals))
+	for _, g := range globals {
+		result = append(result, mapPPGlobalView(g))
+	}
+	return result
 }
 
 func mapPPGlobalView(g domain.GlobalPluginView) ppGlobalView {
