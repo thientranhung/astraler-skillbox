@@ -65,6 +65,10 @@ export interface ProjectListItem {
    * Count of distinct effective plugins (enabled + disabled + unknown) across all providers; 0 when no plugin scan data
    */
   pluginTotalCount: number;
+  /**
+   * Per-provider plugin stats; empty array when no plugin scan data
+   */
+  pluginProviders?: ProjectListPluginProviderSummary[];
 }
 /**
  * Brief provider info for the projects list view
@@ -90,4 +94,25 @@ export interface ProjectListProviderSummary {
    * Number of observed skill entries for this provider
    */
   entryCount: number;
+}
+/**
+ * Per-provider plugin stats for the projects list
+ */
+export interface ProjectListPluginProviderSummary {
+  /**
+   * Provider key (e.g. claude, codex)
+   */
+  key: string;
+  /**
+   * Human-readable provider name
+   */
+  displayName: string;
+  /**
+   * Number of effectively-enabled plugins for this provider in this project
+   */
+  enabledCount: number;
+  /**
+   * Number of non-absent plugins for this provider in this project
+   */
+  totalCount: number;
 }

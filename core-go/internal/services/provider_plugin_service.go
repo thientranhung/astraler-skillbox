@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -399,35 +400,68 @@ func confinedPath(allowedDir, filePath string) bool {
 	return strings.HasPrefix(cleanFile, cleanDir+string(os.PathSeparator))
 }
 
-// aggregatePluginCounts sums effective plugin counts per project across all providers.
-// ListAll yields one ProjectPluginView per (provider, project), so a project with several
-// plugin-capable providers produces several views sharing the same ProjectID; accumulating
-// into counts[pv.ProjectID] across them is intentional — the column shows one project-wide
-// enabled/total summed over all providers. Each view's Plugins already excludes absent
-// entries, so len(Plugins) is the per-view non-absent total.
-func aggregatePluginCounts(projects []domain.ProjectPluginView) map[int64]domain.PluginCount {
-	counts := make(map[int64]domain.PluginCount)
+// aggregatePluginCounts sums effective plugin counts per project, both globally and per
+// provider. displayNames maps provider key → human-readable name and is used to populate
+// PluginProviderCount.DisplayName in the returned ByProvider slice.
+func aggregatePluginCounts(projects []domain.ProjectPluginView, displayNames map[string]string) map[int64]domain.PluginCount {
+	type provCount struct{ enabled, total int }
+	perProject := make(map[int64]map[string]*provCount)
+
 	for _, pv := range projects {
-		c := counts[pv.ProjectID]
+		if perProject[pv.ProjectID] == nil {
+			perProject[pv.ProjectID] = make(map[string]*provCount)
+		}
+		pc := perProject[pv.ProjectID]
+		if pc[pv.ProviderKey] == nil {
+			pc[pv.ProviderKey] = &provCount{}
+		}
 		for _, p := range pv.Plugins {
-			c.Total++
+			pc[pv.ProviderKey].total++
 			if p.EffectiveStatus == domain.PluginEffectiveEnabled {
-				c.Enabled++
+				pc[pv.ProviderKey].enabled++
 			}
 		}
-		counts[pv.ProjectID] = c
+	}
+
+	counts := make(map[int64]domain.PluginCount, len(perProject))
+	for projectID, pc := range perProject {
+		c := domain.PluginCount{
+			ByProvider: make([]domain.PluginProviderCount, 0, len(pc)),
+		}
+		for key, cnt := range pc {
+			c.Enabled += cnt.enabled
+			c.Total += cnt.total
+			c.ByProvider = append(c.ByProvider, domain.PluginProviderCount{
+				ProviderKey: key,
+				DisplayName: displayNames[key],
+				Enabled:     cnt.enabled,
+				Total:       cnt.total,
+			})
+		}
+		sort.Slice(c.ByProvider, func(i, j int) bool {
+			return c.ByProvider[i].ProviderKey < c.ByProvider[j].ProviderKey
+		})
+		counts[projectID] = c
 	}
 	return counts
 }
 
-// PluginCountsByProject returns per-project effective plugin counts (enabled/total)
-// across all plugin-capable providers, derived from persisted scan data.
+// PluginCountsByProject returns per-project effective plugin counts (enabled/total, plus
+// per-provider breakdown) across all plugin-capable providers, derived from persisted scan data.
 func (s *ProviderPluginService) PluginCountsByProject(ctx context.Context) (map[int64]domain.PluginCount, error) {
+	defs, err := s.pluginProviderDefsAllowMissing(ctx)
+	if err != nil {
+		return nil, err
+	}
+	displayNames := make(map[string]string, len(defs))
+	for _, d := range defs {
+		displayNames[d.Provider.Key] = d.Provider.DisplayName
+	}
 	_, projects, err := s.ListAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return aggregatePluginCounts(projects), nil
+	return aggregatePluginCounts(projects, displayNames), nil
 }
 
 // ---- internal scan logic ----

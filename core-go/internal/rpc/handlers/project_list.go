@@ -21,6 +21,13 @@ type projectListProviderSummary struct {
 	EntryCount      int    `json:"entryCount"`
 }
 
+type projectListPluginProviderSummary struct {
+	Key          string `json:"key"`
+	DisplayName  string `json:"displayName"`
+	EnabledCount int    `json:"enabledCount"`
+	TotalCount   int    `json:"totalCount"`
+}
+
 type projectListItem struct {
 	ID            int64                        `json:"id"`
 	Name          string                       `json:"name"`
@@ -32,6 +39,7 @@ type projectListItem struct {
 	LastScannedAt      *string                      `json:"lastScannedAt"`
 	PluginEnabledCount int                          `json:"pluginEnabledCount"`
 	PluginTotalCount   int                          `json:"pluginTotalCount"`
+	PluginProviders    []projectListPluginProviderSummary `json:"pluginProviders,omitempty"`
 }
 
 type projectListResponse struct {
@@ -59,6 +67,15 @@ func NewProjectListHandler(svc projectListService) jrpc2.Handler {
 					EntryCount:      p.EntryCount,
 				})
 			}
+			pluginProviders := make([]projectListPluginProviderSummary, 0, len(item.PluginProviders))
+			for _, pp := range item.PluginProviders {
+				pluginProviders = append(pluginProviders, projectListPluginProviderSummary{
+					Key:          pp.ProviderKey,
+					DisplayName:  pp.DisplayName,
+					EnabledCount: pp.EnabledCount,
+					TotalCount:   pp.TotalCount,
+				})
+			}
 			resp.Projects = append(resp.Projects, projectListItem{
 				ID:                 item.ID,
 				Name:               item.Name,
@@ -70,6 +87,7 @@ func NewProjectListHandler(svc projectListService) jrpc2.Handler {
 				LastScannedAt:      formatTimePtr(item.LastScannedAt),
 				PluginEnabledCount: item.PluginEnabledCount,
 				PluginTotalCount:   item.PluginTotalCount,
+				PluginProviders:    pluginProviders,
 			})
 		}
 

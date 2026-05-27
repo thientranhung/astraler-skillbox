@@ -38,6 +38,14 @@ type AddProjectResult struct {
 	Status    domain.ProjectStatus
 }
 
+// PluginProviderSummary is the per-provider plugin stats for the projects list.
+type PluginProviderSummary struct {
+	ProviderKey  string
+	DisplayName  string
+	EnabledCount int
+	TotalCount   int
+}
+
 // ProjectListItem is one row in the projects list response.
 type ProjectListItem struct {
 	ID            int64
@@ -50,6 +58,7 @@ type ProjectListItem struct {
 	LastScannedAt      *time.Time
 	PluginEnabledCount int
 	PluginTotalCount   int
+	PluginProviders    []PluginProviderSummary
 }
 
 // ProjectDetailView is the full project detail response.
@@ -245,6 +254,16 @@ func (s *ProjectService) ListProjects(ctx context.Context) ([]ProjectListItem, e
 			return nil, domain.NewDatabaseError("Could not count warnings", err.Error())
 		}
 
+		pluginProviders := make([]PluginProviderSummary, 0, len(pluginCounts[p.ID].ByProvider))
+		for _, pc := range pluginCounts[p.ID].ByProvider {
+			pluginProviders = append(pluginProviders, PluginProviderSummary{
+				ProviderKey:  pc.ProviderKey,
+				DisplayName:  pc.DisplayName,
+				EnabledCount: pc.Enabled,
+				TotalCount:   pc.Total,
+			})
+		}
+
 		items = append(items, ProjectListItem{
 			ID:                 p.ID,
 			Name:               p.Name,
@@ -256,6 +275,7 @@ func (s *ProjectService) ListProjects(ctx context.Context) ([]ProjectListItem, e
 			LastScannedAt:      p.LastScannedAt,
 			PluginEnabledCount: pluginCounts[p.ID].Enabled,
 			PluginTotalCount:   pluginCounts[p.ID].Total,
+			PluginProviders:    pluginProviders,
 		})
 	}
 	return items, nil

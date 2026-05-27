@@ -13,6 +13,26 @@ interface ProjectRowProps {
   project: ProjectListItem;
 }
 
+function ProjectPluginProviderStats({ project }: { project: ProjectListItem }): React.JSX.Element {
+  if (!project.pluginProviders || project.pluginProviders.length === 0) {
+    return <span className="text-xs text-zinc-400">—</span>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {project.pluginProviders.map((pp) => (
+        <span
+          key={pp.key}
+          className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
+          title={`${pp.displayName}: ${pp.enabledCount} enabled of ${pp.totalCount} plugin${pp.totalCount === 1 ? "" : "s"}`}
+        >
+          <span className="font-mono text-[11px]">{pp.enabledCount}/{pp.totalCount}</span>
+          <span className="max-w-24 truncate">{pp.displayName}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function ProjectProviderSkillStats({ project }: { project: ProjectListItem }): React.JSX.Element {
   if (project.providers.length === 0) {
     return <span className="text-xs text-zinc-400">—</span>;
@@ -85,18 +105,7 @@ export function ProjectRow({ project }: ProjectRowProps): React.JSX.Element {
         <ProjectProviderSkillStats project={project} />
       </td>
       <td className="px-3 py-2">
-        {project.pluginTotalCount > 0 ? (
-          <span
-            className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
-            title={`${project.pluginEnabledCount} enabled of ${project.pluginTotalCount} plugin${project.pluginTotalCount === 1 ? "" : "s"}`}
-          >
-            <span className="font-mono text-[11px]">
-              {project.pluginEnabledCount}/{project.pluginTotalCount}
-            </span>
-          </span>
-        ) : (
-          <span className="text-xs text-zinc-400">—</span>
-        )}
+        <ProjectPluginProviderStats project={project} />
       </td>
       <td className="px-3 py-2 text-xs text-zinc-400">
         {project.lastScannedAt != null

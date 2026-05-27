@@ -776,7 +776,8 @@ func TestAggregatePluginCounts_SumsEnabledAndTotalAcrossProviders(t *testing.T) 
 		}},
 	}
 
-	got := aggregatePluginCounts(views)
+	displayNames := map[string]string{"claude": "Claude", "codex": "Codex"}
+	got := aggregatePluginCounts(views, displayNames)
 
 	if got[1].Enabled != 2 {
 		t.Errorf("project 1 Enabled: got %d want 2", got[1].Enabled)
@@ -790,10 +791,31 @@ func TestAggregatePluginCounts_SumsEnabledAndTotalAcrossProviders(t *testing.T) 
 	if got[2].Total != 1 {
 		t.Errorf("project 2 Total: got %d want 1", got[2].Total)
 	}
+
+	// ByProvider: project 1 should have two entries sorted by key (claude < codex).
+	bp1 := got[1].ByProvider
+	if len(bp1) != 2 {
+		t.Fatalf("project 1 ByProvider len: got %d want 2", len(bp1))
+	}
+	if bp1[0].ProviderKey != "claude" || bp1[0].DisplayName != "Claude" || bp1[0].Enabled != 1 || bp1[0].Total != 2 {
+		t.Errorf("project 1 ByProvider[0]: got %+v", bp1[0])
+	}
+	if bp1[1].ProviderKey != "codex" || bp1[1].DisplayName != "Codex" || bp1[1].Enabled != 1 || bp1[1].Total != 2 {
+		t.Errorf("project 1 ByProvider[1]: got %+v", bp1[1])
+	}
+
+	// ByProvider: project 2 has one entry.
+	bp2 := got[2].ByProvider
+	if len(bp2) != 1 {
+		t.Fatalf("project 2 ByProvider len: got %d want 1", len(bp2))
+	}
+	if bp2[0].ProviderKey != "claude" || bp2[0].DisplayName != "Claude" || bp2[0].Enabled != 0 || bp2[0].Total != 1 {
+		t.Errorf("project 2 ByProvider[0]: got %+v", bp2[0])
+	}
 }
 
 func TestAggregatePluginCounts_EmptyIsEmptyMap(t *testing.T) {
-	got := aggregatePluginCounts(nil)
+	got := aggregatePluginCounts(nil, nil)
 	if len(got) != 0 {
 		t.Errorf("expected empty map, got %d entries", len(got))
 	}
