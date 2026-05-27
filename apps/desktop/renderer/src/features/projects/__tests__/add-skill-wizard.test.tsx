@@ -92,6 +92,10 @@ describe("AddSkillWizard", () => {
       />,
     );
 
+    const radio = screen.getByRole("radio", { name: /Generic Agents/i });
+    expect(radio).toBeTruthy();
+    expect((radio as HTMLInputElement).checked).toBe(true);
+
     const checkbox = screen.getByRole("checkbox", { name: /Skill C/i });
     fireEvent.click(checkbox);
 
@@ -122,6 +126,10 @@ describe("AddSkillWizard", () => {
       />,
     );
 
+    const radio = screen.getByRole("radio", { name: /Generic Agents/i });
+    expect(radio).toBeTruthy();
+    expect((radio as HTMLInputElement).checked).toBe(true);
+
     // Select skill A
     const checkboxA = screen.getByRole("checkbox", { name: /Skill A/i });
     fireEvent.click(checkboxA);
@@ -136,5 +144,27 @@ describe("AddSkillWizard", () => {
       providerKey: "generic_agents",
       skillIds: [10],
     });
+  });
+
+  it("single installable provider: radio visible and pre-selected without user interaction", () => {
+    render(
+      <AddSkillWizard
+        projectId={1}
+        providers={[makeProvider({ providerKey: "generic_agents", displayName: "Generic Agents" })]}
+        skills={[makeSkill({ id: 3, name: "Skill X" })]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const radio = screen.getByRole("radio", { name: /Generic Agents/i });
+    expect(radio).toBeTruthy();
+    expect((radio as HTMLInputElement).checked).toBe(true);
+
+    // Install button enabled once a skill is selected — no provider interaction needed
+    const installButton = screen.getByRole("button", { name: /^install$/i });
+    expect((installButton as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Skill X/i }));
+    expect((installButton as HTMLButtonElement).disabled).toBe(false);
   });
 });
