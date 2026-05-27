@@ -70,20 +70,29 @@ Add an exported method that wraps the existing private `scanProjectInternal` wit
 // ScanProjectLayers scans the project + local settings layers for all plugin-capable
 // providers, committing results. It runs within the caller's operation context and does
 // NOT start its own operation (used by ProjectService during a unified project scan).
+//
+// It uses pluginProviderDefsAllowMissing (NOT pluginProviderDefs): zero plugin-capable
+// providers is a legitimate no-op, not an error. The strict pluginProviderDefs returns a
+// validation_error on zero defs — propagating that would fail the entire project scan on a
+// fresh/partial DB where no plugin providers are seeded yet (see F2). Only DB-level failures
+// from the underlying registry/commit surface as errors.
 func (s *ProviderPluginService) ScanProjectLayers(
     ctx context.Context,
     project *domain.Project,
     progress operations.ProgressFn,
 ) error {
-    defs, err := s.pluginProviderDefs(ctx)
+    defs, err := s.pluginProviderDefsAllowMissing(ctx)
     if err != nil {
         return err
+    }
+    if len(defs) == 0 {
+        return nil // no plugin-capable providers configured — nothing to scan
     }
     return s.scanProjectInternal(ctx, project, defs, progress)
 }
 ```
 
-(The existing public `ScanProject` is unchanged and still wired to `providerPlugin.scanProject`.)
+(The existing public `ScanProject` is unchanged and still wired to `providerPlugin.scanProject` — see the §1 Notes below about that method remaining live and a potential concurrent-scan race.)
 
 **`core-go/internal/services/project_service.go`**
 
@@ -112,21 +121,26 @@ func (s *ProjectService) WithPluginDeps(
 }
 ```
 
-In `scanProjectInternal`, after `s.scanRepo.CommitProjectScan(...)` succeeds and before `progress("done", …)`:
+In `scanProjectInternal`, after `s.scanRepo.CommitProjectScan(...)` succeeds and before `progress("done", …)`. On a plugin-step error, return the **skill summary alongside the error** (partial-failure pattern) so the committed skill-scan metadata is not discarded (see F3):
 
 ```go
 if s.pluginScanner != nil {
     progress("scanning_plugins", 0, 0, "")
     if err := s.pluginScanner.ScanProjectLayers(ctx, project, progress); err != nil {
-        return nil, err // DB-level failure fails the op; committed skill data persists
+        // Skill/provider scan already committed. Return the summary WITH the error so the
+        // runner persists it as operation metadata (partial failure), rather than nil.
+        return buildScanSummary(providerResults, projectWarnings), err
     }
 }
 ```
+
+Why this works: `operations.Runner.run` marshals the returned metadata once and writes it on **both** the success and failure `UpdateStatus` calls (runner.go ~lines 106–138; the code comment explicitly names the "partial-failure operations (returning metadata AND a non-nil error)" case). So `return buildScanSummary(...), err` preserves the skill summary even when the plugin step fails. Returning `nil, err` would silently drop it.
 
 Notes:
 - Per-file problems (missing/malformed/etc.) are recorded as `scan_status` rows by the plugin scan, **not** returned as errors — same as today's standalone plugin scan. Only DB-level failures surface as operation errors.
 - Plugin scan runs after the skill/provider commit. They write disjoint tables, so ordering is not correctness-critical; running last keeps skill results committed even if the plugin step errors.
 - The terminal paths (`commitTerminalPath` / `commitTerminalDirect` for missing/unreadable projects) do **not** scan plugins — an unreadable project has no readable settings files.
+- **`providerPlugin.scanProject` stays live (and dormant).** After the §4 button removal, the standalone `providerPlugin.scanProject` RPC has no UI caller, but it remains registered and callable. Its operation target is `provider_plugin_project`, which is **different** from the unified scan's `project` target — so the two are **not** mutually excluded by the per-target operation lock and could run concurrently against the same `provider_plugin_layer_scans` rows for one project. `CommitLayerScan` is a transactional upsert (last writer wins), so this is not corruption, but it is an avoidable write race. We leave the method in place this slice (removing the RPC/handler/contract is out of scope), and flag it: a future slice should either remove it or make plugin scans share the `project` lock target.
 
 ### 2. Backend — list stats
 
@@ -151,7 +165,12 @@ func (s *ProviderPluginService) PluginCountsByProject(ctx context.Context) (map[
         return nil, err
     }
     counts := make(map[int64]domain.PluginCount)
-    for _, pv := range projects { // pv is domain.ProjectPluginView (already excludes absent)
+    // ListAll returns one ProjectPluginView per (provider, project) — a project with
+    // multiple plugin-capable providers yields multiple views sharing the same ProjectID.
+    // Accumulating into counts[pv.ProjectID] across those views is intentional: the column
+    // shows a single project-wide enabled/total summed over all providers. Each view's
+    // Plugins already excludes absent entries, so len(Plugins) is the per-view non-absent total.
+    for _, pv := range projects {
         c := counts[pv.ProjectID]
         for _, p := range pv.Plugins {
             c.Total++
@@ -207,6 +226,8 @@ Regenerate types: `pnpm generate:contracts` → updates `shared/generated/method
 
 **`core-go/internal/rpc/handlers/project_list.go`** — add `PluginEnabledCount`/`PluginTotalCount` to the `projectListItem` JSON struct (`pluginEnabledCount`, `pluginTotalCount`) and map them from the service item.
 
+**Atomicity:** the schema change (`project.list.json`), the regenerated `shared/generated/methods/project-list.ts`, and the handler struct change must land in the **same commit**. The fields are `required` in the contract, so a regenerated type without the handler emitting them (or vice versa) produces a contract-drift/type mismatch and a runtime response that fails schema validation. Do not split these across commits.
+
 ### 4. UI
 
 **`apps/desktop/renderer/src/screens/projects-screen.tsx`** — add a `Plugins` column header between `Skills` and `Last Scanned`:
@@ -234,6 +255,10 @@ Project | Status | Providers | Skills | Plugins | Last Scanned | (actions)
 
 **`apps/desktop/renderer/src/screens/project-detail-screen.tsx`** — in `ProjectPluginSection`:
 - Remove the **"Scan Plugins"** button and the `useScanProviderPluginsProject` usage (and the import if unused elsewhere). The section becomes read-only display fed by the unified scan.
+- **Preserve the in-flight guard on plugin toggles (F1).** Today `isOperationInFlight = isScanning || isTogglingPlugin`, where `isScanning` came from the now-removed plugin-scan hook. That guard disables the Enable/Disable buttons while a scan is running. Removing the hook and setting `isOperationInFlight = isTogglingPlugin` would let a user toggle a plugin *during the unified project scan* (which now writes the plugin layer rows) — a write/rescan race. **Fix:** the unified scan's in-flight state lives in `ProjectDetailScreen` (the `useScanProject()` result: `scan.operationId != null || scan.isPending`, already computed there as `isScanning`). Pass it into the section as a prop:
+  - `ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; scanInFlight: boolean })`
+  - Render site: `<ProjectPluginSection projectId={validId} scanInFlight={isScanning} />`
+  - Inside the section: `const isOperationInFlight = isTogglingPlugin || scanInFlight;` so toggles stay disabled during the unified scan exactly as before.
 - Keep the `useProviderPluginList` query for display.
 - Ensure the plugin list refreshes after a unified scan: in the project-scan success handler (`use-scan-project.ts`), invalidate the `providerPlugin.list` query key in addition to project detail, so `ProjectPluginSection` refetches once the scan completes.
 - Empty-state copy update: "No plugin data. Run a scan to populate." (drop the "Scan Plugins" wording).
@@ -241,8 +266,10 @@ Project | Status | Providers | Skills | Plugins | Last Scanned | (actions)
 ### 5. Testing
 
 **Go:**
-- Extend project scan/handler tests (`core-go/internal/rpc/handlers/project_handler_test.go` and/or service tests): after `project.scan`, assert `provider_plugin_layer_scans` rows exist for the project (project + local layers) and that `project.list` returns expected `pluginEnabledCount`/`pluginTotalCount`.
-- Unit test `ProviderPluginService.PluginCountsByProject` with a fixture mixing enabled/disabled/absent across user/project/local layers (verify `absent` excluded from total, `unknown` counted in total but not enabled, multiple providers summed).
+- Extend project scan/handler tests: after a scan, assert the plugin scanner is invoked and `project.list` returns expected `pluginEnabledCount`/`pluginTotalCount`.
+- Unit test the aggregation (mix enabled/disabled/absent/unknown across providers; verify `absent` excluded from total, `unknown` counted in total but not enabled, multiple providers summed).
+- **F2:** `ScanProjectLayers` with zero plugin-capable providers returns `nil` (no-op), not a validation error — so a fresh-install project scan does not fail.
+- **F3:** when the plugin step errors, `scanProjectInternal` returns the skill summary alongside the error (assert non-nil metadata is returned with the error), so the runner persists it.
 - Nil-safety: a `ProjectService` built without `WithPluginDeps` still scans skills and lists projects with plugin counts `0`.
 - Run `go test ./...` and `go test -race ./internal/operations/... ./internal/filesystem/... ./internal/providers/...`.
 
@@ -250,6 +277,7 @@ Project | Status | Providers | Skills | Plugins | Last Scanned | (actions)
 - `project-row` renders `2/5` when counts present and `—` when `pluginTotalCount === 0`.
 - `projects-screen` renders the `Plugins` column header.
 - `project-detail-screen` `ProjectPluginSection` no longer renders a "Scan Plugins" button.
+- **F1:** plugin Enable/Disable buttons are disabled when `scanInFlight` is true (the unified scan is running).
 
 ### 6. Requirement 3 — plugin-display gaps (enumerate + recommend)
 
@@ -270,18 +298,25 @@ Identified surfaces where plugin info is absent but arguably useful. **Recommend
 
 Backend:
 - `core-go/internal/domain/provider_plugin.go` — add `PluginCount`.
-- `core-go/internal/services/provider_plugin_service.go` — add `ScanProjectLayers`, `PluginCountsByProject`.
-- `core-go/internal/services/project_service.go` — add `WithPluginDeps`, scanner/counter deps, `scanning_plugins` phase, `PluginEnabledCount`/`PluginTotalCount` on `ProjectListItem` + `ListProjects` wiring.
-- `core-go/internal/app/wire.go` — call `projectSvc.WithPluginDeps(providerPluginSvc, providerPluginSvc)` (and `cmd/skillbox-core/main.go` if construction lives there).
-- `core-go/internal/rpc/handlers/project_list.go` — map new fields.
+- `core-go/internal/services/provider_plugin_service.go` — add `ScanProjectLayers` (using `pluginProviderDefsAllowMissing`, no-op on zero defs), `PluginCountsByProject`.
+- `core-go/internal/services/project_service.go` — add `WithPluginDeps`, scanner/counter deps, `scanning_plugins` phase, partial-failure return (`buildScanSummary(...), err`), `PluginEnabledCount`/`PluginTotalCount` on `ProjectListItem` + `ListProjects` wiring.
+- `core-go/cmd/skillbox-core/main.go` — wire deps in the existing `ProjectService` builder chain (lines ~75–80). `WithPluginDeps(providerPluginSvc, providerPluginSvc)` must be called where `projectSvc` is constructed, after `providerPluginSvc` exists. **Not `wire.go`** — `app.New` only registers the JSON-RPC handler map from already-constructed services; it does not build `ProjectService`.
+- `core-go/internal/rpc/handlers/project_list.go` — map new fields (land atomically with the contract change).
 
-Contract:
-- `shared/api-contracts/methods/project.list.json` — add two fields. Regenerate `shared/generated/`.
+Contract (land atomically with the handler change):
+- `shared/api-contracts/methods/project.list.json` — add two `required` fields.
+- `shared/generated/methods/project-list.ts` — regenerated, committed in the same commit.
 
 Frontend:
 - `apps/desktop/renderer/src/screens/projects-screen.tsx` — Plugins column header.
 - `apps/desktop/renderer/src/features/projects/project-row.tsx` — Plugins cell.
-- `apps/desktop/renderer/src/screens/project-detail-screen.tsx` — remove Scan Plugins button.
-- `apps/desktop/renderer/src/features/projects/use-scan-project.ts` — invalidate `providerPlugin.list` on scan success.
+- `apps/desktop/renderer/src/screens/project-detail-screen.tsx` — remove Scan Plugins button; add `scanInFlight` prop to `ProjectPluginSection` to preserve the toggle guard (F1).
+- `apps/desktop/renderer/src/features/projects/use-scan-project.ts` — invalidate `providerPlugins.list` on scan success.
 
-Tests: as listed in §5.
+Tests:
+- `core-go/internal/services/provider_plugin_service_test.go` — `aggregatePluginCounts` unit tests; `ScanProjectLayers` no-op-on-zero-defs test.
+- `core-go/internal/services/project_service_test.go` — `ListProjects` populates counts (with counter) and 0/0 without counter.
+- `core-go/internal/services/project_scan_full_service_test.go` — `scanProjectInternal` invokes the plugin scanner; no-scanner path still succeeds; partial-failure returns the skill summary alongside the error.
+- `core-go/internal/rpc/handlers/project_handler_test.go` — `project.list` maps `pluginEnabledCount`/`pluginTotalCount`.
+- `apps/desktop/renderer/src/features/projects/__tests__/project-row.test.tsx` — renders `2/5` and `—`.
+- `apps/desktop/renderer/src/screens/__tests__/project-detail-screen.test.tsx` — no Scan Plugins button; toggles disabled when `scanInFlight` is true.
