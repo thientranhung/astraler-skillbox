@@ -236,7 +236,7 @@ func TestResolveEffectivePlugin_FallsThrough_LocalAbsent_ProjectEnabled(t *testi
 	project := okScan(2, domain.PluginLayerProject, ptr64(10))
 
 	entryMap := map[int64][]domain.PluginEntry{
-		1: {},                                       // local: absent
+		1: {},                                      // local: absent
 		2: {makeEntry(2, "plugin-a", "npm", true)}, // project: enabled
 	}
 
@@ -255,8 +255,8 @@ func TestResolveEffectivePlugin_LayerBreakdownPopulated(t *testing.T) {
 	user := okScan(3, domain.PluginLayerUser, nil)
 
 	entryMap := map[int64][]domain.PluginEntry{
-		1: {},                                        // local: absent
-		2: {},                                        // project: absent
+		1: {},                                       // local: absent
+		2: {},                                       // project: absent
 		3: {makeEntry(3, "plugin-a", "npm", false)}, // user: disabled
 	}
 
@@ -319,11 +319,18 @@ func TestBuildProjectPluginView_MarketplacesDeduped(t *testing.T) {
 // ---- mock types for service tests ----
 
 type mockPluginDefRepo struct {
-	def *domain.ProviderDefinition
-	err error
+	def  *domain.ProviderDefinition
+	defs map[string]*domain.ProviderDefinition
+	err  error
 }
 
 func (m *mockPluginDefRepo) GetByKey(_ context.Context, key string) (*domain.ProviderDefinition, error) {
+	if m.defs != nil {
+		return m.defs[key], m.err
+	}
+	if m.def != nil && m.def.Key != "" && m.def.Key != key {
+		return nil, m.err
+	}
 	return m.def, m.err
 }
 
@@ -350,6 +357,30 @@ func TestProviderPluginService_List_NilWhenProviderNotFound(t *testing.T) {
 	}
 	if len(projects) != 0 {
 		t.Errorf("projects: got %d want 0", len(projects))
+	}
+}
+
+func TestProviderPluginService_PluginProviderDefsIncludesCodex(t *testing.T) {
+	svc := NewProviderPluginService(nil, &mockPluginDefRepo{defs: map[string]*domain.ProviderDefinition{
+		"claude": {ID: 1, Key: "claude"},
+		"codex":  {ID: 2, Key: "codex"},
+	}}, &mockPluginProjectRepo{}, nil)
+
+	defs, err := svc.pluginProviderDefs(context.Background())
+	if err != nil {
+		t.Fatalf("pluginProviderDefs: %v", err)
+	}
+	if len(defs) != 2 {
+		t.Fatalf("defs: got %d want 2", len(defs))
+	}
+	if defs[0].Provider.Key != "claude" || defs[1].Provider.Key != "codex" {
+		t.Fatalf("provider order: got %q, %q", defs[0].Provider.Key, defs[1].Provider.Key)
+	}
+	if defs[1].GlobalDir != ".codex" || defs[1].UserFile != "config.toml" {
+		t.Errorf("codex global path parts: got %q/%q", defs[1].GlobalDir, defs[1].UserFile)
+	}
+	if defs[1].ProjectDir != ".codex" || defs[1].ProjectFile != "config.toml" || defs[1].LocalFile != "" {
+		t.Errorf("codex project path parts: got dir=%q project=%q local=%q", defs[1].ProjectDir, defs[1].ProjectFile, defs[1].LocalFile)
 	}
 }
 

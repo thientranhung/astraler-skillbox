@@ -21,8 +21,7 @@ type pluginProjectRepo interface {
 	GetByID(ctx context.Context, id int64) (*domain.Project, error)
 }
 
-// ProviderPluginService handles scanning and listing Claude provider plugin declarations.
-// It reads ~/.claude/settings.json (user layer) and <project>/.claude/settings.{json,local.json}.
+// ProviderPluginService handles scanning and listing provider plugin declarations.
 type ProviderPluginService struct {
 	repo     *repositories.ProviderPluginRepo
 	pdRepo   pluginDefRepo
@@ -44,17 +43,17 @@ func NewProviderPluginService(
 	}
 }
 
-// ScanGlobal starts an async scan of the user layer (~/.claude/settings.json).
+// ScanGlobal starts an async scan of configured provider user layers.
 // Returns the operation ID immediately.
 func (s *ProviderPluginService) ScanGlobal(ctx context.Context) (int64, error) {
-	pd, err := s.claudeProviderDef(ctx)
+	defs, err := s.pluginProviderDefs(ctx)
 	if err != nil {
 		return 0, err
 	}
-	target := operations.Target{Type: "provider_plugin_global", ID: pd.ID}
+	target := operations.Target{Type: "provider_plugin_global", ID: 0}
 	opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
 		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
-			return nil, s.scanGlobalInternal(opCtx, pd, progress)
+			return nil, s.scanGlobalInternal(opCtx, defs, progress)
 		})
 	if err != nil {
 		if _, ok := err.(*domain.AppError); ok {
@@ -75,14 +74,14 @@ func (s *ProviderPluginService) ScanProject(ctx context.Context, projectID int64
 	if project == nil {
 		return 0, domain.NewValidationError("Project not found", fmt.Sprintf("projectId %d does not exist", projectID))
 	}
-	pd, err := s.claudeProviderDef(ctx)
+	defs, err := s.pluginProviderDefs(ctx)
 	if err != nil {
 		return 0, err
 	}
 	target := operations.Target{Type: "provider_plugin_project", ID: projectID}
 	opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
 		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
-			return nil, s.scanProjectInternal(opCtx, project, pd, progress)
+			return nil, s.scanProjectInternal(opCtx, project, defs, progress)
 		})
 	if err != nil {
 		if _, ok := err.(*domain.AppError); ok {
@@ -95,26 +94,46 @@ func (s *ProviderPluginService) ScanProject(ctx context.Context, projectID int64
 
 // List returns the current global plugin view and per-project plugin views from persisted scan data.
 func (s *ProviderPluginService) List(ctx context.Context) (domain.GlobalPluginView, []domain.ProjectPluginView, error) {
-	homeDir, _ := os.UserHomeDir()
-	expectedUserPath := filepath.Join(homeDir, ".claude", "settings.json")
-
-	pd, err := s.pdRepo.GetByKey(ctx, "claude")
+	globals, projects, err := s.ListAll(ctx)
 	if err != nil {
-		return domain.GlobalPluginView{}, nil, domain.NewDatabaseError("Could not load Claude provider definition", err.Error())
+		return domain.GlobalPluginView{}, nil, err
 	}
-	if pd == nil {
+	if len(globals) == 0 {
+		homeDir, _ := os.UserHomeDir()
 		return domain.GlobalPluginView{
 			ProviderKey:       "claude",
-			UserLayerPath:     expectedUserPath,
+			UserLayerPath:     filepath.Join(homeDir, ".claude", "settings.json"),
 			ManagedOutOfScope: true,
-		}, nil, nil
+		}, projects, nil
+	}
+	return globals[0], projects, nil
+}
+
+// ListAll returns current global plugin views and per-project plugin views for all plugin-capable providers.
+func (s *ProviderPluginService) ListAll(ctx context.Context) ([]domain.GlobalPluginView, []domain.ProjectPluginView, error) {
+	defs, err := s.pluginProviderDefsAllowMissing(ctx)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	scans, err := s.repo.ListLayerScansForProvider(ctx, pd.ID)
+	var globals []domain.GlobalPluginView
+	var allProjects []domain.ProjectPluginView
+	for _, def := range defs {
+		global, projects, err := s.listProvider(ctx, def)
+		if err != nil {
+			return nil, nil, err
+		}
+		globals = append(globals, global)
+		allProjects = append(allProjects, projects...)
+	}
+	return globals, allProjects, nil
+}
+
+func (s *ProviderPluginService) listProvider(ctx context.Context, def pluginProviderDef) (domain.GlobalPluginView, []domain.ProjectPluginView, error) {
+	scans, err := s.repo.ListLayerScansForProvider(ctx, def.Provider.ID)
 	if err != nil {
 		return domain.GlobalPluginView{}, nil, domain.NewDatabaseError("Could not load plugin layer scans", err.Error())
 	}
-
 	// Load entries and marketplaces for all scans upfront.
 	entryMap := make(map[int64][]domain.PluginEntry, len(scans))
 	marketplaceMap := make(map[int64][]domain.PluginMarketplace, len(scans))
@@ -132,10 +151,9 @@ func (s *ProviderPluginService) List(ctx context.Context) (domain.GlobalPluginVi
 		marketplaceMap[sc.ID] = mps
 	}
 
-	// Build global view from the user layer scan (project_id IS NULL).
 	global := domain.GlobalPluginView{
-		ProviderKey:       "claude",
-		UserLayerPath:     expectedUserPath,
+		ProviderKey:       def.Provider.Key,
+		UserLayerPath:     def.UserFilePath(),
 		ManagedOutOfScope: true,
 	}
 	var userScan *domain.PluginLayerScan
@@ -163,7 +181,7 @@ func (s *ProviderPluginService) List(ctx context.Context) (domain.GlobalPluginVi
 
 	var projectViews []domain.ProjectPluginView
 	for projectID, projectScans := range projectScanMap {
-		view := buildProjectPluginView(projectID, "claude", projectScans, userScan, entryMap, marketplaceMap)
+		view := buildProjectPluginView(projectID, def.Provider.Key, projectScans, userScan, entryMap, marketplaceMap)
 		projectViews = append(projectViews, view)
 	}
 
@@ -172,83 +190,145 @@ func (s *ProviderPluginService) List(ctx context.Context) (domain.GlobalPluginVi
 
 // ---- internal scan logic ----
 
-func (s *ProviderPluginService) claudeProviderDef(ctx context.Context) (*domain.ProviderDefinition, error) {
-	pd, err := s.pdRepo.GetByKey(ctx, "claude")
-	if err != nil {
-		return nil, domain.NewDatabaseError("Could not load Claude provider definition", err.Error())
-	}
-	if pd == nil {
-		return nil, domain.NewValidationError("Claude provider not found", "key 'claude' absent from provider_definitions")
-	}
-	return pd, nil
+type pluginProviderDef struct {
+	Provider    *domain.ProviderDefinition
+	GlobalDir   string
+	UserFile    string
+	ProjectDir  string
+	ProjectFile string
+	LocalFile   string
+	Scanner     func(filePath, allowedDir string) providers.ClaudeSettingsScan
 }
 
-func (s *ProviderPluginService) scanGlobalInternal(ctx context.Context, pd *domain.ProviderDefinition, progress operations.ProgressFn) error {
-	progress("scanning_user_layer", 0, 1, "")
+func (d pluginProviderDef) UserFilePath() string {
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, d.GlobalDir, d.UserFile)
+}
+
+func (d pluginProviderDef) ProjectAllowedDir(projectPath string) string {
+	return filepath.Join(projectPath, d.ProjectDir)
+}
+
+func (d pluginProviderDef) ProjectFilePath(projectPath string) string {
+	return filepath.Join(d.ProjectAllowedDir(projectPath), d.ProjectFile)
+}
+
+func (d pluginProviderDef) LocalFilePath(projectPath string) string {
+	if d.LocalFile == "" {
+		return ""
+	}
+	return filepath.Join(d.ProjectAllowedDir(projectPath), d.LocalFile)
+}
+
+func (s *ProviderPluginService) pluginProviderDefs(ctx context.Context) ([]pluginProviderDef, error) {
+	defs, err := s.pluginProviderDefsAllowMissing(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(defs) == 0 {
+		return nil, domain.NewValidationError("Provider plugins unavailable", "no plugin-capable provider definitions found")
+	}
+	return defs, nil
+}
+
+func (s *ProviderPluginService) pluginProviderDefsAllowMissing(ctx context.Context) ([]pluginProviderDef, error) {
+	templates := []struct {
+		key         string
+		globalDir   string
+		userFile    string
+		projectDir  string
+		projectFile string
+		localFile   string
+		scanner     func(filePath, allowedDir string) providers.ClaudeSettingsScan
+	}{
+		{"claude", ".claude", "settings.json", ".claude", "settings.json", "settings.local.json", providers.ScanClaudeSettingsFile},
+		{"codex", ".codex", "config.toml", ".codex", "config.toml", "", providers.ScanCodexConfigFile},
+	}
+	defs := make([]pluginProviderDef, 0, len(templates))
+	for _, tmpl := range templates {
+		pd, err := s.pdRepo.GetByKey(ctx, tmpl.key)
+		if err != nil {
+			return nil, domain.NewDatabaseError(fmt.Sprintf("Could not load %s provider definition", tmpl.key), err.Error())
+		}
+		if pd == nil {
+			continue
+		}
+		defs = append(defs, pluginProviderDef{
+			Provider: pd, GlobalDir: tmpl.globalDir, UserFile: tmpl.userFile,
+			ProjectDir: tmpl.projectDir, ProjectFile: tmpl.projectFile, LocalFile: tmpl.localFile,
+			Scanner: tmpl.scanner,
+		})
+	}
+	return defs, nil
+}
+
+func (s *ProviderPluginService) scanGlobalInternal(ctx context.Context, defs []pluginProviderDef, progress operations.ProgressFn) error {
+	total := len(defs)
+	progress("scanning_user_layer", 0, total, "")
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return domain.NewValidationError("Cannot resolve home directory", err.Error())
 	}
-	allowedDir := filepath.Join(homeDir, ".claude")
-	filePath := filepath.Join(allowedDir, "settings.json")
-
-	scanResult := providers.ScanClaudeSettingsFile(filePath, allowedDir)
-	scan := &domain.PluginLayerScan{
-		ProviderDefinitionID: pd.ID,
-		SettingsLayer:        domain.PluginLayerUser,
-		ScanStatus:           domain.PluginLayerScanStatus(scanResult.Status),
-		SettingsFilePath:     filePath,
-		LastScannedAt:        time.Now().UTC(),
-		Warnings:             sanitizeWarnings(scanResult.Warnings),
-	}
-	entries, mps := pluginScanToEntries(scanResult)
-
-	progress("committing", 1, 1, "")
-	if err := s.repo.CommitLayerScan(ctx, scan, entries, mps); err != nil {
-		return domain.NewDatabaseError("Could not commit global plugin scan", err.Error())
+	for i, def := range defs {
+		allowedDir := filepath.Join(homeDir, def.GlobalDir)
+		filePath := filepath.Join(allowedDir, def.UserFile)
+		scanResult := def.Scanner(filePath, allowedDir)
+		scan := &domain.PluginLayerScan{
+			ProviderDefinitionID: def.Provider.ID,
+			SettingsLayer:        domain.PluginLayerUser,
+			ScanStatus:           domain.PluginLayerScanStatus(scanResult.Status),
+			SettingsFilePath:     filePath,
+			LastScannedAt:        time.Now().UTC(),
+			Warnings:             sanitizeWarnings(scanResult.Warnings),
+		}
+		entries, mps := pluginScanToEntries(scanResult)
+		if err := s.repo.CommitLayerScan(ctx, scan, entries, mps); err != nil {
+			return domain.NewDatabaseError("Could not commit global plugin scan", err.Error())
+		}
+		progress("scanning_user_layer", i+1, total, def.Provider.Key)
 	}
 	return nil
 }
 
-func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project *domain.Project, pd *domain.ProviderDefinition, progress operations.ProgressFn) error {
-	claudeDir := filepath.Join(project.Path, ".claude")
+func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project *domain.Project, defs []pluginProviderDef, progress operations.ProgressFn) error {
+	total := len(defs)
+	for i, def := range defs {
+		allowedDir := def.ProjectAllowedDir(project.Path)
+		projectFilePath := def.ProjectFilePath(project.Path)
+		projectResult := def.Scanner(projectFilePath, allowedDir)
+		projectScan := &domain.PluginLayerScan{
+			ProviderDefinitionID: def.Provider.ID,
+			ProjectID:            &project.ID,
+			SettingsLayer:        domain.PluginLayerProject,
+			ScanStatus:           domain.PluginLayerScanStatus(projectResult.Status),
+			SettingsFilePath:     projectFilePath,
+			LastScannedAt:        time.Now().UTC(),
+			Warnings:             sanitizeWarnings(projectResult.Warnings),
+		}
+		pe, pm := pluginScanToEntries(projectResult)
+		if err := s.repo.CommitLayerScan(ctx, projectScan, pe, pm); err != nil {
+			return domain.NewDatabaseError("Could not commit project layer scan", err.Error())
+		}
 
-	progress("scanning_project_layer", 0, 2, "")
-	projectFilePath := filepath.Join(claudeDir, "settings.json")
-	projectResult := providers.ScanClaudeSettingsFile(projectFilePath, claudeDir)
-	projectScan := &domain.PluginLayerScan{
-		ProviderDefinitionID: pd.ID,
-		ProjectID:            &project.ID,
-		SettingsLayer:        domain.PluginLayerProject,
-		ScanStatus:           domain.PluginLayerScanStatus(projectResult.Status),
-		SettingsFilePath:     projectFilePath,
-		LastScannedAt:        time.Now().UTC(),
-		Warnings:             sanitizeWarnings(projectResult.Warnings),
+		if localFilePath := def.LocalFilePath(project.Path); localFilePath != "" {
+			localResult := def.Scanner(localFilePath, allowedDir)
+			localScan := &domain.PluginLayerScan{
+				ProviderDefinitionID: def.Provider.ID,
+				ProjectID:            &project.ID,
+				SettingsLayer:        domain.PluginLayerLocal,
+				ScanStatus:           domain.PluginLayerScanStatus(localResult.Status),
+				SettingsFilePath:     localFilePath,
+				LastScannedAt:        time.Now().UTC(),
+				Warnings:             sanitizeWarnings(localResult.Warnings),
+			}
+			le, lm := pluginScanToEntries(localResult)
+			if err := s.repo.CommitLayerScan(ctx, localScan, le, lm); err != nil {
+				return domain.NewDatabaseError("Could not commit local layer scan", err.Error())
+			}
+		}
+		progress("scanning_project_layer", i+1, total, def.Provider.Key)
 	}
-	pe, pm := pluginScanToEntries(projectResult)
-	if err := s.repo.CommitLayerScan(ctx, projectScan, pe, pm); err != nil {
-		return domain.NewDatabaseError("Could not commit project layer scan", err.Error())
-	}
-
-	progress("scanning_local_layer", 1, 2, "")
-	localFilePath := filepath.Join(claudeDir, "settings.local.json")
-	localResult := providers.ScanClaudeSettingsFile(localFilePath, claudeDir)
-	localScan := &domain.PluginLayerScan{
-		ProviderDefinitionID: pd.ID,
-		ProjectID:            &project.ID,
-		SettingsLayer:        domain.PluginLayerLocal,
-		ScanStatus:           domain.PluginLayerScanStatus(localResult.Status),
-		SettingsFilePath:     localFilePath,
-		LastScannedAt:        time.Now().UTC(),
-		Warnings:             sanitizeWarnings(localResult.Warnings),
-	}
-	le, lm := pluginScanToEntries(localResult)
-	if err := s.repo.CommitLayerScan(ctx, localScan, le, lm); err != nil {
-		return domain.NewDatabaseError("Could not commit local layer scan", err.Error())
-	}
-
-	progress("done", 2, 2, "")
 	return nil
 }
 

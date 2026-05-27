@@ -18,13 +18,18 @@
       "title": "ProviderPluginListResponse",
       "type": "object",
       "properties": {
+        "globals": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PPGlobalView" },
+          "description": "Global provider plugin views. The legacy global field is the first item for backward compatibility."
+        },
         "global": { "$ref": "#/definitions/PPGlobalView" },
         "projects": {
           "type": "array",
           "items": { "$ref": "#/definitions/PPProjectView" }
         }
       },
-      "required": ["global", "projects"],
+      "required": ["globals", "global", "projects"],
       "additionalProperties": false
     },
     "PPGlobalView": {

@@ -35,12 +35,20 @@ func (s *stubPluginScanProjectSvc) ScanProject(_ context.Context, projectID int6
 
 type stubPluginListSvc struct {
 	global   domain.GlobalPluginView
+	globals  []domain.GlobalPluginView
 	projects []domain.ProjectPluginView
 	err      error
 }
 
 func (s *stubPluginListSvc) List(_ context.Context) (domain.GlobalPluginView, []domain.ProjectPluginView, error) {
 	return s.global, s.projects, s.err
+}
+
+func (s *stubPluginListSvc) ListAll(_ context.Context) ([]domain.GlobalPluginView, []domain.ProjectPluginView, error) {
+	if s.globals != nil {
+		return s.globals, s.projects, s.err
+	}
+	return []domain.GlobalPluginView{s.global}, s.projects, s.err
 }
 
 // ---- scanGlobal tests ----
@@ -144,13 +152,16 @@ func TestProviderPluginListHandler_EmptyGlobal(t *testing.T) {
 	cli := startServer(t, handler.Map{"providerPlugin.list": handlers.NewProviderPluginListHandler(svc)})
 
 	var resp struct {
+		Globals []struct {
+			ProviderKey string `json:"providerKey"`
+		} `json:"globals"`
 		Global struct {
-			ProviderKey       string      `json:"providerKey"`
-			UserLayerPath     string      `json:"userLayerPath"`
-			UserLayerStatus   interface{} `json:"userLayerStatus"`
+			ProviderKey       string        `json:"providerKey"`
+			UserLayerPath     string        `json:"userLayerPath"`
+			UserLayerStatus   interface{}   `json:"userLayerStatus"`
 			Plugins           []interface{} `json:"plugins"`
 			Marketplaces      []interface{} `json:"marketplaces"`
-			ManagedOutOfScope bool        `json:"managedOutOfScope"`
+			ManagedOutOfScope bool          `json:"managedOutOfScope"`
 		} `json:"global"`
 		Projects []interface{} `json:"projects"`
 	}
@@ -159,6 +170,9 @@ func TestProviderPluginListHandler_EmptyGlobal(t *testing.T) {
 	}
 	if resp.Global.ProviderKey != "claude" {
 		t.Errorf("providerKey: got %q want claude", resp.Global.ProviderKey)
+	}
+	if len(resp.Globals) != 1 || resp.Globals[0].ProviderKey != "claude" {
+		t.Errorf("globals: got %+v want one claude entry", resp.Globals)
 	}
 	if !resp.Global.ManagedOutOfScope {
 		t.Error("managedOutOfScope: want true")
@@ -212,6 +226,38 @@ func TestProviderPluginListHandler_WithScannedUserLayer(t *testing.T) {
 	}
 	if resp.Global.Plugins[0].Status != "enabled" {
 		t.Errorf("plugin status: got %q want enabled", resp.Global.Plugins[0].Status)
+	}
+}
+
+func TestProviderPluginListHandler_MultipleGlobals(t *testing.T) {
+	svc := &stubPluginListSvc{
+		globals: []domain.GlobalPluginView{
+			{ProviderKey: "claude", UserLayerPath: "/home/.claude/settings.json", ManagedOutOfScope: true},
+			{ProviderKey: "codex", UserLayerPath: "/home/.codex/config.toml", ManagedOutOfScope: true},
+		},
+	}
+	cli := startServer(t, handler.Map{"providerPlugin.list": handlers.NewProviderPluginListHandler(svc)})
+
+	var resp struct {
+		Globals []struct {
+			ProviderKey   string `json:"providerKey"`
+			UserLayerPath string `json:"userLayerPath"`
+		} `json:"globals"`
+		Global struct {
+			ProviderKey string `json:"providerKey"`
+		} `json:"global"`
+	}
+	if err := cli.CallResult(context.Background(), "providerPlugin.list", nil, &resp); err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(resp.Globals) != 2 {
+		t.Fatalf("globals: got %d want 2", len(resp.Globals))
+	}
+	if resp.Globals[1].ProviderKey != "codex" || resp.Globals[1].UserLayerPath != "/home/.codex/config.toml" {
+		t.Errorf("codex global: got %+v", resp.Globals[1])
+	}
+	if resp.Global.ProviderKey != "claude" {
+		t.Errorf("legacy global providerKey: got %q want claude", resp.Global.ProviderKey)
 	}
 }
 

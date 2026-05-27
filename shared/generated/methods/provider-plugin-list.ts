@@ -13,6 +13,10 @@ export type ProviderPluginListMethod = ProviderPluginListRequest | ProviderPlugi
  */
 export interface ProviderPluginListRequest {}
 export interface ProviderPluginListResponse {
+  /**
+   * Global provider plugin views. The legacy global field is the first item for backward compatibility.
+   */
+  globals: PPGlobalView[];
   global: PPGlobalView;
   projects: PPProjectView[];
 }
