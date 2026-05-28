@@ -109,6 +109,7 @@ Dashboard hiển thị tổng quan:
 - Tổng số skill trong Skill Host Folder.
 - Tổng số global skills được phát hiện.
 - Tổng số project đã add.
+- Lối tắt đến Global Plugins (navigation row, mirror Global Skills pattern).
 - Skill có update sau lần Fetch gần nhất.
 - Project đang dùng symlink.
 - Project đang dùng rsync/copy.
