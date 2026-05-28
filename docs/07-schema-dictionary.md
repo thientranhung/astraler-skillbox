@@ -323,6 +323,109 @@ Purpose: lưu operation dài hoặc quan trọng để UI có loading/progress/d
 | `created_at` | datetime | no | Thời điểm tạo row. |
 | `updated_at` | datetime | no | Thời điểm cập nhật row gần nhất. |
 
+## provider_user_settings
+
+Purpose: lưu user-level preference cho từng provider (Phase 1 chỉ enable/disable).
+
+| Field | Type | Nullable | Description |
+|---|---|---:|---|
+| `id` | integer | no | Primary key. |
+| `provider_definition_id` | integer | no | FK tới `provider_definitions.id`. UNIQUE — một row duy nhất per provider. ON DELETE CASCADE. |
+| `enabled` | integer | no | Boolean `0/1`. User preference cho provider. CHECK `enabled IN (0, 1)`. |
+| `created_at` | datetime | no | Thời điểm tạo row. |
+| `updated_at` | datetime | no | Thời điểm cập nhật row gần nhất. |
+
+## provider_path_overrides
+
+Purpose: lưu override của user cho path candidate của provider. Một row cho mỗi
+`(provider_definition_id, scope, purpose)`. Khi có override, adapter dùng
+`paths_json` thay vì `provider_path_candidates` cho slot đó.
+
+| Field | Type | Nullable | Description |
+|---|---|---:|---|
+| `id` | integer | no | Primary key. |
+| `provider_definition_id` | integer | no | FK tới `provider_definitions.id`. |
+| `scope` | text | no | Scope của override. Allowed: `project`, `global`. |
+| `purpose` | text | no | Slot được override. Allowed: `detect`, `skills`, `config`, `commands`. |
+| `paths_json` | json | no | JSON array path strings thay thế built-in candidates. Mặc định `'[]'`. CHECK `json_valid` AND `json_type = 'array'`. |
+| `created_at` | datetime | no | Thời điểm tạo row. |
+| `updated_at` | datetime | no | Thời điểm cập nhật row gần nhất. |
+
+Notes:
+
+- UNIQUE `(provider_definition_id, scope, purpose)` đảm bảo mỗi slot chỉ có
+  một override active.
+- Path trong `paths_json` có thể là absolute hoặc bắt đầu bằng `~` (user home);
+  adapter resolve trước khi dùng.
+
+## provider_plugin_layer_scans
+
+Purpose: lưu kết quả scan một settings file ở một layer của provider plugin
+system. Một row mỗi `(provider_definition_id, project_id, settings_layer)`.
+
+| Field | Type | Nullable | Description |
+|---|---|---:|---|
+| `id` | integer | no | Primary key. |
+| `provider_definition_id` | integer | no | FK tới `provider_definitions.id`. ON DELETE CASCADE. |
+| `project_id` | integer | yes | FK tới `projects.id`. NULL khi `settings_layer = user`. Non-null bắt buộc cho `project`/`local`. ON DELETE CASCADE. |
+| `settings_layer` | text | no | Layer precedence. Allowed: `user`, `project`, `local`. |
+| `scan_status` | text | no | Kết quả đọc settings file. Allowed: `ok`, `missing`, `unreadable`, `malformed`, `too_large`, `symlink`, `path_escape`. |
+| `settings_file_path` | text | no | Absolute path tới settings file scanner đã thử đọc. |
+| `last_scanned_at` | datetime | no | Thời điểm scan gần nhất. Default `now()`. |
+| `source_operation_id` | integer | yes | FK tới `operations.id` của lần scan tạo row này. ON DELETE SET NULL. |
+| `scan_warnings` | json | no | JSON array string các parse-time warnings. Mặc định `'[]'`. Không lưu raw file content. |
+
+Notes:
+
+- Partial unique indexes:
+  - `(provider_definition_id, settings_layer)` WHERE `project_id IS NULL` (user
+    layer).
+  - `(provider_definition_id, project_id, settings_layer)` WHERE `project_id IS
+    NOT NULL` (project/local layer).
+- Table CHECK ràng buộc: user layer phải null `project_id`; project/local layer
+  phải non-null `project_id`.
+- `scan_status = ok` là điều kiện duy nhất để các entries/marketplaces phát
+  sinh từ scan này có hiệu lực.
+
+## provider_plugin_entries
+
+Purpose: lưu khai báo plugin (enabled/disabled) trong một settings file scan.
+
+| Field | Type | Nullable | Description |
+|---|---|---:|---|
+| `id` | integer | no | Primary key. |
+| `layer_scan_id` | integer | no | FK tới `provider_plugin_layer_scans.id`. ON DELETE CASCADE. |
+| `plugin_name` | text | no | Tên plugin do settings file khai báo. |
+| `marketplace_name` | text | no | Tên marketplace mà plugin được resolve từ đó. |
+| `declaration` | text | no | Khai báo trong file. Allowed: `enabled`, `disabled`. |
+
+Notes:
+
+- UNIQUE `(layer_scan_id, plugin_name, marketplace_name)`.
+- Effective status (`enabled`/`disabled`/`absent`/`unknown`) được resolve ở
+  application layer bằng cách merge entries theo precedence `local > project >
+  user`; không lưu trực tiếp trong bảng.
+- Vắng mặt entry trong một layer scan = `absent` ở layer đó.
+
+## provider_plugin_marketplaces
+
+Purpose: lưu marketplace declaration trong một settings file scan.
+
+| Field | Type | Nullable | Description |
+|---|---|---:|---|
+| `id` | integer | no | Primary key. |
+| `layer_scan_id` | integer | no | FK tới `provider_plugin_layer_scans.id`. ON DELETE CASCADE. |
+| `marketplace_name` | text | no | Tên marketplace (named source) trong settings file. |
+| `source_type` | text | no | Loại nguồn. Validate ở application layer. Common values: `github`, `git`, `directory`, `url`, `settings`, `hostPattern`. |
+| `source_summary` | text | no | Mô tả nguồn (owner/repo, URL, path). Không lưu raw credentials. |
+
+Notes:
+
+- `source_type` không có CHECK constraint trong migration; enum value được
+  validate ở application layer theo format settings file của từng provider.
+- Một marketplace có thể xuất hiện ở nhiều layer scans (user/project/local);
+  effective marketplace list resolve ở application layer.
+
 ## Polymorphic References
 
 SQLite không enforce được các polymorphic references như:

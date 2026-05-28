@@ -551,6 +551,146 @@ Provider Model hiện tại không block Phase 2 vì:
 
 Phase 1 chưa cần lưu converted variants.
 
+## Provider Plugin Layer Model
+
+Một số provider (ban đầu là Claude, Codex, Antigravity CLI) hỗ trợ khái niệm
+**plugin** thông qua settings file riêng (`~/.claude/settings.json`,
+`~/.codex/config.toml`, `~/.gemini/antigravity-cli/settings.json`, ...). Plugin
+khác với skill: plugin là một extension được provider khai báo trong settings
+file, có thể đến từ marketplace bên ngoài, và có thể được enable/disable mà
+không cần xóa khỏi disk.
+
+Skillbox Phase 1 chỉ đọc/ghi settings file để hiển thị trạng thái và cho phép
+toggle enable/disable. Skillbox không quản lý download/install marketplace nội
+dung; provider tự xử lý.
+
+### Layer Precedence
+
+Plugin state được khai báo trên ba layer có precedence rõ ràng:
+
+```text
+local   (project-scoped, máy này, không commit)
+project (project-scoped, commit chung)
+user    (global ở cấp user/máy)
+```
+
+Effective rule: `local > project > user`. Layer có precedence cao hơn override
+khai báo của layer thấp hơn. Vắng mặt khai báo ở một layer = `absent` ở layer
+đó (rơi xuống layer kế tiếp).
+
+Effective status sau merge:
+
+```text
+enabled
+disabled
+absent   (không khai báo ở bất kỳ layer nào)
+unknown  (có khai báo nhưng layer chứa khai báo có scan_status != ok)
+```
+
+### Toggle Semantics
+
+UI cho phép user thao tác plugin state ở hai scope:
+
+- **User layer (Global Plugins screen)**: toggle 2-state. Enable / Disable
+  globally. Ghi vào `~/.claude/settings.json` (hoặc tương đương) ở user scope.
+- **Project layer (Project Detail screen)**: cycle 3-state. Inherit
+  (không khai báo ở project layer, fall through xuống user) → Enable (force
+  enable ở project) → Disable (force disable ở project) → Inherit. "Inherit"
+  được thực thi bằng cách xóa entry khỏi `.claude/settings.json` của project.
+
+Local layer (`.claude/settings.local.json`) chỉ được scan, không được Skillbox
+write ở Phase 1. User vẫn có thể chỉnh tay file local để override tạm thời.
+
+### Scan Flow
+
+Một plugin scan operation:
+
+```text
+Trigger (manual hoặc auto sau khi mở project / Global Plugins screen)
+  -> Với mỗi provider có plugin support:
+       -> Resolve settings file path cho layer được scan
+            (user: từ ~/.<provider>/settings.json,
+             project: từ <project>/.<provider>/settings.json,
+             local: từ <project>/.<provider>/settings.local.json)
+       -> Defensive checks:
+            * file phải nằm trong user home / project root (path_escape)
+            * không follow symlink (symlink)
+            * size phải dưới ngưỡng (too_large)
+       -> Đọc + parse file (JSON/TOML tuỳ provider)
+       -> Tạo/cập nhật provider_plugin_layer_scans với scan_status phù hợp
+       -> Nếu scan_status = ok:
+            -> Replace toàn bộ provider_plugin_entries cho layer_scan_id này
+            -> Replace toàn bộ provider_plugin_marketplaces cho layer_scan_id này
+       -> Ghi parse-time warnings vào scan_warnings (JSON array; bounded)
+```
+
+Replace-by-scan strategy: mỗi lần scan thành công ghi đè entries +
+marketplaces của layer_scan_id đó (CASCADE delete + reinsert). Không cần
+diff/migrate khai báo trong code.
+
+### Settings File Paths
+
+Provider settings file paths được seed trong `provider_path_candidates` với
+`purpose = config`. Hai layer:
+
+- `scope = global`: user-level settings (ví dụ `~/.claude/settings.json`).
+- `scope = project`: project-level settings (ví dụ
+  `.claude/settings.json`, `.claude/settings.local.json` — local layer có
+  priority thấp hơn project).
+
+User có thể override các path này qua `provider_path_overrides` với cùng
+`(scope, purpose = config)`.
+
+### Marketplace Concept
+
+Marketplace là **nguồn được đặt tên** mà plugin được resolve từ đó. Khái niệm
+do provider định nghĩa, Skillbox chỉ record metadata. Source types thường gặp:
+
+```text
+github      (owner/repo)
+git         (git URL)
+directory   (local path)
+url         (HTTP URL)
+settings    (marketplace metadata định nghĩa trong settings tree)
+hostPattern (provider-specific routing)
+```
+
+`source_type` không enforce CHECK trong migration; mỗi provider có thể có
+source type riêng. Marketplace metadata không chứa credentials.
+
+### Provider Plugin Service Boundary
+
+Provider plugin scanner/service responsibilities:
+
+- Đọc settings file theo layer.
+- Validate defensive rules trước khi parse.
+- Persist scan result vào 3 bảng (`provider_plugin_layer_scans`,
+  `provider_plugin_entries`, `provider_plugin_marketplaces`).
+- Resolve effective state per project / global view.
+- Write enable/disable thay đổi vào settings file của layer phù hợp khi user
+  toggle (chỉ user/project layer).
+
+Provider plugin service KHÔNG:
+
+- Tải/install marketplace content (provider tự xử lý).
+- Edit local layer (`settings.local.json`).
+- Modify managed settings (out of scope cho Phase 1; `ManagedOutOfScope =
+  true` luôn trả về để UI hiển thị).
+
+### Domain Object: provider_plugin
+
+Domain layer expose các struct chính (xem `core-go/internal/domain/provider_plugin.go`):
+
+- `PluginLayerScan` — kết quả scan một layer.
+- `PluginEntry` — một khai báo plugin trong một scan.
+- `PluginMarketplace` — một marketplace declaration.
+- `PluginEffectiveEntry` — plugin sau khi resolve effective status, kèm
+  per-layer provenance.
+- `GlobalPluginView` — view cho Global Plugins screen (user layer per
+  provider).
+- `ProjectPluginView` — view cho project (merge local + project + user).
+- `PluginCount` / `PluginProviderCount` — aggregate cho Dashboard / Projects.
+
 ## Open Questions
 
 - Claude convention chính xác nên là gì và path nào nên được adapter support?
