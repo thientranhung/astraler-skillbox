@@ -13,3 +13,4 @@ apps/desktop/build/.gen/
 .worktrees
 .scratch/
 .antigravitycli/
+docs/playbooks/*.vi.md
