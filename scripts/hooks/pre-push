@@ -1,0 +1,56 @@
+#!/usr/bin/env sh
+# scripts/hooks/pre-push — doc-drift gate for git pushes
+#
+# Install: pnpm setup:hooks  (from apps/desktop/)
+# This file is symlinked into .git/hooks/pre-push.
+#
+# To bypass (e.g. doc-only typo fix, emergency push):
+#   git push --no-verify
+# Note: --no-verify is visible in the git reflog and should be used sparingly.
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$REPO_ROOT" ]; then
+  echo "pre-push: could not find git root, skipping doc-drift check"
+  exit 0
+fi
+
+CHECK_SCRIPT="$REPO_ROOT/scripts/check-doc-drift.sh"
+if [ ! -x "$CHECK_SCRIPT" ]; then
+  echo "pre-push: $CHECK_SCRIPT not found or not executable, skipping"
+  exit 0
+fi
+
+z40=0000000000000000000000000000000000000000
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Skip branch deletions
+  if [ "$local_sha" = "$z40" ]; then
+    continue
+  fi
+
+  # Determine the range of commits being pushed
+  if [ "$remote_sha" = "$z40" ]; then
+    # New branch: compare against common ancestor with main
+    base=$(git -C "$REPO_ROOT" merge-base HEAD main 2>/dev/null || true)
+    if [ -n "$base" ]; then
+      range="${base}..${local_sha}"
+    else
+      # No common ancestor (orphan branch or first push) — skip ADR check
+      range=""
+    fi
+  else
+    range="${remote_sha}..${local_sha}"
+  fi
+
+  if [ -n "$range" ]; then
+    "$CHECK_SCRIPT" --git-range "$range"
+  else
+    "$CHECK_SCRIPT"
+  fi
+
+  if [ $? -ne 0 ]; then
+    exit 1
+  fi
+done
+
+exit 0
