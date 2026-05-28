@@ -107,19 +107,39 @@ Phase 1:
 
 Mục tiêu: cài một skill từ Skill Host Folder vào project.
 
-Flow:
+Flow (happy path — có ít nhất một installable provider):
 
 ```text
 User mở Project Detail
   -> User chọn Add Skill
-  -> Skillbox hiển thị danh sách skill từ Skill Host Folder
-  -> User chọn một hoặc nhiều skill
-  -> Nếu project có nhiều provider, user chọn provider target
-  -> User chọn install mode: symlink hoặc rsync/copy
-  -> Skillbox cài skill vào provider folder tương ứng
+  -> Add Skill Wizard mở, hiển thị tab strip
+     (mỗi tab = một installable provider: tab header gồm ProviderIcon + display name
+      + skills path badge ngắn + "experimental" badge nếu provider là experimental)
+  -> User chọn tab provider muốn install vào
+  -> Wizard hiển thị danh sách skill từ Skill Host Folder cho tab đó
+     (skill đã installed tại provider này: checkbox disabled + opacity-50 + "Installed" badge)
+  -> User tick một hoặc nhiều skill chưa installed
+  -> Footer hiển thị path hint của provider đang active, kèm nút Cancel và Install
+  -> User nhấn Install
+  -> Skillbox cài skill vào provider folder của tab đang active
   -> Skillbox ghi install metadata vào database
-  -> UI cập nhật danh sách installed skills
+  -> Wizard đóng, UI cập nhật danh sách installed skills
 ```
+
+Flow (edge case — không có installable provider):
+
+```text
+User mở Project Detail
+  -> User chọn Add Skill
+  -> Add Skill Wizard mở, không có tab nào
+  -> Wizard hiển thị empty state: "No provider is ready for install."
+  -> CTA "Scan project" → gọi useScanProject, wizard đóng sau khi trigger
+```
+
+Lưu ý khi dùng wizard:
+
+- Chuyển tab sẽ reset selection (selectedSkillIds xóa) và xóa install error nếu có.
+- Nhấn Install chỉ install vào provider của tab đang active (1 submit = 1 provider).
 
 Kết quả:
 
