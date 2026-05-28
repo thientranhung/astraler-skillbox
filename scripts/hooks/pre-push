@@ -63,11 +63,10 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     continue
   fi
 
-  # Only enforce DOC-VERIFIED on protected branches (main, develop).
-  # Feature/WIP branches push freely; the gate kicks in when the work
-  # finally lands on a long-lived branch.
+  # Only enforce DOC-VERIFIED when pushing to main. Feature branches
+  # push freely; the gate kicks in when the work finally lands.
   case "$remote_ref" in
-    refs/heads/main|refs/heads/develop) ;;
+    refs/heads/main) ;;
     *) continue ;;
   esac
 

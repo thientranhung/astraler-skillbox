@@ -99,8 +99,8 @@ Pre-push hook **không tự chạy logic check**. Vai trò của hook là:
 
 Cơ chế:
 
-- Hook **chỉ enforce** khi push vào branch protected (`main`, `develop`). Push lên feature/WIP branch bỏ qua — gate kích hoạt khi work cuối cùng landing vào long-lived branch.
-- Mỗi lần `git push` (vào branch protected), hook quét commit message của các commit đang push.
+- Hook **chỉ enforce** khi push vào `main`. Push lên feature branch bỏ qua — gate kích hoạt khi work cuối cùng landing.
+- Mỗi lần `git push` (vào `main`), hook quét commit message của các commit đang push.
 - Nếu **bất kỳ** commit trong push range có trailer `DOC-VERIFIED: <reason>` ở cuối message → hook cho phép push.
 - Nếu **không có** commit nào có trailer này → hook block với checklist:
   - Đọc playbook này, chạy Gap-Find Procedure.
