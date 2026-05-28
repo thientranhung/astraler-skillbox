@@ -164,7 +164,7 @@ Phase 1 scope:
 
 ## Global Plugins
 
-Global Plugins là nơi xem và quản lý plugin ở user layer cho các provider hỗ
+Global Plugins là nơi xem và quản lý plugin ở global (user) layer cho các provider hỗ
 trợ plugin convention (Claude, Codex, Antigravity CLI).
 
 File: `apps/desktop/renderer/src/screens/plugins-screen.tsx`.
@@ -185,10 +185,15 @@ Action:
 
 Phase 1 scope:
 
-- Chỉ user layer được hiển thị ở Global Plugins. Project layer và effective
+- Chỉ global (user) layer được hiển thị ở Global Plugins. Project layer và effective
   state per project nằm trong Project Detail.
 - Local layer (`settings.local.json`) là read-only.
 - Managed settings (enterprise config) là out-of-scope.
+
+> **Naming note:** UI hiển thị label `Global` cho layer mà code/contract dùng
+> identifier `user` (`layer: "user"`, `PluginLayerUser`, SQL `settings_layer =
+> 'user'`). End-user terminology favors `Global`; code/data terminology giữ
+> `user` để không phá contract và DB.
 
 ## Projects
 
