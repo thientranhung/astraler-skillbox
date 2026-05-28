@@ -57,8 +57,6 @@ block() {
   printf '\n'
 }
 
-found=0
-
 while read -r local_ref local_sha remote_ref remote_sha; do
   # Skip branch deletions
   if [ "$local_sha" = "$z40" ]; then
@@ -73,20 +71,17 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       # range is the oldest new commit; use oldest..local_sha (or just tip)
       oldest_range="${range}~1..${local_sha}"
       if has_doc_verified "$oldest_range" 2>/dev/null; then
-        found=1
         continue
       fi
     fi
     # Fall back to checking just the tip commit
     if has_doc_verified_single "$local_sha"; then
-      found=1
       continue
     fi
   else
     # Normal push: commits added on top of what remote already has
     range="${remote_sha}..${local_sha}"
     if has_doc_verified "$range"; then
-      found=1
       continue
     fi
   fi
