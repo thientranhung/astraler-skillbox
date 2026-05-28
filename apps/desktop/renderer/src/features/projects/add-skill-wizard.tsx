@@ -77,7 +77,7 @@ export function AddSkillWizard({
         <h2 className="text-sm font-semibold text-zinc-900">Add Skills</h2>
         <button
           onClick={onClose}
-          className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+          className="cursor-pointer rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
           title="Close"
         >
           <X size={14} />
@@ -138,14 +138,14 @@ export function AddSkillWizard({
       <div className="flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
+          className="cursor-pointer rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
         >
           Cancel
         </button>
         <button
           onClick={handleInstall}
           disabled={!canInstall || installSkill.isPending}
-          className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className="cursor-pointer rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {installSkill.isPending ? "Installing…" : "Install"}
         </button>
