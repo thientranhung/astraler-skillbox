@@ -123,7 +123,7 @@ function PathCell({
           onClick={() => void copyPath()}
           aria-label={`Copy ${label}`}
           title={`Copy ${label}`}
-          className="shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+          className="shrink-0 cursor-pointer rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
         </button>
@@ -189,7 +189,7 @@ function EntryRow({
           onClick={() => onRemove(entry)}
           disabled={!isRemovable(entry)}
           title={isRemovable(entry) ? "Remove skill from project" : "Only current symlink installs can be removed in this slice"}
-          className="rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+          className="cursor-pointer rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Remove
         </button>
@@ -404,7 +404,7 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
                                       ? "Click to disable at project level"
                                       : "Click to clear project override"
                                 }
-                                className={`rounded px-1.5 py-0.5 font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
+                                className={`cursor-pointer rounded px-1.5 py-0.5 font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
                                   projState === "not-set"
                                     ? "text-zinc-400 hover:bg-zinc-100"
                                     : projectStateBadgeClass(projState) + " hover:opacity-80"
@@ -433,7 +433,7 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
                                         ? "Disable"
                                         : "Enable"
                                   }
-                                  className={`rounded px-1.5 py-0.5 font-medium hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 ${
+                                  className={`cursor-pointer rounded px-1.5 py-0.5 font-medium hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 ${
                                     isUserEnabled
                                       ? "bg-green-100 text-green-700"
                                       : "bg-zinc-100 text-zinc-500"
@@ -531,7 +531,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
         <div className="flex min-w-0 flex-wrap items-start gap-3">
           <button
             onClick={() => void navigate({ to: "/projects" })}
-            className="flex shrink-0 items-center gap-1 text-xs text-zinc-500 hover:text-zinc-800"
+            className="flex shrink-0 cursor-pointer items-center gap-1 text-xs text-zinc-500 hover:text-zinc-800"
           >
             <ArrowLeft size={13} />
             Projects
@@ -560,7 +560,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
               onClick={() => scan.mutate(validId!)}
               disabled={isScanning}
               title="Scan project"
-              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw size={12} className={isScanning ? "animate-spin" : ""} />
               {isScanning ? "Scanning…" : "Scan"}
@@ -569,7 +569,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
               onClick={() => openFolder.mutate(data.project.path)}
               disabled={openFolder.isPending}
               title="Open folder"
-              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <FolderOpen size={12} />
               Open Folder
@@ -578,7 +578,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
               onClick={() => openTerminal.mutate(data.project.path)}
               disabled={openTerminal.isPending}
               title="Open terminal"
-              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <TerminalSquare size={12} />
               Terminal
@@ -586,7 +586,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
             <button
               onClick={() => setWizardOpen(true)}
               title="Add skill to project"
-              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+              className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
             >
               <PlusCircle size={12} />
               Add Skill
@@ -595,7 +595,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
               onClick={handleRemove}
               disabled={remove.isPending}
               title="Remove project"
-              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+              className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 size={12} />
               Remove
@@ -676,7 +676,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
                   <button
                     type="button"
                     onClick={() => setSelectedProviderId("all")}
-                    className={`rounded border px-2 py-1 text-xs font-medium ${
+                    className={`cursor-pointer rounded border px-2 py-1 text-xs font-medium ${
                       selectedProviderId === "all"
                         ? "border-zinc-700 bg-zinc-900 text-white"
                         : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
@@ -690,7 +690,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
                       key={provider.projectProviderId}
                       type="button"
                       onClick={() => setSelectedProviderId(provider.projectProviderId)}
-                      className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium ${
+                      className={`inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs font-medium ${
                         selectedProviderId === provider.projectProviderId
                           ? "border-zinc-700 bg-zinc-900 text-white"
                           : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
