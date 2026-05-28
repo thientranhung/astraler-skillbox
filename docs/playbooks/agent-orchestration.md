@@ -26,13 +26,36 @@ Recommended sequence for substantial work. Compress for small slices, but never 
 
 > A **slice** is a thin end-to-end piece of work (UI → service → data, or any cross-layer cut) — bigger than a single edit, smaller than a feature.
 
-1. Brainstorm & scope → Tom
-2. Design spec → Tom
-3. Spec review → Larry
-4. User approval
-5. Implementation plan → Tom
-6. Implement → Tom, review → Larry, test & smoke-test
-7. Update docs / source-of-truth (see [Docs & Source of Truth](#docs--source-of-truth))
+1. Brainstorm & scope → Tom (output kèm Risk Classification — xem [Branch Workflow](#branch--pr-workflow))
+2. Branch decision → orchestrator (áp rule, tạo branch nếu cần, trước Spec)
+3. Design spec → Tom
+4. Spec review → Larry
+5. User approval
+6. Implementation plan → Tom
+7. Implement → Tom, review → Larry, test & smoke-test
+8. Tom tạo PR (`gh pr create`) nếu trên branch → user duyệt → merge
+9. Update docs / source-of-truth (see [Docs & Source of Truth](#docs--source-of-truth))
+
+## Branch & PR Workflow
+
+### Risk Classification (Tom đóng ở cuối brainstorm note)
+
+| Field | Value |
+|-------|-------|
+| Layers | UI / contract / Go / SQL / docs |
+| Breaking change | yes / no |
+| Schema/migration | yes / no |
+| Est. LOC | <50 / 50-300 / >300 |
+| Workflow | direct-to-main / branch + PR |
+
+### Decision Rule (orchestrator áp trước Spec)
+
+- `Schema/migration: yes` HOẶC `Breaking change: yes` → **MUST branch + PR**
+- `Layers ≥ 3` HOẶC `Est. LOC: >300` → **SHOULD branch + PR**
+- Multi-slice độc lập có thể song song → **worktree per slice**
+- UI-only / docs-only, `<50 LOC` → OK direct-to-main
+
+Branch naming: `<type>/<kebab-slug>` (vd `feat/dashboard-plugins-metric`). PR target luôn là `main`. Tom tạo PR ngay sau Larry approve commit cuối.
 
 ## tmux Rules
 
