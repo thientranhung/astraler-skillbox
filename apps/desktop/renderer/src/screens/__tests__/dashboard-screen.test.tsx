@@ -163,6 +163,30 @@ describe("DashboardScreen", () => {
     expect(screen.getByRole("button", { name: /^Attention needed 2$/i }).className).toContain("cursor-pointer");
   });
 
+  it("uses blue link style for clickable summary values", () => {
+    mockUseDashboard.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: baseData,
+      refetch: vi.fn(),
+    });
+
+    render(<DashboardScreen />);
+    const skillsBtn = screen.getByRole("button", { name: /^Skills 5$/i });
+    const projectsBtn = screen.getByRole("button", { name: /^Projects 3$/i });
+    const attentionBtn = screen.getByRole("button", { name: /^Attention needed 2$/i });
+    const globalBtn = screen.getByRole("button", { name: /Global Skills Open global view/i });
+
+    for (const btn of [skillsBtn, projectsBtn, attentionBtn, globalBtn]) {
+      expect(btn.className).toContain("group");
+      const valueSpan = btn.querySelector("span:last-child");
+      expect(valueSpan).not.toBeNull();
+      expect(valueSpan!.className).toContain("text-blue-600");
+      expect(valueSpan!.className).toContain("group-hover:text-blue-700");
+      expect(valueSpan!.className).toContain("group-hover:underline");
+    }
+  });
+
   it("does not render raw warning explanations on the dashboard", () => {
     mockUseDashboard.mockReturnValue({
       isPending: false,
