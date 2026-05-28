@@ -1,8 +1,7 @@
 #!/usr/bin/env sh
 # scripts/hooks/pre-push — doc-drift gate for git pushes
 #
-# Install: pnpm setup:hooks  (from apps/desktop/)
-# This file is symlinked into .git/hooks/pre-push.
+# Auto-installed via pnpm install (sets core.hooksPath = scripts/hooks)
 #
 # To bypass (e.g. doc-only typo fix, emergency push):
 #   git push --no-verify
