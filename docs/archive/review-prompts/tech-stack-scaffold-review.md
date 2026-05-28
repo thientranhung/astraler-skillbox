@@ -32,14 +32,14 @@ docs/08-provider-model.md
 docs/09-ui-wireframes.md
 docs/10-technical-architecture.md
 docs/11-tech-stack-and-scaffold-decisions.md
-docs/review-results/technical-architecture-brainstorm.md
-docs/review-results/transport-decision-brainstorm.md
+docs/archive/review-results/technical-architecture-brainstorm.md
+docs/archive/review-results/transport-decision-brainstorm.md
 ```
 
 Write your review result to:
 
 ```text
-docs/review-results/tech-stack-scaffold-review.md
+docs/archive/review-results/tech-stack-scaffold-review.md
 ```
 
 ## Review Goal

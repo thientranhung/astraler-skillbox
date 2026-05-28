@@ -8,7 +8,7 @@
   docs/03-information-architecture.md, docs/04-user-flows.md,
   docs/05-edge-cases-and-ux-states.md, docs/06-data-model.md,
   docs/07-schema-dictionary.md, docs/08-provider-model.md,
-  docs/review-results/provider-model-review.md
+  docs/archive/review-results/provider-model-review.md
 - Browsing used: no
 - Prior review: provider-model-review.md (same date, same session)
 

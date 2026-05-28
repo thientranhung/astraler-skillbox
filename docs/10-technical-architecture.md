@@ -21,8 +21,8 @@ Implementation decisions bên dưới có hai loại:
 
 Brainstorm kỹ thuật hiện tại được ghi ở:
 
-- `docs/review-results/technical-architecture-brainstorm.md`
-- `docs/review-results/transport-decision-brainstorm.md`
+- `docs/archive/review-results/technical-architecture-brainstorm.md`
+- `docs/archive/review-results/transport-decision-brainstorm.md`
 
 ## Architecture Goals
 

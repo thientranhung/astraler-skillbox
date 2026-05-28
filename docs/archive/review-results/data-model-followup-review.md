@@ -7,7 +7,7 @@
 - Context used: docs/01-product-brief.md, docs/02-product-notes.md,
   docs/03-information-architecture.md, docs/04-user-flows.md,
   docs/05-edge-cases-and-ux-states.md, docs/06-data-model.md,
-  docs/review-results/data-model-review.md
+  docs/archive/review-results/data-model-review.md
 - Prior review: data-model-review.md (same date, same session)
 
 ---

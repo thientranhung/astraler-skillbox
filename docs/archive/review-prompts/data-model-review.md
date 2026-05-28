@@ -61,7 +61,7 @@ Please answer these questions:
 Write your review result to this file:
 
 ```text
-docs/review-results/data-model-review.md
+docs/archive/review-results/data-model-review.md
 ```
 
 If the file already exists, overwrite it with the latest review.

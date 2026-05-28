@@ -1,48 +1,79 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+Canonical contributor & agent guide for Astraler Skillbox. Loaded by all AI providers (Claude Code, Codex, OpenCode, etc.). Keep concise: this file orients work; deep specs live under `docs/`.
 
-This repository contains Astraler Skillbox, a local-first desktop app for managing agent skills. The product and architecture source of truth is `README.md` plus the numbered documents in `docs/`; read `docs/index.md` first for the intended order. Review prompts live in `docs/review-prompts/`, and completed review notes live in `docs/review-results/`.
+## Project Overview
 
-Implementation is split across Electron + React under `apps/desktop/`, Go core under `core-go/`, shared JSON Schema contracts under `shared/api-contracts/`, and generated TypeScript types under `shared/generated/`. Do not create alternate top-level layouts without updating the architecture docs.
+Astraler Skillbox is a local-first desktop app for managing agent skills across projects and providers (Claude, Codex, …). It is the local control center, GUI-first.
 
-## Build, Test, and Development Commands
+Core invariants:
+- **Skill Host Folder** is source of truth for skill content.
+- **SQLite** is source of truth for management metadata.
+- Skills are distributed to projects via symlink or rsync/copy.
 
-For documentation-only changes, read changed files and links:
+## Repo Layout
 
-```sh
-rg "TODO|GAP|Open" docs README.md
-git diff --check
+```
+apps/desktop/     # Electron + React renderer + main + preload
+core-go/          # Go sidecar (domain, services, repositories, providers, RPC, migrations)
+shared/           # JSON Schema contracts + generated TS types (committed)
+docs/             # Source of truth — see docs/index.md for reading order
+fixtures/         # Test fixtures for provider/filesystem
+.scratch/         # Throwaway task briefs (gitignored)
 ```
 
-Key implementation commands:
+Do not create alternate top-level layouts without updating `docs/10-technical-architecture.md`.
+
+## Commands
 
 ```sh
-(cd core-go && go test ./...)
+# Frontend / Electron
+(cd apps/desktop && pnpm install)
+(cd apps/desktop && pnpm dev)                  # Full-stack with real Go sidecar
 (cd apps/desktop && pnpm typecheck)
-(cd apps/desktop && pnpm test)
-(cd apps/desktop && pnpm build)
+(cd apps/desktop && pnpm test)                 # Vitest
+(cd apps/desktop && pnpm build)                # electron-vite build
 (cd apps/desktop && pnpm check:contracts-drift)
+
+# Go core
+(cd core-go && go test ./...)
+(cd core-go && go test -race ./internal/operations/... ./internal/filesystem/... ./internal/providers/...)
 ```
 
-## Coding Style & Naming Conventions
+Three dev modes: **Go-only** (Go tests + JSON-RPC harness), **UI-only** (renderer with mocked client), **Full-stack** (Electron + real Go sidecar).
 
-Keep documentation concise, specific, and ordered by decision flow. Existing docs use numbered filenames such as `01-product-brief.md`; continue this pattern for major source-of-truth documents. Use lowercase kebab-case for new Markdown filenames, for example `13-release-plan.md`.
+## Architecture Boundaries (Hard Rules)
 
-For future code, preserve the architecture boundaries: React renderer must not access filesystem or SQLite directly; Electron main owns lifecycle and preload bridge concerns; Go core owns domain logic, repositories, provider adapters, filesystem gateway, operations, migrations, and JSON-RPC handlers.
+These must not be violated. Full reasoning in `docs/10-technical-architecture.md`.
 
-## Testing Guidelines
+- **React renderer**: render state, call commands/queries through preload bridge only. No direct `ipcRenderer`, filesystem, DB, or provider adapter access. No raw SQL joins or business rules.
+- **Electron main**: window lifecycle, preload bridge, native dialogs, Go process lifecycle only. Validates JSON-RPC allowlist. No business logic.
+- **Go core**: owns SQLite, filesystem writes, provider adapters, source integrations, operation runner. All filesystem writes go through `filesystem.Gateway`. Repository layer is the only place with direct SQL. Provider adapters return facts/capabilities only — no DB writes, no filesystem.
 
-Add focused tests near the affected layer: Vitest for renderer TypeScript, agent-browser/manual smoke for desktop flows, and Go tests for `core-go`. Contract changes must regenerate `shared/generated` and pass `pnpm check:contracts-drift`.
+Protocol specs (SQLite PRAGMAs, JSON-RPC transport rules, Electron security defaults, CQRS conventions, operation locking) live in `docs/10-technical-architecture.md`, `docs/11-tech-stack-and-scaffold-decisions.md`, `docs/12-implementation-patterns.md`. Read those before changing protocol behavior.
 
-## Commit & Pull Request Guidelines
+## Conventions
 
-Recent commits use short imperative messages such as `Add implementation patterns document` and `Remove obsolete reviewer prompt`. Follow that style: one clear action, present tense, no trailing period.
+**Language policy**: Vietnamese is the primary working language for this project; docs and prose may be Vietnamese or English. Do not rewrite existing Vietnamese text unless explicitly requested. Code identifiers, commit messages, and shared API contracts stay in English.
 
-Pull requests should include a brief summary, affected docs or modules, verification performed, and linked issue or decision document when applicable. For UI work, include screenshots or short recordings; for architecture changes, update the relevant numbered doc and `docs/index.md`.
+**Commits**: short imperative messages, present tense, no trailing period. Examples: `Add implementation patterns document`, `Fix sort instability in plugins table`.
 
-## Agent-Specific Instructions
+**File naming**: lowercase kebab-case for Markdown (`13-release-plan.md`). Major source-of-truth docs use numbered prefixes (`NN-name.md`).
 
-Before implementing, read the relevant docs in order from `docs/index.md`. Keep edits scoped, do not rewrite unrelated Vietnamese project text unless requested, and preserve documented stack decisions unless explicitly changing the decision record.
+**Pull requests**: include summary, affected modules, verification performed, linked issue/decision doc. UI changes → screenshots or recordings. Architecture changes → update the relevant numbered doc and `docs/index.md`.
 
-For multi-agent coordination through `agent-tech-skillbox` and `agent-lead-skillbox`, read `docs/agent-orchestration-playbook.md` first. Use it as the hardening checklist for tmux hygiene, long-prompt delivery, phase gates, review loops, and recovery from stale TUI input.
+**Testing**: place tests near the affected layer (Vitest for renderer, `go test` for `core-go`). Contract changes must regenerate `shared/generated` and pass `pnpm check:contracts-drift`.
+
+**Documentation discipline**: when you add/change a concept (schema, RPC method, screen, domain object, provider, etc.), update the corresponding doc in the same slice. Read [`docs/playbooks/documentation.md`](docs/playbooks/documentation.md) — it has the source-of-truth map and update matrix. For architecture / tech stack / domain-level decisions, write an ADR under [`docs/decisions/`](docs/decisions/) (see the README there for criteria).
+
+## Key Docs
+
+Read `docs/index.md` first for the intended order. Frequently used:
+
+- `docs/10-technical-architecture.md` — architecture boundaries, JSON-RPC, Electron security
+- `docs/11-tech-stack-and-scaffold-decisions.md` — stack decisions with status (decided/recommended/open)
+- `docs/12-implementation-patterns.md` — 16 implementation patterns
+- `docs/06-data-model.md` + `docs/07-schema-dictionary.md` — SQLite schema, PRAGMAs
+- `docs/08-provider-model.md` — provider adapter contract
+- `docs/playbooks/documentation.md` — keeping docs in sync with code
+- `docs/decisions/` — ADR for project technical decisions

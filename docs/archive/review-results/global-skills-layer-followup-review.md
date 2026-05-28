@@ -9,7 +9,7 @@
   docs/04-user-flows.md, docs/05-edge-cases-and-ux-states.md,
   docs/06-data-model.md, docs/07-schema-dictionary.md,
   docs/08-provider-model.md, docs/09-ui-wireframes.md,
-  docs/review-results/global-skills-layer-review.md
+  docs/archive/review-results/global-skills-layer-review.md
 - Browsing used: no
 
 ---
