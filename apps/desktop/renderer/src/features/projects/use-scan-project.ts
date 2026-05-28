@@ -23,6 +23,7 @@ export function useScanProject() {
   }, []);
 
   const mutation = useMutation({
+    mutationKey: ['scan-project'] as const,
     mutationFn: async (projectId: number) => {
       // Subscribe to ALL progress events BEFORE the RPC call so events emitted
       // during the round-trip are captured in the buffer rather than dropped.
