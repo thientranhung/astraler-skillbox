@@ -123,6 +123,8 @@ Change toggle button label from "Disable"/"Enable" to "Disable globally"/"Enable
 
 No layout or functional changes.
 
+> **Update (Slice A — naming-alignment, 2026-05-28):** Label `Disable globally` / `Enable globally` đã được đổi thành `Disable` / `Enable` sau khi sidebar đã ghi rõ `Global Plugins` — chữ "globally" trở nên redundant trong context đó.
+
 ## §4 — Layer Breakdown Data
 
 The `PluginEffectiveEntry` already contains `LayerBreakdown []PluginLayerBreakdown` with per-layer `Declaration` (enabled/disabled/nil). The frontend contract `PPProjectPlugin` already exposes `layerBreakdown`. The project detail table can derive:
