@@ -618,15 +618,19 @@ Trigger (manual hoặc auto sau khi mở project / Global Plugins screen)
             * size phải dưới ngưỡng (too_large)
        -> Đọc + parse file (JSON/TOML tuỳ provider)
        -> Tạo/cập nhật provider_plugin_layer_scans với scan_status phù hợp
+       -> DELETE toàn bộ provider_plugin_entries cho layer_scan_id này
+       -> DELETE toàn bộ provider_plugin_marketplaces cho layer_scan_id này
        -> Nếu scan_status = ok:
-            -> Replace toàn bộ provider_plugin_entries cho layer_scan_id này
-            -> Replace toàn bộ provider_plugin_marketplaces cho layer_scan_id này
+            -> Reinsert provider_plugin_entries từ parsed content
+            -> Reinsert provider_plugin_marketplaces từ parsed content
        -> Ghi parse-time warnings vào scan_warnings (JSON array; bounded)
 ```
 
-Replace-by-scan strategy: mỗi lần scan thành công ghi đè entries +
-marketplaces của layer_scan_id đó (CASCADE delete + reinsert). Không cần
-diff/migrate khai báo trong code.
+Replace-by-scan strategy: DELETE xảy ra **unconditionally** mỗi lần scan,
+bất kể scan_status. Reinsert chỉ xảy ra khi `scan_status = ok`. Kết quả:
+nếu file trở thành `missing`, `malformed`, v.v., entries + marketplaces cũ
+của layer đó bị xóa sạch thay vì được giữ nguyên. Không cần diff/migrate
+khai báo trong code.
 
 ### Settings File Paths
 
@@ -634,9 +638,13 @@ Provider settings file paths được seed trong `provider_path_candidates` vớ
 `purpose = config`. Hai layer:
 
 - `scope = global`: user-level settings (ví dụ `~/.claude/settings.json`).
-- `scope = project`: project-level settings (ví dụ
-  `.claude/settings.json`, `.claude/settings.local.json` — local layer có
-  priority thấp hơn project).
+- `scope = project`: project-level settings. Hai path candidate trong scope này:
+  `.claude/settings.json` (priority column = 10, maps to `project` layer) và
+  `.claude/settings.local.json` (priority column = 9, maps to `local` layer).
+  Priority column thấp hơn nghĩa là path được **resolve trước** khi check
+  file existence — không liên quan tới layer merge precedence. Khi merge
+  effective state, `local` vẫn có **precedence cao hơn** `project` (rule
+  `local > project > user` không đổi).
 
 User có thể override các path này qua `provider_path_overrides` với cùng
 `(scope, purpose = config)`.
