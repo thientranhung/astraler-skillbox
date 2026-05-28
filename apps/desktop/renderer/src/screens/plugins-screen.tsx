@@ -74,7 +74,7 @@ function PluginToggleButton({
       disabled={disabled}
       className="rounded border border-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
     >
-      {isEnabled ? "Disable globally" : "Enable globally"}
+      {isEnabled ? "Disable" : "Enable"}
     </button>
   );
 }
