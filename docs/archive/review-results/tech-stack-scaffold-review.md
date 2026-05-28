@@ -4,7 +4,7 @@
 
 - Agent/model: Claude Sonnet 4.6 (claude-sonnet-4-6)
 - Review date: 2026-05-24
-- Context used: README.md, docs/index.md, docs/06-data-model.md, docs/08-provider-model.md, docs/09-ui-wireframes.md, docs/10-technical-architecture.md, docs/11-tech-stack-and-scaffold-decisions.md, docs/review-results/technical-architecture-brainstorm.md, docs/review-results/transport-decision-brainstorm.md, tech-reviewer.md
+- Context used: README.md, docs/index.md, docs/06-data-model.md, docs/08-provider-model.md, docs/09-ui-wireframes.md, docs/10-technical-architecture.md, docs/11-tech-stack-and-scaffold-decisions.md, docs/archive/review-results/technical-architecture-brainstorm.md, docs/archive/review-results/transport-decision-brainstorm.md, tech-reviewer.md
 - Browsing used: No
 
 ---

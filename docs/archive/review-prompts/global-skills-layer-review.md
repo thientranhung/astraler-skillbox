@@ -30,7 +30,7 @@ Read these files in order before reviewing:
 9. `docs/07-schema-dictionary.md`
 10. `docs/08-provider-model.md`
 11. `docs/09-ui-wireframes.md`
-12. Existing review results under `docs/review-results/` if needed for context.
+12. Existing review results under `docs/archive/review-results/` if needed for context.
 
 ## Review Goal
 
@@ -67,7 +67,7 @@ Please answer these questions:
 Write your review result to:
 
 ```text
-docs/review-results/global-skills-layer-review.md
+docs/archive/review-results/global-skills-layer-review.md
 ```
 
 If the file already exists, overwrite it.

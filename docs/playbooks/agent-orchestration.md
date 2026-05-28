@@ -1,271 +1,136 @@
 # Agent Orchestration Playbook
 
-This playbook hardens the multi-agent workflow used for Astraler Skillbox. It exists to prevent repeated tmux/TUI failures, stale prompts, and uncontrolled phase changes.
-
 ## Roles
 
-- `agent-tech-skillbox`: senior developer and implementor. Use for scoped drafting, specs, plans, and implementation.
-- `agent-lead-skillbox`: reviewer, QA, and tester. Use for code review, spec review, risk review, and smoke-test validation.
-- Orchestrator: coordinates work, owns scope control, decides when to advance phases, and prevents agents from editing the same file at the same time. **Orchestrator không có ý kiến kỹ thuật.** Mọi phân tích, đánh giá, đề xuất thiết kế hoặc kỹ thuật — dù user hỏi trực tiếp — đều phải route cho agent tương ứng. Orchestrator chỉ quyết định **ai làm** và **khi nào**, không bao giờ quyết định **làm gì** hay **làm thế nào**.
+| Name | tmux pane | Role |
+|------|-----------|------|
+| **Tom** | `agent-tech-skillbox` | Senior developer. Brainstorm, specs, plans, implementation. |
+| **Larry** | `agent-lead-skillbox` | Reviewer & QA. Code review, spec review, smoke tests. Does NOT edit files. |
+| **Orchestrator** | (this session) | PM & coordinator. Decides **who** and **when**, never **what** or **how**. No technical opinions — route all analysis/design to Tom or Larry. |
 
-## Phase Gates
+Orchestrator may directly edit: this playbook, process docs, tiny doc fixes, or user-approved exceptions only.
 
-Use this sequence for substantial work:
+## `/goal` Template
 
-1. Brainstorm and scope the next slice.
-2. Produce or revise the design spec.
-3. Ask lead to review the spec.
-4. Ask user to approve the spec.
-5. Write the implementation plan.
-6. Use `/goal` only for a planned milestone or work package with clear acceptance criteria.
-7. Implement, review, test, and smoke-test.
+Before using `/goal`, read and follow this template:
 
-Do not use `/goal` during brainstorming, sketching, quick fixes, or small review follow-ups. Do not move to the next slice until the current slice is reviewed and explicitly closed.
-
-## tmux Hygiene Checklist
-
-Before sending any task:
-
-```sh
-tmux capture-pane -t agent-tech-skillbox -p | tail -80
-tmux capture-pane -t agent-lead-skillbox -p | tail -80
-git status --short
 ```
-
-Confirm the target pane is in the expected app, not a shell. Confirm there is no stale prompt in the input area. If the agent is in a shell, start the TUI first and verify it loaded before sending work.
-
-For `agent-lead-skillbox`, the active reviewer process (`cmd=agy`, `cmd=codex`, or `cmd=claude`) and the correct `cwd` are necessary but not sufficient. The TUI can be running while its input area still contains a suggestion or stale text such as `Run /review on my current changes` or `Summarize recent commits`. Treat that state as not ready.
-
-Before every lead handoff:
-
-1. Capture the pane and inspect the bottom input area.
-2. Send `C-u` to clear any visible input.
-3. Send the prompt from a short text file or short literal string.
-4. Press Enter once. If the text remains in the input area and the TUI is waiting, press Enter one more time.
-5. Confirm the prompt moved into the transcript or the pane shows active work.
-
-Use this audit command when the session state is unclear:
-
-```sh
-tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} cmd=#{pane_current_command} active=#{pane_active} title=#{pane_title} cwd=#{pane_current_path}' | rg 'agent-lead-skillbox|agent-tech-skillbox'
-```
-
-## Context And Model Switching
-
-Before handing off a new task, decide whether the agent should run `/clear`. Use `/clear` when switching phases, changing from brainstorm to implementation, after a long or noisy thread, or after a failed/stale TUI interaction. Do not clear context in the middle of an active goal unless the current work is explicitly stopped or superseded.
-
-Use `opus` for `agent-tech-skillbox` when brainstorming, scoping, or writing plans. Switch `agent-tech-skillbox` back to `sonnet` for implementing an approved plan, running focused fixes, and test/build loops. Keep model changes explicit in the orchestration notes or prompt so the handoff state is clear.
-
-## Prompt Delivery Rules
-
-Do not paste long prompts directly into TUI input. For long instructions, write a task brief file:
-
-```sh
-/tmp/skillbox-agent-task.md
-```
-
-Then send only a short TUI prompt:
-
-```text
-Read /tmp/skillbox-agent-task.md and follow it exactly. Stop after the requested checkpoint.
-```
-
-If the TUI shows pasted text and does not run, send Enter once more only after confirming it is waiting for submission. Do not spam Enter.
-
-Do not run heredoc commands or non-interactive review commands inside an agent pane, for example `codex review --commit ... <<EOF`. Those commands can drop the agent out of the TUI workflow and pollute the pane with shell state. If a non-interactive command is needed, run it from the orchestrator shell instead, not from `agent-tech-skillbox` or `agent-lead-skillbox`.
-
-## When To Use `/goal`
-
-Use `/goal` as a durable execution contract, not as the default way to ask an agent to do work. It is appropriate when the agent should keep working across multiple steps until a defined outcome is reached.
-
-Use `/goal` for:
-
-- a slice, milestone, or phase from an approved implementation plan,
-- a bounded work package that touches multiple files or layers,
-- a smoke-test-and-fix loop with a clear stop condition,
-- work that has explicit deliverables, verification commands, and a report/commit checkpoint.
-
-Do not use `/goal` for:
-
-- brainstorm/proposal work,
-- asking for status or clarification,
-- one-file or two-file quick edits,
-- narrow review findings,
-- reviewer prompts,
-- small follow-up commits after lead review.
-
-For narrow review findings, send a normal prompt to `agent-tech-skillbox`:
-
-```text
-Fix lead finding in commit abc123. Scope: file.go only. Run go test ./...
-Commit a small fix and report SHA. Do not touch CLAUDE.md.
-```
-
-For lead review, always use a normal prompt:
-
-```text
-Review commit abc123 only. Do not edit files. Findings first. Verify: [commands].
-```
-
-If a small finding expands into a larger design or cross-layer change, stop and create a new plan or planned milestone before using `/goal`.
-
-## Orchestrator Implementation Boundary
-
-The orchestrator is PM and coordinator first. "Do not use `/goal`" means use a normal prompt to the appropriate agent, not that the orchestrator should automatically implement the work inline.
-
-Default ownership:
-
-- `agent-tech-skillbox` implements approved work, including small fixes, using normal prompts or `/goal` depending on scope.
-- `agent-lead-skillbox` reviews, tests, and QA-checks using normal prompts.
-- Orchestrator writes plans/specs, manages scope, verifies independently, handles tmux hygiene, and maintains the operating system.
-- Orchestrator must not silently self-assign product implementation. If implementation is needed, first route it through `agent-tech-skillbox`.
-- Direct orchestrator edits are allowed for playbook/harness hardening, tiny documentation fixes, or explicitly user-approved exceptions.
-
-If the orchestrator has already created partial local changes before handing off, state that clearly in the tech prompt and ask tech to continue from the current worktree state.
-
-Agent failure is not automatic permission for the orchestrator to implement. If `agent-tech-skillbox` is degraded, stale, context-poisoned, or ignoring scope, the orchestrator must restore the agent workflow first: interrupt, clear, restart, split the task smaller, switch model, or ask the user for an exception.
-
-If the user authorizes an exception and the orchestrator edits app code directly, report the reason, keep the change narrowly scoped, and hand the result to `agent-lead-skillbox` for review before closing the work.
-
-## `/goal` Prompt Shape
-
-Treat `/goal` prompts as scoped execution contracts, not full brainstorm documents. Use the Obsidian template as the canonical checklist, then compress it before sending to the agent:
-
-```text
 /Users/tranthien/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian/40-Collection/References/Slash goal prompt template.md
 ```
 
-Do not rely on memory when writing an important goal. Re-read the template first, especially before large slice work, migrations, smoke-test-and-fix loops, or long autonomous runs.
+For large goals, write a descriptive file in `.scratch/` and send a short `/goal` referencing it.
 
-Use the full template structure when creating a task brief file for a large run:
+## Phase Gates
 
-- context,
-- success criteria,
-- operating rules,
-- quality bar,
-- final deliverable.
+Recommended sequence for substantial work. Compress for small slices, but never skip user approval on specs.
 
-Use a compressed version when sending directly to tmux. Direct TUI goal prompts must stay short enough to avoid input/paste failures.
+> A **slice** is a thin end-to-end piece of work (UI → service → data, or any cross-layer cut) — bigger than a single edit, smaller than a feature.
 
-A good `/goal` includes:
+1. Brainstorm & scope → Tom
+2. Design spec → Tom
+3. Spec review → Larry
+4. User approval
+5. Implementation plan → Tom
+6. Implement → Tom, review → Larry, test & smoke-test
+7. Update docs / source-of-truth (see [Docs & Source of Truth](#docs--source-of-truth))
 
-1. Final outcome in one sentence.
-2. Exact scope: files, layer, commit range, or slice.
-3. Non-goals and off-limits files, especially `CLAUDE.md`.
-4. Success criteria that can be verified.
-5. Required commands or smoke steps.
-6. Commit message or report-only instruction.
-7. Stop condition: report hash, tests, findings, or blocker.
+## tmux Rules
 
-Prefer this compact shape:
-
-```text
-/goal [Outcome]. Scope: [files/layer]. Constraints: [non-goals/off-limits].
-Success: [observable criteria]. Verify: [commands/smoke]. Commit/report: [message or no-edit review].
-Stop after [checkpoint] and report [hash/tests/findings/blockers].
-```
-
-Do not overload `/goal` with broad product context if the agent can read the relevant spec or plan file. Reference the file instead. For large goals, create `/tmp/skillbox-agent-task.md` and send a short `/goal` that tells the agent to read it.
-
-## Editing Ownership
-
-Only one actor may edit a file at a time. If `agent-tech-skillbox` is editing a file, the orchestrator must not edit that same file unless the tech task has been interrupted and the pane is idle.
-
-For reviewer work, `agent-lead-skillbox` must not edit files unless explicitly asked. Review prompts should include `Do not edit files`.
-
-## Recovery Procedures
-
-If a TUI prompt is stale or wrong:
-
-1. Capture the pane.
-2. Send `C-c` once.
-3. Capture again.
-4. If still unsafe, send `C-c C-c` to exit the TUI.
-5. Restart the TUI cleanly and verify an empty prompt before continuing.
-
-If a prompt is accidentally sent to the shell, stop immediately. Do not try to continue from mixed shell/TUI state; restart the agent TUI.
-
-If the pane shows a suggestion or placeholder such as `Summarize recent commits`, treat it as unsafe until verified. Clear or exit before sending a real task.
-
-If `C-c` exits the reviewer TUI to a shell, restart with the approved reviewer command (`agy --dangerously-skip-permissions`, `codex --yolo`, or `claude --dangerously-skip-permissions`), then capture the pane again before sending work. Do not trust the process name alone; inspect the visible input area.
-
-### Tech Agent Degraded Procedure
-
-Use this procedure when `agent-tech-skillbox` repeats stale behavior, ignores the scope, uses the wrong workflow, or carries corrupted context:
-
-1. Stop the current task with `C-c` and capture the pane.
-2. Clear any active autonomous loop, for example `/goal clear`, when applicable.
-3. Run `/clear`; if the session is still noisy, restart Claude with `claude --dangerously-skip-permissions`.
-4. Re-send a smaller task brief with one checkpoint and an explicit stop condition.
-5. If the same failure repeats, pause implementation and ask the user whether to restart the agent/model or authorize an orchestrator exception.
-6. Do not silently self-implement product work because the tech agent was inconvenient to operate.
-
-## Review Loop
-
-Lead reviews must be scoped to a commit or file and must start with findings. Example:
-
-```text
-Review commit abc123 only. Do not edit files. Findings first. Approve or block.
-```
-
-When the lead finds an issue, send it to tech as a small scoped task. After the fix commit, ask lead to review only the follow-up commit.
-
-Do not ask for a final verdict after interrupting, clearing, or restarting the lead unless the lead has already shown evidence that it inspected the diff and considered verification. If the lead reports `No verdict` because it did not inspect the change, treat that as a correct guardrail and rerun a scoped review from scratch.
-
-Slow review is acceptable when the pane shows active reading, searches, or test reasoning. Wait for the actual review instead of forcing a quick approval.
-
-When lead findings identify docs/source-of-truth drift, fix the documentation before closing the task. Rerun targeted searches after the fix, for example:
+### Before Every Handoff
 
 ```sh
-rg "old provider label|stale UI text" docs apps core-go
+tmux capture-pane -t <pane> -p | tail -80
+git status --short
 ```
 
-## Smoke Test Automation
+Confirm: TUI is running (not shell), input area is empty, no stale text.
 
-`agent-lead-skillbox` is responsible for smoke test automation in addition to code review. Smoke tests verify that the app works end-to-end after implementation, not just that tests pass.
+### Sending a Prompt
 
-### When To Run Smoke Tests
+Clear stale input, send the prompt, send Enter separately to submit, then capture the pane to verify it moved into the transcript. The TUI's first Enter only confirms multi-line input — submission needs a second Enter call.
 
-- After every implementation slice that changes UI or user-facing behavior.
-- After a fix commit that addresses a lead review finding.
-- Before closing a slice as done.
+**Short vs file delivery:** Send prompts inline by default. Only write to `.scratch/` when the message is too long for tmux input (~500+ chars). Name files descriptively, e.g. `.scratch/fix-useeffect-regression.md`, `.scratch/slice-3k-impl-plan.md`.
 
-### Smoke Test Prompt Shape
+### Context & Model Switching
 
-Always use a normal prompt, never `/goal`:
+- `/clear` before unrelated tasks or phase switches. Never clear mid-goal.
+- Match model strength to task type: stronger / deep-thinking model for brainstorm/scope/plan, faster / cheaper model for implementation, fixes, and test loops. For Tom (Claude Code): **opus** ↔ **sonnet**. For other runtimes, map equivalently.
 
-```text
-Smoke test commit abc123. Scope: [feature/screen].
-Steps: 1) pnpm dev  2) [user actions to verify]  3) report pass/fail with screenshot or terminal output.
-Do not edit files. Report findings only.
+### Audit Command
+
+```sh
+tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} cmd=#{pane_current_command} cwd=#{pane_current_path}' | rg 'agent-tech|agent-lead'
 ```
 
-### Smoke Test Report
+## Review
 
-Lead must report:
+Larry handles reviews. There are several review types — pick the right one and trust Larry's skills/tools to execute it:
 
-1. What was tested (feature, screen, flow).
-2. Steps executed.
-3. Result: pass or fail with evidence (error output, screenshot path, or observed behavior).
-4. Blockers found, if any.
+- **Code review** — diff/commit-level correctness, style, regressions.
+- **PR review** — full PR scope, cross-commit consistency, merge readiness.
+- **Spec/design review** — architecture, risks, missing cases before implementation.
+- **Security review** — auth, data exposure, injection surfaces.
 
-If smoke test fails, orchestrator routes the failure to `agent-tech-skillbox` as a scoped fix task. Do not ask lead to fix — lead does not edit files.
+Leverage whatever review tooling Larry's runtime provides — built-in slash commands, skills, MCP review servers, or provider-native review flows. Larry picks the best tool for the review type and the codebase; the orchestrator only states the target and intent.
 
-## Migration And Bulk Edit Safety
+Principles (apply to any review type):
+- Scope to a specific target (commit, PR, file, spec).
+- Findings first; Larry decides approve / block / needs-discussion.
+- Larry does NOT edit files unless explicitly asked.
+- Lead finding → Tom fixes in a scoped commit → Larry re-reviews only the follow-up.
+- If Larry reports "No verdict" (didn't inspect), rerun from scratch.
+- Docs/source-of-truth drift found → fix before closing.
 
-When adding a later migration that changes data created by an older migration, keep the older migration test faithful to the old SQL. Add a new test for the new migration and update only latest-state expectations where appropriate.
+## Smoke Tests
 
-After broad search-and-replace work, inspect nearby tests and numeric assertions before committing. Run targeted searches for accidental replacements and verify migration test fixtures still match their migration files.
+Smoke tests verify end-to-end behavior — UI, CLI, API, data flow, IPC, whatever the slice touches. Not UI-only.
 
-## Hardening Notes
+Test scenarios are designed **before implementation**, during Tom's spec/plan phase:
 
-Every orchestration failure should become a rule here. Typical hardening updates include:
+- Tom brainstorms smoke scenarios as part of the spec.
+- Scenarios are stored with the spec (so user can review and approve them upfront).
+- During implementation phase, Larry (or user) just executes the approved scenarios.
 
-- stale prompt prevention,
-- long-prompt delivery via file,
-- phase-gate enforcement,
-- review-only guardrails,
-- recovery steps for shell/TUI drift,
-- ownership rules for shared files.
-- orchestrator implementation boundary violations.
-- orchestrator opinion boundary violations (technical analysis, design decisions).
+Principles:
+- Scenarios cover the slice's external surface, not internal units (that's what unit tests are for).
+- Larry executes and reports pass/fail with evidence; Larry does not invent scenarios on the fly.
+- Failure → Tom fixes. Larry never edits.
+- If a scenario gap is found during execution, log it back to the spec for next iteration.
+
+## Ownership
+
+- One actor per file at a time.
+- Larry does NOT edit files unless explicitly asked.
+- Orchestrator does NOT implement product code. Agent failure → restore agent first (clear, restart, split task, switch model), then ask user if still stuck.
+
+## Recovery
+
+**Stale/wrong prompt:** `C-c` → capture → if still broken, `C-c C-c` to exit TUI → restart TUI → verify empty input.
+
+**Tom degraded (stale behavior, wrong scope, corrupted context):**
+1. `C-c`, capture pane
+2. `/clear` or restart TUI
+3. Re-send smaller task with explicit stop condition
+4. If repeats, ask user — never self-implement
+
+**Shell leak:** If agent drops to shell, restart its TUI with the runtime's standard "uninterrupted" launch flags so permission prompts don't stall work. Verify the input area is clean before sending work. Common launches:
+
+- Claude Code: `claude --dangerously-skip-permissions`
+- Codex: `codex --yolo`
+- OpenCode / agy: `agy --dangerously-skip-permissions`
+
+Do not trust the process name alone — inspect the visible input area.
+
+## Docs & Source of Truth
+
+Every slice must end with documentation and source-of-truth aligned to the implementation. Treat this as part of "done", not a follow-up.
+
+- Tom updates the relevant docs as part of the implementation commit (or a paired commit in the same slice): architecture docs, `CLAUDE.md`/`AGENTS.md`, schema dictionary, contracts/types, README, changelogs.
+- Larry checks for docs drift during review and blocks if implementation diverges from spec or if spec/source-of-truth wasn't updated.
+- Source-of-truth wins: if code and docs disagree, fix the side that's wrong — don't silently let drift accumulate.
+- When a slice changes a public contract, schema, or convention, update both the canonical file and any examples/quickstart that reference it.
+- Re-run targeted searches after doc updates to catch stale labels/paths, e.g. `rg "old term|old path" docs apps core-go`.
+
+## Maintenance
+
+Every orchestration failure → add a rule here. Keep this playbook lean: principles over recipes, references over duplication.
