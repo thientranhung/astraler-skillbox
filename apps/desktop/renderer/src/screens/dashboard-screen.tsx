@@ -125,6 +125,14 @@ export function DashboardScreen(): React.JSX.Element {
             <span className="text-sm font-medium text-zinc-700">Global Skills</span>
             <span className="text-xs text-blue-600 group-hover:text-blue-700 group-hover:underline">Open global view</span>
           </button>
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/plugins" })}
+            className="group flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+          >
+            <span className="text-sm font-medium text-zinc-700">Global Plugins</span>
+            <span className="text-xs text-blue-600 group-hover:text-blue-700 group-hover:underline">Open plugins view</span>
+          </button>
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm font-medium text-zinc-700">Updates</span>
             <span className="text-xs text-zinc-400">Not in this slice</span>

@@ -132,6 +132,21 @@ describe("DashboardScreen", () => {
     expect(screen.getByText("Not in this slice")).toBeTruthy();
   });
 
+  it("navigates to plugins view when Global Plugins row is clicked", () => {
+    const mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseDashboard.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: baseData,
+      refetch: vi.fn(),
+    });
+
+    render(<DashboardScreen />);
+    fireEvent.click(screen.getByRole("button", { name: /Global Plugins Open plugins view/i }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/plugins" });
+  });
+
   it("navigates to skills and projects from summary rows", () => {
     const mockNavigate = vi.fn();
     mockUseNavigate.mockReturnValue(mockNavigate);
@@ -161,6 +176,8 @@ describe("DashboardScreen", () => {
     expect(screen.getByRole("button", { name: /^Skills 5$/i }).className).toContain("cursor-pointer");
     expect(screen.getByRole("button", { name: /^Projects 3$/i }).className).toContain("cursor-pointer");
     expect(screen.getByRole("button", { name: /^Attention needed 2$/i }).className).toContain("cursor-pointer");
+    expect(screen.getByRole("button", { name: /Global Skills Open global view/i }).className).toContain("cursor-pointer");
+    expect(screen.getByRole("button", { name: /Global Plugins Open plugins view/i }).className).toContain("cursor-pointer");
   });
 
   it("uses blue link style for clickable summary values", () => {
