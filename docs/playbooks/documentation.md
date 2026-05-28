@@ -88,8 +88,38 @@ Nếu output trống → concept thiếu trong docs.
 
 ### 4. Output handoff
 
-- Nếu chạy thủ công: in báo cáo, gửi cho user/Tom xử lý
-- Nếu chạy trong `pre-push` hook: exit 1, in danh sách concept missing, gợi ý doc nào cần update
+In báo cáo cho user. Nếu có gap → tự update docs trước khi push, hoặc giải thích lý do skip rõ ràng.
+
+## Pre-Push Gate (DOC-VERIFIED Trace)
+
+Pre-push hook **không tự chạy logic check**. Vai trò của hook là:
+
+1. **Reminder**: in checklist nhắc AI agent phải verify docs trước khi push
+2. **Trace check**: tìm trailer `DOC-VERIFIED: <reason>` trong commit message của push range
+
+Cơ chế:
+
+- Mỗi lần `git push`, hook quét commit message của các commit đang push.
+- Nếu **bất kỳ** commit trong push range có trailer `DOC-VERIFIED: <reason>` ở cuối message → hook cho phép push.
+- Nếu **không có** commit nào có trailer này → hook block với checklist:
+  - Đọc playbook này, chạy Gap-Find Procedure.
+  - Nếu phát hiện drift → update docs trong commit mới hoặc amend, có trailer `DOC-VERIFIED: <reason>`.
+  - Nếu không có drift (refactor / test / typo / docs-only) → tạo trailer `DOC-VERIFIED: no concept changes` (hoặc lý do tương đương) trong commit kế.
+
+Bypass khẩn cấp: `git push --no-verify` (luôn được, để lại vết tích trong reflog).
+
+Trailer format (chuẩn git trailer, viết ở cuối commit message, có dòng trống phía trên):
+
+```
+Add foo bar baz feature
+
+Description body here...
+
+DOC-VERIFIED: docs/06 + docs/08 updated for new plugin layer concept
+Co-Authored-By: ...
+```
+
+**Vì sao thiết kế thế này:** Mechanical grep không phân biệt được rename vs concept mới, không hiểu junction table không cần doc riêng, không suggest doc section phù hợp. AI agent với playbook trong tay làm tốt hơn — hook chỉ ép AI phải làm bước đó, không cố gắng làm thay AI.
 
 ## Khi Nào Tạo ADR Mới
 
@@ -117,7 +147,7 @@ Nếu bạn chỉ:
 - Refactor nội bộ (interface giữ nguyên)
 - Format / lint fix
 
-→ Không cần update doc, không cần ADR. Pre-push hook sẽ không báo gap cho những thay đổi này vì chúng không tạo ra concept mới trong code inventory (không có table mới, screen mới, domain object mới, …).
+→ Không cần update doc, không cần ADR. Vẫn cần trailer `DOC-VERIFIED: <lý do>` ở commit message (ví dụ `DOC-VERIFIED: refactor only, no concept changes`) để pre-push hook biết bạn đã check.
 
 ## References
 
