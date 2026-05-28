@@ -39,12 +39,14 @@ in_docs_i() {
     "$1" "$DOCS_DIR" 2>/dev/null
 }
 
-GAPS=0
-REPORT=""
+CONCEPT_GAPS=0
+CONCEPT_REPORT=""
+ADR_FAIL=0
+ADR_MSG=""
 
 flag_gap() {
-  GAPS=$((GAPS + 1))
-  REPORT="${REPORT}  - Concept: $1\n    Code:     $2\n    Docs:     $3\n"
+  CONCEPT_GAPS=$((CONCEPT_GAPS + 1))
+  CONCEPT_REPORT="${CONCEPT_REPORT}  - Concept: $1\n    Code:     $2\n    Docs:     $3\n"
 }
 
 log_ok() {
@@ -169,27 +171,32 @@ if [ -n "$GIT_RANGE" ]; then
   if [ -n "$arch_signals" ]; then
     new_adr=$(printf '%s\n' $new_files | grep 'docs/decisions/[0-9]' || true)
     if [ -z "$new_adr" ]; then
-      printf '\n%s\n' "══ ADR REQUIRED ══════════════════════════════════════════════════════════"
-      printf 'Architecture-level additions detected in this push:\n'
-      printf '%b\n' "$arch_signals"
-      printf 'No new ADR found in docs/decisions/.\n'
-      printf 'Create one: cp docs/decisions/template.md docs/decisions/NNNN-title.md\n'
-      printf 'See: docs/decisions/README.md for criteria and workflow.\n'
-      printf 'Bypass: git push --no-verify (bypass is visible in git reflog)\n\n'
-      GAPS=$((GAPS + 1))
+      ADR_FAIL=1
+      ADR_MSG="${arch_signals}"
     fi
   fi
 fi
 
 # ── Output ────────────────────────────────────────────────────────────────────
-if [ "$GAPS" -gt 0 ]; then
-  if [ "$QUIET" -eq 0 ]; then
-    printf '\n%s\n\n' "══ DOC DRIFT DETECTED ════════════════════════════════════════════════════"
-    printf 'The following concepts exist in code but are absent from canonical docs:\n\n'
-    printf '%b\n' "$REPORT"
-    printf 'Update the indicated docs, then push again.\n'
-    printf 'Bypass: git push --no-verify (bypass is visible in git reflog)\n\n'
-  fi
+if [ "$ADR_FAIL" -eq 1 ] && [ "$QUIET" -eq 0 ]; then
+  printf '\n%s\n' "══ ADR REQUIRED ══════════════════════════════════════════════════════════"
+  printf 'Architecture-level additions detected in this push:\n'
+  printf '%b\n' "$ADR_MSG"
+  printf 'No new ADR found in docs/decisions/.\n'
+  printf 'Create one: cp docs/decisions/template.md docs/decisions/NNNN-title.md\n'
+  printf 'See: docs/decisions/README.md for criteria and workflow.\n'
+  printf 'Bypass: git push --no-verify (bypass is visible in git reflog)\n'
+fi
+
+if [ "$CONCEPT_GAPS" -gt 0 ] && [ "$QUIET" -eq 0 ]; then
+  printf '\n%s\n\n' "══ DOC DRIFT DETECTED ════════════════════════════════════════════════════"
+  printf 'The following concepts exist in code but are absent from canonical docs:\n\n'
+  printf '%b\n' "$CONCEPT_REPORT"
+  printf 'Update the indicated docs, then push again.\n'
+  printf 'Bypass: git push --no-verify (bypass is visible in git reflog)\n\n'
+fi
+
+if [ "$ADR_FAIL" -eq 1 ] || [ "$CONCEPT_GAPS" -gt 0 ]; then
   exit 1
 fi
 

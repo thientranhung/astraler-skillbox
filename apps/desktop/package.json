@@ -25,7 +25,7 @@
     "release:mac:icon-verify": "node scripts/release-mac-icon-verify.mjs",
     "release:mac:launch-smoke": "node scripts/release-mac-launch-smoke.mjs",
     "release:mac:dmg-smoke": "node scripts/release-mac-dmg-smoke.mjs",
-    "setup:hooks": "ROOT=$(git rev-parse --show-toplevel) && ln -sf \"$ROOT/scripts/hooks/pre-push\" \"$ROOT/.git/hooks/pre-push\" && chmod +x \"$ROOT/scripts/hooks/pre-push\" && echo 'Git hooks installed: .git/hooks/pre-push'"
+    "postinstall": "node ../../scripts/install-hooks.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
