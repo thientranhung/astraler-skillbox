@@ -63,6 +63,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     continue
   fi
 
+  # Only enforce DOC-VERIFIED on protected branches (main, develop).
+  # Feature/WIP branches push freely; the gate kicks in when the work
+  # finally lands on a long-lived branch.
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/develop) ;;
+    *) continue ;;
+  esac
+
   if [ "$remote_sha" = "$z40" ]; then
     # New branch / first push: check commits not yet on any remote
     range=$(git -C "$REPO_ROOT" log --format="%H" "$local_sha" --not --remotes 2>/dev/null \
