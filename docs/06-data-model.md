@@ -804,6 +804,242 @@ Notes:
 - Dùng cho loading state, progress, audit trail nhẹ, và debug.
 - Không nhất thiết phải build job system ngay; bảng này vẫn hữu ích cho UI.
 
+## 17. provider_user_settings
+
+Lưu user-level preference cho từng provider, ví dụ provider có được enable hay không.
+
+Fields đề xuất:
+
+```text
+id
+provider_definition_id
+enabled
+created_at
+updated_at
+```
+
+Notes:
+
+- Một row duy nhất cho mỗi `provider_definition_id` (UNIQUE).
+- `enabled` là boolean `0/1`. Phase 1 chỉ dùng để user bật/tắt provider khỏi global
+  scan và install target list.
+- Khác với `provider_definitions.status`: `status` là support state do app quyết
+  định, còn `enabled` ở đây là preference do user quyết định.
+- Khi provider definition bị xóa, row tương ứng cascade delete.
+
+## 18. provider_path_overrides
+
+Lưu override của user cho danh sách path candidate built-in của provider. Một row
+cho mỗi tổ hợp `(provider_definition_id, scope, purpose)`. `paths_json` là JSON
+array path strings thay thế (không merge) candidate built-in.
+
+Fields đề xuất:
+
+```text
+id
+provider_definition_id
+scope
+purpose
+paths_json
+created_at
+updated_at
+```
+
+Scope:
+
+```text
+project
+global
+```
+
+Purpose:
+
+```text
+detect
+skills
+config
+commands
+```
+
+Notes:
+
+- Khi có override, adapter dùng `paths_json` thay vì `provider_path_candidates`
+  cho `(scope, purpose)` đó. Built-in candidate không được merge ngầm.
+- `paths_json` phải parse được thành JSON array string (CHECK constraint).
+- Dùng cho user cần trỏ tới layout phi tiêu chuẩn (ví dụ Claude settings ở
+  custom path) mà không cần Skillbox release version mới.
+- UNIQUE `(provider_definition_id, scope, purpose)` đảm bảo mỗi slot chỉ có một
+  override active.
+
+## 19. Provider Plugin Layer System
+
+Một số provider (ban đầu là Claude, Codex, Antigravity CLI) hỗ trợ khái niệm
+**plugin** thông qua settings file riêng (`~/.claude/settings.json`,
+`~/.codex/config.toml`, ...). Một plugin có thể được khai báo ở nhiều layer
+khác nhau (user/project/local) và effective state được merge theo precedence
+`local > project > user`.
+
+Skillbox scan các settings file đó để hiển thị view enabled/disabled per
+project và per provider. Ba bảng phối hợp:
+
+```text
+provider_plugin_layer_scans
+provider_plugin_entries
+provider_plugin_marketplaces
+```
+
+Một `provider_plugin_layer_scan` row đại diện cho **một lần đọc** một settings
+file ở một layer cụ thể (`user`, `project`, hoặc `local`) cho một provider.
+Mỗi scan sinh ra (nếu file đọc được) các `provider_plugin_entries` (khai báo
+enabled/disabled cho từng plugin) và `provider_plugin_marketplaces` (các
+marketplace bổ sung nơi plugin được tải về).
+
+Layer rules:
+
+- `settings_layer = 'user'` → `project_id IS NULL`. Đây là layer global ở cấp
+  user/máy.
+- `settings_layer IN ('project', 'local')` → `project_id IS NOT NULL`.
+- Unique theo `(provider_definition_id, settings_layer)` cho user layer (partial
+  index where `project_id IS NULL`), và `(provider_definition_id, project_id,
+  settings_layer)` cho project/local layer.
+
+### 19.1 provider_plugin_layer_scans
+
+Fields đề xuất:
+
+```text
+id
+provider_definition_id
+project_id
+settings_layer
+scan_status
+settings_file_path
+last_scanned_at
+source_operation_id
+scan_warnings
+```
+
+Settings layer:
+
+```text
+user
+project
+local
+```
+
+Scan status:
+
+```text
+ok
+missing
+unreadable
+malformed
+too_large
+symlink
+path_escape
+```
+
+Notes:
+
+- `scan_status = ok` là điều kiện duy nhất để các entries/marketplaces phát
+  sinh từ scan này được coi là có hiệu lực.
+- `missing` là trạng thái hợp lệ, nghĩa là settings file chưa tồn tại ở layer
+  đó (không phải lỗi).
+- `symlink` và `path_escape` là defensive: scanner từ chối đọc symlink và path
+  thoát khỏi user/project root để tránh leak.
+- `too_large` chặn file lớn bất thường để giới hạn parse cost.
+- `scan_warnings` là JSON array string chứa parse-time warnings (không chứa
+  raw file content), giới hạn kích thước.
+- `source_operation_id` nullable, FK tới `operations.id` đại diện cho lần scan
+  đã tạo row này.
+
+### 19.2 provider_plugin_entries
+
+Fields đề xuất:
+
+```text
+id
+layer_scan_id
+plugin_name
+marketplace_name
+declaration
+```
+
+Declaration:
+
+```text
+enabled
+disabled
+```
+
+Notes:
+
+- Một entry là một dòng khai báo plugin trong settings file của layer tương
+  ứng. Vắng mặt khai báo = `absent` (không có entry row).
+- UNIQUE `(layer_scan_id, plugin_name, marketplace_name)` đảm bảo settings
+  file không thể khai báo trùng cùng plugin trong cùng marketplace.
+- Effective status (`enabled` / `disabled` / `absent` / `unknown`) được resolve
+  ở application layer bằng cách merge các entry rows theo precedence layer; không
+  lưu trực tiếp trong bảng này.
+
+### 19.3 provider_plugin_marketplaces
+
+Fields đề xuất:
+
+```text
+id
+layer_scan_id
+marketplace_name
+source_type
+source_summary
+```
+
+Source type:
+
+```text
+github
+git
+directory
+url
+settings
+hostPattern
+```
+
+Notes:
+
+- Mỗi row là một marketplace được khai báo trong cùng settings file scan đại
+  diện bởi `layer_scan_id`. Marketplace là nguồn (named source) mà plugin được
+  resolve từ đó.
+- `source_summary` là string mô tả nguồn (ví dụ `owner/repo`, git URL, path).
+  Không lưu raw credentials.
+- `source_type` không có CHECK constraint trong migration: enum value được
+  validate ở application layer dựa trên format của settings file provider.
+
+## Provider Plugin Relationships
+
+```text
+provider_definitions.id
+  -> provider_user_settings.provider_definition_id (UNIQUE)
+
+provider_definitions.id
+  -> provider_path_overrides.provider_definition_id
+
+projects.id
+  -> provider_plugin_layer_scans.project_id (nullable; user layer = null)
+
+provider_definitions.id
+  -> provider_plugin_layer_scans.provider_definition_id
+
+provider_plugin_layer_scans.id
+  -> provider_plugin_entries.layer_scan_id (CASCADE DELETE)
+
+provider_plugin_layer_scans.id
+  -> provider_plugin_marketplaces.layer_scan_id (CASCADE DELETE)
+
+operations.id
+  -> provider_plugin_layer_scans.source_operation_id
+```
+
 ## Relationship Overview
 
 ```text

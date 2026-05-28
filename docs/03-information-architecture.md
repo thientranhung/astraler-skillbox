@@ -94,6 +94,7 @@ Kiểm tra upstream để biết skill có bản mới không.
 Dashboard
 Skills Library
 Global Skills
+Global Plugins
 Projects
 Project Detail
 Skill Detail
@@ -160,6 +161,34 @@ Phase 1 scope:
 - Global Skills là scan, visibility, và remediation surface.
 - Chưa có flow Install Skill To Global Location.
 - Add Skill flow chỉ target project providers.
+
+## Global Plugins
+
+Global Plugins là nơi xem và quản lý plugin ở user layer cho các provider hỗ
+trợ plugin convention (Claude, Codex, Antigravity CLI).
+
+File: `apps/desktop/renderer/src/screens/plugins-screen.tsx`.
+
+Hiển thị (group theo provider):
+
+- Settings file path đang được Skillbox scan (ví dụ `~/.claude/settings.json`).
+- Layer scan status: ok, not configured, unreadable, malformed, too large,
+  symlink, path escape.
+- Danh sách plugin với name, marketplace name, status enabled/disabled.
+- Danh sách marketplace với name, source type, source summary.
+
+Action:
+
+- Rescan user-layer settings file của một provider.
+- Toggle enable/disable globally cho một plugin (chỉ provider có write
+  support: Claude, Codex, Antigravity CLI).
+
+Phase 1 scope:
+
+- Chỉ user layer được hiển thị ở Global Plugins. Project layer và effective
+  state per project nằm trong Project Detail.
+- Local layer (`settings.local.json`) là read-only.
+- Managed settings (enterprise config) là out-of-scope.
 
 ## Projects
 

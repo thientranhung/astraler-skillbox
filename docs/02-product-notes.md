@@ -73,6 +73,30 @@ Sync là đưa thay đổi từ Skill Host Folder sang project đã cài bằng 
 Với project cài bằng symlink, update Skill Host Folder đồng nghĩa project nhận
 thay đổi ngay.
 
+## Plugins và Marketplaces
+
+Một số provider (Claude, Codex, Antigravity CLI) có khái niệm **plugin** riêng,
+khác với skill. Plugin là extension provider khai báo trong settings file của
+mình (ví dụ `~/.claude/settings.json`), thường được tải về từ một
+**marketplace** (named source như GitHub repo, git URL, hoặc local directory).
+
+Skillbox đọc settings file của provider để hiển thị plugin nào đang
+enabled/disabled ở layer nào (user/project/local) và cho phép user toggle
+nhanh mà không cần mở settings file thủ công. Skillbox không tự download
+marketplace content; phần đó provider tự xử lý.
+
+Phase 1 scope:
+
+- Scan settings file user + project layer. Local layer chỉ scan, không write.
+- Toggle enable/disable globally (user layer) hoặc per-project (project
+  layer, 3-state cycle: inherit → enabled → disabled).
+- Managed settings (provider-managed enterprise config) là out-of-scope.
+
+`provider_plugin` là domain object đại diện cho plugin trong code. Chi tiết
+data model nằm ở [`06-data-model.md`](06-data-model.md) § Provider Plugin
+Layer System; chi tiết flow ở [`08-provider-model.md`](08-provider-model.md) §
+Provider Plugin Layer Model.
+
 ## Remaining Tradeoffs
 
 ### Provider Convention Drift
