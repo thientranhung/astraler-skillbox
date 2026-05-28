@@ -88,7 +88,7 @@ marketplace content; phần đó provider tự xử lý.
 Phase 1 scope:
 
 - Scan settings file user + project layer. Local layer chỉ scan, không write.
-- Toggle enable/disable globally (user layer) hoặc per-project (project
+- Toggle enable/disable ở global (user) layer hoặc per-project (project
   layer, 3-state cycle: inherit → enabled → disabled).
 - Managed settings (provider-managed enterprise config) là out-of-scope.
 
