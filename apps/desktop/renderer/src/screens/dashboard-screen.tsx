@@ -94,36 +94,36 @@ export function DashboardScreen(): React.JSX.Element {
           <button
             type="button"
             onClick={() => navigate({ to: "/skills" })}
-            className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+            className="group flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
           >
             <span className="text-sm font-medium text-zinc-700">Skills</span>
-            <span className="text-sm text-zinc-500">{data.summary.skills}</span>
+            <span className="text-sm text-blue-600 group-hover:text-blue-700 group-hover:underline">{data.summary.skills}</span>
           </button>
           <button
             type="button"
             onClick={() => navigate({ to: "/projects" })}
-            className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+            className="group flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
           >
             <span className="text-sm font-medium text-zinc-700">Projects</span>
-            <span className="text-sm text-zinc-500">{data.summary.projects}</span>
+            <span className="text-sm text-blue-600 group-hover:text-blue-700 group-hover:underline">{data.summary.projects}</span>
           </button>
           {data.summary.warnings > 0 && (
             <button
               type="button"
               onClick={() => navigateToAttention(data.warnings)}
-              className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+              className="group flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
             >
               <span className="text-sm font-medium text-zinc-700">Attention needed</span>
-              <span className="text-sm text-zinc-500">{data.summary.warnings}</span>
+              <span className="text-sm text-blue-600 group-hover:text-blue-700 group-hover:underline">{data.summary.warnings}</span>
             </button>
           )}
           <button
             type="button"
             onClick={() => navigate({ to: "/global" })}
-            className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
+            className="group flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-zinc-50"
           >
             <span className="text-sm font-medium text-zinc-700">Global Skills</span>
-            <span className="text-xs text-zinc-500">Open global view</span>
+            <span className="text-xs text-blue-600 group-hover:text-blue-700 group-hover:underline">Open global view</span>
           </button>
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm font-medium text-zinc-700">Updates</span>
