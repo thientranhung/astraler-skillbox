@@ -357,7 +357,7 @@ describe("ProjectDetailScreen UX clarity", () => {
     };
   }
 
-  it("shows Project and User columns for claude project plugins", () => {
+  it("shows Project and Global columns for claude project plugins", () => {
     mockUseProviderPluginList.mockReturnValue({
       isPending: false, isError: false,
       data: makeProjectPluginData("claude", [
@@ -367,10 +367,10 @@ describe("ProjectDetailScreen UX clarity", () => {
     });
     render(<ProjectDetailScreen />);
     expect(screen.getByRole("columnheader", { name: "Project" })).toBeTruthy();
-    expect(screen.getByRole("columnheader", { name: "User" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Global" })).toBeTruthy();
   });
 
-  it("shows Project and User columns for antigravity_cli project plugins", () => {
+  it("shows Project and Global columns for antigravity_cli project plugins", () => {
     mockUseProviderPluginList.mockReturnValue({
       isPending: false, isError: false,
       data: makeProjectPluginData("antigravity_cli", [
@@ -379,7 +379,7 @@ describe("ProjectDetailScreen UX clarity", () => {
     });
     render(<ProjectDetailScreen />);
     expect(screen.getByRole("columnheader", { name: "Project" })).toBeTruthy();
-    expect(screen.getByRole("columnheader", { name: "User" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Global" })).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "disabled" }).length).toBeGreaterThanOrEqual(1);
   });
 
@@ -458,7 +458,7 @@ describe("ProjectDetailScreen UX clarity", () => {
     });
   });
 
-  it("local override shows 'overridden' text in both Project and User columns", () => {
+  it("local override shows 'overridden' text in both Project and Global columns", () => {
     mockUseProviderPluginList.mockReturnValue({
       isPending: false, isError: false,
       data: makeProjectPluginData("claude", [

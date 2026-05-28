@@ -363,7 +363,7 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
                       <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Project</th>
                     )}
                     {canToggle && (
-                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">User</th>
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Global</th>
                     )}
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Effective</th>
                   </tr>
@@ -430,8 +430,8 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
                                     projectHasValue
                                       ? "Project layer overrides this setting"
                                       : isUserEnabled
-                                        ? "Disable globally"
-                                        : "Enable globally"
+                                        ? "Disable"
+                                        : "Enable"
                                   }
                                   className={`rounded px-1.5 py-0.5 font-medium hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 ${
                                     isUserEnabled
