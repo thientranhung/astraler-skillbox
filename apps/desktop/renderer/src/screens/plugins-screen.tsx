@@ -72,7 +72,7 @@ function PluginToggleButton({
     <button
       onClick={() => onToggle(plugin.pluginName, plugin.marketplaceName, !isEnabled)}
       disabled={disabled}
-      className="rounded border border-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+      className="cursor-pointer rounded border border-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {isEnabled ? "Disable" : "Enable"}
     </button>
@@ -237,7 +237,7 @@ export function PluginsScreen(): React.JSX.Element {
         <button
           onClick={() => scanMutation.mutate()}
           disabled={isScanning}
-          className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+          className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RefreshCw size={13} className={isScanning ? "animate-spin" : ""} />
           {isScanning ? "Scanning…" : "Scan Global"}
