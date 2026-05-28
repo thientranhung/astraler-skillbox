@@ -105,8 +105,8 @@ lẫn project skill scopes.
 Lịch sử review/brainstorm giai đoạn pre-implementation (May 2026). Giữ lại để
 trace lý do của các architectural decision; không phải workflow hiện hành.
 
-- [archive/review-prompts/](archive/) — prompt dùng để chạy review chéo data model, provider model, global skills layer, tech stack & scaffold.
-- [archive/review-results/](archive/) — kết quả review + brainstorm (technical architecture, transport decision, tech stack scaffold) đã chốt vào các doc đánh số.
+- [archive/review-prompts/](archive/review-prompts/) — prompt dùng để chạy review chéo data model, provider model, global skills layer, tech stack & scaffold.
+- [archive/review-results/](archive/review-results/) — kết quả review + brainstorm (technical architecture, transport decision, tech stack scaffold) đã chốt vào các doc đánh số.
 
 ## Suggested Reading Flow
 
