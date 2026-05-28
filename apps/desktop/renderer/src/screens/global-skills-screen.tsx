@@ -51,7 +51,7 @@ export function GlobalSkillsScreen(): React.JSX.Element {
         <button
           onClick={() => scanMutation.mutate()}
           disabled={isScanning || scanMutation.isPending}
-          className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+          className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RefreshCw size={13} className={isScanning ? "animate-spin" : ""} />
           {isScanning ? "Scanning…" : "Scan Global"}
@@ -103,7 +103,7 @@ export function GlobalSkillsScreen(): React.JSX.Element {
                     {(loc.skillsPath ?? loc.path) != null && (
                       <button
                         onClick={() => handleOpenFolder((loc.skillsPath ?? loc.path)!)}
-                        className="flex items-center gap-1 rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
+                        className="flex cursor-pointer items-center gap-1 rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50"
                       >
                         <FolderOpen size={12} />
                         Open Folder
@@ -142,7 +142,7 @@ export function GlobalSkillsScreen(): React.JSX.Element {
                           <td className="px-3 py-1.5">
                             <button
                               onClick={() => handleOpenFolder(entry.globalSkillPath)}
-                              className="flex items-center gap-1 rounded border border-zinc-200 px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-50"
+                              className="flex cursor-pointer items-center gap-1 rounded border border-zinc-200 px-2 py-0.5 text-xs text-zinc-500 hover:bg-zinc-50"
                             >
                               <FolderOpen size={11} />
                               Open
