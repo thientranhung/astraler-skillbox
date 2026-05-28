@@ -51,10 +51,31 @@ Clear stale input, send the prompt, send Enter separately to submit, then captur
 
 **Short vs file delivery:** Send prompts inline by default. Only write to `.scratch/` when the message is too long for tmux input (~500+ chars). Name files descriptively, e.g. `.scratch/fix-useeffect-regression.md`, `.scratch/slice-3k-impl-plan.md`.
 
+**Never send keys into an interactive selection prompt blindly.** If a capture shows the agent is at a `Enter to select · ↑/↓ to navigate · Esc to cancel` prompt, do NOT send arbitrary text or Enter — it will register as a selection (often the default/Recommended option) and silently corrupt the agent's answer record. Instead: `Escape` first to dismiss the prompt, verify input area is clean, then send a text message. To relay a user's choice into a selection prompt, send the exact navigation keys (`Down`/`Up` × N then `Enter`) — and capture immediately after to verify the recorded answer matches what the user picked.
+
 ### Context & Model Switching
 
 - `/clear` before unrelated tasks or phase switches. Never clear mid-goal.
 - Match model strength to task type: stronger / deep-thinking model for brainstorm/scope/plan, faster / cheaper model for implementation, fixes, and test loops. For Tom (Claude Code): **opus** ↔ **sonnet**. For other runtimes, map equivalently.
+
+### Waiting for an Agent to Finish
+
+User should not have to manually poll agent status. Orchestrator auto-polls via background Bash + tmux capture:
+
+```sh
+# Idle detection: no spinner pattern (Cogitating/Fermenting/… (Xs · tokens)) for 30s
+stable=0; iters=0; max=180
+while [ $stable -lt 6 ] && [ $iters -lt $max ]; do
+  out=$(tmux capture-pane -t <pane> -p 2>/dev/null)
+  if echo "$out" | grep -qE '… \([0-9]+[smh]'; then stable=0; else stable=$((stable+1)); fi
+  iters=$((iters+1)); sleep 5
+done
+echo "agent idle"
+```
+
+Run with `run_in_background: true` — single notification when script exits. Max iters caps runaway (180×5s = 15min). If agent is still working after timeout, re-poll.
+
+Pattern `… \([0-9]+[smh]` matches Claude Code's active spinner line (`✶ Cogitating… (11s · ↑ 1.3k tokens)`). Adapt for other runtimes if their spinner differs. Status footer (timer, %, model) updates every second but never matches the spinner regex, so footer churn doesn't reset the stable counter.
 
 ### Audit Command
 
