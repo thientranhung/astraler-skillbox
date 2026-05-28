@@ -117,7 +117,7 @@ Nếu bạn chỉ:
 - Refactor nội bộ (interface giữ nguyên)
 - Format / lint fix
 
-→ Không cần update doc, không cần ADR. Pre-push hook sẽ tự nhận diện và cho qua (sẽ document khi script được implement).
+→ Không cần update doc, không cần ADR. Pre-push hook sẽ không báo gap cho những thay đổi này vì chúng không tạo ra concept mới trong code inventory (không có table mới, screen mới, domain object mới, …).
 
 ## References
 
