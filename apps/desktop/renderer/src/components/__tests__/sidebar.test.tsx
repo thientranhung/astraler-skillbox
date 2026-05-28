@@ -10,7 +10,7 @@ describe("NAV_ITEMS", () => {
 
   it("has Global Skills between Skills and Projects", () => {
     const labels = NAV_ITEMS.map((item) => item.label);
-    const skillsIdx = labels.indexOf("Skills");
+    const skillsIdx = labels.indexOf("Host Skills");
     const globalIdx = labels.indexOf("Global Skills");
     const projectsIdx = labels.indexOf("Projects");
     expect(globalIdx).toBeGreaterThan(skillsIdx);
@@ -21,7 +21,7 @@ describe("NAV_ITEMS", () => {
   it("has Plugins after Projects and before Settings", () => {
     const labels = NAV_ITEMS.map((item) => item.label);
     const projectsIdx = labels.indexOf("Projects");
-    const pluginsIdx = labels.indexOf("Plugins");
+    const pluginsIdx = labels.indexOf("Global Plugins");
     const settingsIdx = labels.indexOf("Settings");
     expect(pluginsIdx).toBeGreaterThan(projectsIdx);
     expect(pluginsIdx).toBeLessThan(settingsIdx);

@@ -4,10 +4,10 @@ import { LayoutDashboard, Library, Globe, FolderGit2, Puzzle, Settings } from "l
 
 export const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/skills", label: "Skills", icon: Library },
+  { to: "/skills", label: "Host Skills", icon: Library },
   { to: "/global", label: "Global Skills", icon: Globe },
   { to: "/projects", label: "Projects", icon: FolderGit2 },
-  { to: "/plugins", label: "Plugins", icon: Puzzle },
+  { to: "/plugins", label: "Global Plugins", icon: Puzzle },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
