@@ -638,13 +638,15 @@ Provider settings file paths được seed trong `provider_path_candidates` vớ
 `purpose = config`. Hai layer:
 
 - `scope = global`: user-level settings (ví dụ `~/.claude/settings.json`).
-- `scope = project`: project-level settings. Hai path candidate trong scope này:
-  `.claude/settings.json` (priority column = 10, maps to `project` layer) và
-  `.claude/settings.local.json` (priority column = 9, maps to `local` layer).
-  Priority column thấp hơn nghĩa là path được **resolve trước** khi check
-  file existence — không liên quan tới layer merge precedence. Khi merge
-  effective state, `local` vẫn có **precedence cao hơn** `project` (rule
-  `local > project > user` không đổi).
+- `scope = project`: project-level settings. Hai path candidate trong scope này
+  không cạnh tranh nhau — chúng fill **hai layer slot riêng biệt** qua sort
+  `ORDER BY priority DESC`: `.claude/settings.json` (priority = 10) → index 0
+  → `project` layer slot; `.claude/settings.local.json` (priority = 9) →
+  index 1 → `local` layer slot. Priority column cao hơn được xử lý trước
+  (DESC sort), xác định slot nào là project layer và slot nào là local layer
+  — không liên quan tới layer merge precedence. Khi merge effective state,
+  `local` vẫn có **precedence cao hơn** `project` (rule `local > project >
+  user` không đổi).
 
 User có thể override các path này qua `provider_path_overrides` với cùng
 `(scope, purpose = config)`.
