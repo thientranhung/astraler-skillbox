@@ -238,18 +238,25 @@ Action:
 
 ## Add Skill Flow
 
-Flow không cần wizard nặng.
+Flow mở Add Skill Wizard từ Project Detail.
 
 ```text
 Project Detail
   -> Add Skill
-  -> Chọn skill từ Skills Library
-  -> Chọn provider target nếu project có nhiều provider
-  -> Chọn mode symlink hoặc rsync/copy
-  -> Install
+  -> Wizard mở tab strip, mỗi tab là một installable provider
+     (tab header: ProviderIcon + display name + skills path badge + "experimental" badge nếu có)
+  -> User chọn tab provider muốn install vào
+  -> User tick skill trong danh sách của tab đó
+     (skill đã installed ở provider đó bị disable + "Installed" badge)
+  -> Footer hiển thị path hint của tab đang active
+  -> User nhấn Install
+  -> Skill được install vào provider của tab đang active
 ```
 
-Nếu project chỉ có một provider thì bỏ qua bước chọn provider.
+Nếu không có installable provider nào (0 provider hợp lệ), wizard hiển thị empty
+state "No provider is ready for install." kèm CTA "Scan project".
+
+Selection reset khi user chuyển tab.
 
 ## Skill Detail
 
