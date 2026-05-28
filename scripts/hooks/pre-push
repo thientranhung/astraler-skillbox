@@ -1,25 +1,63 @@
 #!/usr/bin/env sh
-# scripts/hooks/pre-push — doc-drift gate for git pushes
+# scripts/hooks/pre-push — DOC-VERIFIED trailer gate for git pushes
 #
 # Auto-installed via pnpm install (sets core.hooksPath = scripts/hooks)
 #
-# To bypass (e.g. doc-only typo fix, emergency push):
+# Role: remind AI agent to verify documentation alignment and check that at
+# least one commit in the push range carries a DOC-VERIFIED: <reason> trailer.
+# The hook does NOT compute drift itself — that is the AI agent's job using
+# docs/playbooks/documentation.md § Gap-Find Procedure.
+#
+# To bypass (leaves a trace in git reflog):
 #   git push --no-verify
-# Note: --no-verify is visible in the git reflog and should be used sparingly.
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
 if [ -z "$REPO_ROOT" ]; then
-  echo "pre-push: could not find git root, skipping doc-drift check"
-  exit 0
-fi
-
-CHECK_SCRIPT="$REPO_ROOT/scripts/check-doc-drift.sh"
-if [ ! -x "$CHECK_SCRIPT" ]; then
-  echo "pre-push: $CHECK_SCRIPT not found or not executable, skipping"
+  printf 'pre-push: could not find git root, skipping DOC-VERIFIED check\n'
   exit 0
 fi
 
 z40=0000000000000000000000000000000000000000
+
+# has_doc_verified <range>
+# Returns 0 if any commit in <range> contains a DOC-VERIFIED: trailer line.
+has_doc_verified() {
+  git -C "$REPO_ROOT" log --format="%B" "$1" 2>/dev/null \
+    | grep -qE '^DOC-VERIFIED: .+'
+}
+
+# has_doc_verified_single <sha>
+# Checks just the tip commit (used for new branches with no clear range).
+has_doc_verified_single() {
+  git -C "$REPO_ROOT" log -1 --format="%B" "$1" 2>/dev/null \
+    | grep -qE '^DOC-VERIFIED: .+'
+}
+
+block() {
+  printf '\n'
+  printf '══════════════════════════════════════════════════════════════\n'
+  printf '  DOC-VERIFIED trailer missing in push range\n'
+  printf '══════════════════════════════════════════════════════════════\n'
+  printf '\n'
+  printf 'No commit in the push range carries a DOC-VERIFIED: <reason>\n'
+  printf 'trailer. The pre-push gate requires AI agent verification of\n'
+  printf 'documentation alignment before code leaves the repo.\n'
+  printf '\n'
+  printf 'What to do:\n'
+  printf '  1. Read docs/playbooks/documentation.md (Pre-Push Gate section).\n'
+  printf '  2. Run the Gap-Find Procedure on the commits being pushed.\n'
+  printf '  3. Update docs if needed; otherwise note the reason.\n'
+  printf '  4. Amend the latest commit (or add a new one) with trailer:\n'
+  printf '       DOC-VERIFIED: <reason>\n'
+  printf '\n'
+  printf 'To bypass once (will leave a reflog trace):\n'
+  printf '  git push --no-verify\n'
+  printf '\n'
+  printf '══════════════════════════════════════════════════════════════\n'
+  printf '\n'
+}
+
+found=0
 
 while read -r local_ref local_sha remote_ref remote_sha; do
   # Skip branch deletions
@@ -27,29 +65,35 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     continue
   fi
 
-  # Determine the range of commits being pushed
   if [ "$remote_sha" = "$z40" ]; then
-    # New branch: compare against common ancestor with main
-    base=$(git -C "$REPO_ROOT" merge-base HEAD main 2>/dev/null || true)
-    if [ -n "$base" ]; then
-      range="${base}..${local_sha}"
-    else
-      # No common ancestor (orphan branch or first push) — skip ADR check
-      range=""
+    # New branch / first push: check commits not yet on any remote
+    range=$(git -C "$REPO_ROOT" log --format="%H" "$local_sha" --not --remotes 2>/dev/null \
+      | tail -1)
+    if [ -n "$range" ]; then
+      # range is the oldest new commit; use oldest..local_sha (or just tip)
+      oldest_range="${range}~1..${local_sha}"
+      if has_doc_verified "$oldest_range" 2>/dev/null; then
+        found=1
+        continue
+      fi
+    fi
+    # Fall back to checking just the tip commit
+    if has_doc_verified_single "$local_sha"; then
+      found=1
+      continue
     fi
   else
+    # Normal push: commits added on top of what remote already has
     range="${remote_sha}..${local_sha}"
+    if has_doc_verified "$range"; then
+      found=1
+      continue
+    fi
   fi
 
-  if [ -n "$range" ]; then
-    "$CHECK_SCRIPT" --git-range "$range"
-  else
-    "$CHECK_SCRIPT"
-  fi
-
-  if [ $? -ne 0 ]; then
-    exit 1
-  fi
+  # No DOC-VERIFIED found for this ref
+  block
+  exit 1
 done
 
 exit 0
