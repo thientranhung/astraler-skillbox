@@ -35,6 +35,7 @@
     { "input": "methods/providerPlugin.list.json", "output": "methods/provider-plugin-list.ts" },
     { "input": "methods/providerPlugin.setEnabled.json", "output": "methods/provider-plugin-set-enabled.ts" },
     { "input": "methods/providerPlugin.removeOverride.json", "output": "methods/provider-plugin-remove-override.ts" },
-    { "input": "methods/updateCheck.run.json", "output": "methods/update-check-run.ts" }
+    { "input": "methods/updateCheck.run.json", "output": "methods/update-check-run.ts" },
+    { "input": "methods/app.resetAll.json", "output": "methods/app-reset-all.ts" }
   ]
 }
