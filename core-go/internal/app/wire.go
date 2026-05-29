@@ -27,6 +27,7 @@ func New(
 	globalSvc *services.GlobalSkillsService,
 	providerRegistrySvc *services.ProviderRegistryService,
 	providerPluginSvc *services.ProviderPluginService,
+	updateCheckSvc *services.UpdateCheckService,
 ) *App {
 	a := &App{
 		methods: handler.Map{
@@ -55,6 +56,7 @@ func New(
 			"providerPlugin.list":         rpchandlers.NewProviderPluginListHandler(providerPluginSvc),
 			"providerPlugin.setEnabled":     rpchandlers.NewProviderPluginSetEnabledHandler(providerPluginSvc),
 			"providerPlugin.removeOverride": rpchandlers.NewProviderPluginRemoveOverrideHandler(providerPluginSvc),
+			"updateCheck.run":             rpchandlers.NewUpdateCheckRunHandler(updateCheckSvc),
 		},
 	}
 	return a

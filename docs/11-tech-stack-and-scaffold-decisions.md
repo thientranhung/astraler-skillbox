@@ -739,4 +739,8 @@ testing:
   go test -race cho concurrent code
   filesystem fixtures
   contract tests
+
+runtime CLI dependencies:
+  git >= 2.20 — required for plugin update checks (updateCheck.run, ADR-0001)
+  absent git → service returns status='git_not_found'; app remains fully usable offline
 ```

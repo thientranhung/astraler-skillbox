@@ -28,4 +28,5 @@ export const ALLOWLIST = new Set([
   "providerPlugin.list",
   "providerPlugin.setEnabled",
   "providerPlugin.removeOverride",
+  "updateCheck.run",
 ]);

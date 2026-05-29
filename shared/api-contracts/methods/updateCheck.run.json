@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UpdateCheckRunMethod",
+  "description": "Contract for updateCheck.run JSON-RPC method. Manually triggers plugin update check (ADR-0001 Phase 1). Requires network.update_check.enabled=true; returns status='disabled' otherwise.",
+  "oneOf": [
+    { "$ref": "#/definitions/UpdateCheckRunRequest" },
+    { "$ref": "#/definitions/UpdateCheckRunResponse" }
+  ],
+  "definitions": {
+    "UpdateCheckRunRequest": {
+      "title": "UpdateCheckRunRequest",
+      "description": "No params required for updateCheck.run.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UpdateCheckRunResponse": {
+      "title": "UpdateCheckRunResponse",
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["ok", "disabled", "git_not_found", "error"],
+          "description": "'disabled' when setting is off (default). 'git_not_found' when git CLI unavailable. 'ok' on success."
+        },
+        "plugins": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/UpdateCheckPluginResult" },
+          "description": "Per-plugin results. Empty when status != 'ok'."
+        }
+      },
+      "required": ["status", "plugins"],
+      "additionalProperties": false
+    },
+    "UpdateCheckPluginResult": {
+      "title": "UpdateCheckPluginResult",
+      "type": "object",
+      "properties": {
+        "providerKey": { "type": "string" },
+        "pluginName": { "type": "string" },
+        "marketplaceName": { "type": "string" },
+        "updateAvailable": {
+          "type": ["boolean", "null"],
+          "description": "true=update available; false=up-to-date; null=unknown (no gitCommitSha or ref_not_found)."
+        },
+        "latestVersion": {
+          "type": ["string", "null"],
+          "description": "Latest tag resolved remotely. null when not available."
+        },
+        "lastCheckedAt": {
+          "type": ["string", "null"],
+          "description": "ISO-8601 timestamp of this check."
+        },
+        "error": {
+          "type": "string",
+          "description": "Non-empty on per-plugin error (non_https_scheme_rejected, git_not_found, timeout, ref_not_found, host_backoff, etc.)."
+        }
+      },
+      "required": ["providerKey", "pluginName", "marketplaceName"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -37,3 +37,4 @@ export * from './methods/provider-plugin-scan-global.js';
 export * from './methods/provider-plugin-list.js';
 export * from './methods/provider-plugin-set-enabled.js';
 export * from './methods/provider-plugin-remove-override.js';
+export * from './methods/update-check-run.js';

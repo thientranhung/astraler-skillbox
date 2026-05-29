@@ -34,6 +34,7 @@
     { "input": "methods/providerPlugin.scanGlobal.json", "output": "methods/provider-plugin-scan-global.ts" },
     { "input": "methods/providerPlugin.list.json", "output": "methods/provider-plugin-list.ts" },
     { "input": "methods/providerPlugin.setEnabled.json", "output": "methods/provider-plugin-set-enabled.ts" },
-    { "input": "methods/providerPlugin.removeOverride.json", "output": "methods/provider-plugin-remove-override.ts" }
+    { "input": "methods/providerPlugin.removeOverride.json", "output": "methods/provider-plugin-remove-override.ts" },
+    { "input": "methods/updateCheck.run.json", "output": "methods/update-check-run.ts" }
   ]
 }

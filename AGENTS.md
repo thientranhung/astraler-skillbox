@@ -10,6 +10,7 @@ Core invariants:
 - **Skill Host Folder** is source of truth for skill content.
 - **SQLite** is source of truth for management metadata.
 - Skills are distributed to projects via symlink or rsync/copy.
+- **Skillbox is local-first. Outbound network is OFF by default; the only opt-in network feature is plugin update checks against the user's already-installed plugin source hosts (see ADR-0001).**
 
 ## Repo Layout
 
