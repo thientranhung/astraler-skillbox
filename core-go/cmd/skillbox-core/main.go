@@ -99,7 +99,11 @@ func main() {
 	claudeConfigDir := services.ClaudeConfigDirFromHomeDir()
 	updateCheckSvc := services.NewUpdateCheckService(networkSettingsRepo, updateCheckCacheRepo, updateCheckClient, claudeConfigDir)
 
-	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc, providerPluginSvc, updateCheckSvc)
+	resetFn := func() error {
+		db.Close()
+		return os.Remove(dbPath)
+	}
+	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc, providerPluginSvc, updateCheckSvc, resetFn)
 
 	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()

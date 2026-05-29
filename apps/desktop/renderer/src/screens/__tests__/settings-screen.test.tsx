@@ -30,6 +30,9 @@ vi.mock("../../features/providers/provider-paths-editor.js", () => ({
 vi.mock("../../features/providers/use-reset-provider-paths.js", () => ({
   useResetProviderPaths: vi.fn(),
 }));
+vi.mock("../../features/app-settings/use-reset-all.js", () => ({
+  useResetAll: vi.fn(),
+}));
 
 import { SettingsScreen } from "../settings-screen.js";
 import { useAppSettings } from "../../features/app-settings/use-app-settings.js";
@@ -37,12 +40,14 @@ import { useChooseHost } from "../../features/skill-host/use-choose-host.js";
 import { useProviderList } from "../../features/providers/use-provider-list.js";
 import { useNavigate } from "@tanstack/react-router";
 import { useResetProviderPaths } from "../../features/providers/use-reset-provider-paths.js";
+import { useResetAll } from "../../features/app-settings/use-reset-all.js";
 
 const mockUseAppSettings = useAppSettings as ReturnType<typeof vi.fn>;
 const mockUseChooseHost = useChooseHost as ReturnType<typeof vi.fn>;
 const mockUseProviderList = useProviderList as ReturnType<typeof vi.fn>;
 const mockUseNavigate = useNavigate as ReturnType<typeof vi.fn>;
 const mockUseResetProviderPaths = useResetProviderPaths as ReturnType<typeof vi.fn>;
+const mockUseResetAll = useResetAll as ReturnType<typeof vi.fn>;
 
 const baseSettings = {
   activeSkillHostFolderId: 1,
@@ -83,6 +88,7 @@ beforeEach(() => {
   mockUseNavigate.mockReturnValue(vi.fn());
   mockUseChooseHost.mockReturnValue({ isPending: false, mutate: vi.fn(), error: null });
   mockUseResetProviderPaths.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  mockUseResetAll.mockReturnValue({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false, isError: false, isSuccess: false, error: null });
 });
 
 afterEach(() => cleanup());
@@ -284,7 +290,7 @@ describe("SettingsScreen", () => {
       },
     });
     render(<SettingsScreen />);
-    expect(screen.getByRole("button", { name: /reset/i })).not.toBeNull();
+    expect(screen.getByRole("button", { name: /reset to default/i })).not.toBeNull();
   });
 
 });
