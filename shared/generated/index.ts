@@ -38,3 +38,4 @@ export * from './methods/provider-plugin-list.js';
 export * from './methods/provider-plugin-set-enabled.js';
 export * from './methods/provider-plugin-remove-override.js';
 export * from './methods/update-check-run.js';
+export * from './methods/app-reset-all.js';
