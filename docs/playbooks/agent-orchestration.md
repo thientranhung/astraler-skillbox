@@ -98,6 +98,14 @@ Copy từ `docs/playbooks/templates/`:
 
 Branch naming: `<type>/<kebab-slug>` (vd `feat/dashboard-plugins-metric`). PR target luôn là `main`. Tom tạo PR ngay sau Larry approve commit cuối.
 
+**PR gate — KHÔNG gộp create + merge (bài học PR #2–#8):**
+
+- **Tạo PR và merge là HAI gate riêng, KHÔNG được làm liền trong một bước.** Cấm pattern "Tom `gh pr create` rồi `gh pr merge` ngay" — làm vậy PR thành thủ tục trống, không ai gate được.
+- **One actor không tự create + tự merge.** Người mở PR ≠ người bấm merge.
+- **Review phải nằm TRÊN PR**, không chỉ trong tmux. Larry post verdict lên PR (`gh pr review --approve/--request-changes` kèm evidence) để PR có dấu vết review thật (`reviews: []` = chưa được gate).
+- **Merge là gate của user** (playbook §Phase Gates: "user duyệt → merge"). Flow đúng: Tom `gh pr create` → **DỪNG** → Larry `gh pr review` trên PR → Orchestrator đưa link PR + tóm tắt cho user → **user (hoặc Orchestrator khi user ủy quyền PR cụ thể) merge**. Orchestrator KHÔNG tự ý chỉ thị Tom merge thay user trừ khi user explicit ủy quyền merge cho PR đó.
+- Nếu user đã ủy quyền autonomous: vẫn giữ tách 2 gate + review-on-PR; Orchestrator đóng vai merge-gate thay user, nhưng người merge vẫn ≠ người tạo PR (Orchestrator/`gh` chứ không phải để Tom tự merge commit mình vừa push).
+
 ## tmux Handoff Contract
 
 ### Before every handoff
