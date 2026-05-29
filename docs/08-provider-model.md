@@ -433,7 +433,9 @@ Provider UI nên hiển thị:
 - Warning nếu provider missing/unsupported/invalid.
 
 Trong Project Detail, installed skills nên được group hoặc filter theo provider.
-Không nên gộp các skill trùng tên ở nhiều provider thành một row mơ hồ.
+Không nên gộp các skill trùng tên ở nhiều provider thành một row mơ hồ. Add Skill
+wizard implement grouping này dưới dạng tab strip, trong đó mỗi installable provider
+là một tab riêng.
 
 Provider `experimental` nên hiển thị badge/tooltip nhẹ để user biết adapter có
 thể thay đổi. Provider `disabled` nên ẩn khỏi install target list, nhưng có thể

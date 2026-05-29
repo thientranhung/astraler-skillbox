@@ -763,6 +763,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
               projectId={validId}
               providers={data.providers}
               skills={activeHostSkills.skills}
+              entries={data.entries}
               onClose={() => setWizardOpen(false)}
             />
           </div>

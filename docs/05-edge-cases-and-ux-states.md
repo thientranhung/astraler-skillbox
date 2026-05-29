@@ -470,7 +470,78 @@ UI nên:
 - Tách provider scope rõ.
 - Add Skill flow phải chọn provider target.
 
-## 7. Database And App State
+## 7. Add Skill Wizard States
+
+### 0 installable providers (empty state)
+
+Tình huống:
+
+- Project không có provider nào hợp lệ để install (không có provider nào có
+  `detection_status = detected/configured` và `provider_definitions.status =
+  supported/experimental` và `skills_path` resolve được).
+
+UI nên:
+
+- Hiển thị empty state card trong wizard: "No provider is ready for install."
+- Đưa CTA "Scan project" như primary action.
+- Khi user nhấn "Scan project", gọi `useScanProject` và đóng wizard.
+- Không hiển thị tab strip, danh sách skill, hoặc nút Install.
+
+### Skill đã installed tại provider của tab đang active
+
+Tình huống:
+
+- Skill trong danh sách đã có install record tại provider của tab đang active.
+
+UI nên:
+
+- Hiển thị checkbox của skill đó ở trạng thái disabled + opacity-50.
+- Gắn badge "Installed" cạnh tên skill.
+- Không cho phép user tick lại skill đó ở tab hiện tại.
+- Skill vẫn có thể chọn được ở tab của provider khác nếu chưa installed tại
+  provider đó (installed-state là per-provider, không globally disabled).
+
+### Chuyển tab reset selection
+
+Tình huống:
+
+- User đã tick một số skill ở tab A, sau đó chuyển sang tab B.
+
+UI nên:
+
+- Xóa toàn bộ `selectedSkillIds` khi tab thay đổi.
+- Xóa install error (nếu có) khi tab thay đổi.
+- Tab B bắt đầu với selection trống, không kế thừa lựa chọn của tab A.
+
+### Provider là experimental
+
+Tình huống:
+
+- Tab trong wizard tương ứng với provider có `provider_definitions.status =
+  experimental`.
+
+UI nên:
+
+- Hiển thị badge "experimental" trong tab header cạnh display name.
+- Vẫn cho phép install bình thường (experimental không block install).
+- Không cần modal confirm thêm chỉ vì experimental.
+
+### Install error (ví dụ: conflict_error 1005)
+
+Tình huống:
+
+- Skillbox trả về lỗi khi user nhấn Install (ví dụ target folder đã tồn tại,
+  permission denied, conflict_error code 1005, ...).
+
+UI nên:
+
+- Giữ wizard mở, không đóng sau lỗi.
+- Hiển thị error row trong footer (text-red-600) ngay phía trên Cancel/Install.
+- Cho user sửa selection hoặc nhấn Cancel để thoát.
+- Error row bị xóa nếu user chuyển tab hoặc thay đổi selection.
+- Không partial-update database nếu install operation thất bại.
+
+## 8. Database And App State
 
 ### Database chưa tồn tại
 
