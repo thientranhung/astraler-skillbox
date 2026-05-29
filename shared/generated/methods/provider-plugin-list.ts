@@ -80,6 +80,10 @@ export interface PPProjectEntry {
   effectiveStatus: 'enabled' | 'disabled' | 'absent' | 'unknown';
   provenanceLayer: 'user' | 'project' | 'local' | null;
   layerBreakdown: PPLayerDetail[];
+  /**
+   * Installed version from installed_plugins.json for the winning provenance layer. null when not available (non-Claude providers, plugin not in install record). 'unknown' is a valid literal.
+   */
+  version?: string | null;
 }
 export interface PPLayerDetail {
   layer: 'user' | 'project' | 'local';

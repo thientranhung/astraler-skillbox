@@ -353,6 +353,7 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
           {/* Plugin layer table */}
           {projectView.plugins.length > 0 && (() => {
             const canToggle = JSON_WRITE_PROVIDERS.has(projectView.providerKey);
+            const hasVersion = projectView.plugins.some((p) => p.version != null);
             return (
             <div className="overflow-x-auto rounded border border-zinc-200">
               <table className="w-full text-left">
@@ -360,6 +361,9 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
                   <tr>
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Plugin</th>
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Marketplace</th>
+                    {hasVersion && (
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Version</th>
+                    )}
                     {canToggle && (
                       <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Project</th>
                     )}
@@ -380,6 +384,13 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
                       <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
                         <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{p.pluginName}</td>
                         <td className="px-3 py-1.5 text-xs text-zinc-500">{p.marketplaceName || "—"}</td>
+                        {hasVersion && (
+                          <td className="px-3 py-1.5 text-xs text-zinc-500">
+                            <span className="block max-w-[8rem] truncate" title={p.version ?? undefined}>
+                              {p.version ?? "—"}
+                            </span>
+                          </td>
+                        )}
 
                         {/* Project column — 3-state cycle */}
                         {canToggle && (

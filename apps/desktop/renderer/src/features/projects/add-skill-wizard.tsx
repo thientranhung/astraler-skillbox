@@ -164,7 +164,7 @@ export function AddSkillWizard({
       </div>
 
       {/* Tab Strip */}
-      <div className="flex overflow-x-auto border-b border-zinc-200 px-4 pt-3" style={{ flexWrap: 'nowrap' }}>
+      <div className="flex flex-nowrap overflow-x-auto border-b border-zinc-200 px-4 pt-3">
         {installableProviders.map((p) => (
           <button
             key={p.providerKey}
