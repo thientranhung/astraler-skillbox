@@ -48,8 +48,8 @@ func (r *ProviderPluginRepo) CommitLayerScan(
 
 	for _, e := range entries {
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO provider_plugin_entries (layer_scan_id, plugin_name, marketplace_name, declaration) VALUES (?, ?, ?, ?)`,
-			scanID, e.PluginName, e.MarketplaceName, string(e.Declaration),
+			`INSERT INTO provider_plugin_entries (layer_scan_id, plugin_name, marketplace_name, declaration, version) VALUES (?, ?, ?, ?, ?)`,
+			scanID, e.PluginName, e.MarketplaceName, string(e.Declaration), e.Version,
 		); err != nil {
 			return fmt.Errorf("insert entry: %w", err)
 		}
@@ -84,7 +84,7 @@ func (r *ProviderPluginRepo) ListLayerScansForProvider(ctx context.Context, prov
 // ListEntriesForScan returns all plugin entry rows for a given layer scan, ordered by id.
 func (r *ProviderPluginRepo) ListEntriesForScan(ctx context.Context, layerScanID int64) ([]domain.PluginEntry, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, layer_scan_id, plugin_name, marketplace_name, declaration
+		`SELECT id, layer_scan_id, plugin_name, marketplace_name, declaration, version
 		   FROM provider_plugin_entries WHERE layer_scan_id = ? ORDER BY id`,
 		layerScanID)
 	if err != nil {
@@ -95,10 +95,14 @@ func (r *ProviderPluginRepo) ListEntriesForScan(ctx context.Context, layerScanID
 	for rows.Next() {
 		var e domain.PluginEntry
 		var decl string
-		if err := rows.Scan(&e.ID, &e.LayerScanID, &e.PluginName, &e.MarketplaceName, &decl); err != nil {
+		var version sql.NullString
+		if err := rows.Scan(&e.ID, &e.LayerScanID, &e.PluginName, &e.MarketplaceName, &decl, &version); err != nil {
 			return nil, err
 		}
 		e.Declaration = domain.PluginDeclaration(decl)
+		if version.Valid {
+			e.Version = &version.String
+		}
 		result = append(result, e)
 	}
 	return result, rows.Err()
