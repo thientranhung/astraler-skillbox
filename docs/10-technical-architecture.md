@@ -288,6 +288,8 @@ Command:
   providerPlugin.setEnabled(input)
   providerPlugin.removeOverride(input)
   updateCheck.run()
+  app.resetAll()        -- truncate user data tables + reset settings to defaults
+  app.checkUpdate()     -- query GitHub Releases API for latest app version (opt-in)
 ```
 
 Query không nên tạo side effect. Command có thể tạo `operations` record, ghi DB,
