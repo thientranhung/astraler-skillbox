@@ -100,8 +100,7 @@ func main() {
 	updateCheckSvc := services.NewUpdateCheckService(networkSettingsRepo, updateCheckCacheRepo, updateCheckClient, claudeConfigDir)
 
 	resetFn := func() error {
-		db.Close()
-		return os.Remove(dbPath)
+		return repositories.ResetAllData(context.Background(), db)
 	}
 	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc, providerPluginSvc, updateCheckSvc, resetFn)
 
