@@ -69,9 +69,10 @@ Copy từ `docs/playbooks/templates/`:
 4. Spec review → Larry.
 5. User approval.
 6. Implementation plan → Tom.
-7. Implement → Tom; review → Larry; smoke test.
-8. Tom `gh pr create` (nếu trên branch) → user duyệt → merge.
-9. Docs / source-of-truth update — Tom update doc canonical **trong cùng slice** (không nợ sang sau); chi tiết doc nào xem `documentation.md`.
+7. Implement → Tom; **Tom `gh pr create`** (nếu trên branch).
+8. **Larry `gh pr review` trên PR** — không phải chỉ báo tmux. Nếu có lỗi → Larry comment `--request-changes` + mô tả file:line → Tom fix trên branch + push → Larry re-review. Lặp đến khi sạch → Larry `--approve`.
+9. **Tom `gh pr merge`** sau khi PR có `--approve` từ Larry.
+10. Docs / source-of-truth update — Tom update doc canonical **trong cùng slice** (không nợ sang sau); chi tiết doc nào xem `documentation.md`.
 
 > Slice = thin cross-layer cut (UI → service → data). Compress phase cho slice nhỏ, nhưng **không skip user approval ở Spec**.
 
@@ -98,13 +99,11 @@ Copy từ `docs/playbooks/templates/`:
 
 Branch naming: `<type>/<kebab-slug>` (vd `feat/dashboard-plugins-metric`). PR target luôn là `main`. Tom tạo PR ngay sau Larry approve commit cuối.
 
-**PR gate — KHÔNG gộp create + merge (bài học PR #2–#8):**
+**PR flow chuẩn (KHÔNG gộp create + merge):**
 
-- **Tạo PR và merge là HAI gate riêng, KHÔNG được làm liền trong một bước.** Cấm pattern "Tom `gh pr create` rồi `gh pr merge` ngay" — làm vậy PR thành thủ tục trống, không ai gate được.
-- **One actor không tự create + tự merge.** Người mở PR ≠ người bấm merge.
-- **Review phải nằm TRÊN PR**, không chỉ trong tmux. Larry post verdict lên PR (`gh pr review --approve/--request-changes` kèm evidence) để PR có dấu vết review thật (`reviews: []` = chưa được gate).
-- **Merge là gate của user** (playbook §Phase Gates: "user duyệt → merge"). Flow đúng: Tom `gh pr create` → **DỪNG** → Larry `gh pr review` trên PR → Orchestrator đưa link PR + tóm tắt cho user → **user (hoặc Orchestrator khi user ủy quyền PR cụ thể) merge**. Orchestrator KHÔNG tự ý chỉ thị Tom merge thay user trừ khi user explicit ủy quyền merge cho PR đó.
-- Nếu user đã ủy quyền autonomous: vẫn giữ tách 2 gate + review-on-PR; Orchestrator đóng vai merge-gate thay user, nhưng người merge vẫn ≠ người tạo PR (Orchestrator/`gh` chứ không phải để Tom tự merge commit mình vừa push).
+Tom push branch → `gh pr create` → Larry `gh pr review` trên PR (lỗi: `--request-changes` + file:line → Tom fix + push → Larry re-review; sạch: `--approve`) → Tom `gh pr merge`.
+
+Review phải nằm **trên PR** (`gh pr review`), không chỉ báo tmux — để PR có dấu vết thật. `reviews: []` sau merge = gate bị bỏ qua.
 
 ## tmux Handoff Contract
 
