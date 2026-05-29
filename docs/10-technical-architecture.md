@@ -777,4 +777,14 @@ Packaging:
 Provider seed data:
   recommended = seed via migration
   alternatives = bundled JSON or code seed
+
+Outbound Network:
+  default = OFF (local-first invariant, see ADR-0001)
+  opt_in = network.update_check.enabled via network_settings table (migration 000022)
+  mechanism = git ls-remote via system git (no new SDK); HTTPS URLs only
+  security = HTTPS-only validation before subprocess; env-stripped (PATH + GIT_TERMINAL_PROMPT=0 only)
+  timeout = 8s per-request, 60s batch deadline; max 4 concurrent subprocesses
+  cache = plugin_update_check_cache table, 6h TTL default
+  renderer_boundary = renderer never calls network; all outbound via Go core (UpdateCheckService)
+  see = docs/decisions/0001-outbound-network-update-check.md
 ```
