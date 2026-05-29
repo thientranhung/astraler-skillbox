@@ -37,13 +37,19 @@ function createWindow(): BrowserWindow {
     callback(false);
   });
 
+  // Dev CSP: permit Vite React Refresh inline preamble (unsafe-inline + unsafe-eval)
+  // and HMR WebSocket (ws://localhost, http://localhost). Only active when
+  // ELECTRON_RENDERER_URL is set — electron-vite sets it in `pnpm dev`, never in
+  // packaged builds. Prod CSP is strict; no relaxation reaches packaged users.
+  const csp = ELECTRON_RENDERER_URL
+    ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* http://localhost:*"
+    : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'";
+
   win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        "Content-Security-Policy": [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
-        ],
+        "Content-Security-Policy": [csp],
       },
     });
   });
