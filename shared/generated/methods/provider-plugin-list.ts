@@ -43,6 +43,10 @@ export interface PPGlobalEntry {
   pluginName: string;
   marketplaceName: string;
   status: 'enabled' | 'disabled';
+  /**
+   * Installed version from installed_plugins.json. null when not available (non-Claude providers, plugin not in install record). 'unknown' is a valid literal when Claude reports no version.
+   */
+  version?: string | null;
 }
 export interface PPMarketplace {
   marketplaceName: string;
