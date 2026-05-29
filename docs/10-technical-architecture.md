@@ -681,7 +681,10 @@ preload exposes narrow typed bridge only
 renderer never receives Go process path or transport details
 Electron main validates JSON-RPC method allowlist before forwarding to Go
 CSP = default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
+dev only: remote-debugging-port on 127.0.0.1 (default 49222, gated on ELECTRON_RENDERER_URL); packaged builds never open a debugging port
 ```
+
+Dev exposes a Chrome DevTools Protocol port (default `49222`, override `SKILLBOX_CDP_PORT`) so browser-automation agents can `connect` to the running `pnpm dev` instance instead of launching a second app. It is gated on `ELECTRON_RENDERER_URL` (set by electron-vite only in dev) and binds to loopback only — packaged builds never open it. See `AGENTS.md` → "Agent Browser".
 
 ## Testing Strategy
 
