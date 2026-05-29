@@ -22,10 +22,11 @@ type ClaudeInstalledPluginsScan struct {
 
 // ClaudeInstalledPluginEntry is a single plugin→scope→version record from installed_plugins.json.
 type ClaudeInstalledPluginEntry struct {
-	PluginKey   string  // "pluginName@marketplaceName"
-	Scope       string  // "user" | "project" | "local"
-	ProjectPath string  // absolute path; set for scope "project" and "local", empty for "user"
-	Version     *string // nil when JSON null or field absent; "unknown" is a valid literal
+	PluginKey    string  // "pluginName@marketplaceName"
+	Scope        string  // "user" | "project" | "local"
+	ProjectPath  string  // absolute path; set for scope "project" and "local", empty for "user"
+	Version      *string // nil when JSON null or field absent; "unknown" is a valid literal
+	GitCommitSha *string // nil when absent; hex SHA40 when present
 }
 
 // ScanClaudeInstalledPluginsFile reads and parses ~/.claude/plugins/installed_plugins.json.
@@ -100,17 +101,19 @@ func ScanClaudeInstalledPluginsFile(filePath, allowedDir string) ClaudeInstalled
 		}
 		for _, scopeRaw := range scopes {
 			var obj struct {
-				Scope       string      `json:"scope"`
-				ProjectPath string      `json:"projectPath"` // present for "project" and "local" scopes
-				Version     interface{} `json:"version"`     // may be string, null, or absent
+				Scope        string      `json:"scope"`
+				ProjectPath  string      `json:"projectPath"`  // present for "project" and "local" scopes
+				Version      interface{} `json:"version"`      // may be string, null, or absent
+				GitCommitSha *string     `json:"gitCommitSha"` // hex SHA40 or absent
 			}
 			if err := json.Unmarshal(scopeRaw, &obj); err != nil {
 				continue
 			}
 			entry := ClaudeInstalledPluginEntry{
-				PluginKey:   key,
-				Scope:       obj.Scope,
-				ProjectPath: obj.ProjectPath,
+				PluginKey:    key,
+				Scope:        obj.Scope,
+				ProjectPath:  obj.ProjectPath,
+				GitCommitSha: obj.GitCommitSha,
 			}
 			// Version field: string → keep; null or absent → nil (E3a: JSON null treated as nil)
 			if s, ok := obj.Version.(string); ok && s != "" {
@@ -155,6 +158,23 @@ func BuildProjectVersionMap(scan ClaudeInstalledPluginsScan, projectPath string)
 		if (e.Scope == "project" || e.Scope == "local") && filepath.Clean(e.ProjectPath) == cleanProject {
 			if _, exists := m[e.PluginKey]; !exists {
 				m[e.PluginKey] = e.Version
+			}
+		}
+	}
+	return m
+}
+
+// BuildSHAMap returns a map of "pluginKey" → gitCommitSha for user-scope entries.
+// Used by UpdateCheckService to compare installed SHA against upstream.
+func BuildSHAMap(scan ClaudeInstalledPluginsScan) map[string]*string {
+	m := make(map[string]*string, len(scan.Entries))
+	if scan.Status != "ok" {
+		return m
+	}
+	for _, e := range scan.Entries {
+		if e.Scope == "user" {
+			if _, exists := m[e.PluginKey]; !exists {
+				m[e.PluginKey] = e.GitCommitSha
 			}
 		}
 	}
