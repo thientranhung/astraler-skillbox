@@ -603,6 +603,26 @@ UI cho phép user thao tác plugin state ở hai scope:
 Local layer (`.claude/settings.local.json`) chỉ được scan, không được Skillbox
 write ở Phase 1. User vẫn có thể chỉnh tay file local để override tạm thời.
 
+### Plugin Version Display (Phase 1)
+
+Khi scan user layer của Claude provider, Skillbox đọc thêm file
+`~/.claude/plugins/installed_plugins.json` (cùng thư mục gốc với settings.json).
+File này do Claude Code tự ghi khi cài plugin, và chứa `version` theo key
+`pluginName@marketplaceName` với scope `user`.
+
+- Version `"unknown"` là literal hợp lệ (Claude báo cáo khi không xác định).
+- JSON `null` hoặc field vắng mặt → version = NULL → UI hiển thị `—`.
+- File missing hoặc malformed → version tất cả entries = NULL; settings.json
+  scan không bị ảnh hưởng.
+- Codex và Antigravity CLI không có file tương đương → version luôn NULL ở
+  Phase 1.
+- Version được persist vào `provider_plugin_entries.version` (cột nullable,
+  migration 000021).
+
+Adapter (`ScanClaudeInstalledPluginsFile`) áp dụng cùng security bounds như
+`ScanClaudeSettingsFile`: path confinement dưới `allowedDir` (`~/.claude`),
+lstat symlink reject, 1 MiB size cap, tolerant JSON (unknown fields ignored).
+
 ### Scan Flow
 
 Một plugin scan operation:

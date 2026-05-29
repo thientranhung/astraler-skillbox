@@ -314,6 +314,40 @@ Provider warning examples:
 [warning] Unsupported provider detected. Install disabled.
 ```
 
+## Global Plugins
+
+Purpose: xem và toggle enable/disable plugin ở user (global) layer.
+
+Wireframe:
+
+```text
+Provider Plugins                                    [Scan Global]
+
+── Claude ──────────────────────────────────────────
+  Path: ~/.claude/settings.json   Status: ok   Last scan: 2026-05-29 15:02
+
+  Plugin              Marketplace              Version    Status    Action
+  claude-md-mgmt      claude-plugins-official  1.0.0      enabled   [Disable]
+  frontend-design     claude-plugins-official  unknown    enabled   [Disable]
+  my-plugin           custom                   —          disabled  [Enable]
+
+── Codex ────────────────────────────────────────────
+  Path: ~/.codex/config.toml   Status: ok
+
+  Plugin              Marketplace              Status    Action
+  github              openai-curated           enabled   [Disable]
+  (Version column hidden when all entries have no version)
+```
+
+Version column rules:
+
+- Version column appears only when at least one plugin in that provider section
+  has a non-null version. Column hidden for providers where version is
+  unavailable (Codex, Antigravity CLI in Phase 1).
+- `"unknown"` is a valid literal shown as-is; NULL or undefined → `—`.
+- Version is read from `~/.claude/plugins/installed_plugins.json` at scan time.
+  Persisted in `provider_plugin_entries.version`.
+
 ## Add Skill Flow
 
 Purpose: cài skill từ Skill Host Folder vào project.
