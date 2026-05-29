@@ -744,6 +744,20 @@ func (s *ProviderPluginService) scanGlobalInternal(ctx context.Context, defs []p
 		filePath := def.UserFilePath()
 		allowedDir := filepath.Dir(filePath)
 		scanResult := def.Scanner(filePath, allowedDir)
+
+		// For Claude: additionally scan installed_plugins.json for version metadata.
+		// The allowedDir is the Claude config root (e.g. ~/.claude), which also contains
+		// the plugins/ subdirectory — path confinement is satisfied.
+		var versionMap map[string]*string
+		if def.Provider.Key == "claude" {
+			installPath := filepath.Join(allowedDir, "plugins", "installed_plugins.json")
+			installScan := providers.ScanClaudeInstalledPluginsFile(installPath, allowedDir)
+			versionMap = providers.BuildVersionMap(installScan)
+			if len(installScan.Warnings) > 0 {
+				scanResult.Warnings = append(scanResult.Warnings, installScan.Warnings...)
+			}
+		}
+
 		scan := &domain.PluginLayerScan{
 			ProviderDefinitionID: def.Provider.ID,
 			SettingsLayer:        domain.PluginLayerUser,
@@ -753,12 +767,26 @@ func (s *ProviderPluginService) scanGlobalInternal(ctx context.Context, defs []p
 			Warnings:             sanitizeWarnings(scanResult.Warnings),
 		}
 		entries, mps := pluginScanToEntries(scanResult)
+		applyVersionMap(entries, versionMap)
 		if err := s.repo.CommitLayerScan(ctx, scan, entries, mps); err != nil {
 			return domain.NewDatabaseError("Could not commit global plugin scan", err.Error())
 		}
 		progress("scanning_user_layer", i+1, total, def.Provider.Key)
 	}
 	return nil
+}
+
+// applyVersionMap sets Version on each entry from the lookup map keyed by "pluginName@marketplaceName".
+func applyVersionMap(entries []domain.PluginEntry, versionMap map[string]*string) {
+	if len(versionMap) == 0 {
+		return
+	}
+	for i := range entries {
+		key := entries[i].PluginName + "@" + entries[i].MarketplaceName
+		if v, ok := versionMap[key]; ok {
+			entries[i].Version = v
+		}
+	}
 }
 
 func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project *domain.Project, defs []pluginProviderDef, progress operations.ProgressFn) error {

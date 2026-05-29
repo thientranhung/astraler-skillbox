@@ -35,9 +35,10 @@ type ppGlobalView struct {
 }
 
 type ppGlobalEntry struct {
-	PluginName      string `json:"pluginName"`
-	MarketplaceName string `json:"marketplaceName"`
-	Status          string `json:"status"` // enabled | disabled
+	PluginName      string  `json:"pluginName"`
+	MarketplaceName string  `json:"marketplaceName"`
+	Status          string  `json:"status"`           // enabled | disabled
+	Version         *string `json:"version,omitempty"` // nil → omitted; "unknown" is a valid literal
 }
 
 type ppProjectView struct {
@@ -127,6 +128,7 @@ func mapPPGlobalView(g domain.GlobalPluginView) ppGlobalView {
 			PluginName:      e.PluginName,
 			MarketplaceName: e.MarketplaceName,
 			Status:          string(e.Declaration),
+			Version:         e.Version,
 		})
 	}
 	for _, m := range g.Marketplaces {
