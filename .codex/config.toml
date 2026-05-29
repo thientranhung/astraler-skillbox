@@ -1,8 +1,10 @@
 [mcp_servers.stitch]
 url = "https://stitch.googleapis.com/mcp"
 
-[mcp_servers.stitch.http_headers]
-"X-Goog-Api-Key" = "AQ.Ab8RN6Io4G-KNnk8yBRSxDFnq0TuZ0Bns90EPeunjQhL5P0iSg"
+# API key đọc từ biến môi trường STITCH_API_KEY (không hardcode secret vào repo).
+# Set trong shell profile: export STITCH_API_KEY="<key>"
+[mcp_servers.stitch.env_http_headers]
+"X-Goog-Api-Key" = "STITCH_API_KEY"
 
 
 [plugins."stitch-build@stitch-skills"]
