@@ -12,17 +12,22 @@ vi.mock("../../features/provider-plugins/use-scan-provider-plugins-global.js", (
 vi.mock("../../features/provider-plugins/use-set-provider-plugin-enabled.js", () => ({
   useSetProviderPluginEnabled: vi.fn(),
 }));
+vi.mock("../../features/update-check/use-run-update-check.js", () => ({
+  useRunUpdateCheck: vi.fn(),
+}));
 
 import { PluginsScreen } from "../plugins-screen.js";
 import { useProviderPluginList } from "../../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsGlobal } from "../../features/provider-plugins/use-scan-provider-plugins-global.js";
 import { useSetProviderPluginEnabled } from "../../features/provider-plugins/use-set-provider-plugin-enabled.js";
+import { useRunUpdateCheck } from "../../features/update-check/use-run-update-check.js";
 import { clearAutoScanRegistry } from "../../features/scan/auto-scan-constants.js";
 import type { PPGlobalView } from "@contracts/index.js";
 
 const mockUseList = useProviderPluginList as ReturnType<typeof vi.fn>;
 const mockUseScan = useScanProviderPluginsGlobal as ReturnType<typeof vi.fn>;
 const mockUseSetEnabled = useSetProviderPluginEnabled as ReturnType<typeof vi.fn>;
+const mockUseRunUpdateCheck = useRunUpdateCheck as ReturnType<typeof vi.fn>;
 
 function makeGlobal(overrides: Partial<PPGlobalView> = {}): PPGlobalView {
   return {
@@ -43,6 +48,7 @@ beforeEach(() => {
   clearAutoScanRegistry();
   mockUseScan.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
   mockUseSetEnabled.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
+  mockUseRunUpdateCheck.mockReturnValue({ run: vi.fn(), isRunning: false, isRateLimited: () => false, status: "idle", results: [] });
 });
 
 afterEach(() => cleanup());

@@ -303,6 +303,16 @@ export function SettingsScreen(): React.JSX.Element {
       </div>
 
       <div>
+        <h3 className="text-sm font-semibold text-zinc-800">Network</h3>
+        <p className="mt-0.5 text-xs text-zinc-500">
+          Skillbox is local-first. Outbound network is OFF by default (ADR-0001). The only opt-in network feature is plugin update checks against the user's already-installed plugin source hosts.
+        </p>
+        <div className="mt-3 rounded border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs text-zinc-500">
+          Plugin update checks: <span className="font-mono font-semibold text-zinc-700">disabled by default</span>. Enable via <span className="font-mono">network_settings</span> (Settings → Network toggle coming in Phase 2). No analytics, no Skillbox-controlled servers.
+        </div>
+      </div>
+
+      <div>
         <h3 className="text-sm font-semibold text-zinc-800">Providers</h3>
         <p className="mt-0.5 text-xs text-zinc-500">
           Providers are activated by folder presence on disk. Overrides replace the built-in path candidates. Reset a slot to return to built-in defaults.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/astraler/skillbox/core-go/internal/app"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
+	"github.com/astraler/skillbox/core-go/internal/network"
 	"github.com/astraler/skillbox/core-go/internal/operations"
 	"github.com/astraler/skillbox/core-go/internal/providers"
 	"github.com/astraler/skillbox/core-go/internal/repositories"
@@ -90,7 +91,15 @@ func main() {
 	providerPluginSvc := services.NewProviderPluginService(providerPluginRepo, pdRepo, projectRepo, providerRegistrySvc, runner)
 	projectSvc.WithPluginDeps(providerPluginSvc, providerPluginSvc)
 
-	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc, providerPluginSvc)
+	networkSettingsRepo := repositories.NewNetworkSettingsRepo(db)
+	updateCheckCacheRepo := repositories.NewUpdateCheckCacheRepo(db)
+	// Boot-time: client is noop until user opts in (default OFF per ADR-0001).
+	// GetCached settings are read at call time in the service, so this is safe.
+	updateCheckClient := network.NoopClient{}
+	claudeConfigDir := services.ClaudeConfigDirFromHomeDir()
+	updateCheckSvc := services.NewUpdateCheckService(networkSettingsRepo, updateCheckCacheRepo, updateCheckClient, claudeConfigDir)
+
+	a := app.New(hostSvc, libSvc, settingsSvc, runner, projectSvc, dashboardSvc, globalSvc, providerRegistrySvc, providerPluginSvc, updateCheckSvc)
 
 	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
