@@ -287,6 +287,7 @@ Command:
   updateSkill(skillId)
   providerPlugin.setEnabled(input)
   providerPlugin.removeOverride(input)
+  updateCheck.run()
 ```
 
 Query không nên tạo side effect. Command có thể tạo `operations` record, ghi DB,

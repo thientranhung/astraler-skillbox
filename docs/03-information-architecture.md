@@ -229,6 +229,10 @@ Hiển thị:
 - Mode: symlink, rsync/copy, direct.
 - Source skill trong host nếu map được.
 - Update/sync status nếu là rsync/copy.
+- Plugin tab: plugin version column — Claude lấy từ `installed_plugins.json`
+  (user + project scope); Codex lấy từ cache dir `~/.codex/plugins/cache/`
+  (cache là global, apply cho cả user layer và project layer); Antigravity CLI
+  không có nguồn version → hiển thị `—`.
 
 Action:
 
