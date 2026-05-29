@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { methods } from "../../lib/core-client/methods.js";
 import type { AppCheckUpdateResponse } from "@contracts/index.js";
@@ -7,7 +8,6 @@ export type CheckAppUpdateStatus =
   | "checking"
   | "up-to-date"
   | "available"
-  | "disabled"
   | "error";
 
 export interface CheckAppUpdateState {
@@ -22,7 +22,6 @@ export interface CheckAppUpdateState {
 
 function deriveStatus(data: AppCheckUpdateResponse | undefined): CheckAppUpdateStatus {
   if (!data) return "idle";
-  if (data.error === "network_disabled") return "disabled";
   if (data.error != null) return "error";
   return data.updateAvailable ? "available" : "up-to-date";
 }
@@ -31,6 +30,12 @@ export function useCheckAppUpdate(): CheckAppUpdateState {
   const mutation = useMutation({
     mutationFn: () => methods.checkAppUpdate(),
   });
+
+  // Auto-check when About screen mounts — no opt-in needed.
+  useEffect(() => {
+    mutation.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const data = mutation.data;
   const status: CheckAppUpdateStatus = mutation.isPending
