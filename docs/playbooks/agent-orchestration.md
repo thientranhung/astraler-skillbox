@@ -143,7 +143,9 @@ while [ $iters -lt $max ]; do
     exit_reason=needs_attention; break
   fi
   # busy khi còn spinner; idle khi mất spinner ≥40s (8 vòng)
-  if echo "$out" | grep -qE '… \([0-9]+[smh]|esc to interrupt|✢|✻|◎ /goal active|thinking'; then stable=0; else stable=$((stable+1)); fi
+  # Pattern PHẢI bắt cả format elapsed "Verb… (3m 0s · ↓ 1.2k tokens)" — dùng "… *\(" + token counters.
+  # KHÔNG dùng glyph ✻/✶ làm tín hiệu busy: chúng PERSIST trên dòng summary đã xong ("✻ Churned for 4m") → false-busy treo loop.
+  if echo "$out" | grep -qE '… *\([0-9]+[smh]|esc to interrupt|◎ /goal active|↓ [0-9]|↑ [0-9]|· [0-9.]+k? tokens'; then stable=0; else stable=$((stable+1)); fi
   if [ $stable -ge 8 ]; then exit_reason=idle; break; fi
   iters=$((iters+1)); sleep 5
 done
