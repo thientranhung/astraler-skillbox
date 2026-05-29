@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Library, Globe, FolderGit2, Puzzle, Settings } from "lucide-react";
+import { LayoutDashboard, Library, Globe, FolderGit2, Puzzle, Settings, Info } from "lucide-react";
 
 export const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -9,6 +9,7 @@ export const NAV_ITEMS = [
   { to: "/plugins", label: "Global Plugins", icon: Puzzle },
   { to: "/projects", label: "Projects", icon: FolderGit2 },
   { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/about", label: "About", icon: Info },
 ] as const;
 
 export function Sidebar(): React.JSX.Element {
