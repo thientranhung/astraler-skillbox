@@ -80,6 +80,7 @@ function GlobalPluginView({
   onTogglePlugin: (providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean) => void;
 }): React.JSX.Element {
   const canToggle = JSON_WRITE_PROVIDERS.has(g.providerKey) && g.userLayerStatus === "ok";
+  const hasVersion = g.plugins.some((p) => p.version != null);
 
   function handleToggle(pluginName: string, marketplaceName: string, enabled: boolean) {
     onTogglePlugin(g.providerKey, pluginName, marketplaceName, enabled);
@@ -138,7 +139,7 @@ function GlobalPluginView({
                 <tr>
                   <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Plugin</th>
                   <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Marketplace</th>
-                  {g.plugins.some((p) => p.version != null) && (
+                  {hasVersion && (
                     <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Version</th>
                   )}
                   <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Status</th>
@@ -152,7 +153,7 @@ function GlobalPluginView({
                   <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
                     <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{p.pluginName}</td>
                     <td className="px-3 py-1.5 text-xs text-zinc-500">{p.marketplaceName || "—"}</td>
-                    {g.plugins.some((q) => q.version != null) && (
+                    {hasVersion && (
                       <td className="px-3 py-1.5 text-xs text-zinc-500">
                         <span className="max-w-[8rem] truncate block" title={p.version ?? undefined}>
                           {p.version ?? "—"}
