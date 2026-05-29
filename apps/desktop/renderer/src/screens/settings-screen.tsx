@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FolderOpen, Pencil, RotateCcw } from "lucide-react";
 import { useAppSettings } from "../features/app-settings/use-app-settings.js";
+import { useResetAll } from "../features/app-settings/use-reset-all.js";
 import { useChooseHost } from "../features/skill-host/use-choose-host.js";
 import { useProviderList } from "../features/providers/use-provider-list.js";
 import { useResetProviderPaths } from "../features/providers/use-reset-provider-paths.js";
@@ -222,6 +223,118 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
   );
 }
 
+type ResetStep = "idle" | "confirm1" | "confirm2" | "resetting";
+
+function DangerZone(): React.JSX.Element {
+  const [step, setStep] = useState<ResetStep>("idle");
+  const [confirmInput, setConfirmInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const resetMutation = useResetAll();
+
+  function openConfirm1(): void {
+    setStep("confirm1");
+    setConfirmInput("");
+  }
+
+  function toStep2(): void {
+    setStep("confirm2");
+    setConfirmInput("");
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
+  function cancel(): void {
+    setStep("idle");
+    setConfirmInput("");
+  }
+
+  function handleReset(): void {
+    if (confirmInput !== "RESET") return;
+    setStep("resetting");
+    resetMutation.mutate(undefined, {
+      onError: () => setStep("confirm2"),
+    });
+  }
+
+  return (
+    <div className="rounded border border-red-200 bg-red-50 p-4">
+      <h3 className="text-sm font-semibold text-red-700">Danger Zone</h3>
+      <p className="mt-1 text-xs text-red-600">
+        Xóa toàn bộ dữ liệu Skillbox (projects, skills, settings). Ứng dụng sẽ
+        khởi động lại. Hành động này không thể hoàn tác.
+      </p>
+
+      {step === "idle" && (
+        <button
+          onClick={openConfirm1}
+          className="mt-3 rounded border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+        >
+          Reset All Data
+        </button>
+      )}
+
+      {step === "confirm1" && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-medium text-red-700">
+            Xóa toàn bộ dữ liệu? Hành động này không thể hoàn tác.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={cancel}
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={toStep2}
+              className="rounded border border-red-400 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+            >
+              Tiếp tục
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(step === "confirm2" || step === "resetting") && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-medium text-red-700">
+            Gõ <span className="font-mono font-bold">RESET</span> để xác nhận.
+          </p>
+          <input
+            ref={inputRef}
+            type="text"
+            value={confirmInput}
+            onChange={(e) => setConfirmInput(e.target.value)}
+            placeholder="RESET"
+            disabled={step === "resetting"}
+            className="w-40 rounded border border-zinc-300 px-2 py-1 text-xs font-mono disabled:opacity-50"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={cancel}
+              disabled={step === "resetting"}
+              className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={confirmInput !== "RESET" || step === "resetting"}
+              className="rounded border border-red-400 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {step === "resetting" ? "Đang xóa…" : "Xác nhận Reset"}
+            </button>
+          </div>
+          {resetMutation.isError && (
+            <p className="text-xs text-red-600">
+              Lỗi: {String(resetMutation.error)}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SettingsScreen(): React.JSX.Element {
   const navigate = useNavigate();
   const { data: settings, isPending, isError, error } = useAppSettings();
@@ -346,6 +459,8 @@ export function SettingsScreen(): React.JSX.Element {
           </table>
         </div>
       </div>
+
+      <DangerZone />
     </div>
   );
 }
