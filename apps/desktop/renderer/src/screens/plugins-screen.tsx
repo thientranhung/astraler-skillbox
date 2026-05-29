@@ -1,12 +1,13 @@
 import React, { useRef, useEffect } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ArrowUpCircle } from "lucide-react";
 import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsGlobal } from "../features/provider-plugins/use-scan-provider-plugins-global.js";
 import { useSetProviderPluginEnabled } from "../features/provider-plugins/use-set-provider-plugin-enabled.js";
+import { useRunUpdateCheck } from "../features/update-check/use-run-update-check.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
-import type { PPGlobalView, PPGlobalEntry } from "@contracts/index.js";
+import type { PPGlobalView, PPGlobalEntry, UpdateCheckPluginResult } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
 const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli", "codex"]);
@@ -74,10 +75,12 @@ function GlobalPluginView({
   global: g,
   isOperationInFlight,
   onTogglePlugin,
+  updateMap,
 }: {
   global: PPGlobalView;
   isOperationInFlight: boolean;
   onTogglePlugin: (providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean) => void;
+  updateMap: Map<string, UpdateCheckPluginResult>;
 }): React.JSX.Element {
   const canToggle = JSON_WRITE_PROVIDERS.has(g.providerKey) && g.userLayerStatus === "ok";
   const hasVersion = g.plugins.some((p) => p.version != null);
@@ -149,9 +152,21 @@ function GlobalPluginView({
                 </tr>
               </thead>
               <tbody>
-                {g.plugins.map((p, i) => (
+                {g.plugins.map((p, i) => {
+                  const updateResult = updateMap.get(`${p.pluginName}@${p.marketplaceName}`);
+                  const hasUpdate = updateResult?.updateAvailable === true;
+                  return (
                   <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                    <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{p.pluginName}</td>
+                    <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">
+                      <span className="flex items-center gap-1.5">
+                        {p.pluginName}
+                        {hasUpdate && (
+                          <span className="rounded bg-blue-100 px-1 py-0.5 text-[10px] font-semibold text-blue-700" title="Update available">
+                            ↑ update
+                          </span>
+                        )}
+                      </span>
+                    </td>
                     <td className="px-3 py-1.5 text-xs text-zinc-500">{p.marketplaceName || "—"}</td>
                     {hasVersion && (
                       <td className="px-3 py-1.5 text-xs text-zinc-500">
@@ -176,7 +191,8 @@ function GlobalPluginView({
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -195,8 +211,18 @@ export function PluginsScreen(): React.JSX.Element {
   const { data, isPending, isError, error } = useProviderPluginList();
   const scanMutation = useScanProviderPluginsGlobal();
   const setEnabledMutation = useSetProviderPluginEnabled();
+  const updateCheck = useRunUpdateCheck();
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
+
+  // Build updateAvailable lookup from last check results.
+  const updateMap = React.useMemo(() => {
+    const m = new Map<string, UpdateCheckPluginResult>();
+    for (const r of updateCheck.results) {
+      m.set(`${r.pluginName}@${r.marketplaceName}`, r);
+    }
+    return m;
+  }, [updateCheck.results]);
 
   const autoScannedRef = useRef(false);
   const oldestScannedAt = (() => {
@@ -234,14 +260,25 @@ export function PluginsScreen(): React.JSX.Element {
             Read-only view of provider plugin settings. Scan to refresh.
           </p>
         </div>
-        <button
-          onClick={() => scanMutation.mutate()}
-          disabled={isScanning}
-          className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={isScanning ? "animate-spin" : ""} />
-          {isScanning ? "Scanning…" : "Scan Global"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => updateCheck.run()}
+            disabled={updateCheck.isRunning || updateCheck.isRateLimited()}
+            title={updateCheck.isRateLimited() ? "Please wait before checking again" : "Check for plugin updates"}
+            className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ArrowUpCircle size={13} className={updateCheck.isRunning ? "animate-pulse" : ""} />
+            {updateCheck.isRunning ? "Checking…" : "Check Updates"}
+          </button>
+          <button
+            onClick={() => scanMutation.mutate()}
+            disabled={isScanning}
+            className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={isScanning ? "animate-spin" : ""} />
+            {isScanning ? "Scanning…" : "Scan Global"}
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -273,6 +310,7 @@ export function PluginsScreen(): React.JSX.Element {
                 global={global}
                 isOperationInFlight={isScanning || isTogglingPlugin}
                 onTogglePlugin={handleTogglePlugin}
+                updateMap={updateMap}
               />
             ))}
           </div>
