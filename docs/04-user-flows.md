@@ -313,3 +313,50 @@ Kết quả:
 - User thấy trạng thái tổng quan ngay khi mở app.
 - Missing Skill Host Folder, global provider location, hoặc project path được
   báo rõ trong UI.
+
+## 14. Check for App Updates
+
+Mục tiêu: user biết có bản mới của Skillbox để download.
+
+Flow:
+
+```text
+User mở About screen (sidebar → About)
+  -> Thấy version hiện tại của app
+  -> Bấm "Check for Updates"
+  -> Nếu network.update_check_enabled = false: UI hiển thị "Enable in Settings → Network"
+  -> Nếu enabled: app gọi GitHub Releases API (api.github.com)
+     -> So sánh latest tag với version hiện tại
+     -> Nếu có bản mới: hiển thị link download tới GitHub Release
+     -> Nếu up-to-date: hiển thị "You're up to date"
+     -> Nếu lỗi mạng: hiển thị thông báo lỗi, không block UI
+```
+
+Kết quả:
+
+- User biết version đang chạy và có thể kiểm tra bản mới khi cần.
+- Tính năng là opt-in (mặc định tắt, ADR-0001) — app không tự gọi mạng khi khởi động.
+
+## 15. Reset All Data
+
+Mục tiêu: user muốn xóa toàn bộ data và bắt đầu lại từ đầu.
+
+Flow:
+
+```text
+User vào Settings → Danger Zone
+  -> Bấm "Reset All Data" (button đỏ)
+  -> Dialog confirm bước 1: "Xóa toàn bộ dữ liệu? Không thể hoàn tác."
+  -> User gõ "RESET" vào input để unlock bước 2
+  -> Bấm Xác nhận
+  -> Go core chạy TRUNCATE tất cả bảng user data trong transaction
+  -> Reset app_settings + network_settings về defaults
+  -> UI reload về trạng thái như lần đầu cài
+```
+
+Kết quả:
+
+- Toàn bộ projects, skills, scan history, plugin data bị xóa.
+- Schema DB giữ nguyên (migrations không chạy lại), app không restart.
+- Settings (install mode, network preferences) reset về mặc định.
+- Confirm 2 bước tránh fat-finger.
