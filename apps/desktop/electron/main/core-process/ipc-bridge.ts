@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog, shell } from "electron";
+import { app, ipcMain, BrowserWindow, dialog, shell } from "electron";
 import { execFile } from "child_process";
 import { getGoClient } from "./manager.js";
 import { ALLOWLIST } from "./method-allowlist.js";
@@ -84,7 +84,15 @@ export function registerIpcBridge(win: BrowserWindow): void {
       return { opened: true };
     }
 
-    return getGoClient().call(method, params);
+    const result = await getGoClient().call(method, params);
+
+    // After Go deletes the DB and returns restarting:true, trigger a clean relaunch.
+    if (method === "app.resetAll" && (result as { restarting?: boolean })?.restarting === true) {
+      app.relaunch();
+      app.exit(0);
+    }
+
+    return result;
   });
 
   // Unsubscribe previous window's notification forwarder before subscribing
