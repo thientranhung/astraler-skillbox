@@ -62,6 +62,7 @@ type PluginEntry struct {
 	PluginName      string
 	MarketplaceName string
 	Declaration     PluginDeclaration
+	Version         *string // nil when unknown; "unknown" is a valid literal
 }
 
 // PluginMarketplace is a declared extra marketplace within a layer scan.

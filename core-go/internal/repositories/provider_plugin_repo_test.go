@@ -28,8 +28,8 @@ func TestMigration000012_DatabaseVersion(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&v); err != nil {
 		t.Fatalf("database_version query: %v", err)
 	}
-	if v != 20 {
-		t.Errorf("database_version: got %d want 20", v)
+	if v != 21 {
+		t.Errorf("database_version: got %d want 21", v)
 	}
 }
 
@@ -39,8 +39,8 @@ func TestMigration000013_ScanWarningsColumn(t *testing.T) {
 	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&v); err != nil {
 		t.Fatalf("database_version query: %v", err)
 	}
-	if v != 20 {
-		t.Errorf("database_version: got %d want 20", v)
+	if v != 21 {
+		t.Errorf("database_version: got %d want 21", v)
 	}
 
 	// Column must exist with default value of '[]'
@@ -378,3 +378,82 @@ func TestProviderPluginRepo_CommitLayerScan_DeleteReplace(t *testing.T) {
 	}
 }
 
+
+func TestMigration000021_VersionColumn(t *testing.T) {
+	db := NewTestDB(t)
+	// Verify the version column was added by migration 000021
+	var v int
+	if err := db.QueryRow(`SELECT database_version FROM app_settings WHERE id=1`).Scan(&v); err != nil {
+		t.Fatalf("database_version query: %v", err)
+	}
+	if v != 21 {
+		t.Errorf("database_version: got %d want 21", v)
+	}
+
+	// Column must exist and accept NULL
+	var provID int64
+	if err := db.QueryRow(`SELECT id FROM provider_definitions WHERE key='claude'`).Scan(&provID); err != nil {
+		t.Fatalf("claude not found: %v", err)
+	}
+	res, err := db.Exec(`INSERT INTO provider_plugin_layer_scans (provider_definition_id, project_id, settings_layer, scan_status, settings_file_path) VALUES (?, NULL, 'user', 'ok', '/tmp/f')`, provID)
+	if err != nil {
+		t.Fatalf("insert layer scan: %v", err)
+	}
+	scanID, _ := res.LastInsertId()
+
+	_, err = db.Exec(`INSERT INTO provider_plugin_entries (layer_scan_id, plugin_name, marketplace_name, declaration, version) VALUES (?, 'plug', 'mkt', 'enabled', NULL)`, scanID)
+	if err != nil {
+		t.Fatalf("insert entry with NULL version: %v", err)
+	}
+	_, err = db.Exec(`INSERT INTO provider_plugin_entries (layer_scan_id, plugin_name, marketplace_name, declaration, version) VALUES (?, 'plug2', 'mkt', 'enabled', '1.0.0')`, scanID)
+	if err != nil {
+		t.Fatalf("insert entry with version: %v", err)
+	}
+}
+
+func TestProviderPluginRepo_VersionRoundTrip(t *testing.T) {
+	db := NewTestDB(t)
+	r := NewProviderPluginRepo(db)
+	ctx := context.Background()
+
+	var provID int64
+	if err := db.QueryRow(`SELECT id FROM provider_definitions WHERE key='claude'`).Scan(&provID); err != nil {
+		t.Fatalf("claude not found: %v", err)
+	}
+
+	scan := &domain.PluginLayerScan{
+		ProviderDefinitionID: provID,
+		SettingsLayer:        domain.PluginLayerUser,
+		ScanStatus:           domain.PluginLayerScanOK,
+		SettingsFilePath:     "/tmp/s.json",
+		LastScannedAt:        time.Now().UTC(),
+	}
+	v100 := "1.0.0"
+	vUnk := "unknown"
+	entries := []domain.PluginEntry{
+		{PluginName: "has-version", MarketplaceName: "mkt", Declaration: domain.PluginDeclarationEnabled, Version: &v100},
+		{PluginName: "unknown-version", MarketplaceName: "mkt", Declaration: domain.PluginDeclarationEnabled, Version: &vUnk},
+		{PluginName: "nil-version", MarketplaceName: "mkt", Declaration: domain.PluginDeclarationEnabled, Version: nil},
+	}
+	if err := r.CommitLayerScan(ctx, scan, entries, nil); err != nil {
+		t.Fatalf("CommitLayerScan: %v", err)
+	}
+
+	scans, _ := r.ListLayerScansForProvider(ctx, provID)
+	got, err := r.ListEntriesForScan(ctx, scans[0].ID)
+	if err != nil {
+		t.Fatalf("ListEntriesForScan: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("entries len = %d, want 3", len(got))
+	}
+	if got[0].Version == nil || *got[0].Version != "1.0.0" {
+		t.Errorf("has-version: got %v, want 1.0.0", got[0].Version)
+	}
+	if got[1].Version == nil || *got[1].Version != "unknown" {
+		t.Errorf("unknown-version: got %v, want 'unknown'", got[1].Version)
+	}
+	if got[2].Version != nil {
+		t.Errorf("nil-version: got %v, want nil", got[2].Version)
+	}
+}
