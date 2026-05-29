@@ -36,13 +36,12 @@ export function GlobalSkillsScreen(): React.JSX.Element {
   const locations = data?.locations ?? [];
 
   const autoScannedRef = useRef(false);
-  const oldestScannedAt = data?.locations.length
-    ? data.locations.reduce<string | null>((oldest, loc) => {
-        if (loc.lastScannedAt == null) return null;
-        if (oldest == null) return loc.lastScannedAt;
-        return loc.lastScannedAt < oldest ? loc.lastScannedAt : oldest;
-      }, data.locations[0].lastScannedAt)
-    : null;
+  const oldestScannedAt = (() => {
+    const locs = data?.locations;
+    if (!locs?.length) return null;
+    if (locs.some((l) => l.lastScannedAt == null)) return null;
+    return locs.reduce<string>((oldest, l) => (l.lastScannedAt! < oldest ? l.lastScannedAt! : oldest), locs[0].lastScannedAt!);
+  })();
 
   useEffect(() => {
     if (data == null) return;
