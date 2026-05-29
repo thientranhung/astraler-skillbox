@@ -617,6 +617,16 @@ UI nên:
 - Nói rõ trạng thái hiện tại.
 - Đưa một primary action tiếp theo.
 
+### Auto-scan on mount
+
+Project Detail, Global Skills, và Plugins screens tự động trigger scan khi mount nếu data stale:
+
+- **Trigger condition**: `lastScannedAt == null` (chưa bao giờ scan) HOẶC `Date.now() - lastScannedAt > 10 phút`.
+- **Anti double-trigger**: 3 guards — hook-level `isPending/operationId` check; session-level `sessionAutoScanRegistry` (Set theo `"auto-scan:<target>:<id>"`); component-level `useRef` flag.
+- **Toast policy**: auto-scan dùng `silent: true` → không có loading/success toast. Error toast vẫn hiển thị. Manual scan dùng `silent: false` (default) → đầy đủ toast.
+- **Manual Scan button**: luôn giữ, không bị block bởi auto-scan.
+- **Projects list**: KHÔNG auto-scan (nhiều projects, tránh bão operations).
+
 ### Loading/scanning state
 
 Áp dụng cho:
