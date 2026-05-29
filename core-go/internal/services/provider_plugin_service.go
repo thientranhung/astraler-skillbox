@@ -745,16 +745,24 @@ func (s *ProviderPluginService) scanGlobalInternal(ctx context.Context, defs []p
 		allowedDir := filepath.Dir(filePath)
 		scanResult := def.Scanner(filePath, allowedDir)
 
-		// For Claude: additionally scan installed_plugins.json for version metadata.
-		// The allowedDir is the Claude config root (e.g. ~/.claude), which also contains
-		// the plugins/ subdirectory — path confinement is satisfied.
+		// Resolve version metadata from provider-specific supplementary sources.
 		var versionMap map[string]*string
-		if def.Provider.Key == "claude" {
+		switch def.Provider.Key {
+		case "claude":
+			// ~/.claude/plugins/installed_plugins.json — written by Claude Code on install.
 			installPath := filepath.Join(allowedDir, "plugins", "installed_plugins.json")
 			installScan := providers.ScanClaudeInstalledPluginsFile(installPath, allowedDir)
 			versionMap = providers.BuildVersionMap(installScan)
 			if len(installScan.Warnings) > 0 {
 				scanResult.Warnings = append(scanResult.Warnings, installScan.Warnings...)
+			}
+		case "codex":
+			// ~/.codex/plugins/cache/<marketplace>/<plugin>/<version-or-sha>/ — cache on disk.
+			cacheDir := filepath.Join(allowedDir, "plugins", "cache")
+			cacheScan := providers.ScanCodexCacheDir(cacheDir, allowedDir)
+			versionMap = providers.BuildCodexVersionMap(cacheScan)
+			if len(cacheScan.Warnings) > 0 {
+				scanResult.Warnings = append(scanResult.Warnings, cacheScan.Warnings...)
 			}
 		}
 
