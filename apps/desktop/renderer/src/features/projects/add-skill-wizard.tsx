@@ -14,8 +14,12 @@ interface AddSkillWizardProps {
   onClose: () => void;
 }
 
+// broken_symlink is kept here: Go install_skill uses LstatExists (os.Lstat) which sees
+// broken symlinks as existing paths and returns conflict_error — user must remove manually.
 const ACTIVE_DISABLE_STATUSES = ['current', 'old_host', 'external_symlink', 'broken_symlink'] as const;
 
+// TODO: keep in sync with install.skill contract providerKey enum.
+// When Phase 2 adds a new install target, update here and the contract.
 const INSTALLABLE_PROVIDER_KEYS = new Set<string>(['generic_agents', 'claude']);
 
 function buildInstalledMap(entries: ProjectGetEntry[]): Map<string, Set<number>> {
@@ -244,7 +248,7 @@ export function AddSkillWizard({
         )}
         {/* Error row */}
         {installSkill.isError && (
-          <p className="mb-2 text-sm text-red-600">
+          <p className="mb-2 text-xs text-red-600">
             {installSkill.error instanceof Error
               ? installSkill.error.message
               : String(installSkill.error)}
