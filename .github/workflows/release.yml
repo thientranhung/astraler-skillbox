@@ -298,9 +298,11 @@ jobs:
           if [ -z "$NOTES" ]; then
             NOTES="Release ${{ github.ref_name }}"
           fi
+          # Use --notes-file to avoid shell escaping issues with special chars in changelog
+          echo "$NOTES" > /tmp/release-notes.md
           gh release create "${{ github.ref_name }}" \
             --title "Astraler Skillbox ${{ github.ref_name }}" \
-            --notes "$NOTES"
+            --notes-file /tmp/release-notes.md
 
       - name: Upload release assets
         env:
