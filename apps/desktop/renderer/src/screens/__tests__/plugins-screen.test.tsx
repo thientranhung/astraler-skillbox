@@ -17,6 +17,7 @@ import { PluginsScreen } from "../plugins-screen.js";
 import { useProviderPluginList } from "../../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsGlobal } from "../../features/provider-plugins/use-scan-provider-plugins-global.js";
 import { useSetProviderPluginEnabled } from "../../features/provider-plugins/use-set-provider-plugin-enabled.js";
+import { clearAutoScanRegistry } from "../../features/scan/auto-scan-constants.js";
 import type { PPGlobalView } from "@contracts/index.js";
 
 const mockUseList = useProviderPluginList as ReturnType<typeof vi.fn>;
@@ -39,6 +40,7 @@ function makeGlobal(overrides: Partial<PPGlobalView> = {}): PPGlobalView {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearAutoScanRegistry();
   mockUseScan.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
   mockUseSetEnabled.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
 });
@@ -100,15 +102,15 @@ describe("PluginsScreen", () => {
     expect(screen.getByText("npm")).toBeTruthy();
   });
 
-  it("shows marketplaces when present", () => {
+  it("does not show Marketplaces section (removed in UI polish batch)", () => {
     const global = makeGlobal({
       userLayerStatus: "ok",
       marketplaces: [{ marketplaceName: "my-marketplace", sourceType: "npm", sourceSummary: "registry.npmjs.org" }],
     });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
     render(<PluginsScreen />);
-    expect(screen.getByText("my-marketplace")).toBeTruthy();
-    expect(screen.getByText("registry.npmjs.org")).toBeTruthy();
+    expect(screen.queryByText("my-marketplace")).toBeNull();
+    expect(screen.queryByText("Marketplaces")).toBeNull();
   });
 
   it("shows scan notes for ok status with warnings", () => {

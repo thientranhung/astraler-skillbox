@@ -23,27 +23,32 @@ export function useScanGlobal() {
   }, []);
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      // Subscribe to ALL progress events BEFORE the RPC call so events emitted
-      // during the round-trip are captured in the buffer rather than dropped.
+    mutationFn: async (args: { silent?: boolean } | void) => {
+      const silent = (args as { silent?: boolean } | undefined)?.silent ?? false;
       const buffered: OperationProgressNotification[] = [];
       const tempUnsub = subscribeAllProgress((p) => buffered.push(p));
       try {
         const result = await methods.scanGlobal();
-        return { operationId: result.operationId, buffered };
+        return { operationId: result.operationId, buffered, silent };
       } finally {
         tempUnsub();
       }
     },
 
-    onSuccess: ({ operationId: opId, buffered }) => {
+    onSuccess: ({ operationId: opId, buffered, silent }) => {
       const terminalInBuffer = [...buffered]
         .reverse()
         .find((e) => e.operationId === opId && isTerminal(e.status));
 
       if (terminalInBuffer != null) {
-        if (terminalInBuffer.status === "success") {
-          toast.success("Global skills scanned");
+        if (!silent) {
+          if (terminalInBuffer.status === "success") {
+            toast.success("Global skills scanned");
+          } else if (terminalInBuffer.status === "failed") {
+            toast.error(
+              `Global scan failed${terminalInBuffer.message ? `: ${terminalInBuffer.message}` : ""}`,
+            );
+          }
         } else if (terminalInBuffer.status === "failed") {
           toast.error(
             `Global scan failed${terminalInBuffer.message ? `: ${terminalInBuffer.message}` : ""}`,
@@ -53,22 +58,28 @@ export function useScanGlobal() {
         return;
       }
 
-      const toastId = toast.loading("Scanning global skills…");
+      const toastId = silent ? undefined : toast.loading("Scanning global skills…");
 
       const unsub = subscribeOperationProgress(opId, (event) => {
-        if (event.status === "success") {
-          toast.success("Global skills scanned", { id: toastId });
+        if (!silent) {
+          if (event.status === "success") {
+            toast.success("Global skills scanned", { id: toastId });
+          } else if (event.status === "failed") {
+            toast.error(
+              `Global scan failed${event.message ? `: ${event.message}` : ""}`,
+              { id: toastId },
+            );
+          } else if (event.status === "cancelled") {
+            if (toastId != null) toast.dismiss(toastId);
+          } else {
+            toast.loading(
+              event.message ? `Scanning: ${event.message}` : "Scanning global skills…",
+              { id: toastId },
+            );
+          }
         } else if (event.status === "failed") {
           toast.error(
             `Global scan failed${event.message ? `: ${event.message}` : ""}`,
-            { id: toastId },
-          );
-        } else if (event.status === "cancelled") {
-          toast.dismiss(toastId);
-        } else {
-          toast.loading(
-            event.message ? `Scanning: ${event.message}` : "Scanning global skills…",
-            { id: toastId },
           );
         }
 

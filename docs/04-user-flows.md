@@ -55,7 +55,8 @@ Flow:
 
 ```text
 User mở Project Detail
-  -> User chọn Scan hoặc Rescan
+  -> Skillbox kiểm tra lastScannedAt: nếu null hoặc > 10 phút -> auto-scan silent (không toast)
+  -> User chọn Scan hoặc Rescan (manual, luôn có toast)
   -> Skillbox đọc project folder
   -> Skillbox phát hiện provider folders
   -> Skillbox đọc skill entries trong từng provider
@@ -83,7 +84,8 @@ Flow:
 
 ```text
 User mở Global Skills
-  -> User chọn Scan Global
+  -> Skillbox kiểm tra locations[].lastScannedAt: nếu bất kỳ null hoặc oldest > 10 phút -> auto-scan silent
+  -> User chọn Scan Global (manual, có toast)
   -> Skillbox đọc global provider locations đã biết/cấu hình
   -> Skillbox phát hiện global skills/entries
   -> Skillbox phân loại mode/status

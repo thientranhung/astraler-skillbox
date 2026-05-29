@@ -18,7 +18,7 @@ export function RemoveSkillDialog({
   onCancel,
 }: RemoveSkillDialogProps): React.JSX.Element {
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div className="w-full max-w-lg rounded-lg border border-zinc-200 bg-white p-5 shadow-xl">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Remove skill from project</h2>
 

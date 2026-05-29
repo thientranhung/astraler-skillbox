@@ -42,6 +42,7 @@ import { useParams, useNavigate } from "@tanstack/react-router";
 import { ProjectDetailScreen } from "../project-detail-screen.js";
 import { useProjectDetail } from "../../features/projects/use-project-detail.js";
 import { useScanProject } from "../../features/projects/use-scan-project.js";
+import { clearAutoScanRegistry } from "../../features/scan/auto-scan-constants.js";
 import { useOpenProjectFolder } from "../../features/projects/use-open-project-folder.js";
 import { useOpenProjectTerminal } from "../../features/projects/use-open-project-terminal.js";
 import { useRemoveProject } from "../../features/projects/use-remove-project.js";
@@ -118,6 +119,7 @@ const projectDetail: ProjectGetResponse = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearAutoScanRegistry();
   mockUseParams.mockReturnValue({ projectId: "7" });
   mockUseNavigate.mockReturnValue(vi.fn());
   mockUseProjectDetail.mockReturnValue({ data: projectDetail, isPending: false, isError: false, error: null });

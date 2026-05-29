@@ -37,14 +37,6 @@ function buildInstalledMap(entries: ProjectGetEntry[]): Map<string, Set<number>>
   return map;
 }
 
-function shortSkillsPath(absPath: string | null): string {
-  if (absPath == null || absPath === '') return '';
-  const parts = absPath.replace(/\\/g, '/').split('/').filter(Boolean);
-  if (parts.length === 0) return '';
-  if (parts.length === 1) return parts[0];
-  return parts.slice(-2).join('/');
-}
-
 export function AddSkillWizard({
   projectId,
   providers,
@@ -158,7 +150,7 @@ export function AddSkillWizard({
 
   // Tab layout
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white shadow-sm">
+    <div className="flex min-h-0 flex-col rounded-lg border border-zinc-200 bg-white shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-0">
         <h2 className="text-sm font-semibold text-zinc-900">Add Skills</h2>
@@ -172,7 +164,7 @@ export function AddSkillWizard({
       </div>
 
       {/* Tab Strip */}
-      <div className="flex border-b border-zinc-200 px-4 pt-3">
+      <div className="flex overflow-x-auto border-b border-zinc-200 px-4 pt-3" style={{ flexWrap: 'nowrap' }}>
         {installableProviders.map((p) => (
           <button
             key={p.providerKey}
@@ -186,12 +178,6 @@ export function AddSkillWizard({
           >
             <ProviderIcon providerKey={p.providerKey} />
             {p.displayName}
-            <code
-              className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-zinc-500"
-              style={{ fontSize: '0.65rem' }}
-            >
-              {shortSkillsPath(p.skillsPath)}
-            </code>
             {p.providerStatus === 'experimental' && (
               <span className="rounded bg-amber-100 px-1 py-0.5 text-xs font-medium text-amber-700">
                 experimental

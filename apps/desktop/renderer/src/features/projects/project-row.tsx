@@ -2,6 +2,7 @@ import React from "react";
 import { RefreshCw, FolderOpen, TerminalSquare, Trash2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import type { ProjectListItem } from "@contracts/index.js";
+import { ProviderIcon } from "../../components/provider-icon.js";
 import { useScanProject } from "./use-scan-project.js";
 import { useOpenProjectFolder } from "./use-open-project-folder.js";
 import { useOpenProjectTerminal } from "./use-open-project-terminal.js";
@@ -25,6 +26,7 @@ function ProjectPluginProviderStats({ project }: { project: ProjectListItem }): 
           className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600 w-fit"
           title={`${pp.displayName}: ${pp.enabledCount} enabled of ${pp.totalCount} plugin${pp.totalCount === 1 ? "" : "s"}`}
         >
+          <ProviderIcon providerKey={pp.key} className="h-3 w-3 [&>svg]:h-3 [&>svg]:w-3" />
           <span className="font-mono text-[11px]">{pp.enabledCount}</span>
           <span className="max-w-24 truncate">{pp.displayName}</span>
         </span>
@@ -46,6 +48,7 @@ function ProjectProviderSkillStats({ project }: { project: ProjectListItem }): R
           className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
           title={`${provider.displayName}: ${provider.entryCount} skill${provider.entryCount === 1 ? "" : "s"}`}
         >
+          <ProviderIcon providerKey={provider.key} className="h-3 w-3 [&>svg]:h-3 [&>svg]:w-3" />
           <span className="font-mono text-[11px]">{provider.entryCount}</span>
           <span className="max-w-24 truncate">{provider.displayName}</span>
         </span>

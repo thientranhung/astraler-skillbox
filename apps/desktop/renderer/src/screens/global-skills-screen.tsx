@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { RefreshCw, FolderOpen } from "lucide-react";
 import { useGlobalList } from "../features/global-skills/use-global-list.js";
 import { useScanGlobal } from "../features/global-skills/use-scan-global.js";
@@ -7,6 +7,7 @@ import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
 import type { GlobalListLocation, GlobalListEntry } from "@contracts/index.js";
+import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
 function statusBadgeClass(status: GlobalListLocation["status"]): string {
   switch (status) {
@@ -33,6 +34,28 @@ export function GlobalSkillsScreen(): React.JSX.Element {
 
   const isScanning = scanMutation.operationId != null;
   const locations = data?.locations ?? [];
+
+  const autoScannedRef = useRef(false);
+  const oldestScannedAt = data?.locations.length
+    ? data.locations.reduce<string | null>((oldest, loc) => {
+        if (loc.lastScannedAt == null) return null;
+        if (oldest == null) return loc.lastScannedAt;
+        return loc.lastScannedAt < oldest ? loc.lastScannedAt : oldest;
+      }, data.locations[0].lastScannedAt)
+    : null;
+
+  useEffect(() => {
+    if (data == null) return;
+    if (scanMutation.isPending || scanMutation.operationId != null) return;
+    const stale = data.locations.length === 0 || data.locations.some((l) => l.lastScannedAt == null) || isDataStale(oldestScannedAt);
+    if (!stale) return;
+    const key = "auto-scan:global";
+    if (autoScannedRef.current || sessionAutoScanRegistry.has(key)) return;
+    autoScannedRef.current = true;
+    sessionAutoScanRegistry.add(key);
+    scanMutation.mutate({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, oldestScannedAt]);
 
   function handleOpenFolder(path: string): void {
     void methods.openPath(path);
