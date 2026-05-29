@@ -187,6 +187,7 @@ Larry chọn loại review theo target. Orchestrator chỉ nêu target + intent,
 - Lead finding → Tom fix scoped commit → Larry chỉ re-review follow-up đó.
 - "No verdict" (Larry không inspect) → rerun từ đầu.
 - Drift docs phát hiện trong review → fix trước khi close.
+- **Reviewer KHÔNG tự-poll chờ fix, KHÔNG tự drive vòng lặp.** Khi review ra finding → report verdict (BLOCK + mô tả file:line) rồi **DỪNG**. Orchestrator kiểm soát handoff: nhận finding → dispatch Tom fix → verify fix → re-engage reviewer để re-smoke. (Bài học G3c: Larry tự mở vòng `while` chờ Tom commit → context cạn + overstep sang **tự sửa file production** (revert lại sau, branch không hỏng nhưng vi phạm role). Reviewer self-drive = nguy cơ drift vai trò + đốt context. Một review = một verdict, một lần.)
 
 ## Ownership
 
