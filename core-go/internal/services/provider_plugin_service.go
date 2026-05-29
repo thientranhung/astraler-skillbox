@@ -800,16 +800,21 @@ func applyVersionMap(entries []domain.PluginEntry, versionMap map[string]*string
 func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project *domain.Project, defs []pluginProviderDef, progress operations.ProgressFn) error {
 	total := len(defs)
 	for i, def := range defs {
-		// For Claude: scan installed_plugins.json ONCE per provider iteration (not per layer).
-		// The file is at the global config root (~/.claude/plugins/installed_plugins.json) and
-		// contains entries for all scopes. We build two maps — one for project/local scopes
-		// (keyed by pluginName@marketplace, filtered to this project path) — then apply per layer.
+		// Resolve version metadata from provider-specific supplementary sources, once per provider.
 		var projectVersionMap map[string]*string
-		if def.Provider.Key == "claude" {
+		switch def.Provider.Key {
+		case "claude":
+			// ~/.claude/plugins/installed_plugins.json contains all scopes; filter to this project.
 			globalDir := filepath.Dir(def.UserFilePath())
 			installPath := filepath.Join(globalDir, "plugins", "installed_plugins.json")
 			installScan := providers.ScanClaudeInstalledPluginsFile(installPath, globalDir)
 			projectVersionMap = providers.BuildProjectVersionMap(installScan, project.Path)
+		case "codex":
+			// Codex cache dir is always global (~/.codex/plugins/cache/), not per-project.
+			userAllowedDir := filepath.Dir(def.UserFilePath())
+			cacheDir := filepath.Join(userAllowedDir, "plugins", "cache")
+			cacheScan := providers.ScanCodexCacheDir(cacheDir, userAllowedDir)
+			projectVersionMap = providers.BuildCodexVersionMap(cacheScan)
 		}
 
 		allowedDir := def.ProjectAllowedDir(project.Path)
