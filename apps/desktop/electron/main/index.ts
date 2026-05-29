@@ -3,7 +3,20 @@ import path from "path";
 import { spawnGoCore, onFatal } from "./core-process/manager.js";
 import { registerIpcBridge } from "./core-process/ipc-bridge.js";
 
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+// electron-vite (v5) sets ELECTRON_RENDERER_URL in dev — NOT VITE_DEV_SERVER_URL.
+// Gating on it lets the renderer load the HMR dev server in `pnpm dev` while
+// packaged builds (where it's unset) fall back to the built index.html.
+const ELECTRON_RENDERER_URL = process.env["ELECTRON_RENDERER_URL"];
+
+// Dev-only: expose the Chrome DevTools Protocol on a fixed localhost port so
+// browser-automation agents (agent-browser) can `connect` to THIS running dev
+// instance instead of launching a second app. Gated on ELECTRON_RENDERER_URL
+// (set by electron-vite only in dev) so packaged builds never open a debugging
+// port. Override the port via SKILLBOX_CDP_PORT. Must run before
+// app.whenReady(). Band reserved for agent-browser: 49222-49250.
+if (ELECTRON_RENDERER_URL) {
+  app.commandLine.appendSwitch("remote-debugging-port", process.env["SKILLBOX_CDP_PORT"] ?? "49222");
+}
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -35,8 +48,8 @@ function createWindow(): BrowserWindow {
     });
   });
 
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
+  if (ELECTRON_RENDERER_URL) {
+    win.loadURL(ELECTRON_RENDERER_URL);
   } else {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
