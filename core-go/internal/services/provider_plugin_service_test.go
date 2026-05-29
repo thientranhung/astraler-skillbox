@@ -964,3 +964,162 @@ func TestRemoveOverride_ProjectLayer_RemovesPluginFromFile(t *testing.T) {
 		t.Error("plugin should have been removed from the settings file after RemoveOverride")
 	}
 }
+
+// TestScanProjectLayers_CodexVersionPopulatedFromCache verifies that when
+// scanProjectInternal runs for the Codex provider, it reads the version from
+// ~/.codex/plugins/cache and stores it on the plugin entry in the DB.
+func TestScanProjectLayers_CodexVersionPopulatedFromCache(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	db, err := repositories.OpenDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("OpenDatabase: %v", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+
+	// Migration seeds the codex provider definition; retrieve its ID.
+	var codexDefID int64
+	if err := db.QueryRowContext(ctx, `SELECT id FROM provider_definitions WHERE key = 'codex'`).Scan(&codexDefID); err != nil {
+		t.Fatalf("query codex def: %v", err)
+	}
+
+	// Insert a project row.
+	projectDir := t.TempDir()
+	res, err := db.ExecContext(ctx, `INSERT INTO projects (name, path, status) VALUES ('codex-proj', ?, 'active')`, projectDir)
+	if err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+	projectID, _ := res.LastInsertId()
+
+	// Fake ~/.codex dir (the global config root for this test).
+	fakeCodexDir := t.TempDir()
+
+	// Write a config.toml with stitch-design@stitch-skills enabled (in the project dir).
+	codexProjectDir := filepath.Join(projectDir, ".codex")
+	if err := os.MkdirAll(codexProjectDir, 0o755); err != nil {
+		t.Fatalf("mkdir project .codex: %v", err)
+	}
+	configPath := filepath.Join(codexProjectDir, "config.toml")
+	tomlContent := "[plugins.\"stitch-design@stitch-skills\"]\nenabled = true\n"
+	if err := os.WriteFile(configPath, []byte(tomlContent), 0o644); err != nil {
+		t.Fatalf("write config.toml: %v", err)
+	}
+
+	// Build cache dir: fakeCodexDir/plugins/cache/stitch-skills/stitch-design/1.0.0/plugin.json
+	versionDir := filepath.Join(fakeCodexDir, "plugins", "cache", "stitch-skills", "stitch-design", "1.0.0")
+	if err := os.MkdirAll(versionDir, 0o755); err != nil {
+		t.Fatalf("mkdir cache: %v", err)
+	}
+	pluginJSON := `{"name":"stitch-design","version":"1.0.0"}`
+	if err := os.WriteFile(filepath.Join(versionDir, "plugin.json"), []byte(pluginJSON), 0o644); err != nil {
+		t.Fatalf("write plugin.json: %v", err)
+	}
+
+	// GlobalRelPath is set to the absolute path of fakeCodexDir/config.toml so that
+	// UserFilePath() returns fakeCodexDir/config.toml and filepath.Dir gives fakeCodexDir.
+	fakeGlobalConfigPath := filepath.Join(fakeCodexDir, "config.toml")
+
+	pluginRepo := repositories.NewProviderPluginRepo(db)
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: codexDefID, Key: "codex"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: fakeGlobalConfigPath, Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".codex/config.toml", Priority: 10},
+			},
+		},
+	}}
+	project := &domain.Project{ID: projectID, Path: projectDir}
+	svc := NewProviderPluginService(pluginRepo, &mockPluginDefRepo{}, &mockPluginProjectRepo{project: project}, registry, makeSyncRunner())
+
+	if err := svc.ScanProjectLayers(ctx, project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("ScanProjectLayers: %v", err)
+	}
+
+	// Query the persisted plugin entry and check the version.
+	var version *string
+	err = db.QueryRowContext(ctx, `
+		SELECT e.version
+		FROM provider_plugin_entries e
+		JOIN provider_plugin_layer_scans s ON e.layer_scan_id = s.id
+		WHERE e.plugin_name = 'stitch-design' AND e.marketplace_name = 'stitch-skills'
+		  AND s.project_id = ?
+	`, projectID).Scan(&version)
+	if err != nil {
+		t.Fatalf("query plugin entry: %v", err)
+	}
+	if version == nil || *version != "1.0.0" {
+		t.Errorf("expected version 1.0.0 from cache, got %v", version)
+	}
+}
+
+// TestScanProjectLayers_NonCodexProvider_VersionNil verifies that providers without
+// a version source (e.g. antigravity_cli) leave plugin version as NULL in the DB.
+func TestScanProjectLayers_NonCodexProvider_VersionNil(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	db, err := repositories.OpenDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("OpenDatabase: %v", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+
+	var agDefID int64
+	if err := db.QueryRowContext(ctx, `SELECT id FROM provider_definitions WHERE key = 'antigravity_cli'`).Scan(&agDefID); err != nil {
+		t.Fatalf("query antigravity_cli def: %v", err)
+	}
+
+	projectDir := t.TempDir()
+	res, err := db.ExecContext(ctx, `INSERT INTO projects (name, path, status) VALUES ('ag-proj', ?, 'active')`, projectDir)
+	if err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+	projectID, _ := res.LastInsertId()
+
+	// Write antigravity_cli settings.json with one plugin enabled.
+	agDir := filepath.Join(projectDir, ".gemini", "antigravity-cli")
+	if err := os.MkdirAll(agDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	settingsPath := filepath.Join(agDir, "settings.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"enabledPlugins":{"my-plugin@some-market":true}}`), 0o644); err != nil {
+		t.Fatalf("write settings.json: %v", err)
+	}
+
+	fakeGlobalPath := filepath.Join(t.TempDir(), "settings.json")
+
+	pluginRepo := repositories.NewProviderPluginRepo(db)
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: agDefID, Key: "antigravity_cli"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: fakeGlobalPath, Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".gemini/antigravity-cli/settings.json", Priority: 10},
+			},
+		},
+	}}
+	project := &domain.Project{ID: projectID, Path: projectDir}
+	svc := NewProviderPluginService(pluginRepo, &mockPluginDefRepo{}, &mockPluginProjectRepo{project: project}, registry, makeSyncRunner())
+
+	if err := svc.ScanProjectLayers(ctx, project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("ScanProjectLayers: %v", err)
+	}
+
+	// Version must be NULL — no version source for antigravity_cli.
+	var version *string
+	err = db.QueryRowContext(ctx, `
+		SELECT e.version
+		FROM provider_plugin_entries e
+		JOIN provider_plugin_layer_scans s ON e.layer_scan_id = s.id
+		WHERE e.plugin_name = 'my-plugin' AND e.marketplace_name = 'some-market'
+		  AND s.project_id = ?
+	`, projectID).Scan(&version)
+	if err != nil {
+		t.Fatalf("query plugin entry: %v", err)
+	}
+	if version != nil {
+		t.Errorf("expected NULL version for antigravity_cli, got %q", *version)
+	}
+}
