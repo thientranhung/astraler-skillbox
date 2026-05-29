@@ -398,6 +398,7 @@ Purpose: lưu khai báo plugin (enabled/disabled) trong một settings file scan
 | `plugin_name` | text | no | Tên plugin do settings file khai báo. |
 | `marketplace_name` | text | no | Tên marketplace mà plugin được resolve từ đó. |
 | `declaration` | text | no | Khai báo trong file. Allowed: `enabled`, `disabled`. |
+| `version` | text | yes | *(migration 000021)* Installed version từ `installed_plugins.json`. `NULL` khi không có record (non-Claude providers, plugin chưa cài). `"unknown"` là literal hợp lệ khi Claude không xác định được version. |
 
 Notes:
 
@@ -406,6 +407,8 @@ Notes:
   application layer bằng cách merge entries theo precedence `local > project >
   user`; không lưu trực tiếp trong bảng.
 - Vắng mặt entry trong một layer scan = `absent` ở layer đó.
+- `version` chỉ được populate cho Claude provider (user layer): đọc từ
+  `~/.claude/plugins/installed_plugins.json` tại thời điểm scan.
 
 ## provider_plugin_marketplaces
 
@@ -425,6 +428,51 @@ Notes:
   validate ở application layer theo format settings file của từng provider.
 - Một marketplace có thể xuất hiện ở nhiều layer scans (user/project/local);
   effective marketplace list resolve ở application layer.
+
+## plugin_update_check_cache
+
+*(migration 000022)* Purpose: cache kết quả `git ls-remote` cho từng plugin đã cài, TTL mặc định 6 giờ. Upsert theo UNIQUE key mỗi lần `updateCheck.run` chạy thành công hoặc thất bại.
+
+| Field | Type | Nullable | Description |
+|---|---|---:|---|
+| `id` | integer | no | Primary key. |
+| `provider_key` | text | no | Provider của plugin. Phase 1: luôn `"claude"`. |
+| `plugin_name` | text | no | Tên plugin (phần trước `@` trong plugin key). |
+| `marketplace_name` | text | no | Tên marketplace (phần sau `@` trong plugin key). |
+| `source_url` | text | no | HTTPS URL từ `marketplace.json`. Luôn HTTPS (non-HTTPS bị reject trước khi subprocess). |
+| `source_ref` | text | yes | Tag hoặc branch (`"v1.5.5"`, `"main"`). `NULL` khi source không khai báo ref. |
+| `installed_sha` | text | yes | `gitCommitSha` từ `installed_plugins.json`. `NULL` khi không có. |
+| `installed_version` | text | yes | Version string từ `installed_plugins.json`. Reserved — Phase 1 không dùng để so sánh. |
+| `remote_sha` | text | yes | SHA trả về bởi `git ls-remote`. `NULL` khi check thất bại hoặc ref không tìm thấy. |
+| `remote_latest_tag` | text | yes | Reserved Phase 2 (semver tag scan). Luôn `NULL` trong Phase 1. |
+| `update_available` | integer | yes | `0`=up-to-date, `1`=update có sẵn, `NULL`=unknown (thiếu SHA hoặc check lỗi). |
+| `checked_at` | text | no | ISO-8601 UTC timestamp lần check gần nhất. |
+| `error` | text | yes | Error code nếu check thất bại. Ví dụ: `non_https_scheme_rejected`, `timeout`, `git_not_found`, `ref_not_found`, `host_backoff`. `NULL` khi thành công. |
+
+Notes:
+
+- UNIQUE `(provider_key, plugin_name, marketplace_name)` — mỗi plugin chỉ có 1 row; upsert ghi đè kết quả cũ.
+- Không có FK tới bảng plugin: cache là snapshot độc lập; xóa plugin không cascade-delete cache.
+- `update_available` được tính bằng `installed_sha != remote_sha` khi cả hai non-NULL; otherwise `NULL`.
+- `source_url` được derive từ `marketplace.json` trên disk mỗi lần check — không cache URL lâu dài (ADR-0001 allowlist-from-disk requirement).
+
+## network_settings
+
+*(migration 000022)* Purpose: bảng singleton lưu cài đặt outbound network. Luôn có đúng 1 row (`id = 1`) được insert bởi migration. App đọc row này mỗi lần `updateCheck.run` để kiểm tra default-OFF enforcement.
+
+| Field | Type | Nullable | Description |
+|---|---|---:|---|
+| `id` | integer | no | Primary key. CHECK `(id = 1)` — đảm bảo singleton. |
+| `update_check_enabled` | integer | no | `0` = tắt (privacy default), `1` = bật. Default `0`. Khi `0`, `UpdateCheckService` trả `{status:"disabled"}` ngay mà không gọi network. |
+| `cache_ttl_hours` | integer | no | TTL cache update-check tính bằng giờ. Default `6`. |
+| `created_at` | text | no | ISO-8601 UTC; set bởi migration. |
+| `updated_at` | text | no | ISO-8601 UTC; cập nhật khi `SetUpdateCheckEnabled` hoặc `SetCacheTTLHours` được gọi. |
+
+Notes:
+
+- Row được insert bởi migration với `(update_check_enabled=0, cache_ttl_hours=6)` — giá trị mặc định privacy-safe.
+- Không bao giờ delete row này; chỉ UPDATE.
+- Phase 1: `update_check_enabled` chỉ có thể bật qua direct DB hoặc future Settings UI toggle (Phase 2). UI hiện tại chỉ hiển thị trạng thái.
 
 ## Polymorphic References
 

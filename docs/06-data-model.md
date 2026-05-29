@@ -1020,6 +1020,84 @@ Notes:
 - `source_type` không có CHECK constraint trong migration: enum value được
   validate ở application layer dựa trên format của settings file provider.
 
+## 20. Plugin Update-Check Cache & Network Settings
+
+*(migration 000022 — 2026-05-29)*
+
+Hai bảng hỗ trợ tính năng **G3c plugin update-check** (ADR-0001). Tính năng
+này là opt-in và **mặc định TẮT** (`network_settings.update_check_enabled = 0`).
+
+```text
+plugin_update_check_cache
+network_settings
+```
+
+### 20.1 plugin_update_check_cache
+
+Lưu kết quả mỗi lần `updateCheck.run` kiểm tra upstream SHA cho một plugin cụ
+thể. Cache có TTL 6 giờ (configurable qua `network_settings.cache_ttl_hours`);
+mỗi click "Check Updates" upsert lại row theo UNIQUE key.
+
+Fields:
+
+```text
+id                 -- INTEGER PRIMARY KEY
+provider_key       -- TEXT NOT NULL; "claude" (Phase 1 chỉ hỗ trợ Claude)
+plugin_name        -- TEXT NOT NULL
+marketplace_name   -- TEXT NOT NULL
+source_url         -- TEXT NOT NULL; HTTPS URL từ marketplace.json (allowlist từ disk)
+source_ref         -- TEXT nullable; tag/branch (ví dụ "v1.5.5", "main")
+installed_sha      -- TEXT nullable; gitCommitSha từ installed_plugins.json
+installed_version  -- TEXT nullable; version string từ installed_plugins.json
+remote_sha         -- TEXT nullable; SHA trả về bởi git ls-remote
+remote_latest_tag  -- TEXT nullable; reserved Phase 2 (semver tag scan)
+update_available   -- INTEGER nullable; 0=false / 1=true / NULL=unknown
+checked_at         -- TEXT NOT NULL; ISO-8601 UTC timestamp của lần check
+error              -- TEXT nullable; error code nếu check thất bại
+UNIQUE(provider_key, plugin_name, marketplace_name)
+```
+
+Update-available logic:
+
+```text
+installed_sha IS NOT NULL AND remote_sha IS NOT NULL
+  → update_available = (installed_sha != remote_sha)
+otherwise
+  → update_available = NULL (unknown)
+```
+
+Notes:
+
+- `source_url` phải là HTTPS — `GitLsRemoteClient` từ chối non-HTTPS trước khi
+  spawn subprocess.
+- `error` chứa error code string, ví dụ: `non_https_scheme_rejected`, `timeout`,
+  `git_not_found`, `ref_not_found`, `host_backoff`.
+- Row không có FK tới bảng plugin nào: cache là snapshot độc lập — plugin bị
+  xóa không cascade-delete cache.
+
+### 20.2 network_settings
+
+Bảng singleton (luôn có đúng 1 row với `id = 1`, được insert bởi migration
+000022). Lưu các cài đặt outbound network của app.
+
+Fields:
+
+```text
+id                    -- INTEGER PRIMARY KEY CHECK (id = 1); luôn = 1
+update_check_enabled  -- INTEGER NOT NULL DEFAULT 0; 0=tắt (privacy default), 1=bật
+cache_ttl_hours       -- INTEGER NOT NULL DEFAULT 6; TTL cache update-check (giờ)
+created_at            -- TEXT NOT NULL; ISO-8601 UTC
+updated_at            -- TEXT NOT NULL; ISO-8601 UTC; cập nhật khi set_enabled/set_ttl
+```
+
+Notes:
+
+- `update_check_enabled = 0` là mặc định bắt buộc (ADR-0001 §2): app phải
+  không gọi ra ngoài khi setting này là 0.
+- `UpdateCheckService.RunUpdateCheck` kiểm tra setting này **trước tiên**; nếu
+  `false` → trả về `{status:"disabled"}` ngay mà không gọi client.
+- `cache_ttl_hours` hiện read-only từ UI (Phase 1); Phase 2 có thể expose slider.
+
 ## Provider Plugin Relationships
 
 ```text
