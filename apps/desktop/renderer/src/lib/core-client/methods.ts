@@ -39,6 +39,7 @@ import type {
   ProviderPluginRemoveOverrideRequest,
   ProviderPluginRemoveOverrideResponse,
   UpdateCheckRunResponse,
+  AppResetAllResponse,
 } from "@contracts/index.js";
 
 export const methods = {
@@ -124,4 +125,7 @@ export const methods = {
 
   runUpdateCheck: () =>
     invoke<UpdateCheckRunResponse>("updateCheck.run", {}),
+
+  resetAllData: () =>
+    invoke<AppResetAllResponse>("app.resetAll", {}),
 };
