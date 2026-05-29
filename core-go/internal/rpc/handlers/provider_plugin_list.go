@@ -64,6 +64,7 @@ type ppProjectEntry struct {
 	EffectiveStatus string          `json:"effectiveStatus"`
 	ProvenanceLayer *string         `json:"provenanceLayer"`
 	LayerBreakdown  []ppLayerDetail `json:"layerBreakdown"`
+	Version         *string         `json:"version,omitempty"` // nil → omitted; "unknown" is a valid literal
 }
 
 type ppLayerDetail struct {
@@ -178,6 +179,7 @@ func mapPPProjectViews(projects []domain.ProjectPluginView) []ppProjectView {
 				EffectiveStatus: string(e.EffectiveStatus),
 				ProvenanceLayer: provLayer,
 				LayerBreakdown:  []ppLayerDetail{},
+				Version:         e.Version,
 			}
 			for _, bd := range e.LayerBreakdown {
 				d := ppLayerDetail{
