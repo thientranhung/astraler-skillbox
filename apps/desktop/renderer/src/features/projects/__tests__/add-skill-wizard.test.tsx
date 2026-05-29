@@ -354,4 +354,47 @@ describe('AddSkillWizard', () => {
     expect(screen.getByText('Project has an active operation')).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  // T11 — cross-provider isolation: skill installed at claude is tickable at generic
+  it('T11: cross-provider isolation: skill installed at claude is tickable at generic', () => {
+    const providers: ProjectGetProvider[] = [
+      mkProvider('generic_agents', 'Generic Agents'),
+      mkProvider('claude', 'Claude'),
+    ];
+    const skills: SkillListSkill[] = [mkSkill(1, 'Skill S1'), mkSkill(2, 'Skill S2'), mkSkill(3, 'Skill S3')];
+    // S2 installed at claude only
+    const entries: ProjectGetEntry[] = [mkEntry(2, 'claude', 'current')];
+
+    render(
+      <AddSkillWizard
+        projectId={1}
+        providers={providers}
+        skills={skills}
+        entries={entries}
+        onClose={vi.fn()}
+      />,
+    );
+
+    // Default tab: generic_agents — S1, S2, S3 all tickable
+    const s1Checkbox = screen.getByRole('checkbox', { name: /Skill S1/i }) as HTMLInputElement;
+    const s2Checkbox = screen.getByRole('checkbox', { name: /Skill S2/i }) as HTMLInputElement;
+    const s3Checkbox = screen.getByRole('checkbox', { name: /Skill S3/i }) as HTMLInputElement;
+
+    expect(s1Checkbox.disabled).toBe(false);
+    expect(s2Checkbox.disabled).toBe(false); // not installed at generic_agents
+    expect(s3Checkbox.disabled).toBe(false);
+
+    // Switch to claude tab
+    const claudeTabBtns = screen.getAllByText('Claude').filter((el) => el.closest('button') != null);
+    fireEvent.click(claudeTabBtns[0]);
+
+    // After tab switch, get fresh references (disabled state changed in DOM)
+    const s1After = screen.getByRole('checkbox', { name: /Skill S1/i }) as HTMLInputElement;
+    const s2After = screen.getByRole('checkbox', { name: /Skill S2/i }) as HTMLInputElement;
+    const s3After = screen.getByRole('checkbox', { name: /Skill S3/i }) as HTMLInputElement;
+
+    expect(s2After.disabled).toBe(true);  // installed at claude
+    expect(s1After.disabled).toBe(false);
+    expect(s3After.disabled).toBe(false);
+  });
 });
