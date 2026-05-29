@@ -128,20 +128,34 @@ Nếu capture cho thấy agent đang ở `Enter to select · ↑/↓ to navigate
 
 ### Waiting for an agent
 
-Auto-poll bằng background bash, không bắt user poll tay:
+Auto-poll bằng background bash, không bắt user poll tay — **nhưng poll phải có checkpoint, không treo mù**.
+
+**Nguyên tắc**: chia poll thành cửa sổ ngắn (~3 phút), hết mỗi cửa sổ thì quay lại Orchestrator để inspect, thay vì 1 lần block 20–30 phút. Loop thoát theo **2 điều kiện**: (a) agent idle, HOẶC (b) phát hiện **stuck-state** (cần can thiệp), HOẶC (c) hết cửa sổ (quay lại check rồi quyết có poll tiếp không).
 
 ```sh
-# Idle khi spinner pattern (… (Xs · tokens)) biến mất ≥30s
-stable=0; iters=0; max=180
-while [ $stable -lt 6 ] && [ $iters -lt $max ]; do
+# 1 cửa sổ poll = ~3 phút. exit_reason cho Orchestrator biết phải làm gì.
+stable=0; iters=0; max=36   # 36*5s = 3 phút
+exit_reason=window_elapsed
+while [ $iters -lt $max ]; do
   out=$(tmux capture-pane -t <pane> -p 2>/dev/null)
-  if echo "$out" | grep -qE '… \([0-9]+[smh]'; then stable=0; else stable=$((stable+1)); fi
+  # stuck-state: selection/permission prompt, shell leak, lỗi rõ → dừng ngay
+  if echo "$out" | grep -qE 'Enter to select|Do you want to proceed|❯ 1\.|Yes, |No, go back|\$ $|command not found|Error:'; then
+    exit_reason=needs_attention; break
+  fi
+  # busy khi còn spinner; idle khi mất spinner ≥40s (8 vòng)
+  if echo "$out" | grep -qE '… \([0-9]+[smh]|esc to interrupt|✢|✻|◎ /goal active|thinking'; then stable=0; else stable=$((stable+1)); fi
+  if [ $stable -ge 8 ]; then exit_reason=idle; break; fi
   iters=$((iters+1)); sleep 5
 done
-echo "agent idle"
+echo "EXIT=$exit_reason after ~$((iters*5))s"; tmux capture-pane -t <pane> -p | grep -n '[^[:space:]]' | tail -40
 ```
 
-Chạy `run_in_background: true`. Max 15 phút. Pattern `… \([0-9]+[smh]` khớp spinner Claude Code; runtime khác cần adapt.
+- `run_in_background: true`. Mỗi cửa sổ ~3 phút; khi notify thì đọc `EXIT`:
+  - `idle` → agent xong, đọc report.
+  - `needs_attention` → có selection/permission/shell-leak/lỗi → inspect + recover (xem mục Recovery), KHÔNG poll tiếp mù.
+  - `window_elapsed` → còn busy → ghi nhận tiến độ rồi phóng cửa sổ mới (lặp lại tối đa N lần).
+- **Wall-clock budget cứng**: đặt trần tổng (vd 6 cửa sổ ≈ 18 phút cho task lớn). Hết budget mà vẫn busy → capture pane, đánh giá có thật sự tiến triển không (token/spinner đổi), nếu nghi treo → `C-c` + inspect, không để chạy vô hạn.
+- Pattern `… \([0-9]+[smh]` khớp spinner Claude Code; runtime khác cần adapt. Grep stuck-state cũng theo TUI cụ thể.
 
 ### Audit
 
