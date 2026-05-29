@@ -102,7 +102,7 @@ Updates
 Settings
 ```
 
-Sidebar navigation thứ tự: Dashboard → Host Skills → Global Skills → Global Plugins → Projects → Settings.
+Sidebar navigation thứ tự: Dashboard → Host Skills → Global Skills → Global Plugins → Projects → Settings → About.
 
 ## Dashboard
 
@@ -311,3 +311,22 @@ Settings quản lý:
 - Provider configs.
 - Database location.
 - GitHub/Vercel settings nếu cần.
+
+## About
+
+About screen hiển thị thông tin về ứng dụng và tác giả.
+
+File: `apps/desktop/renderer/src/screens/about-screen.tsx`.
+
+Hiển thị:
+
+- Tên ứng dụng và version (từ `VITE_APP_VERSION`).
+- Author links: Email, GitHub, Blog — click mở browser.
+- Update check: nút "Check for Updates" gọi `app.checkUpdate` RPC.
+  - Trạng thái: idle / checking / up-to-date / available / disabled / error.
+  - Khi có bản mới: hiển thị `latestVersion` và link "View release" đến GitHub Releases.
+  - Khi network bị tắt (Settings → Network): hiển thị thông báo hướng user bật lên.
+
+`app.checkUpdate` gọi GitHub Releases API, chỉ hoạt động khi `network_settings.update_check_enabled = true`.
+
+<!-- DOC-VERIFIED: about-screen, use-check-app-update, method-allowlist app.checkUpdate -->

@@ -2,9 +2,13 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -254,4 +258,86 @@ func indexOf(s string, b byte) int {
 func ClaudeConfigDirFromHomeDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".claude")
+}
+
+const (
+	githubReleasesURL  = "https://api.github.com/repos/thientranhung/astraler-skillbox/releases/latest"
+	appCheckHTTPTimeout = 8 * time.Second
+	appCheckBodyLimit  = 64 * 1024
+)
+
+// AppCheckUpdateResult is returned by CheckAppUpdate.
+type AppCheckUpdateResult struct {
+	CurrentVersion  string
+	LatestVersion   *string
+	UpdateAvailable bool
+	ReleaseURL      *string
+	Error           *string // "network_disabled" | "network_error" | "no_releases" | "http_error" | "parse_error"
+}
+
+// CheckAppUpdate fetches the latest GitHub release and compares it with currentVersion.
+// Respects the network_settings update_check_enabled gate — returns Error="network_disabled" when off.
+func (s *UpdateCheckService) CheckAppUpdate(ctx context.Context, currentVersion string) (AppCheckUpdateResult, error) {
+	settings, err := s.networkSettingsRepo.Get(ctx)
+	if err != nil {
+		errStr := "network_error"
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+	}
+	if !settings.UpdateCheckEnabled {
+		errStr := "network_disabled"
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+	}
+
+	httpCtx, cancel := context.WithTimeout(ctx, appCheckHTTPTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(httpCtx, http.MethodGet, githubReleasesURL, nil)
+	if err != nil {
+		errStr := "network_error"
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "Skillbox/"+currentVersion)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		errStr := "network_error"
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		errStr := "no_releases"
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		errStr := "http_error"
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, appCheckBodyLimit))
+	if err != nil {
+		errStr := "network_error"
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		HTMLURL string `json:"html_url"`
+	}
+	if err := json.Unmarshal(body, &release); err != nil {
+		errStr := "parse_error"
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+	}
+
+	latestVersion := strings.TrimPrefix(release.TagName, "v")
+	releaseURL := release.HTMLURL
+	updateAvailable := latestVersion != currentVersion
+
+	return AppCheckUpdateResult{
+		CurrentVersion:  currentVersion,
+		LatestVersion:   &latestVersion,
+		UpdateAvailable: updateAvailable,
+		ReleaseURL:      &releaseURL,
+	}, nil
 }
