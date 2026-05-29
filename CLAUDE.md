@@ -26,6 +26,10 @@ Claude-Code-specific delta. All shared project knowledge lives in `AGENTS.md`.
 - Playbook: `docs/playbooks/documentation.md` (Gap-Find Procedure).
 - Trigger: thêm migration / RPC method / screen / provider adapter mới.
 
+## Khi xóa/đổi feature: trace toàn bộ UI
+
+- Xóa/đổi một feature → grep toàn bộ renderer tìm text/component liên quan, không chỉ sửa file đang đọc. Vd: bỏ network toggle → phải grep "network\|toggle\|disabled by default" trong tất cả screens.
+
 ## EPERM trong Claude Code subprocess
 
 - Không cần Full Disk Access. Fix: exit TUI → `q` → "Exit anyway" → restart `claude --dangerously-skip-permissions`.
