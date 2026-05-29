@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppCheckUpdateMethod",
+  "description": "Contract for app.checkUpdate RPC method. Checks GitHub Releases for a newer app version. Respects the network_settings gate (update_check_enabled). Returns error field on failure instead of RPC error.",
+  "oneOf": [
+    { "$ref": "#/definitions/AppCheckUpdateRequest" },
+    { "$ref": "#/definitions/AppCheckUpdateResponse" }
+  ],
+  "definitions": {
+    "AppCheckUpdateRequest": {
+      "title": "AppCheckUpdateRequest",
+      "description": "No params required.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AppCheckUpdateResponse": {
+      "title": "AppCheckUpdateResponse",
+      "type": "object",
+      "properties": {
+        "currentVersion": {
+          "type": "string",
+          "description": "The version string embedded in the binary at build time."
+        },
+        "latestVersion": {
+          "type": ["string", "null"],
+          "description": "tag_name from the latest GitHub release, with the 'v' prefix stripped. Null when the check could not be performed."
+        },
+        "updateAvailable": {
+          "type": "boolean",
+          "description": "True when latestVersion differs from currentVersion."
+        },
+        "releaseUrl": {
+          "type": ["string", "null"],
+          "description": "html_url of the latest GitHub release. Null when the check failed."
+        },
+        "error": {
+          "type": ["string", "null"],
+          "description": "Error code: 'network_disabled' | 'network_error' | 'no_releases' | 'http_error' | 'parse_error'. Null on success."
+        }
+      },
+      "required": ["currentVersion", "latestVersion", "updateAvailable", "releaseUrl", "error"],
+      "additionalProperties": false
+    }
+  }
+}
