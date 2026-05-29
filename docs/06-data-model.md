@@ -963,6 +963,7 @@ layer_scan_id
 plugin_name
 marketplace_name
 declaration
+version          -- TEXT nullable (migration 000021); NULL = not available
 ```
 
 Declaration:
@@ -981,6 +982,10 @@ Notes:
 - Effective status (`enabled` / `disabled` / `absent` / `unknown`) được resolve
   ở application layer bằng cách merge các entry rows theo precedence layer; không
   lưu trực tiếp trong bảng này.
+- `version`: được đọc từ `~/.claude/plugins/installed_plugins.json` khi scan
+  user layer của Claude provider. NULL cho Codex/Antigravity (không có file
+  tương đương) và khi plugin không có bản ghi install. Giá trị `"unknown"` là
+  literal hợp lệ (Claude báo cáo khi không xác định được version).
 
 ### 19.3 provider_plugin_marketplaces
 
