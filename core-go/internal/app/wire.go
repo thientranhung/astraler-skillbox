@@ -28,6 +28,7 @@ func New(
 	providerRegistrySvc *services.ProviderRegistryService,
 	providerPluginSvc *services.ProviderPluginService,
 	updateCheckSvc *services.UpdateCheckService,
+	resetFn func() error,
 ) *App {
 	a := &App{
 		methods: handler.Map{
@@ -57,6 +58,7 @@ func New(
 			"providerPlugin.setEnabled":     rpchandlers.NewProviderPluginSetEnabledHandler(providerPluginSvc),
 			"providerPlugin.removeOverride": rpchandlers.NewProviderPluginRemoveOverrideHandler(providerPluginSvc),
 			"updateCheck.run":             rpchandlers.NewUpdateCheckRunHandler(updateCheckSvc),
+			"app.resetAll":                rpchandlers.NewAppResetAllHandler(resetFn),
 		},
 	}
 	return a
