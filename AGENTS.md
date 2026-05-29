@@ -43,6 +43,8 @@ Do not create alternate top-level layouts without updating `docs/10-technical-ar
 
 Three dev modes: **Go-only** (Go tests + JSON-RPC harness), **UI-only** (renderer with mocked client), **Full-stack** (Electron + real Go sidecar).
 
+Release: push tag `v*.*.*` → `.github/workflows/release.yml` builds 4 platforms + creates a GitHub Release. Bump `apps/desktop/package.json` version first; set secrets `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` for Mac notarize.
+
 ## Architecture Boundaries (Hard Rules)
 
 These must not be violated. Full reasoning in `docs/10-technical-architecture.md`.
