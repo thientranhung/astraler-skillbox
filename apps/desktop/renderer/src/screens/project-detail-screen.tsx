@@ -757,8 +757,8 @@ export function ProjectDetailScreen(): React.JSX.Element {
       )}
 
       {wizardOpen && validId != null && data != null && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="w-full max-w-lg rounded-lg border border-zinc-200 bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl">
             <AddSkillWizard
               projectId={validId}
               providers={data.providers}
