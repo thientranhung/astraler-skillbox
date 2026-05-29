@@ -68,7 +68,11 @@
       "properties": {
         "pluginName": { "type": "string" },
         "marketplaceName": { "type": "string" },
-        "status": { "type": "string", "enum": ["enabled", "disabled"] }
+        "status": { "type": "string", "enum": ["enabled", "disabled"] },
+        "version": {
+          "type": ["string", "null"],
+          "description": "Installed version from installed_plugins.json. null when not available (non-Claude providers, plugin not in install record). 'unknown' is a valid literal when Claude reports no version."
+        }
       },
       "required": ["pluginName", "marketplaceName", "status"],
       "additionalProperties": false
