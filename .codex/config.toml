@@ -3,3 +3,19 @@ url = "https://stitch.googleapis.com/mcp"
 
 [mcp_servers.stitch.http_headers]
 "X-Goog-Api-Key" = "AQ.Ab8RN6Io4G-KNnk8yBRSxDFnq0TuZ0Bns90EPeunjQhL5P0iSg"
+
+
+[plugins."stitch-build@stitch-skills"]
+enabled = true
+
+
+[plugins."stitch-design@stitch-skills"]
+enabled = true
+
+
+[plugins."stitch-utilities@stitch-skills"]
+enabled = true
+
+
+[plugins."superpowers@openai-curated"]
+enabled = true
