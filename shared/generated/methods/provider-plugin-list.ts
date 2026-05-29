@@ -47,6 +47,18 @@ export interface PPGlobalEntry {
    * Installed version from installed_plugins.json. null when not available (non-Claude providers, plugin not in install record). 'unknown' is a valid literal when Claude reports no version.
    */
   version?: string | null;
+  /**
+   * true/false when last update check resolved; null when never checked or unknown. Populated only when network.update_check.enabled=true (ADR-0001).
+   */
+  updateAvailable?: boolean | null;
+  /**
+   * Remote latest tag/version string from last update check. null when not checked or not available.
+   */
+  latestVersion?: string | null;
+  /**
+   * ISO-8601 timestamp of last successful update check for this plugin. null when never checked.
+   */
+  lastCheckedAt?: string | null;
 }
 export interface PPMarketplace {
   marketplaceName: string;
@@ -84,6 +96,18 @@ export interface PPProjectEntry {
    * Installed version from installed_plugins.json for the winning provenance layer. null when not available (non-Claude providers, plugin not in install record). 'unknown' is a valid literal.
    */
   version?: string | null;
+  /**
+   * true/false when last update check resolved; null when never checked or unknown. Populated only when network.update_check.enabled=true (ADR-0001).
+   */
+  updateAvailable?: boolean | null;
+  /**
+   * Remote latest tag/version string from last update check. null when not checked or not available.
+   */
+  latestVersion?: string | null;
+  /**
+   * ISO-8601 timestamp of last successful update check for this plugin. null when never checked.
+   */
+  lastCheckedAt?: string | null;
 }
 export interface PPLayerDetail {
   layer: 'user' | 'project' | 'local';
