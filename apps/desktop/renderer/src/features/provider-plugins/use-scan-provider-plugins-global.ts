@@ -23,25 +23,32 @@ export function useScanProviderPluginsGlobal() {
   }, []);
 
   const mutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (args: { silent?: boolean } | void) => {
+      const silent = (args as { silent?: boolean } | undefined)?.silent ?? false;
       const buffered: OperationProgressNotification[] = [];
       const tempUnsub = subscribeAllProgress((p) => buffered.push(p));
       try {
         const result = await methods.scanProviderPluginsGlobal();
-        return { operationId: result.operationId, buffered };
+        return { operationId: result.operationId, buffered, silent };
       } finally {
         tempUnsub();
       }
     },
 
-    onSuccess: ({ operationId: opId, buffered }) => {
+    onSuccess: ({ operationId: opId, buffered, silent }) => {
       const terminalInBuffer = [...buffered]
         .reverse()
         .find((e) => e.operationId === opId && isTerminal(e.status));
 
       if (terminalInBuffer != null) {
-        if (terminalInBuffer.status === "success") {
-          toast.success("Plugin settings scanned");
+        if (!silent) {
+          if (terminalInBuffer.status === "success") {
+            toast.success("Plugin settings scanned");
+          } else if (terminalInBuffer.status === "failed") {
+            toast.error(
+              `Plugin scan failed${terminalInBuffer.message ? `: ${terminalInBuffer.message}` : ""}`,
+            );
+          }
         } else if (terminalInBuffer.status === "failed") {
           toast.error(
             `Plugin scan failed${terminalInBuffer.message ? `: ${terminalInBuffer.message}` : ""}`,
@@ -51,22 +58,28 @@ export function useScanProviderPluginsGlobal() {
         return;
       }
 
-      const toastId = toast.loading("Scanning plugin settings…");
+      const toastId = silent ? undefined : toast.loading("Scanning plugin settings…");
 
       const unsub = subscribeOperationProgress(opId, (event) => {
-        if (event.status === "success") {
-          toast.success("Plugin settings scanned", { id: toastId });
+        if (!silent) {
+          if (event.status === "success") {
+            toast.success("Plugin settings scanned", { id: toastId });
+          } else if (event.status === "failed") {
+            toast.error(
+              `Plugin scan failed${event.message ? `: ${event.message}` : ""}`,
+              { id: toastId },
+            );
+          } else if (event.status === "cancelled") {
+            if (toastId != null) toast.dismiss(toastId);
+          } else {
+            toast.loading(
+              event.message ? `Scanning: ${event.message}` : "Scanning plugin settings…",
+              { id: toastId },
+            );
+          }
         } else if (event.status === "failed") {
           toast.error(
             `Plugin scan failed${event.message ? `: ${event.message}` : ""}`,
-            { id: toastId },
-          );
-        } else if (event.status === "cancelled") {
-          toast.dismiss(toastId);
-        } else {
-          toast.loading(
-            event.message ? `Scanning: ${event.message}` : "Scanning plugin settings…",
-            { id: toastId },
           );
         }
 

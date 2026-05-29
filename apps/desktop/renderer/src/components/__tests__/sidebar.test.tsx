@@ -18,13 +18,13 @@ describe("NAV_ITEMS", () => {
     expect(NAV_ITEMS[globalIdx].to).toBe("/global");
   });
 
-  it("has Plugins after Projects and before Settings", () => {
+  it("has Global Plugins before Projects and both before Settings", () => {
     const labels = NAV_ITEMS.map((item) => item.label);
-    const projectsIdx = labels.indexOf("Projects");
     const pluginsIdx = labels.indexOf("Global Plugins");
+    const projectsIdx = labels.indexOf("Projects");
     const settingsIdx = labels.indexOf("Settings");
-    expect(pluginsIdx).toBeGreaterThan(projectsIdx);
-    expect(pluginsIdx).toBeLessThan(settingsIdx);
+    expect(pluginsIdx).toBeLessThan(projectsIdx);
+    expect(projectsIdx).toBeLessThan(settingsIdx);
     expect(NAV_ITEMS[pluginsIdx].to).toBe("/plugins");
   });
 });

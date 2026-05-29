@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@layer base {
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}

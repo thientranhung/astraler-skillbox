@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsGlobal } from "../features/provider-plugins/use-scan-provider-plugins-global.js";
@@ -6,7 +6,8 @@ import { useSetProviderPluginEnabled } from "../features/provider-plugins/use-se
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
-import type { PPGlobalView, PPGlobalEntry, PPMarketplace } from "@contracts/index.js";
+import type { PPGlobalView, PPGlobalEntry } from "@contracts/index.js";
+import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
 const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli", "codex"]);
 
@@ -44,16 +45,6 @@ function providerLabel(providerKey: string): string {
     case "antigravity_cli": return "Antigravity CLI";
     default: return providerKey;
   }
-}
-
-function MarketplaceRow({ m }: { m: PPMarketplace }): React.JSX.Element {
-  return (
-    <tr className="border-b border-zinc-100">
-      <td className="px-3 py-1.5 text-xs font-medium text-zinc-700">{m.marketplaceName}</td>
-      <td className="px-3 py-1.5 text-xs text-zinc-500">{m.sourceType}</td>
-      <td className="px-3 py-1.5 font-mono text-xs text-zinc-400">{m.sourceSummary}</td>
-    </tr>
-  );
 }
 
 function PluginToggleButton({
@@ -185,30 +176,6 @@ function GlobalPluginView({
         <p className="text-xs text-zinc-400">No plugins declared in settings.</p>
       )}
 
-      {/* Marketplaces */}
-      {g.marketplaces.length > 0 && (
-        <div>
-          <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            Marketplaces
-          </h4>
-          <div className="overflow-x-auto rounded border border-zinc-200">
-            <table className="w-full text-left">
-              <thead className="border-b border-zinc-200 bg-zinc-50">
-                <tr>
-                  <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Name</th>
-                  <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Type</th>
-                  <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {g.marketplaces.map((m, i) => (
-                  <MarketplaceRow key={i} m={m} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -219,6 +186,29 @@ export function PluginsScreen(): React.JSX.Element {
   const setEnabledMutation = useSetProviderPluginEnabled();
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
+
+  const autoScannedRef = useRef(false);
+  const oldestScannedAt = data?.globals.length
+    ? data.globals.reduce<string | null>((oldest, g) => {
+        if (g.lastScannedAt == null) return null;
+        if (oldest == null) return g.lastScannedAt;
+        return g.lastScannedAt < oldest ? g.lastScannedAt : oldest;
+      }, data.globals[0].lastScannedAt)
+    : null;
+
+  useEffect(() => {
+    if (data == null) return;
+    if (scanMutation.isPending || scanMutation.operationId != null) return;
+    const neverScanned = data.globals.some((g) => g.userLayerStatus == null);
+    const stale = neverScanned || isDataStale(oldestScannedAt);
+    if (!stale) return;
+    const key = "auto-scan:plugins";
+    if (autoScannedRef.current || sessionAutoScanRegistry.has(key)) return;
+    autoScannedRef.current = true;
+    sessionAutoScanRegistry.add(key);
+    scanMutation.mutate({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, oldestScannedAt]);
 
   function handleTogglePlugin(providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean) {
     setEnabledMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "user", enabled });
