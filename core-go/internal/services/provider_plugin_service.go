@@ -792,6 +792,18 @@ func applyVersionMap(entries []domain.PluginEntry, versionMap map[string]*string
 func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project *domain.Project, defs []pluginProviderDef, progress operations.ProgressFn) error {
 	total := len(defs)
 	for i, def := range defs {
+		// For Claude: scan installed_plugins.json ONCE per provider iteration (not per layer).
+		// The file is at the global config root (~/.claude/plugins/installed_plugins.json) and
+		// contains entries for all scopes. We build two maps — one for project/local scopes
+		// (keyed by pluginName@marketplace, filtered to this project path) — then apply per layer.
+		var projectVersionMap map[string]*string
+		if def.Provider.Key == "claude" {
+			globalDir := filepath.Dir(def.UserFilePath())
+			installPath := filepath.Join(globalDir, "plugins", "installed_plugins.json")
+			installScan := providers.ScanClaudeInstalledPluginsFile(installPath, globalDir)
+			projectVersionMap = providers.BuildProjectVersionMap(installScan, project.Path)
+		}
+
 		allowedDir := def.ProjectAllowedDir(project.Path)
 		projectFilePath := def.ProjectFilePath(project.Path)
 		projectResult := def.Scanner(projectFilePath, allowedDir)
@@ -805,6 +817,7 @@ func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project
 			Warnings:             sanitizeWarnings(projectResult.Warnings),
 		}
 		pe, pm := pluginScanToEntries(projectResult)
+		applyVersionMap(pe, projectVersionMap)
 		if err := s.repo.CommitLayerScan(ctx, projectScan, pe, pm); err != nil {
 			return domain.NewDatabaseError("Could not commit project layer scan", err.Error())
 		}
@@ -821,6 +834,7 @@ func (s *ProviderPluginService) scanProjectInternal(ctx context.Context, project
 				Warnings:             sanitizeWarnings(localResult.Warnings),
 			}
 			le, lm := pluginScanToEntries(localResult)
+			applyVersionMap(le, projectVersionMap)
 			if err := s.repo.CommitLayerScan(ctx, localScan, le, lm); err != nil {
 				return domain.NewDatabaseError("Could not commit local layer scan", err.Error())
 			}
@@ -1022,6 +1036,7 @@ func resolveEffectivePlugin(
 				PluginName: pluginName, MarketplaceName: marketplaceName,
 				EffectiveStatus: declToEffective(*decl),
 				ProvenanceLayer: &prov, LayerBreakdown: breakdown,
+				Version: findPluginVersion(entryMap[sc.ID], pluginName, marketplaceName),
 			}
 		}
 		breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: domain.PluginLayerScanOK})
@@ -1049,6 +1064,15 @@ func findPluginDecl(entries []domain.PluginEntry, pluginName, marketplaceName st
 		if e.PluginName == pluginName && e.MarketplaceName == marketplaceName {
 			d := e.Declaration
 			return &d
+		}
+	}
+	return nil
+}
+
+func findPluginVersion(entries []domain.PluginEntry, pluginName, marketplaceName string) *string {
+	for _, e := range entries {
+		if e.PluginName == pluginName && e.MarketplaceName == marketplaceName {
+			return e.Version
 		}
 	}
 	return nil

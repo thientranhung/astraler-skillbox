@@ -88,6 +88,7 @@ type PluginEffectiveEntry struct {
 	EffectiveStatus PluginEffectiveStatus
 	ProvenanceLayer *PluginSettingsLayer // nil if absent or unknown
 	LayerBreakdown  []PluginLayerBreakdown
+	Version         *string // nil when unknown; sourced from installed_plugins.json for the winning layer
 }
 
 // GlobalPluginView is the resolved view for the user (global ~/.claude/settings.json) layer.
