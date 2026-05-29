@@ -128,6 +128,10 @@
         "layerBreakdown": {
           "type": "array",
           "items": { "$ref": "#/definitions/PPLayerDetail" }
+        },
+        "version": {
+          "type": ["string", "null"],
+          "description": "Installed version from installed_plugins.json for the winning provenance layer. null when not available (non-Claude providers, plugin not in install record). 'unknown' is a valid literal."
         }
       },
       "required": ["pluginName", "marketplaceName", "effectiveStatus", "provenanceLayer", "layerBreakdown"],
