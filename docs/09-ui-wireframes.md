@@ -36,13 +36,13 @@ Layout đề xuất:
 └───────────────┴─────────────────────────────────────────────┘
 ```
 
-Sidebar items:
+Sidebar items (actual nav order):
 
 - Dashboard
-- Skills Library
+- Host Skills
 - Global Skills
+- Global Plugins
 - Projects
-- Updates
 - Settings
 
 Global actions:
@@ -232,10 +232,12 @@ Filters
   Search: __________________
 
 Table
-  Project        Path                    Providers                  Skills  Warnings
-  skillbox       /repo/skillbox          Shared Agents              3       0
-  content-lab    /repo/content-lab       Claude, Shared Agents      8       1
-  old-project    /repo/old-project       -                          0       missing
+  Project        Path                    Providers             Skills                    Plugins
+  skillbox       /repo/skillbox          [icon] Shared Agents  [icon] 3 Shared Agents    —
+  content-lab    /repo/content-lab       [icon] Claude, …      [icon] 5 Claude, 3 Agents [icon] 2 Claude
+  old-project    /repo/old-project       —                     —                         —
+
+Skills and Plugins columns show provider icon + count + truncated displayName per provider.
 ```
 
 Row actions:
@@ -316,40 +318,33 @@ Provider warning examples:
 
 Purpose: cài skill từ Skill Host Folder vào project.
 
+Dialog: fixed-position overlay, max-h 90vh, flex-col layout — không lẹm viewport.
+
 Flow screens:
 
 ```text
-Add Skill
+Add Skills                                                   [X]
 
-Step 1: Select Skills
-  [ ] documentation-writer
-  [ ] adr-helper
-  [ ] browser-automation
+Tab strip (logo + displayName, hover shows full path):
+  [claude-icon] Claude | [agents-icon] Generic Agents
 
-Step 2: Select Provider
-  ( ) Shared Agent Skills   supported      .agents/skills
-  ( ) Claude           experimental   .claude/...
+Skill list (scrollable, max-h 48):
+  [ ] documentation-writer            docs/documentation-writer
+  [ ] adr-helper                      docs/adr-helper
+  [x] browser-automation (Installed)
 
-Step 3: Select Mode
-  ( ) symlink
-  ( ) rsync/copy
+Footer:
+  Sẽ ghi vào: /repo/content-lab/.claude/
 
-Step 4: Confirm
-  Install 2 skills into content-lab / Shared Agent Skills using symlink.
-  Existing conflicts: none
-  Affected paths:
-    /repo/content-lab/.agents/skills/documentation-writer
-    /repo/content-lab/.agents/skills/adr-helper
-
-  [Install] [Cancel]
+  [Cancel] [Install]
 ```
 
 Rules:
 
-- If project has one valid provider, provider step can be skipped.
-- Unsupported/disabled providers cannot be selected.
-- If target path exists, show replace/skip/cancel decision.
-- Validate install target stays inside project root.
+- Tab strip: icon + displayName only; path in title tooltip và footer hint.
+- If project has no valid provider, show empty state + Scan CTA.
+- Unsupported/disabled providers không xuất hiện dưới dạng tab.
+- Dialog phủ toàn viewport (fixed overlay, z-50).
 
 ## Updates
 

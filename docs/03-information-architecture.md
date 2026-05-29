@@ -102,6 +102,8 @@ Updates
 Settings
 ```
 
+Sidebar navigation thứ tự: Dashboard → Host Skills → Global Skills → Global Plugins → Projects → Settings.
+
 ## Dashboard
 
 Dashboard hiển thị tổng quan:
