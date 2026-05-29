@@ -603,25 +603,37 @@ UI cho phép user thao tác plugin state ở hai scope:
 Local layer (`.claude/settings.local.json`) chỉ được scan, không được Skillbox
 write ở Phase 1. User vẫn có thể chỉnh tay file local để override tạm thời.
 
-### Plugin Version Display (Phase 1)
+### Plugin Version Display
 
-Khi scan user layer của Claude provider, Skillbox đọc thêm file
-`~/.claude/plugins/installed_plugins.json` (cùng thư mục gốc với settings.json).
-File này do Claude Code tự ghi khi cài plugin, và chứa `version` theo key
-`pluginName@marketplaceName` với scope `user`.
+Mỗi provider dùng nguồn khác nhau để lấy version khi scan user layer:
+
+**Claude** — đọc `~/.claude/plugins/installed_plugins.json` (cùng thư mục gốc với
+settings.json). File này do Claude Code tự ghi khi cài plugin, chứa `version` theo
+key `pluginName@marketplaceName` với scope `user`.
 
 - Version `"unknown"` là literal hợp lệ (Claude báo cáo khi không xác định).
 - JSON `null` hoặc field vắng mặt → version = NULL → UI hiển thị `—`.
 - File missing hoặc malformed → version tất cả entries = NULL; settings.json
   scan không bị ảnh hưởng.
-- Codex và Antigravity CLI không có file tương đương → version luôn NULL ở
-  Phase 1.
-- Version được persist vào `provider_plugin_entries.version` (cột nullable,
-  migration 000021).
 
-Adapter (`ScanClaudeInstalledPluginsFile`) áp dụng cùng security bounds như
-`ScanClaudeSettingsFile`: path confinement dưới `allowedDir` (`~/.claude`),
-lstat symlink reject, 1 MiB size cap, tolerant JSON (unknown fields ignored).
+Adapter: `ScanClaudeInstalledPluginsFile` — path confinement dưới `~/.claude`,
+lstat symlink reject, 1 MiB size cap, tolerant JSON.
+
+**Codex** — đọc cache dir `~/.codex/plugins/cache/<marketplace>/<plugin>/<version-or-sha>/`.
+Codex không có installed_plugins.json; version được resolve từ cấu trúc cache:
+
+1. Nếu `plugin.json` tồn tại trong version dir → dùng trường `"version"` (authoritative,
+   dùng cho semver plugin, vd stitch-skills → `"1.0.0"`).
+2. Nếu không có `plugin.json` → dùng tên thư mục verbatim (vd git-source plugin cho
+   ra dir tên short SHA `"9b3c8689"`).
+3. Không có version dir → NULL → UI hiển thị `—`.
+
+Adapter: `ScanCodexCacheDir` — path confinement dưới `~/.codex`, lstat symlink
+reject trên mọi cấp (marketplace/plugin/version dir), 64 KiB size cap cho plugin.json.
+
+**Antigravity CLI** — không có nguồn version tương đương → version luôn NULL.
+
+Version được persist vào `provider_plugin_entries.version` (cột nullable, migration 000021).
 
 ### Scan Flow
 
