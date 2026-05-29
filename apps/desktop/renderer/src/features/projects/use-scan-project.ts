@@ -10,6 +10,13 @@ function isTerminal(status: OperationProgressNotification["status"]): boolean {
   return status === "success" || status === "failed" || status === "cancelled";
 }
 
+type ScanProjectArgs = number | { projectId: number; silent?: boolean };
+
+function normalizeArgs(args: ScanProjectArgs): { projectId: number; silent: boolean } {
+  if (typeof args === "number") return { projectId: args, silent: false };
+  return { projectId: args.projectId, silent: args.silent ?? false };
+}
+
 export function useScanProject() {
   const queryClient = useQueryClient();
   const [operationId, setOperationId] = useState<number | null>(null);
@@ -24,27 +31,32 @@ export function useScanProject() {
 
   const mutation = useMutation({
     mutationKey: ['scan-project'] as const,
-    mutationFn: async (projectId: number) => {
-      // Subscribe to ALL progress events BEFORE the RPC call so events emitted
-      // during the round-trip are captured in the buffer rather than dropped.
+    mutationFn: async (args: ScanProjectArgs) => {
+      const { projectId, silent } = normalizeArgs(args);
       const buffered: OperationProgressNotification[] = [];
       const tempUnsub = subscribeAllProgress((p) => buffered.push(p));
       try {
         const result = await methods.scanProject({ projectId });
-        return { operationId: result.operationId, projectId, buffered };
+        return { operationId: result.operationId, projectId, buffered, silent };
       } finally {
         tempUnsub();
       }
     },
 
-    onSuccess: ({ operationId: opId, projectId, buffered }) => {
+    onSuccess: ({ operationId: opId, projectId, buffered, silent }) => {
       const terminalInBuffer = [...buffered]
         .reverse()
         .find((e) => e.operationId === opId && isTerminal(e.status));
 
       if (terminalInBuffer != null) {
-        if (terminalInBuffer.status === "success") {
-          toast.success("Project scanned");
+        if (!silent) {
+          if (terminalInBuffer.status === "success") {
+            toast.success("Project scanned");
+          } else if (terminalInBuffer.status === "failed") {
+            toast.error(
+              `Project scan failed${terminalInBuffer.message ? `: ${terminalInBuffer.message}` : ""}`,
+            );
+          }
         } else if (terminalInBuffer.status === "failed") {
           toast.error(
             `Project scan failed${terminalInBuffer.message ? `: ${terminalInBuffer.message}` : ""}`,
@@ -56,22 +68,28 @@ export function useScanProject() {
         return;
       }
 
-      const toastId = toast.loading("Scanning project…");
+      const toastId = silent ? undefined : toast.loading("Scanning project…");
 
       const unsub = subscribeOperationProgress(opId, (event) => {
-        if (event.status === "success") {
-          toast.success("Project scanned", { id: toastId });
+        if (!silent) {
+          if (event.status === "success") {
+            toast.success("Project scanned", { id: toastId });
+          } else if (event.status === "failed") {
+            toast.error(
+              `Project scan failed${event.message ? `: ${event.message}` : ""}`,
+              { id: toastId },
+            );
+          } else if (event.status === "cancelled") {
+            if (toastId != null) toast.dismiss(toastId);
+          } else {
+            toast.loading(event.message ? `Scanning: ${event.message}` : "Scanning project…", {
+              id: toastId,
+            });
+          }
         } else if (event.status === "failed") {
           toast.error(
             `Project scan failed${event.message ? `: ${event.message}` : ""}`,
-            { id: toastId },
           );
-        } else if (event.status === "cancelled") {
-          toast.dismiss(toastId);
-        } else {
-          toast.loading(event.message ? `Scanning: ${event.message}` : "Scanning project…", {
-            id: toastId,
-          });
         }
 
         if (isTerminal(event.status)) {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
 import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsGlobal } from "../features/provider-plugins/use-scan-provider-plugins-global.js";
@@ -7,6 +7,7 @@ import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import type { PPGlobalView, PPGlobalEntry } from "@contracts/index.js";
+import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
 const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli", "codex"]);
 
@@ -185,6 +186,29 @@ export function PluginsScreen(): React.JSX.Element {
   const setEnabledMutation = useSetProviderPluginEnabled();
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
+
+  const autoScannedRef = useRef(false);
+  const oldestScannedAt = data?.globals.length
+    ? data.globals.reduce<string | null>((oldest, g) => {
+        if (g.lastScannedAt == null) return null;
+        if (oldest == null) return g.lastScannedAt;
+        return g.lastScannedAt < oldest ? g.lastScannedAt : oldest;
+      }, data.globals[0].lastScannedAt)
+    : null;
+
+  useEffect(() => {
+    if (data == null) return;
+    if (scanMutation.isPending || scanMutation.operationId != null) return;
+    const neverScanned = data.globals.some((g) => g.userLayerStatus == null);
+    const stale = neverScanned || isDataStale(oldestScannedAt);
+    if (!stale) return;
+    const key = "auto-scan:plugins";
+    if (autoScannedRef.current || sessionAutoScanRegistry.has(key)) return;
+    autoScannedRef.current = true;
+    sessionAutoScanRegistry.add(key);
+    scanMutation.mutate({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, oldestScannedAt]);
 
   function handleTogglePlugin(providerKey: string, pluginName: string, marketplaceName: string, enabled: boolean) {
     setEnabledMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "user", enabled });

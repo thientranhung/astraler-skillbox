@@ -17,6 +17,7 @@ import { GlobalSkillsScreen } from "../global-skills-screen.js";
 import { useGlobalList } from "../../features/global-skills/use-global-list.js";
 import { useScanGlobal } from "../../features/global-skills/use-scan-global.js";
 import { methods } from "../../lib/core-client/methods.js";
+import { clearAutoScanRegistry } from "../../features/scan/auto-scan-constants.js";
 import type { GlobalListLocation } from "@contracts/index.js";
 
 const mockUseGlobalList = useGlobalList as ReturnType<typeof vi.fn>;
@@ -39,6 +40,7 @@ const makeLocation = (overrides: Partial<GlobalListLocation> = {}): GlobalListLo
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearAutoScanRegistry();
   mockUseScanGlobal.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
 });
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertCircle, PlusCircle, Copy, Check } from "lucide-react";
 import { useProjectDetail } from "../features/projects/use-project-detail.js";
@@ -17,6 +17,7 @@ import { useActiveHostSkills } from "../features/skills/use-active-host-skills.j
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import type { ProjectGetEntry, ProjectGetProvider, PPLayerStatus, PPProjectEntry } from "@contracts/index.js";
+import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
 const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli", "codex"]);
 
@@ -505,12 +506,25 @@ export function ProjectDetailScreen(): React.JSX.Element {
       ? data?.entries ?? []
       : data.entries.filter((entry) => entry.projectProviderId === selectedProviderId);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedProviderId === "all" || data == null) return;
     if (!data.providers.some((provider) => provider.projectProviderId === selectedProviderId)) {
       setSelectedProviderId("all");
     }
   }, [data, selectedProviderId, validId]);
+
+  const autoScannedRef = useRef(false);
+  useEffect(() => {
+    if (validId == null || data == null) return;
+    if (scan.isPending || scan.operationId != null) return;
+    if (!isDataStale(data.project.lastScannedAt)) return;
+    const key = `auto-scan:project:${validId}`;
+    if (autoScannedRef.current || sessionAutoScanRegistry.has(key)) return;
+    autoScannedRef.current = true;
+    sessionAutoScanRegistry.add(key);
+    scan.mutate({ projectId: validId, silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validId, data?.project.lastScannedAt]);
 
   function confirmRemoveSkill(): void {
     if (removeTarget == null || validId == null) return;
