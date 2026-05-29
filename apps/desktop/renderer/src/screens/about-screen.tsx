@@ -28,10 +28,8 @@ const LINKS = [
 const UPDATE_STATUS_LABEL: Record<string, string> = {
   idle: "",
   checking: "Checking…",
-  "up-to-date": "You're up to date",
-  available: "Update available",
-  disabled:
-    "Update check is disabled. Enable it in Settings → Network.",
+  "up-to-date": "You're up to date ✓",
+  available: "New version available!",
   error: "Could not check for updates",
 };
 
@@ -97,7 +95,7 @@ export function AboutScreen(): React.JSX.Element {
               className={`text-sm ${
                 update.status === "available"
                   ? "text-emerald-700"
-                  : update.status === "error" || update.status === "disabled"
+                  : update.status === "error"
                     ? "text-zinc-500"
                     : "text-zinc-600"
               }`}
