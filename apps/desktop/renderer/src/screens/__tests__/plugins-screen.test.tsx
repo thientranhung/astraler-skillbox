@@ -233,4 +233,65 @@ describe("PluginsScreen", () => {
     render(<PluginsScreen />);
     expect(screen.getByRole("button", { name: "Disable" }).hasAttribute("disabled")).toBe(true);
   });
+
+  it("shows Version column header and value when at least one plugin has a version", () => {
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [
+        { pluginName: "versioned-plugin", marketplaceName: "npm", status: "enabled", version: "1.2.3" },
+        { pluginName: "no-version-plugin", marketplaceName: "npm", status: "enabled", version: null },
+      ],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getByText("Version")).toBeTruthy();
+    expect(screen.getByText("1.2.3")).toBeTruthy();
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("hides Version column when all plugins have null version", () => {
+    const global = makeGlobal({
+      providerKey: "codex",
+      userLayerStatus: "ok",
+      plugins: [
+        { pluginName: "codex-plugin", marketplaceName: "openai", status: "enabled", version: null },
+      ],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.queryByText("Version")).toBeNull();
+  });
+
+  it("shows 'unknown' version literal when plugin has version: 'unknown'", () => {
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [
+        { pluginName: "some-plugin", marketplaceName: "official", status: "enabled", version: "unknown" },
+      ],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getByText("unknown")).toBeTruthy();
+  });
+
+  it("shows '—' defensively when version field is undefined (legacy DB)", () => {
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [
+        // version field absent (undefined) simulates pre-migration DB entry
+        { pluginName: "legacy-plugin", marketplaceName: "mkt", status: "enabled" },
+        { pluginName: "newer-plugin", marketplaceName: "mkt", status: "enabled", version: "2.0.0" },
+      ],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    // Version column should show since newer-plugin has a non-null version
+    expect(screen.getByText("Version")).toBeTruthy();
+    // legacy-plugin (undefined version) should show "—"
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("2.0.0")).toBeTruthy();
+  });
 });
