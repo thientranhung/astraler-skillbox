@@ -179,3 +179,85 @@ func TestScanClaudeInstalledPluginsFile(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildProjectVersionMap(t *testing.T) {
+	makeEntries := func(entries []ClaudeInstalledPluginEntry) ClaudeInstalledPluginsScan {
+		return ClaudeInstalledPluginsScan{Status: "ok", Entries: entries}
+	}
+
+	t.Run("returns project-scope versions matching projectPath", func(t *testing.T) {
+		scan := makeEntries([]ClaudeInstalledPluginEntry{
+			{PluginKey: "p@mkt", Scope: "project", ProjectPath: "/my/project", Version: ptr("1.0.0")},
+			{PluginKey: "q@mkt", Scope: "local", ProjectPath: "/my/project", Version: ptr("2.0.0")},
+			{PluginKey: "r@mkt", Scope: "project", ProjectPath: "/other/project", Version: ptr("9.9.9")},
+			{PluginKey: "s@mkt", Scope: "user", Version: ptr("3.0.0")},
+		})
+		vm := BuildProjectVersionMap(scan, "/my/project")
+		if v, ok := vm["p@mkt"]; !ok || v == nil || *v != "1.0.0" {
+			t.Errorf("p@mkt = %v, want '1.0.0'", v)
+		}
+		if v, ok := vm["q@mkt"]; !ok || v == nil || *v != "2.0.0" {
+			t.Errorf("q@mkt = %v, want '2.0.0'", v)
+		}
+		if _, ok := vm["r@mkt"]; ok {
+			t.Error("r@mkt should not appear — different projectPath")
+		}
+		if _, ok := vm["s@mkt"]; ok {
+			t.Error("s@mkt should not appear — user scope")
+		}
+		if len(vm) != 2 {
+			t.Errorf("len = %d, want 2", len(vm))
+		}
+	})
+
+	t.Run("normalizes paths with filepath.Clean before comparison", func(t *testing.T) {
+		scan := makeEntries([]ClaudeInstalledPluginEntry{
+			{PluginKey: "p@mkt", Scope: "project", ProjectPath: "/my/project/", Version: ptr("1.5.0")},
+		})
+		vm := BuildProjectVersionMap(scan, "/my/project")
+		if v, ok := vm["p@mkt"]; !ok || v == nil || *v != "1.5.0" {
+			t.Errorf("path normalization failed; p@mkt = %v, want '1.5.0'", v)
+		}
+	})
+
+	t.Run("returns empty map when projectPath is empty", func(t *testing.T) {
+		scan := makeEntries([]ClaudeInstalledPluginEntry{
+			{PluginKey: "p@mkt", Scope: "project", ProjectPath: "/x", Version: ptr("1.0.0")},
+		})
+		vm := BuildProjectVersionMap(scan, "")
+		if len(vm) != 0 {
+			t.Errorf("len = %d, want 0 for empty projectPath", len(vm))
+		}
+	})
+
+	t.Run("returns empty map on non-ok scan status", func(t *testing.T) {
+		scan := ClaudeInstalledPluginsScan{Status: "missing"}
+		vm := BuildProjectVersionMap(scan, "/any/path")
+		if len(vm) != 0 {
+			t.Errorf("len = %d, want 0 for non-ok status", len(vm))
+		}
+	})
+
+	t.Run("first matching entry wins per key", func(t *testing.T) {
+		scan := makeEntries([]ClaudeInstalledPluginEntry{
+			{PluginKey: "p@mkt", Scope: "project", ProjectPath: "/proj", Version: ptr("1.0.0")},
+			{PluginKey: "p@mkt", Scope: "local", ProjectPath: "/proj", Version: ptr("2.0.0")},
+		})
+		vm := BuildProjectVersionMap(scan, "/proj")
+		if v, ok := vm["p@mkt"]; !ok || v == nil || *v != "1.0.0" {
+			t.Errorf("p@mkt = %v, want first entry '1.0.0'", v)
+		}
+	})
+
+	t.Run("null version stored as nil pointer", func(t *testing.T) {
+		scan := makeEntries([]ClaudeInstalledPluginEntry{
+			{PluginKey: "p@mkt", Scope: "project", ProjectPath: "/proj", Version: nil},
+		})
+		vm := BuildProjectVersionMap(scan, "/proj")
+		if v, exists := vm["p@mkt"]; !exists {
+			t.Error("p@mkt should be in map even when version is nil")
+		} else if v != nil {
+			t.Errorf("version = %v, want nil", v)
+		}
+	})
+}

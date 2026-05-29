@@ -199,13 +199,12 @@ export function PluginsScreen(): React.JSX.Element {
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
 
   const autoScannedRef = useRef(false);
-  const oldestScannedAt = data?.globals.length
-    ? data.globals.reduce<string | null>((oldest, g) => {
-        if (g.lastScannedAt == null) return null;
-        if (oldest == null) return g.lastScannedAt;
-        return g.lastScannedAt < oldest ? g.lastScannedAt : oldest;
-      }, data.globals[0].lastScannedAt)
-    : null;
+  const oldestScannedAt = (() => {
+    const globals = data?.globals;
+    if (!globals?.length) return null;
+    if (globals.some((g) => g.lastScannedAt == null)) return null;
+    return globals.reduce<string>((oldest, g) => (g.lastScannedAt! < oldest ? g.lastScannedAt! : oldest), globals[0].lastScannedAt!);
+  })();
 
   useEffect(() => {
     if (data == null) return;

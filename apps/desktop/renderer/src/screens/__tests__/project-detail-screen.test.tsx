@@ -501,4 +501,54 @@ describe("ProjectDetailScreen UX clarity", () => {
     const btns = screen.getAllByRole("button", { name: "enabled" });
     expect(btns.some((b) => b.hasAttribute("disabled"))).toBe(true);
   });
+
+  it("shows Version column when at least one plugin has a non-null version", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "plugin-a", marketplaceName: "npm", effectiveStatus: "enabled", provenanceLayer: "project", layerBreakdown: [], version: "1.0.0" } as any,
+        { pluginName: "plugin-b", marketplaceName: "npm", effectiveStatus: "disabled", provenanceLayer: "user", layerBreakdown: [], version: null } as any,
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByRole("columnheader", { name: "Version" })).toBeTruthy();
+    expect(screen.getByText("1.0.0")).toBeTruthy();
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("hides Version column when all plugins have null version", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "plugin-a", marketplaceName: "npm", effectiveStatus: "enabled", provenanceLayer: "project", layerBreakdown: [], version: null } as any,
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.queryByRole("columnheader", { name: "Version" })).toBeNull();
+  });
+
+  it("shows 'unknown' version literal as-is in Version column", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "plugin-a", marketplaceName: "npm", effectiveStatus: "enabled", provenanceLayer: "user", layerBreakdown: [], version: "unknown" } as any,
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText("unknown")).toBeTruthy();
+  });
+
+  it("renders '—' defensively when version field is undefined (legacy DB pre-migration)", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false, isError: false,
+      data: makeProjectPluginData("claude", [
+        { pluginName: "legacy-plugin", marketplaceName: "mkt", effectiveStatus: "enabled", provenanceLayer: "user", layerBreakdown: [] } as any,
+        { pluginName: "newer-plugin", marketplaceName: "mkt", effectiveStatus: "enabled", provenanceLayer: "project", layerBreakdown: [], version: "2.0.0" } as any,
+      ]),
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByRole("columnheader", { name: "Version" })).toBeTruthy();
+    expect(screen.getByText("2.0.0")).toBeTruthy();
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
+  });
 });
