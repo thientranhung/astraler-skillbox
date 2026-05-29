@@ -276,18 +276,8 @@ type AppCheckUpdateResult struct {
 }
 
 // CheckAppUpdate fetches the latest GitHub release and compares it with currentVersion.
-// Respects the network_settings update_check_enabled gate — returns Error="network_disabled" when off.
+// Always runs — no opt-in gate. App version check is standard behavior.
 func (s *UpdateCheckService) CheckAppUpdate(ctx context.Context, currentVersion string) (AppCheckUpdateResult, error) {
-	settings, err := s.networkSettingsRepo.Get(ctx)
-	if err != nil {
-		errStr := "network_error"
-		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
-	}
-	if !settings.UpdateCheckEnabled {
-		errStr := "network_disabled"
-		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
-	}
-
 	httpCtx, cancel := context.WithTimeout(ctx, appCheckHTTPTimeout)
 	defer cancel()
 
