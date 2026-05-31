@@ -30,7 +30,7 @@ export interface AppCheckUpdateResponse {
    */
   releaseUrl: string | null;
   /**
-   * Error code: 'network_disabled' | 'network_error' | 'no_releases' | 'http_error' | 'parse_error'. Null on success.
+   * Error code: 'network_error' | 'no_releases' | 'http_error' | 'parse_error'. Null on success. App update check is always-on (ADR-0002).
    */
   error: string | null;
 }

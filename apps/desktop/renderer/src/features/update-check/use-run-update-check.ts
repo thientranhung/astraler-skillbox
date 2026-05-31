@@ -6,7 +6,7 @@ import type { UpdateCheckPluginResult } from "@contracts/index.js";
 
 const RATE_LIMIT_MS = 10_000; // Larry-4: minimum re-trigger interval
 
-export type UpdateCheckStatus = "idle" | "running" | "ok" | "disabled" | "git_not_found" | "error";
+export type UpdateCheckStatus = "idle" | "running" | "ok" | "git_not_found" | "error";
 
 export function useRunUpdateCheck() {
   const [status, setStatus] = useState<UpdateCheckStatus>("idle");
@@ -28,10 +28,7 @@ export function useRunUpdateCheck() {
     onSuccess: (data) => {
       if (data === null) return; // rate-limited, no state change
       lastRunRef.current = Date.now();
-      if (data.status === "disabled") {
-        setStatus("disabled");
-        toast.info("Update check is disabled. Enable it in Settings → Network.");
-      } else if (data.status === "git_not_found") {
+      if (data.status === "git_not_found") {
         setStatus("git_not_found");
         toast.error("git is required for update checks. Please install git.");
       } else if (data.status === "ok") {

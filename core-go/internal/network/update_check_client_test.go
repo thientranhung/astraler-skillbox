@@ -35,18 +35,6 @@ func TestGitLsRemoteClient_HTTPSOnly(t *testing.T) {
 	}
 }
 
-func TestNoopClient_NeverContacts(t *testing.T) {
-	client := NoopClient{}
-	ctx := context.Background()
-	res := client.LsRemote(ctx, "https://github.com/example/repo.git", "main")
-	if res.Error != "update_check_disabled" {
-		t.Errorf("NoopClient: expected error 'update_check_disabled', got %q", res.Error)
-	}
-	if res.RemoteSHA != "" {
-		t.Errorf("NoopClient: expected empty RemoteSHA, got %q", res.RemoteSHA)
-	}
-}
-
 func TestGitLsRemoteClient_GitNotFound(t *testing.T) {
 	// Only run if git is genuinely absent — skip otherwise to avoid test fragility.
 	// This test is informational; the real gate is the service-level git_not_found check.

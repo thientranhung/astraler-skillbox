@@ -20,17 +20,10 @@ type UpdateCheckResult struct {
 }
 
 // UpdateCheckClient queries remote plugin source refs.
-// Implementations: GitLsRemoteClient (real), NoopClient (stub when setting OFF).
+// Implementation: GitLsRemoteClient (real). Plugin update-check is always-on
+// (ADR-0002) — there is no longer a no-op stub.
 type UpdateCheckClient interface {
 	LsRemote(ctx context.Context, sourceURL, ref string) UpdateCheckResult
-}
-
-// NoopClient is the boot-time stub when network.update_check.enabled=false.
-// It satisfies the interface but never contacts any host.
-type NoopClient struct{}
-
-func (NoopClient) LsRemote(_ context.Context, sourceURL, ref string) UpdateCheckResult {
-	return UpdateCheckResult{SourceURL: sourceURL, SourceRef: ref, Error: "update_check_disabled"}
 }
 
 // GitLsRemoteClient shells out to system git with a stripped environment.

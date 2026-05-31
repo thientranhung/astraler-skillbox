@@ -19,27 +19,25 @@ func TestMigration000022_UpDown(t *testing.T) {
 		}
 	}
 
-	// network_settings row id=1 should exist with defaults.
-	var enabled, ttl int
+	// network_settings row id=1 should exist with the cache_ttl_hours default.
+	// (update_check_enabled was dropped by 000023 — see migration_000023_test.go.)
+	var ttl int
 	if err := db.QueryRow(
-		"SELECT update_check_enabled, cache_ttl_hours FROM network_settings WHERE id = 1",
-	).Scan(&enabled, &ttl); err != nil {
+		"SELECT cache_ttl_hours FROM network_settings WHERE id = 1",
+	).Scan(&ttl); err != nil {
 		t.Fatalf("network_settings default row: %v", err)
-	}
-	if enabled != 0 {
-		t.Errorf("update_check_enabled default: got %d want 0", enabled)
 	}
 	if ttl != 6 {
 		t.Errorf("cache_ttl_hours default: got %d want 6", ttl)
 	}
 
-	// database_version should be 22.
+	// database_version should be at the current head (23).
 	var dbVersion int
 	if err := db.QueryRow("SELECT database_version FROM app_settings WHERE id = 1").Scan(&dbVersion); err != nil {
 		t.Fatalf("database_version: %v", err)
 	}
-	if dbVersion != 22 {
-		t.Errorf("database_version: got %d want 22", dbVersion)
+	if dbVersion != 23 {
+		t.Errorf("database_version: got %d want 23", dbVersion)
 	}
 
 	// Verify UNIQUE constraint on plugin_update_check_cache.

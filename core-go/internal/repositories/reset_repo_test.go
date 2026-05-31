@@ -79,7 +79,7 @@ func TestResetAllData_ResetsSettings(t *testing.T) {
 		t.Fatalf("update app_settings: %v", err)
 	}
 	if _, err := db.ExecContext(ctx,
-		`UPDATE network_settings SET update_check_enabled = 1, cache_ttl_hours = 99 WHERE id = 1`); err != nil {
+		`UPDATE network_settings SET cache_ttl_hours = 99 WHERE id = 1`); err != nil {
 		t.Fatalf("update network_settings: %v", err)
 	}
 
@@ -101,15 +101,11 @@ func TestResetAllData_ResetsSettings(t *testing.T) {
 		t.Errorf("default_install_mode: expected 'symlink', got %q", installMode)
 	}
 
-	var enabled int
 	var ttl int
 	if err := db.QueryRowContext(ctx,
-		`SELECT update_check_enabled, cache_ttl_hours FROM network_settings WHERE id = 1`).
-		Scan(&enabled, &ttl); err != nil {
+		`SELECT cache_ttl_hours FROM network_settings WHERE id = 1`).
+		Scan(&ttl); err != nil {
 		t.Fatalf("read network_settings: %v", err)
-	}
-	if enabled != 0 {
-		t.Errorf("update_check_enabled: expected 0, got %d", enabled)
 	}
 	if ttl != 6 {
 		t.Errorf("cache_ttl_hours: expected 6, got %d", ttl)
