@@ -91,13 +91,12 @@ func main() {
 	providerPluginSvc := services.NewProviderPluginService(providerPluginRepo, pdRepo, projectRepo, providerRegistrySvc, runner)
 	projectSvc.WithPluginDeps(providerPluginSvc, providerPluginSvc)
 
-	networkSettingsRepo := repositories.NewNetworkSettingsRepo(db)
 	updateCheckCacheRepo := repositories.NewUpdateCheckCacheRepo(db)
-	// Boot-time: client is noop until user opts in (default OFF per ADR-0001).
-	// GetCached settings are read at call time in the service, so this is safe.
-	updateCheckClient := network.NoopClient{}
+	// Plugin update-check is always-on (ADR-0002). Wire the real git ls-remote
+	// client; network contact only occurs when the user triggers updateCheck.run.
+	updateCheckClient := network.NewGitLsRemoteClient()
 	claudeConfigDir := services.ClaudeConfigDirFromHomeDir()
-	updateCheckSvc := services.NewUpdateCheckService(networkSettingsRepo, updateCheckCacheRepo, updateCheckClient, claudeConfigDir)
+	updateCheckSvc := services.NewUpdateCheckService(updateCheckCacheRepo, updateCheckClient, claudeConfigDir)
 
 	resetFn := func() error {
 		return repositories.ResetAllData(context.Background(), db)

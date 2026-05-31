@@ -323,9 +323,8 @@ Flow:
 ```text
 User mở About screen (sidebar → About)
   -> Thấy version hiện tại của app
-  -> Bấm "Check for Updates"
-  -> Nếu network.update_check_enabled = false: UI hiển thị "Enable in Settings → Network"
-  -> Nếu enabled: app gọi GitHub Releases API (api.github.com)
+  -> App tự gọi GitHub Releases API (api.github.com) khi mở screen (always-on, không gate)
+  -> Có thể bấm "Check for Updates" để kiểm tra lại thủ công
      -> So sánh latest tag với version hiện tại
      -> Nếu có bản mới: hiển thị link download tới GitHub Release
      -> Nếu up-to-date: hiển thị "You're up to date"
@@ -335,7 +334,7 @@ User mở About screen (sidebar → About)
 Kết quả:
 
 - User biết version đang chạy và có thể kiểm tra bản mới khi cần.
-- Tính năng là opt-in (mặc định tắt, ADR-0001) — app không tự gọi mạng khi khởi động.
+- App-update check là always-on (ADR-0002); plugin update-check thì manual-trigger-only (user phải bấm "Check Updates"). App vẫn dùng được 100% offline.
 
 ## 15. Reset All Data
 

@@ -76,24 +76,6 @@ describe("useCheckAppUpdate", () => {
     expect(result.current.releaseUrl).toBe("https://github.com/example/releases/tag/v1.2.3");
   });
 
-  it("returns disabled when network is off", async () => {
-    mockCheckAppUpdate.mockResolvedValue({
-      currentVersion: "0.1.0",
-      latestVersion: null,
-      updateAvailable: false,
-      releaseUrl: null,
-      error: "network_disabled",
-    });
-
-    const { result } = renderHook(() => useCheckAppUpdate(), { wrapper: makeWrapper() });
-
-    await act(async () => {
-      result.current.check();
-    });
-
-    await waitFor(() => expect(result.current.status).toBe("disabled"));
-  });
-
   it("returns error on network failure", async () => {
     mockCheckAppUpdate.mockResolvedValue({
       currentVersion: "0.1.0",

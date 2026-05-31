@@ -323,10 +323,9 @@ Hiển thị:
 - Tên ứng dụng và version (từ `VITE_APP_VERSION`).
 - Author links: Email, GitHub, Blog — click mở browser.
 - Update check: nút "Check for Updates" gọi `app.checkUpdate` RPC.
-  - Trạng thái: idle / checking / up-to-date / available / disabled / error.
+  - Trạng thái: idle / checking / up-to-date / available / error.
   - Khi có bản mới: hiển thị `latestVersion` và link "View release" đến GitHub Releases.
-  - Khi network bị tắt (Settings → Network): hiển thị thông báo hướng user bật lên.
 
-`app.checkUpdate` gọi GitHub Releases API, chỉ hoạt động khi `network_settings.update_check_enabled = true`.
+`app.checkUpdate` gọi GitHub Releases API, always-on (không gate) — auto-check khi mở About screen (ADR-0002).
 
 <!-- DOC-VERIFIED: about-screen, use-check-app-update, method-allowlist app.checkUpdate -->

@@ -458,21 +458,19 @@ Notes:
 
 ## network_settings
 
-*(migration 000022)* Purpose: bảng singleton lưu cài đặt outbound network. Luôn có đúng 1 row (`id = 1`) được insert bởi migration. App đọc row này mỗi lần `updateCheck.run` để kiểm tra default-OFF enforcement.
+*(migration 000022; cột `update_check_enabled` bị drop ở 000023)* Purpose: bảng singleton lưu `cache_ttl_hours` cho update-check. Luôn có đúng 1 row (`id = 1`) được insert bởi migration.
 
 | Field | Type | Nullable | Description |
 |---|---|---:|---|
 | `id` | integer | no | Primary key. CHECK `(id = 1)` — đảm bảo singleton. |
-| `update_check_enabled` | integer | no | `0` = tắt (privacy default), `1` = bật. Default `0`. Khi `0`, `UpdateCheckService` trả `{status:"disabled"}` ngay mà không gọi network. |
 | `cache_ttl_hours` | integer | no | TTL cache update-check tính bằng giờ. Default `6`. |
 | `created_at` | text | no | ISO-8601 UTC; set bởi migration. |
-| `updated_at` | text | no | ISO-8601 UTC; cập nhật khi `SetUpdateCheckEnabled` hoặc `SetCacheTTLHours` được gọi. |
+| `updated_at` | text | no | ISO-8601 UTC; cập nhật khi `SetCacheTTLHours` được gọi. |
 
 Notes:
 
-- Row được insert bởi migration với `(update_check_enabled=0, cache_ttl_hours=6)` — giá trị mặc định privacy-safe.
+- Cột `update_check_enabled` đã bị drop ở migration 000023 (ADR-0002): update-check là always-on, không còn opt-in gate. `UpdateCheckService.RunUpdateCheck` không đọc bảng này nữa.
 - Không bao giờ delete row này; chỉ UPDATE.
-- Phase 1: `update_check_enabled` chỉ có thể bật qua direct DB hoặc future Settings UI toggle (Phase 2). UI hiện tại chỉ hiển thị trạng thái.
 
 ## Polymorphic References
 

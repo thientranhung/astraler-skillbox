@@ -289,7 +289,7 @@ Command:
   providerPlugin.removeOverride(input)
   updateCheck.run()
   app.resetAll()        -- truncate user data tables + reset settings to defaults
-  app.checkUpdate()     -- query GitHub Releases API for latest app version (opt-in)
+  app.checkUpdate()     -- query GitHub Releases API for latest app version (always-on)
 ```
 
 Query không nên tạo side effect. Command có thể tạo `operations` record, ghi DB,
@@ -782,12 +782,14 @@ Provider seed data:
   alternatives = bundled JSON or code seed
 
 Outbound Network:
-  default = OFF (local-first invariant, see ADR-0001)
-  opt_in = network.update_check.enabled via network_settings table (migration 000022)
+  scope = manual-trigger plugin update checks only (always-on, see ADR-0002 supersedes ADR-0001)
+  trigger = user clicks "Check Updates" on Plugins screen; no background polling, no auto-check
+  gate = none (the update_check_enabled opt-in column was dropped in migration 000023)
   mechanism = git ls-remote via system git (no new SDK); HTTPS URLs only
   security = HTTPS-only validation before subprocess; env-stripped (PATH + GIT_TERMINAL_PROMPT=0 only)
   timeout = 8s per-request, 60s batch deadline; max 4 concurrent subprocesses
-  cache = plugin_update_check_cache table, 6h TTL default
+  cache = plugin_update_check_cache table, 6h TTL default (network_settings.cache_ttl_hours)
+  privacy = no telemetry, no Skillbox-operated server; app fully usable offline
   renderer_boundary = renderer never calls network; all outbound via Go core (UpdateCheckService)
-  see = docs/decisions/0001-outbound-network-update-check.md
+  see = docs/decisions/0002-plugin-update-check-always-on.md
 ```

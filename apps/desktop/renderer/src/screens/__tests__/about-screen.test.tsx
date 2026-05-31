@@ -54,7 +54,7 @@ describe("AboutScreen", () => {
       status: "up-to-date",
     });
     render(<AboutScreen />);
-    expect(screen.getByText("You're up to date")).toBeTruthy();
+    expect(screen.getByText(/You're up to date/)).toBeTruthy();
   });
 
   it("shows update available with version and link", () => {
@@ -66,7 +66,7 @@ describe("AboutScreen", () => {
       releaseUrl: "https://github.com/thientranhung/astraler-skillbox/releases/tag/v1.2.3",
     });
     render(<AboutScreen />);
-    expect(screen.getByText("Update available")).toBeTruthy();
+    expect(screen.getByText(/New version available/)).toBeTruthy();
     expect(screen.getByText("(1.2.3)")).toBeTruthy();
     expect(screen.getByText("View release")).toBeTruthy();
   });
@@ -81,14 +81,5 @@ describe("AboutScreen", () => {
     const btn = screen.getByText("Check for Updates").closest("button");
     expect(btn?.disabled).toBe(true);
     expect(screen.getByText("Checking…")).toBeTruthy();
-  });
-
-  it("shows disabled message when network is off", () => {
-    mockUseCheckAppUpdate.mockReturnValue({
-      ...idleState,
-      status: "disabled",
-    });
-    render(<AboutScreen />);
-    expect(screen.getByText(/Update check is disabled/)).toBeTruthy();
   });
 });
