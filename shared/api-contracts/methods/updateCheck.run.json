@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "UpdateCheckRunMethod",
-  "description": "Contract for updateCheck.run JSON-RPC method. Manually triggers plugin update check (ADR-0001 Phase 1). Requires network.update_check.enabled=true; returns status='disabled' otherwise.",
+  "description": "Contract for updateCheck.run JSON-RPC method. Manually triggers plugin update check. Always-on (ADR-0002) — no opt-in gate; network contact only happens when the user triggers this.",
   "oneOf": [
     { "$ref": "#/definitions/UpdateCheckRunRequest" },
     { "$ref": "#/definitions/UpdateCheckRunResponse" }
@@ -20,8 +20,8 @@
       "properties": {
         "status": {
           "type": "string",
-          "enum": ["ok", "disabled", "git_not_found", "error"],
-          "description": "'disabled' when setting is off (default). 'git_not_found' when git CLI unavailable. 'ok' on success."
+          "enum": ["ok", "git_not_found", "error"],
+          "description": "'git_not_found' when git CLI unavailable. 'error' on internal failure. 'ok' on success."
         },
         "plugins": {
           "type": "array",

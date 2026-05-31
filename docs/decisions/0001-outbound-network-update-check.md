@@ -1,9 +1,15 @@
 # ADR-0001: Outbound Network for Plugin Update Check
 
-- **Status:** accepted
+- **Status:** superseded by [ADR-0002](./0002-plugin-update-check-always-on.md)
 - **Date:** 2026-05-29
 - **Deciders:** user (thienth@astraler.com), Tom (planner)
 - **Tags:** architecture | product | network | privacy
+
+> **Superseded (2026-05-31):** The default-OFF opt-in gate (Decision §2, §12, §13, §15) was
+> never functional end-to-end (the real network client was never wired; the toggle UI was
+> removed) and is replaced by **always-on, manual-trigger-only** update checks in ADR-0002.
+> The mechanism, timeouts, HTTPS-only/env-stripping/git-not-found safeguards, allowlist-from-disk,
+> and "no telemetry / no Skillbox server" guarantees from this ADR remain in force.
 
 ## Context
 

@@ -1024,8 +1024,13 @@ Notes:
 
 *(migration 000022 — 2026-05-29)*
 
-Hai bảng hỗ trợ tính năng **G3c plugin update-check** (ADR-0001). Tính năng
-này là opt-in và **mặc định TẮT** (`network_settings.update_check_enabled = 0`).
+Hai bảng hỗ trợ tính năng **G3c plugin update-check**. Tính năng này là
+**always-on, manual-trigger-only** (ADR-0002, supersedes ADR-0001): không còn
+opt-in gate; network chỉ được gọi khi user bấm "Check Updates".
+
+> **Migration 000023 (2026-05-31):** cột `network_settings.update_check_enabled`
+> đã bị **drop** (gate cũ vô dụng). Bảng `network_settings` được giữ cho
+> `cache_ttl_hours`.
 
 ```text
 plugin_update_check_cache
@@ -1078,24 +1083,22 @@ Notes:
 ### 20.2 network_settings
 
 Bảng singleton (luôn có đúng 1 row với `id = 1`, được insert bởi migration
-000022). Lưu các cài đặt outbound network của app.
+000022). Giữ cài đặt cache cho update-check.
 
-Fields:
+Fields (sau migration 000023):
 
 ```text
 id                    -- INTEGER PRIMARY KEY CHECK (id = 1); luôn = 1
-update_check_enabled  -- INTEGER NOT NULL DEFAULT 0; 0=tắt (privacy default), 1=bật
 cache_ttl_hours       -- INTEGER NOT NULL DEFAULT 6; TTL cache update-check (giờ)
 created_at            -- TEXT NOT NULL; ISO-8601 UTC
-updated_at            -- TEXT NOT NULL; ISO-8601 UTC; cập nhật khi set_enabled/set_ttl
+updated_at            -- TEXT NOT NULL; ISO-8601 UTC; cập nhật khi set_ttl
 ```
 
 Notes:
 
-- `update_check_enabled = 0` là mặc định bắt buộc (ADR-0001 §2): app phải
-  không gọi ra ngoài khi setting này là 0.
-- `UpdateCheckService.RunUpdateCheck` kiểm tra setting này **trước tiên**; nếu
-  `false` → trả về `{status:"disabled"}` ngay mà không gọi client.
+- Cột `update_check_enabled` đã bị drop ở migration 000023 (ADR-0002): update-check
+  là always-on, không còn gate. `UpdateCheckService.RunUpdateCheck` không đọc
+  setting nào nữa — chạy mỗi khi user trigger.
 - `cache_ttl_hours` hiện read-only từ UI (Phase 1); Phase 2 có thể expose slider.
 
 ## Provider Plugin Relationships

@@ -4,7 +4,7 @@
  */
 
 /**
- * Contract for updateCheck.run JSON-RPC method. Manually triggers plugin update check (ADR-0001 Phase 1). Requires network.update_check.enabled=true; returns status='disabled' otherwise.
+ * Contract for updateCheck.run JSON-RPC method. Manually triggers plugin update check. Always-on (ADR-0002) — no opt-in gate; network contact only happens when the user triggers this.
  */
 export type UpdateCheckRunMethod = UpdateCheckRunRequest | UpdateCheckRunResponse;
 
@@ -14,9 +14,9 @@ export type UpdateCheckRunMethod = UpdateCheckRunRequest | UpdateCheckRunRespons
 export interface UpdateCheckRunRequest {}
 export interface UpdateCheckRunResponse {
   /**
-   * 'disabled' when setting is off (default). 'git_not_found' when git CLI unavailable. 'ok' on success.
+   * 'git_not_found' when git CLI unavailable. 'error' on internal failure. 'ok' on success.
    */
-  status: 'ok' | 'disabled' | 'git_not_found' | 'error';
+  status: 'ok' | 'git_not_found' | 'error';
   /**
    * Per-plugin results. Empty when status != 'ok'.
    */

@@ -24,13 +24,6 @@ func openTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-// panicClient panics if LsRemote is called — proves client is never invoked.
-type panicClient struct{}
-
-func (panicClient) LsRemote(_ context.Context, url, ref string) network.UpdateCheckResult {
-	panic("UpdateCheckClient.LsRemote called when setting is disabled — invariant violated")
-}
-
 // spyClient records calls; returns a configurable result.
 type spyClient struct {
 	calls   []spyCall
@@ -50,35 +43,10 @@ func (c *spyClient) LsRemote(_ context.Context, url, ref string) network.UpdateC
 	return res
 }
 
-// TestNetworkOffSmokesNoRemote verifies that with default settings (enabled=false),
-// updateCheck.run returns "disabled" without ever invoking the client.
-// This is the ADR-0001 §Verification boot-time no-op guarantee.
-func TestNetworkOffSmokesNoRemote(t *testing.T) {
+// TestUpdateCheck_AlwaysOn_MockClient verifies the always-on path (ADR-0002):
+// updateCheck.run returns results from the client with no opt-in setting required.
+func TestUpdateCheck_AlwaysOn_MockClient(t *testing.T) {
 	db := openTestDB(t)
-	netRepo := repositories.NewNetworkSettingsRepo(db)
-	cacheRepo := repositories.NewUpdateCheckCacheRepo(db)
-
-	// Default setting is update_check_enabled=0 (inserted by migration 000022).
-	svc := services.NewUpdateCheckService(netRepo, cacheRepo, panicClient{}, t.TempDir())
-
-	ctx := context.Background()
-	result, err := svc.RunUpdateCheck(ctx)
-	if err != nil {
-		t.Fatalf("RunUpdateCheck: unexpected error: %v", err)
-	}
-	if result.Status != "disabled" {
-		t.Errorf("status: got %q want %q", result.Status, "disabled")
-	}
-	if len(result.Plugins) != 0 {
-		t.Errorf("plugins: got %d entries, want 0", len(result.Plugins))
-	}
-	// If panicClient.LsRemote had been called, the test would have panicked above.
-}
-
-// TestUpdateCheckEnabled_MockClient verifies the enabled path returns results from mock client.
-func TestUpdateCheckEnabled_MockClient(t *testing.T) {
-	db := openTestDB(t)
-	netRepo := repositories.NewNetworkSettingsRepo(db)
 	cacheRepo := repositories.NewUpdateCheckCacheRepo(db)
 
 	// Create a real marketplace dir structure so the service can find plugin sources.
@@ -127,13 +95,8 @@ func TestUpdateCheckEnabled_MockClient(t *testing.T) {
 		result: network.UpdateCheckResult{RemoteSHA: newSHA},
 	}
 
-	// Enable the setting.
 	ctx := context.Background()
-	if err := netRepo.SetUpdateCheckEnabled(ctx, true); err != nil {
-		t.Fatalf("SetUpdateCheckEnabled: %v", err)
-	}
-
-	svc := services.NewUpdateCheckService(netRepo, cacheRepo, spy, claudeDir)
+	svc := services.NewUpdateCheckService(cacheRepo, spy, claudeDir)
 	result, err := svc.RunUpdateCheck(ctx)
 	if err != nil {
 		t.Fatalf("RunUpdateCheck: %v", err)
@@ -178,7 +141,6 @@ func TestUpdateCheckEnabled_MockClient(t *testing.T) {
 // Uses GitLsRemoteClient directly (no real network call — rejected before any subprocess).
 func TestUpdateCheck_HTTPSOnlyFiltered(t *testing.T) {
 	db := openTestDB(t)
-	netRepo := repositories.NewNetworkSettingsRepo(db)
 	cacheRepo := repositories.NewUpdateCheckCacheRepo(db)
 
 	claudeDir := t.TempDir()
@@ -213,11 +175,7 @@ func TestUpdateCheck_HTTPSOnlyFiltered(t *testing.T) {
 	realClient := network.NewGitLsRemoteClient()
 
 	ctx := context.Background()
-	if err := netRepo.SetUpdateCheckEnabled(ctx, true); err != nil {
-		t.Fatal(err)
-	}
-
-	svc := services.NewUpdateCheckService(netRepo, cacheRepo, realClient, claudeDir)
+	svc := services.NewUpdateCheckService(cacheRepo, realClient, claudeDir)
 	result, err := svc.RunUpdateCheck(ctx)
 	if err != nil {
 		t.Fatalf("RunUpdateCheck: %v", err)

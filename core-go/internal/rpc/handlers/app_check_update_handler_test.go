@@ -66,8 +66,10 @@ func TestAppCheckUpdateHandler_UpdateAvailable(t *testing.T) {
 	}
 }
 
-func TestAppCheckUpdateHandler_NetworkDisabled(t *testing.T) {
-	errStr := "network_disabled"
+func TestAppCheckUpdateHandler_ErrorSurfaced(t *testing.T) {
+	// app.checkUpdate is always-on (ADR-0002): failures surface in the error
+	// field, not as RPC errors. "network_error" is a valid runtime error path.
+	errStr := "network_error"
 	svc := &stubAppCheckUpdateSvc{
 		result: services.AppCheckUpdateResult{
 			Error: &errStr,
@@ -88,10 +90,10 @@ func TestAppCheckUpdateHandler_NetworkDisabled(t *testing.T) {
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if resp.Error == nil || *resp.Error != "network_disabled" {
-		t.Errorf("expected error=network_disabled, got %v", resp.Error)
+	if resp.Error == nil || *resp.Error != "network_error" {
+		t.Errorf("expected error=network_error, got %v", resp.Error)
 	}
 	if resp.UpdateAvailable {
-		t.Error("expected updateAvailable=false when network disabled")
+		t.Error("expected updateAvailable=false on error")
 	}
 }

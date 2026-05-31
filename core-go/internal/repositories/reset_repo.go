@@ -42,11 +42,11 @@ func ResetAllData(ctx context.Context, db *sql.DB) error {
 		`DELETE FROM provider_path_overrides`,
 		`DELETE FROM plugin_update_check_cache`,
 
-		// Reset singleton network settings row to defaults.
+		// Reset singleton network settings row to defaults. update_check is
+		// always-on (ADR-0002); only cache_ttl_hours is resettable.
 		`UPDATE network_settings
-		    SET update_check_enabled = 0,
-		        cache_ttl_hours      = 6,
-		        updated_at           = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+		    SET cache_ttl_hours = 6,
+		        updated_at      = strftime('%Y-%m-%dT%H:%M:%SZ','now')
 		  WHERE id = 1`,
 	}
 

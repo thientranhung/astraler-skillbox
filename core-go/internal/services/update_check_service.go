@@ -27,45 +27,32 @@ const (
 )
 
 type UpdateCheckService struct {
-	networkSettingsRepo *repositories.NetworkSettingsRepo
-	cacheRepo           *repositories.UpdateCheckCacheRepo
-	client              network.UpdateCheckClient
-	claudeConfigDir     string
+	cacheRepo       *repositories.UpdateCheckCacheRepo
+	client          network.UpdateCheckClient
+	claudeConfigDir string
 }
 
 func NewUpdateCheckService(
-	networkSettingsRepo *repositories.NetworkSettingsRepo,
 	cacheRepo *repositories.UpdateCheckCacheRepo,
 	client network.UpdateCheckClient,
 	claudeConfigDir string,
 ) *UpdateCheckService {
 	return &UpdateCheckService{
-		networkSettingsRepo: networkSettingsRepo,
-		cacheRepo:           cacheRepo,
-		client:              client,
-		claudeConfigDir:     claudeConfigDir,
+		cacheRepo:       cacheRepo,
+		client:          client,
+		claudeConfigDir: claudeConfigDir,
 	}
 }
 
 // RunResult is the full response from RunUpdateCheck.
 type RunResult struct {
-	Status  string                          // "ok" | "disabled" | "git_not_found"
+	Status  string                          // "ok" | "git_not_found" | "error"
 	Plugins []domain.UpdateCheckPluginResult
 }
 
-// RunUpdateCheck performs the manual update check. Returns immediately with
-// Status="disabled" when the setting is off — no network contact occurs.
+// RunUpdateCheck performs the manual update check. Always-on (ADR-0002): there is
+// no opt-in gate. Network contact only happens when the user triggers this.
 func (s *UpdateCheckService) RunUpdateCheck(ctx context.Context) (RunResult, error) {
-	settings, err := s.networkSettingsRepo.Get(ctx)
-	if err != nil {
-		return RunResult{Status: "error"}, err
-	}
-
-	// Default-OFF enforcement: return disabled without contacting any host.
-	if !settings.UpdateCheckEnabled {
-		return RunResult{Status: "disabled"}, nil
-	}
-
 	// Larry-3: git-not-found check before any work.
 	if _, err := exec.LookPath("git"); err != nil {
 		return RunResult{Status: "git_not_found"}, nil
@@ -272,7 +259,7 @@ type AppCheckUpdateResult struct {
 	LatestVersion   *string
 	UpdateAvailable bool
 	ReleaseURL      *string
-	Error           *string // "network_disabled" | "network_error" | "no_releases" | "http_error" | "parse_error"
+	Error           *string // "network_error" | "no_releases" | "http_error" | "parse_error"
 }
 
 // CheckAppUpdate fetches the latest GitHub release and compares it with currentVersion.
