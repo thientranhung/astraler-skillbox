@@ -4,7 +4,7 @@
  */
 
 /**
- * Contract for app.checkUpdate RPC method. Checks GitHub Releases for a newer app version. Respects the network_settings gate (update_check_enabled). Returns error field on failure instead of RPC error.
+ * Contract for app.checkUpdate RPC method. Checks GitHub Releases for a newer app version. Always-on (ADR-0002) — no opt-in gate. Returns error field on failure instead of RPC error.
  */
 export type AppCheckUpdateMethod = AppCheckUpdateRequest | AppCheckUpdateResponse;
 

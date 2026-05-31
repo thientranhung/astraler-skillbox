@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AppCheckUpdateMethod",
-  "description": "Contract for app.checkUpdate RPC method. Checks GitHub Releases for a newer app version. Respects the network_settings gate (update_check_enabled). Returns error field on failure instead of RPC error.",
+  "description": "Contract for app.checkUpdate RPC method. Checks GitHub Releases for a newer app version. Always-on (ADR-0002) — no opt-in gate. Returns error field on failure instead of RPC error.",
   "oneOf": [
     { "$ref": "#/definitions/AppCheckUpdateRequest" },
     { "$ref": "#/definitions/AppCheckUpdateResponse" }

@@ -48,7 +48,7 @@ export interface PPGlobalEntry {
    */
   version?: string | null;
   /**
-   * true/false when last update check resolved; null when never checked or unknown. Populated only when network.update_check.enabled=true (ADR-0001).
+   * true/false from the last update-check cache for this plugin; null when never checked or unknown.
    */
   updateAvailable?: boolean | null;
   /**
@@ -97,7 +97,7 @@ export interface PPProjectEntry {
    */
   version?: string | null;
   /**
-   * true/false when last update check resolved; null when never checked or unknown. Populated only when network.update_check.enabled=true (ADR-0001).
+   * true/false from the last update-check cache for this plugin; null when never checked or unknown.
    */
   updateAvailable?: boolean | null;
   /**
