@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow, dialog, shell } from "electron";
+import { ipcMain, BrowserWindow, dialog, shell } from "electron";
 import { execFile } from "child_process";
 import { getGoClient } from "./manager.js";
 import { ALLOWLIST } from "./method-allowlist.js";
@@ -85,13 +85,6 @@ export function registerIpcBridge(win: BrowserWindow): void {
     }
 
     const result = await getGoClient().call(method, params);
-
-    // After Go deletes the DB and returns restarting:true, trigger a clean relaunch.
-    if (method === "app.resetAll" && (result as { restarting?: boolean })?.restarting === true) {
-      app.relaunch();
-      app.exit(0);
-    }
-
     return result;
   });
 

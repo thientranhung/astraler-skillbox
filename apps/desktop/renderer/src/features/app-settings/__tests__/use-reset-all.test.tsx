@@ -8,6 +8,11 @@ vi.mock("../../../lib/core-client/methods.js", () => ({
   methods: { resetAllData: vi.fn() },
 }));
 
+const mockNavigate = vi.fn();
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mockNavigate,
+}));
+
 import { useResetAll } from "../use-reset-all.js";
 import { methods } from "../../../lib/core-client/methods.js";
 
@@ -23,7 +28,7 @@ function makeWrapper() {
 beforeEach(() => vi.clearAllMocks());
 
 describe("useResetAll", () => {
-  it("calls methods.resetAllData and returns restarting:true on success", async () => {
+  it("clears query cache and navigates to /setup on success", async () => {
     mockResetAllData.mockResolvedValue({ restarting: true });
 
     const { result } = renderHook(() => useResetAll(), { wrapper: makeWrapper() });
@@ -34,7 +39,7 @@ describe("useResetAll", () => {
 
     expect(mockResetAllData).toHaveBeenCalledOnce();
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toEqual({ restarting: true });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/setup", replace: true });
   });
 
   it("exposes error when resetAllData rejects", async () => {
@@ -52,5 +57,6 @@ describe("useResetAll", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(Error);
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
