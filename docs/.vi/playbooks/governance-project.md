@@ -171,7 +171,7 @@ Concept đổi mà thiếu docs → verdict là `BLOCK`.
 
 - **Smoke scenarios thiết kế trong phase Spec**, không phải lúc execute. Implementer propose → user/Reviewer duyệt → Reviewer execute, report pass/fail kèm evidence. Gap phát hiện khi execute → log lại vào spec.
 - Smoke verify **end-to-end** (UI, CLI, API, IPC, data flow), không phải unit.
-- Nếu smoke thuộc delta/smoke/release/regression QA, phải dùng QA bank: chọn case/tag, tạo run folder, ghi `run-plan.yaml`, append `results.jsonl`, viết `report.md`, và lưu evidence dưới `docs/qa/runs/<run>/evidence/`.
+- Nếu smoke thuộc delta/smoke/release/regression QA, phải dùng skill `astraler-qa` và QA bank: chọn case/tag, tạo run folder, ghi `run-plan.yaml`, append `results.jsonl`, viết `report.md`, và lưu evidence dưới `docs/qa/runs/<run>/evidence/`.
 - Drive Electron app qua CDP instance `pnpm dev` đang chạy — đọc [`agent-browser-smoke.md`](agent-browser-smoke.md), **không** launch instance thứ 2.
 - Reviewer ra finding → report verdict (BLOCK + `file:line`) rồi **DỪNG**. Không tự-poll chờ fix, không tự drive vòng lặp, **không tự sửa file production**. Một review = một verdict.
 - "No verdict" (không inspect) → rerun từ đầu. Drift docs phát hiện trong review → fix trước khi close.

@@ -96,8 +96,9 @@ composition, validation, errors, và testing.
 
 [qa/README.md](qa/README.md)
 
-Repo-native QA bank: YAML test cases, cross-screen invariants, run templates,
-and evidence/report conventions for agent-driven Electron smoke and release QA.
+QA bank nằm trong repo: YAML test cases, invariants giữa các màn hình, run
+templates, và quy ước evidence/report cho agent-driven Electron smoke và release
+QA.
 
 [superpowers/specs/2026-05-26-provider-registry-settings-design.md](../../superpowers/specs/2026-05-26-provider-registry-settings-design.md)
 

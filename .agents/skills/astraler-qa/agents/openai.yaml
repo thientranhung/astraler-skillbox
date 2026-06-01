@@ -1,0 +1,4 @@
+interface:
+  display_name: "Astraler QA"
+  short_description: "Run Astraler QA bank and collect evidence"
+  default_prompt: "Use the Astraler QA bank to plan and run the relevant T0/T1 cases for this change."
