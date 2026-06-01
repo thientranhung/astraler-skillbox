@@ -161,12 +161,15 @@ func classifyEntry(e filesystem.HostEntry) domain.SkillStatus {
 	if e.Broken {
 		return domain.SkillStatusUnreadable
 	}
-	if e.IsDir || (e.IsSymlink && !e.External) {
-		return domain.SkillStatusAvailable
-	}
+	// External must be checked before IsDir: on macOS the OS follows a symlink to a
+	// directory, so an external symlink to a directory has both IsSymlink=true,
+	// IsDir=true, and External=true. Checking External first prevents the IsDir
+	// branch from incorrectly returning SkillStatusAvailable for such entries.
 	if e.External {
-		// External symlinks are surfaced with a warning but must not be installable.
 		return domain.SkillStatusExternalSymlink
+	}
+	if e.IsDir || e.IsSymlink {
+		return domain.SkillStatusAvailable
 	}
 	return domain.SkillStatusUnknown
 }
