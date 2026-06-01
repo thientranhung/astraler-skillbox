@@ -21,15 +21,16 @@ type globalScanSummary struct {
 
 // GlobalSkillsService handles global skills read operations.
 type GlobalSkillsService struct {
-	globalRepo         GlobalRepo
-	scanRepo           GlobalScanWriter
-	settingsRepo       AppSettingsRepo
-	hostLister         SkillHostLister
-	skillsByHost       SkillsByHostLister
-	registry           ProviderRegistry
-	fs                 GlobalFilesystem
-	runner             OperationRunner
-	pathResolver       GlobalProviderPathResolver
+	globalRepo    GlobalRepo
+	scanRepo      GlobalScanWriter
+	settingsRepo  AppSettingsRepo
+	hostLister    SkillHostLister
+	skillsByHost  SkillsByHostLister
+	registry      ProviderRegistry
+	fs            GlobalFilesystem
+	runner        OperationRunner
+	pathResolver  GlobalProviderPathResolver
+	enabledReader ProviderEnabledReader // optional; nil → treat all providers as enabled
 }
 
 func NewGlobalSkillsService(
@@ -60,6 +61,13 @@ func (s *GlobalSkillsService) WithGlobalPathResolver(r GlobalProviderPathResolve
 	return s
 }
 
+// WithEnabledReader injects the source of provider enabled state. When set, disabled
+// providers are skipped during scan and their stale global entries are cleared.
+func (s *GlobalSkillsService) WithEnabledReader(r ProviderEnabledReader) *GlobalSkillsService {
+	s.enabledReader = r
+	return s
+}
+
 // ScanGlobal starts an async read-only global scan under the stable singleton lock.
 // Returns the operationId; returns conflict_error if a scan is already running.
 func (s *GlobalSkillsService) ScanGlobal(ctx context.Context) (int64, error) {
@@ -83,6 +91,15 @@ func (s *GlobalSkillsService) scanGlobalInternal(ctx context.Context, progress o
 	homeDir, err := s.fs.HomeDir()
 	if err != nil {
 		return nil, domain.NewFilesystemError("Could not resolve home directory", err.Error())
+	}
+
+	// Load provider enabled state once; nil map means all providers are enabled.
+	var enabledMap map[string]bool
+	if s.enabledReader != nil {
+		enabledMap, err = s.enabledReader.EnabledMap(ctx)
+		if err != nil {
+			return nil, domain.NewDatabaseError("Could not load provider enabled state", err.Error())
+		}
 	}
 
 	// Resolve effective global paths (override ?? builtin).
@@ -120,6 +137,18 @@ func (s *GlobalSkillsService) scanGlobalInternal(ctx context.Context, progress o
 		}
 		if defID == 0 {
 			// Provider not seeded in DB → skip silently.
+			continue
+		}
+
+		// If the user has disabled this provider, commit a disabled record (which
+		// also deletes any stale global_installs rows) and skip the filesystem detect.
+		if enabled, exists := enabledMap[adapter.Key()]; exists && !enabled {
+			if commitErr := s.scanRepo.CommitGlobalScan(ctx, defID, nil, nil,
+				domain.GlobalLocationStatusDisabled,
+				[]repositories.GlobalInstallScanResult{}, []domain.Warning{},
+				time.Now().UTC()); commitErr != nil {
+				return nil, domain.NewDatabaseError("Could not commit disabled scan for "+adapter.Key(), commitErr.Error())
+			}
 			continue
 		}
 

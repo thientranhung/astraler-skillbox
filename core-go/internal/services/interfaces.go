@@ -161,6 +161,12 @@ type GlobalProviderPathResolver interface {
 	GlobalPaths(ctx context.Context) (map[string]providers.GlobalScopePaths, error)
 }
 
+// ProviderEnabledReader returns the effective enabled state (post-toggle clamping) per provider key.
+// *services.ProviderRegistryService satisfies this interface.
+type ProviderEnabledReader interface {
+	EnabledMap(ctx context.Context) (map[string]bool, error)
+}
+
 // SkillHostLister lists all skill host folders regardless of status.
 type SkillHostLister interface {
 	ListAll(ctx context.Context) ([]domain.SkillHostFolder, error)
