@@ -34,17 +34,29 @@ func (m *mockGlobalRepo) ListForView(_ context.Context) ([]domain.GlobalLocation
 // -- mock global scan writer --
 
 type mockGlobalScanWriter struct {
-	committed []repositories.GlobalInstallScanResult
-	err       error
+	committed       []repositories.GlobalInstallScanResult
+	committedStatus domain.GlobalLocationStatus
+	err             error
 }
 
 func (m *mockGlobalScanWriter) CommitGlobalScan(
 	_ context.Context, _ int64, _, _ *string,
-	_ domain.GlobalLocationStatus, installs []repositories.GlobalInstallScanResult,
+	status domain.GlobalLocationStatus, installs []repositories.GlobalInstallScanResult,
 	_ []domain.Warning, _ time.Time,
 ) error {
+	m.committedStatus = status
 	m.committed = installs
 	return m.err
+}
+
+// -- mock provider enabled reader --
+
+type mockEnabledReader struct {
+	m map[string]bool
+}
+
+func (r *mockEnabledReader) EnabledMap(_ context.Context) (map[string]bool, error) {
+	return r.m, nil
 }
 
 // -- mock global filesystem --
@@ -438,6 +450,89 @@ func TestSyncRunner_ExecutesWorkFn(t *testing.T) {
 	}
 	if !ran {
 		t.Error("work fn was not executed")
+	}
+}
+
+// TestGlobalSkillsService_ScanGlobal_DisabledProvider verifies that when the
+// enabled reader marks a provider as disabled, ScanGlobal commits a disabled
+// record (clearing stale global_installs) without calling DetectGlobal.
+func TestGlobalSkillsService_ScanGlobal_DisabledProvider(t *testing.T) {
+	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Claude", status: "experimental"}
+	scanWriter := &mockGlobalScanWriter{}
+
+	home := "/fakehome"
+	skillsPath := home + "/.claude/skills"
+
+	adapter := &mockGlobalAdapter{
+		key: "claude",
+		result: providers.GlobalDetectResult{
+			Present:          true,
+			GlobalPath:       home + "/.claude",
+			GlobalSkillsPath: skillsPath,
+			Status:           domain.GlobalLocationStatusActive,
+			Entries: []providers.AdapterEntry{
+				{Name: "global-claude", Path: skillsPath + "/global-claude", IsDir: true},
+			},
+		},
+	}
+
+	fs := newMockGlobalFS(home)
+	svc := newGlobalService(globalRepo, scanWriter, fs, adapter)
+	svc.WithEnabledReader(&mockEnabledReader{m: map[string]bool{"claude": false}})
+
+	_, err := svc.ScanGlobal(context.Background())
+	if err != nil {
+		t.Fatalf("ScanGlobal: %v", err)
+	}
+
+	// CommitGlobalScan must be called once with disabled status and zero installs.
+	if scanWriter.committedStatus != domain.GlobalLocationStatusDisabled {
+		t.Errorf("expected committed status %q, got %q",
+			domain.GlobalLocationStatusDisabled, scanWriter.committedStatus)
+	}
+	if len(scanWriter.committed) != 0 {
+		t.Errorf("expected 0 committed installs for disabled provider, got %d", len(scanWriter.committed))
+	}
+}
+
+// TestGlobalSkillsService_ScanGlobal_EnabledProviderNotAffected verifies that
+// a provider marked enabled by the enabled reader is still scanned normally.
+func TestGlobalSkillsService_ScanGlobal_EnabledProviderNotAffected(t *testing.T) {
+	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills", status: "supported"}
+	scanWriter := &mockGlobalScanWriter{}
+
+	home := "/fakehome"
+	skillsPath := home + "/.agents/skills"
+
+	adapter := &mockGlobalAdapter{
+		key: providers.GenericAgentsKey,
+		result: providers.GlobalDetectResult{
+			Present:          true,
+			GlobalPath:       home + "/.agents",
+			GlobalSkillsPath: skillsPath,
+			Status:           domain.GlobalLocationStatusActive,
+			Entries: []providers.AdapterEntry{
+				{Name: "global-generic", Path: skillsPath + "/global-generic", IsDir: true},
+			},
+		},
+	}
+
+	fs := newMockGlobalFS(home)
+	svc := newGlobalService(globalRepo, scanWriter, fs, adapter)
+	svc.WithEnabledReader(&mockEnabledReader{m: map[string]bool{providers.GenericAgentsKey: true}})
+
+	_, err := svc.ScanGlobal(context.Background())
+	if err != nil {
+		t.Fatalf("ScanGlobal: %v", err)
+	}
+
+	// Normal scan: status must be active, one entry committed.
+	if scanWriter.committedStatus != domain.GlobalLocationStatusActive {
+		t.Errorf("expected committed status %q, got %q",
+			domain.GlobalLocationStatusActive, scanWriter.committedStatus)
+	}
+	if len(scanWriter.committed) != 1 {
+		t.Errorf("expected 1 committed install for enabled provider, got %d", len(scanWriter.committed))
 	}
 }
 
