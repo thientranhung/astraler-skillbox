@@ -1,0 +1,172 @@
+area: plugins
+cases:
+  - id: TC-PLUGIN-001
+    title: Global Plugins scan hiển thị provider settings status và plugin versions
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Project Detail, Dashboard]
+    type: smoke
+    tags: [plugin, scan, version, global-plugins]
+    invariants: [INV-PLUGIN-001]
+    preconditions:
+      - App chạy với QA fixture home hoặc user-approved read-only real environment.
+      - Ít nhất một provider có plugin metadata có sẵn để scan.
+    steps:
+      - Mở Global Plugins.
+      - Chạy global plugin scan cho một provider.
+      - Inspect plugin rows và version column.
+      - Mở Project Detail plugin section cho provider giống nếu có sẵn.
+    expected_ui:
+      - Provider settings path và scan status visible.
+      - Plugin rows hiển thị name, marketplace/name metadata nếu có sẵn, enabled state, và version nếu có sẵn.
+      - Malformed, missing, unreadable, too-large, symlink, hoặc path-escape states được label rõ ràng khi có.
+    cross_screen_checks:
+      - Global Plugins và Project Detail nhất quán về user-layer plugin facts cho cùng provider.
+      - Dashboard plugin summary khớp Global Plugins nếu displayed.
+    verifier:
+      filesystem:
+        - Settings/cache files được inspect bởi app dưới approved QA fixture hoặc approved read-only real paths.
+      evidence:
+        - Screenshot của Global Plugins sau scan.
+        - Filesystem path/status output cho scanned settings/cache files.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_approved_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-PLUGIN-002
+    title: Toggle global plugin chỉ thay đổi selected plugin state
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Project Detail, Dashboard]
+    type: smoke
+    tags: [plugin, toggle, global-plugins, cross-screen]
+    invariants: [INV-PLUGIN-001, INV-SAFETY-001]
+    preconditions:
+      - Provider hỗ trợ write operations cho plugin enabled state.
+      - Target settings file là QA fixture hoặc user rõ ràng approved exact real plugin toggle này.
+      - Một backup hoặc before snapshot của settings file đã được capture.
+    steps:
+      - Mở Global Plugins.
+      - Chọn một approved plugin row.
+      - Toggle nó off.
+      - Rescan hoặc chờ UI refresh.
+      - Toggle nó on.
+      - Mở Project Detail plugin section cho project sử dụng provider giống.
+    expected_ui:
+      - Chỉ selected plugin row thay đổi enabled/disabled state.
+      - Version và marketplace metadata không biến mất vì toggle.
+      - Project Detail effective state phản ánh cùng user-layer toggle hoặc rõ ràng hiển thị project override.
+    cross_screen_checks:
+      - Global Plugins và Project Detail nhất quán về effective state trừ khi override được rõ ràng label.
+      - Dashboard plugin counts update nếu displayed.
+    verifier:
+      filesystem:
+        - Settings file before/after diff chỉ thay đổi selected plugin key/state.
+        - Không thay đổi unrelated provider hoặc plugin settings.
+      evidence:
+        - Screenshot sau toggle off và sau toggle on.
+        - Before/after settings diff.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_or_explicit_opt_in
+      real_environment: opt_in
+
+  - id: TC-PLUGIN-003
+    title: Project plugin override display nhất quán với global plugin state
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Global Plugins]
+    type: smoke
+    tags: [plugin, project-detail, override, effective-state]
+    invariants: [INV-PLUGIN-001]
+    preconditions:
+      - QA project có provider plugin fixture data cho user và project layers.
+      - Ít nhất một plugin có different user và project layer states.
+    steps:
+      - Mở Project Detail.
+      - Inspect Provider Plugins section cho provider.
+      - Mở Global Plugins cho provider giống.
+      - Quay lại Project Detail.
+    expected_ui:
+      - Project Detail hiển thị user, project, và effective plugin columns hoặc equivalent state.
+      - Override state understandable và không collapsed thành misleading global-only state.
+      - Global Plugins hiển thị chỉ global/user layer state, không project override như nó là global.
+    cross_screen_checks:
+      - Effective state trong Project Detail derived từ displayed user/project layer facts.
+      - Global Plugins user state khớp Project Detail user column cho cùng plugin.
+    verifier:
+      filesystem:
+        - User settings fixture và project settings fixture chứa expected differing states.
+      evidence:
+        - Screenshot của Project Detail plugin section.
+        - Screenshot của Global Plugins row.
+        - Fixture settings snippets với sensitive values redacted.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-PLUGIN-004
+    title: Malformed plugin settings file được report mà không overwriting
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Project Detail]
+    type: edge
+    tags: [plugin, malformed-settings, scan, safety]
+    invariants: [INV-PLUGIN-001, INV-SAFETY-001]
+    preconditions:
+      - QA fixture provider settings file là malformed.
+      - Malformed file có before snapshot.
+    steps:
+      - Mở Global Plugins.
+      - Scan affected provider.
+      - Mở project plugin section nếu nó references provider giống.
+    expected_ui:
+      - Global Plugins hiển thị malformed hoặc unreadable status.
+      - App không crash.
+      - App không claim plugin enabled/version facts từ invalid data.
+      - Project Detail không hiển thị stale effective state như current mà không warning.
+    cross_screen_checks:
+      - Global Plugins và Project Detail nhất quán rằng provider/plugin data không trustworthy.
+    verifier:
+      filesystem:
+        - Malformed settings file content unchanged sau scan.
+      evidence:
+        - Screenshot của malformed state.
+        - Before/after checksum hoặc diff cho settings file.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PLUGIN-005
+    title: Plugin update checks là manual-trigger only
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [About, Dashboard]
+    type: edge
+    tags: [plugin, update-check, network, privacy]
+    invariants: [INV-SAFETY-001]
+    preconditions:
+      - App chạy trong QA dev Electron mode.
+      - Network observation có sẵn thông qua logs, proxy, hoặc OS tooling.
+    steps:
+      - Khởi động app và chờ Dashboard mà không click plugin update actions.
+      - Mở Global Plugins mà không click Check Updates.
+      - Observe outbound network activity.
+      - Click explicit plugin Check Updates action nếu có sẵn và user approved network use.
+    expected_ui:
+      - App vẫn usable offline.
+      - Plugin update checks không chạy trước explicit user action.
+      - Manual check hiển thị clear result hoặc error.
+    cross_screen_checks:
+      - About app update behavior không confused với plugin update behavior.
+    verifier:
+      evidence:
+        - Network/log evidence trước manual action.
+        - Screenshot của manual check result nếu executed.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only

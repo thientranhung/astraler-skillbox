@@ -1,40 +1,40 @@
 # Documentation Playbook
 
-Giữ docs đồng bộ với code. Đọc khi:
+Keep docs synchronized with code. Read this when:
 
-- Vừa thêm/xoá/rename concept (table, RPC, screen, domain, provider, plugin…)
-- Muốn check drift trước khi push
-- Cần quyết định: việc này có cần ADR không
+- You just added, removed, or renamed a concept (table, RPC, screen, domain, provider, plugin, etc.).
+- You want to check docs drift before pushing.
+- You need to decide whether this work requires an ADR.
 
 ## TL;DR
 
-- Mỗi concept có **một** source-of-truth trong code, mỗi SoT ánh xạ tới **một** doc canonical. Xem bảng dưới.
-- Đổi concept → update doc trong **cùng slice**, không nợ.
-- Pre-push hook chặn push vào `main` nếu không có trailer `DOC-VERIFIED: <reason>` ở commit nào trong push range. Hook không tự check drift — agent phải tự chạy Gap-Find.
-- ADR chỉ cho 4 loại quyết định lớn (xem cuối). Refactor cục bộ / typo / test → KHÔNG ADR, vẫn cần trailer.
+- Each concept has **one** source of truth in code, and each source of truth maps to **one** canonical doc. See the table below.
+- Concept change -> update docs in the **same slice**. Do not defer.
+- The pre-push hook blocks pushes to `main` if no commit in the push range has a `DOC-VERIFIED: <reason>` trailer. The hook does not check drift itself; the agent must run Gap-Find.
+- ADRs are only for four major decision types (see below). Local refactor / typo / test -> no ADR, but still needs the trailer.
 
 ## Source-of-Truth + Update Map
 
-| Concept | Code SoT | Doc canonical | Trigger update khi… |
+| Concept | Code SoT | Canonical doc | Update trigger |
 |---|---|---|---|
-| **Schema** (tables, columns, indexes) | `core-go/migrations/*.up.sql` | `docs/06-data-model.md` + `docs/07-schema-dictionary.md` | thêm migration mới |
-| **RPC methods** | `shared/api-contracts/methods/*.json` → `shared/generated/methods/*.ts` | `docs/10-technical-architecture.md` (transport + danh sách methods) | thêm/đổi/xoá method file |
-| **JSON-RPC notifications** | `shared/api-contracts/notifications/` | `docs/10-technical-architecture.md` | thêm/đổi notification |
-| **Domain objects** | `core-go/internal/domain/*.go` | `docs/02-product-notes.md` (intro) + `docs/06-data-model.md` (map) | thêm/rename domain object |
-| **Provider adapters** | `core-go/internal/providers/` | `docs/08-provider-model.md` | thêm provider mới |
-| **UI screens** | `apps/desktop/renderer/src/screens/` | `docs/03-information-architecture.md` + `docs/09-ui-wireframes.md` | thêm screen mới |
-| **UI features** (cross-screen logic) | `apps/desktop/renderer/src/features/` | `docs/04-user-flows.md` | flow user-facing thay đổi |
-| **Edge cases / UX states** | feature code + tests | `docs/05-edge-cases-and-ux-states.md` | thêm trạng thái lỗi/empty/conflict mới |
-| **Implementation patterns** | code structure | `docs/12-implementation-patterns.md` | pattern mới được áp ≥2 nơi |
-| **Architecture boundary** | code + ADR | **ADR** + `docs/10-technical-architecture.md` | đổi boundary, contract, IPC |
-| **Tech stack / dep cốt lõi** | `package.json`, `go.mod`, scaffold | **ADR** + `docs/11-tech-stack-and-scaffold-decisions.md` | đổi runtime/framework lớn |
-| **Process / workflow / hook** | scripts, hooks, playbook | **ADR** + playbook tương ứng | đổi review rule, branch model, hook |
+| **Schema** (tables, columns, indexes) | `core-go/migrations/*.up.sql` | `docs/06-data-model.md` + `docs/07-schema-dictionary.md` | new migration |
+| **RPC methods** | `shared/api-contracts/methods/*.json` -> `shared/generated/methods/*.ts` | `docs/10-technical-architecture.md` (transport + method list) | method file added/changed/deleted |
+| **JSON-RPC notifications** | `shared/api-contracts/notifications/` | `docs/10-technical-architecture.md` | notification added/changed |
+| **Domain objects** | `core-go/internal/domain/*.go` | `docs/02-product-notes.md` (intro) + `docs/06-data-model.md` (map) | domain object added/renamed |
+| **Provider adapters** | `core-go/internal/providers/` | `docs/08-provider-model.md` | new provider added |
+| **UI screens** | `apps/desktop/renderer/src/screens/` | `docs/03-information-architecture.md` + `docs/09-ui-wireframes.md` | new screen added |
+| **UI features** (cross-screen logic) | `apps/desktop/renderer/src/features/` | `docs/04-user-flows.md` | user-facing flow changes |
+| **Edge cases / UX states** | feature code + tests | `docs/05-edge-cases-and-ux-states.md` | new error/empty/conflict state added |
+| **Implementation patterns** | code structure | `docs/12-implementation-patterns.md` | pattern is applied in >=2 places |
+| **Architecture boundary** | code + ADR | **ADR** + `docs/10-technical-architecture.md` | boundary, contract, or IPC changes |
+| **Tech stack / core dependency** | `package.json`, `go.mod`, scaffold | **ADR** + `docs/11-tech-stack-and-scaffold-decisions.md` | major runtime/framework changes |
+| **Process / workflow / hook** | scripts, hooks, playbook | **ADR** + relevant playbook | review rule, branch model, or hook changes |
 
 ## Gap-Find Procedure
 
-Khi audit drift giữa code và docs. Output là **danh sách concept thiếu**, không phải opinion.
+Use this when auditing drift between code and docs. The output is a **list of missing concepts**, not an opinion.
 
-### 1. Inventory code
+### 1. Inventory Code
 
 ```sh
 # Tables
@@ -61,52 +61,52 @@ ls core-go/internal/providers/*.go 2>/dev/null \
   | grep -v _test | xargs -n1 basename | sed 's/\.go$//' | sort -u
 ```
 
-### 2. Inventory docs
+### 2. Inventory Docs
 
-Mỗi concept ở bước 1 → grep trong `docs/` (loại trừ `archive/`):
+For each concept from step 1, grep under `docs/` (excluding `archive/`):
 
 ```sh
 grep -rln "<concept>" docs/ --exclude-dir=archive --include="*.md"
 ```
 
-Output trống → concept thiếu trong docs.
+Empty output means the concept is missing from docs.
 
-### 3. Output format
+### 3. Output Format
 
-```
+```text
 ## Gap Report
 
-### Code → Docs gaps
+### Code -> Docs gaps
 - Concept: <name>
   - Code source: <path>
   - Docs expected (per map): <doc/section>
   - Status: MISSING | STALE | RENAMED
 
-### Docs → Code gaps (concept ở docs nhưng không tìm thấy code)
+### Docs -> Code gaps (concept exists in docs but not code)
 - ...
 ```
 
 ### 4. Handoff
 
-In báo cáo. Có gap → tự update docs trước khi push, hoặc giải thích skip rõ ràng.
+Print the report. If there are gaps, update docs before pushing or explain the skip clearly.
 
 ## Pre-Push Gate (DOC-VERIFIED Trace)
 
-Hook **không tự chạy logic check**. Vai trò:
+The hook **does not run logic checks itself**. Its roles:
 
-1. **Reminder**: in checklist nhắc verify docs trước push.
-2. **Trace check**: tìm trailer `DOC-VERIFIED: <reason>` trong push range.
+1. **Reminder**: print the checklist to verify docs before push.
+2. **Trace check**: find a `DOC-VERIFIED: <reason>` trailer in the push range.
 
-Cơ chế:
+Mechanics:
 
-- Chỉ enforce khi push vào `main`. Push feature branch bỏ qua — gate kích hoạt khi work landing.
-- Mỗi `git push` (vào `main`), hook quét commit message của push range.
-- **Bất kỳ** commit nào có trailer ở cuối message → cho phép push.
-- Không commit nào có trailer → block với checklist (đọc playbook này → chạy Gap-Find → update docs hoặc add trailer giải thích).
+- Enforced only when pushing to `main`. Feature branch pushes are skipped; the gate activates when work lands.
+- On each `git push` to `main`, the hook scans commit messages in the push range.
+- **Any** commit with the trailer at the end of the message allows the push.
+- If no commit has the trailer, the hook blocks with a checklist (read this playbook -> run Gap-Find -> update docs or add a trailer explaining why not).
 
-Trailer format (chuẩn git trailer, cuối message, có dòng trống phía trên):
+Trailer format (standard git trailer, at the end of the message, with a blank line above):
 
-```
+```text
 Add foo bar baz feature
 
 Description body...
@@ -115,37 +115,37 @@ DOC-VERIFIED: docs/06 + docs/08 updated for new plugin layer concept
 Co-Authored-By: ...
 ```
 
-Bypass khẩn cấp: `git push --no-verify` (luôn được; để lại vết trong reflog).
+Emergency bypass: `git push --no-verify` (always allowed; leaves a reflog trace).
 
-**Vì sao thiết kế thế này**: mechanical grep không phân biệt rename vs concept mới, không hiểu junction table không cần doc riêng, không suggest section phù hợp. AI agent với playbook trong tay làm tốt hơn — hook chỉ ép agent phải làm bước đó.
+**Why this design:** mechanical grep cannot distinguish rename vs new concept, cannot understand when a junction table does not need its own docs, and cannot suggest the right section. An AI agent with this playbook can do that better. The hook only forces the agent to perform the step.
 
 ## ADR
 
-### Khi nào tạo ADR
+### When To Create An ADR
 
-Tạo khi quyết định thuộc 1 trong 4 loại:
+Create an ADR when the decision falls into one of these four types:
 
-1. **Architecture change** — đổi boundary, pattern cross-layer, IPC contract.
-2. **Domain change** — thêm/xoá/rename concept cốt lõi.
-3. **Tech stack change** — đổi runtime, framework, dependency lớn.
-4. **Process change** — đổi workflow, hook, branch model, review rule.
+1. **Architecture change**: boundary change, cross-layer pattern, IPC contract.
+2. **Domain change**: add/remove/rename a core concept.
+3. **Tech stack change**: major runtime, framework, or dependency change.
+4. **Process change**: workflow, hook, branch model, or review rule change.
 
-**KHÔNG ADR** cho: refactor cục bộ, bug fix, format change, trivial config.
+**Do not create ADRs** for local refactors, bug fixes, formatting changes, or trivial config.
 
-### Quy trình
+### Procedure
 
-1. Copy `docs/decisions/template.md` → `docs/decisions/NNNN-title.md`.
-2. Status `proposed`.
-3. User duyệt → đổi `accepted`.
-4. Sau khi implement xong → **digest** nội dung vào `docs/02-product-notes.md` hoặc spec liên quan. ADR giữ "why", doc thường giữ "what".
+1. Copy `docs/decisions/template.md` -> `docs/decisions/NNNN-title.md`.
+2. Set status to `proposed`.
+3. User approval -> change status to `accepted`.
+4. After implementation -> **digest** the decision into `docs/02-product-notes.md` or the relevant spec. ADRs keep "why"; normal docs keep "what".
 5. Update `docs/decisions/index.md`.
 
-## Khi nào skip
+## When To Skip
 
-Chỉ sửa typo doc / thêm test (không đổi behavior) / refactor nội bộ (interface giữ nguyên) / format & lint → không update doc, không ADR. **Vẫn cần** trailer `DOC-VERIFIED: <lý do>` ở commit message (vd `DOC-VERIFIED: refactor only, no concept changes`).
+Doc typo only / add test without behavior change / internal refactor with unchanged interface / format & lint -> no doc update and no ADR. **Still include** a `DOC-VERIFIED: <reason>` trailer in the commit message (for example `DOC-VERIFIED: refactor only, no concept changes`).
 
 ## References
 
-- [docs/decisions/README.md](../decisions/README.md) — ADR overview
-- [docs/decisions/template.md](../decisions/template.md) — ADR template
-- [docs/playbooks/agent-orchestration.md](agent-orchestration.md) — vai trò Tom/Larry/Orchestrator, phase gates
+- [docs/decisions/README.md](../decisions/README.md) - ADR overview
+- [docs/decisions/template.md](../decisions/template.md) - ADR template
+- [docs/playbooks/agent-orchestration.md](agent-orchestration.md) - Tom/Larry/Orchestrator roles and phase gates

@@ -1,0 +1,35 @@
+run:
+  id: YYYY-MM-DD-scope
+  date: YYYY-MM-DD
+  scope: delta | smoke | release | regression
+  app_mode: dev-electron | packaged
+  target_version: 0.1.0
+  operator: agent
+
+environment:
+  repo_root: /absolute/path/to/astraler-skillbox
+  desktop_dir: /absolute/path/to/astraler-skillbox/apps/desktop
+  cdp_port: 49222
+  qa_home: /absolute/path/to/qa-home
+  qa_db_path: /absolute/path/to/qa-home/qa.db
+  qa_host: /absolute/path/to/qa-host
+  qa_project: /absolute/path/to/qa-project
+  real_environment_allowed: false
+
+selection:
+  include_tiers: [T0, T1]
+  include_tags: []
+  exclude_tags: []
+  case_ids: []
+
+gates:
+  fail_fast_on_t0: true
+  require_t0_evidence: true
+  plugin_real_toggle_requires_user_approval: true
+
+commands:
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=<qa_db_path> HOME=<qa_home> pnpm dev)"
+  cdp_health: "curl -s http://127.0.0.1:49222/json/version"
+  go_tests: "(cd core-go && go test ./...)"
+  desktop_typecheck: "(cd apps/desktop && pnpm typecheck)"
+  desktop_tests: "(cd apps/desktop && pnpm test)"

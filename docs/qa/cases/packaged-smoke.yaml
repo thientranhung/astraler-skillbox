@@ -1,0 +1,35 @@
+area: packaged-smoke
+cases:
+  - id: TC-PACKAGE-001
+    title: Packaged app launches with bundled Go sidecar and isolated app DB
+    tier: T1
+    primary_screen: Packaged App
+    related_screens: [Setup, Dashboard]
+    type: packaged-smoke
+    tags: [packaging, launch, sidecar, db]
+    invariants: [INV-SAFETY-001]
+    preconditions:
+      - Current packaged macOS artifact has been rebuilt from the target commit.
+      - Test run uses a safe app data location or a clean test macOS user/profile.
+    steps:
+      - Launch the packaged app.
+      - Wait for the first screen or Dashboard.
+      - Quit the app normally.
+      - Inspect sidecar and app logs if available.
+    expected_ui:
+      - App opens without a blank window.
+      - Go sidecar becomes ready.
+      - Setup or Dashboard is visible.
+      - App quits without orphaning the sidecar.
+    verifier:
+      filesystem:
+        - Bundled sidecar exists under app resources and is executable.
+        - App DB path is the packaged app data path, not the source repo dev DB.
+      evidence:
+        - Screenshot of packaged app first visible screen.
+        - Sidecar path and executable-bit check output.
+        - Process check after quit.
+    safety:
+      destructive: false
+      allowed_environment: packaged_smoke
+      real_environment: opt_in

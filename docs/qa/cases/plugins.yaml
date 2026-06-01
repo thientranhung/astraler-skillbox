@@ -1,0 +1,172 @@
+area: plugins
+cases:
+  - id: TC-PLUGIN-001
+    title: Global Plugins scan shows provider settings status and plugin versions
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Project Detail, Dashboard]
+    type: smoke
+    tags: [plugin, scan, version, global-plugins]
+    invariants: [INV-PLUGIN-001]
+    preconditions:
+      - App runs with a QA fixture home or a user-approved read-only real environment.
+      - At least one provider has plugin metadata available to scan.
+    steps:
+      - Open Global Plugins.
+      - Run global plugin scan for a provider.
+      - Inspect plugin rows and version column.
+      - Open a Project Detail plugin section for the same provider if available.
+    expected_ui:
+      - Provider settings path and scan status are visible.
+      - Plugin rows show name, marketplace/name metadata where available, enabled state, and version where available.
+      - Malformed, missing, unreadable, too-large, symlink, or path-escape states are labeled clearly when present.
+    cross_screen_checks:
+      - Global Plugins and Project Detail agree on user-layer plugin facts for the same provider.
+      - Dashboard plugin summary matches Global Plugins if displayed.
+    verifier:
+      filesystem:
+        - Settings/cache files inspected by the app are under the approved QA fixture or approved read-only real paths.
+      evidence:
+        - Screenshot of Global Plugins after scan.
+        - Filesystem path/status output for scanned settings/cache files.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_approved_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-PLUGIN-002
+    title: Toggle global plugin changes only the selected plugin state
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Project Detail, Dashboard]
+    type: smoke
+    tags: [plugin, toggle, global-plugins, cross-screen]
+    invariants: [INV-PLUGIN-001, INV-SAFETY-001]
+    preconditions:
+      - Provider supports write operations for plugin enabled state.
+      - Target settings file is a QA fixture or the user explicitly approved this exact real plugin toggle.
+      - A backup or before snapshot of the settings file has been captured.
+    steps:
+      - Open Global Plugins.
+      - Choose one approved plugin row.
+      - Toggle it off.
+      - Rescan or wait for UI refresh.
+      - Toggle it back on.
+      - Open Project Detail plugin section for a project using the same provider.
+    expected_ui:
+      - Only the selected plugin row changes enabled/disabled state.
+      - Version and marketplace metadata do not disappear because of the toggle.
+      - Project Detail effective state reflects the same user-layer toggle or clearly shows a project override.
+    cross_screen_checks:
+      - Global Plugins and Project Detail agree on effective state unless an override is explicitly labeled.
+      - Dashboard plugin counts update if displayed.
+    verifier:
+      filesystem:
+        - Settings file before/after diff changes only the selected plugin key/state.
+        - No unrelated provider or plugin settings are modified.
+      evidence:
+        - Screenshot after toggle off and after toggle on.
+        - Before/after settings diff.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_or_explicit_opt_in
+      real_environment: opt_in
+
+  - id: TC-PLUGIN-003
+    title: Project plugin override display stays consistent with global plugin state
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Global Plugins]
+    type: smoke
+    tags: [plugin, project-detail, override, effective-state]
+    invariants: [INV-PLUGIN-001]
+    preconditions:
+      - QA project has provider plugin fixture data for user and project layers.
+      - At least one plugin has different user and project layer states.
+    steps:
+      - Open Project Detail.
+      - Inspect Provider Plugins section for the provider.
+      - Open Global Plugins for the same provider.
+      - Return to Project Detail.
+    expected_ui:
+      - Project Detail shows user, project, and effective plugin columns or equivalent state.
+      - Override state is understandable and not collapsed into a misleading global-only state.
+      - Global Plugins shows only global/user layer state, not project override as if it were global.
+    cross_screen_checks:
+      - Effective state in Project Detail derives from the displayed user/project layer facts.
+      - Global Plugins user state matches Project Detail user column for the same plugin.
+    verifier:
+      filesystem:
+        - User settings fixture and project settings fixture contain the expected differing states.
+      evidence:
+        - Screenshot of Project Detail plugin section.
+        - Screenshot of Global Plugins row.
+        - Fixture settings snippets with sensitive values redacted.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-PLUGIN-004
+    title: Malformed plugin settings file is reported without overwriting it
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Project Detail]
+    type: edge
+    tags: [plugin, malformed-settings, scan, safety]
+    invariants: [INV-PLUGIN-001, INV-SAFETY-001]
+    preconditions:
+      - QA fixture provider settings file is malformed.
+      - The malformed file has a before snapshot.
+    steps:
+      - Open Global Plugins.
+      - Scan the affected provider.
+      - Open a project plugin section if it references the same provider.
+    expected_ui:
+      - Global Plugins shows malformed or unreadable status.
+      - App does not crash.
+      - App does not claim plugin enabled/version facts from invalid data.
+      - Project Detail does not show stale effective state as current without warning.
+    cross_screen_checks:
+      - Global Plugins and Project Detail agree that the provider/plugin data is not trustworthy.
+    verifier:
+      filesystem:
+        - Malformed settings file content is unchanged after scan.
+      evidence:
+        - Screenshot of malformed state.
+        - Before/after checksum or diff for settings file.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PLUGIN-005
+    title: Plugin update checks are manual-trigger only
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [About, Dashboard]
+    type: edge
+    tags: [plugin, update-check, network, privacy]
+    invariants: [INV-SAFETY-001]
+    preconditions:
+      - App runs in QA dev Electron mode.
+      - Network observation is available through logs, proxy, or OS tooling.
+    steps:
+      - Launch the app and wait on Dashboard without clicking plugin update actions.
+      - Open Global Plugins without clicking Check Updates.
+      - Observe outbound network activity.
+      - Click the explicit plugin Check Updates action if present and user approved network use.
+    expected_ui:
+      - App remains usable offline.
+      - Plugin update checks do not run before the explicit user action.
+      - Manual check shows a clear result or error.
+    cross_screen_checks:
+      - About app update behavior is not confused with plugin update behavior.
+    verifier:
+      evidence:
+        - Network/log evidence before manual action.
+        - Screenshot of manual check result if executed.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only

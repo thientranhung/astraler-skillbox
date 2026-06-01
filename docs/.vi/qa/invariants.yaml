@@ -1,0 +1,50 @@
+version: 1
+invariants:
+  - id: INV-HOST-001
+    title: Skill Host Folder là nguồn sự thật cho host skills
+    applies_to: [Setup, Settings, Skills Library, Project Detail]
+    rule: >
+      Một host skill hiển thị trong UI phải tương ứng với một skill folder dưới
+      đường dẫn Skill Host Folder đã cấu hình. Các tác vụ project không được
+      xóa hoặc sửa host source trừ khi flow là host import/update flow.
+
+  - id: INV-PROJECT-001
+    title: Đường dẫn project và provider facts nhất quán giữa các screens
+    applies_to: [Projects, Project Detail, Dashboard]
+    rule: >
+      Một project được thêm vào Skillbox phải hiển thị cùng đường dẫn, provider
+      detection facts, trạng thái scan, và trạng thái warning trong Projects,
+      Project Detail, và bất kỳ Dashboard summary nào tham chiếu projects.
+
+  - id: INV-INSTALL-001
+    title: Trạng thái installed skill nhất quán giữa UI, DB, và filesystem
+    applies_to: [Skills Library, Skill Detail, Project Detail, Dashboard]
+    rule: >
+      Nếu một skill được hiển thị là installed, install record và filesystem
+      target phải đại diện cho cùng mode và target. Nếu filesystem write thất
+      bại, UI không được hiển thị success và DB không được record active install.
+
+  - id: INV-INSTALL-002
+    title: Tác vụ Remove/switch bảo tồn host skill source
+    applies_to: [Project Detail, Skills Library]
+    rule: >
+      Loại bỏ project install hoặc chuyển đổi install mode có thể chỉ thay đổi
+      project/provider target và metadata liên quan. Host skill folder vẫn
+      nguyên vẹn.
+
+  - id: INV-PLUGIN-001
+    title: Plugin version và enabled state nhất quán giữa các plugin views
+    applies_to: [Global Plugins, Project Detail, Dashboard]
+    rule: >
+      Một plugin version hoặc enabled/disabled state hiển thị trên Global
+      Plugins phải khớp với effective provider/plugin state hiển thị trên
+      project-scoped views cho cùng provider và layer, trừ khi UI rõ ràng
+      label một override.
+
+  - id: INV-SAFETY-001
+    title: Destructive QA không bao giờ touches real user data mà không approval
+    applies_to: [All]
+    rule: >
+      Cases được đánh dấu destructive chỉ được chạy trên QA fixtures trừ khi
+      case cho phép real_environment: opt_in và user phê duyệt target chính xác
+      đó.

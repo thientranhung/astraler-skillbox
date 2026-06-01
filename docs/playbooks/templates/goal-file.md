@@ -1,71 +1,71 @@
 <!--
-Template — file-backed /goal cho Astraler Skillbox.
-Lưu ở `.scratch/goal-<slice>-<phase>.md`, gửi tmux 1 dòng:
-  /goal đọc `.scratch/goal-<slice>-<phase>.md` rồi tiến hành.
+Template: file-backed /goal for Astraler Skillbox.
+Save as `.scratch/goal-<slice>-<phase>.md`, then send one tmux line:
+  /goal read `.scratch/goal-<slice>-<phase>.md` and proceed.
 
-Nguồn gốc: template `/goal` của user (Obsidian References).
-Adapt cho Tom/Larry phase-gate workflow của repo này.
+Origin: the user's original `/goal` template (Obsidian References).
+Adapted for this repo's Tom/Larry phase-gated workflow.
 
-Đọc anatomy + when/anti-pattern ở docs/playbooks/agent-orchestration.md § /goal.
+Read anatomy + when/anti-patterns in docs/playbooks/agent-orchestration.md, section `/goal`.
 -->
 
-/goal [THE FINAL OUTCOME — what "done" looks like in one line]
+/goal [THE FINAL OUTCOME: what "done" looks like in one line]
 
-Bạn là **Tom** (hoặc **Larry**). Phase = <Brainstorm | Spec | Plan | Implement | Review | Fix>.
+You are **Tom** (or **Larry**). Phase = <Brainstorm | Spec | Plan | Implement | Review | Fix>.
 
-── CONTEXT ──
+-- CONTEXT --
 
 - Project: Astraler Skillbox
-- Slice / Feature: <tên slice>
-- Stack: <chỉ phần liên quan — Electron + React renderer, Go core, SQLite, …>
-- Current state: <slice đang ở đâu — chưa có gì / đã có brainstorm / đã có spec>
-- Working dir: <branch + relevant subpath, vd `feat/dashboard-plugins-metric` · `apps/desktop/renderer/src/screens`>
+- Slice / Feature: <slice name>
+- Stack: <only relevant parts: Electron + React renderer, Go core, SQLite, etc.>
+- Current state: <where the slice stands: nothing yet / brainstorm exists / spec exists>
+- Working dir: <branch + relevant subpath, for example `feat/dashboard-plugins-metric` / `apps/desktop/renderer/src/screens`>
 - Inputs:
-  - Spec: <path nếu có>
-  - Plan: <path nếu có>
-  - Brainstorm note: <path nếu có>
-  - Doc liên quan: <docs/...>
+  - Spec: <path if any>
+  - Plan: <path if any>
+  - Brainstorm note: <path if any>
+  - Related doc: <docs/...>
 - Constraints:
-  - PHẢI: <bullets — việc bắt buộc>
-  - KHÔNG: <negative scope — đừng đụng module X, đừng refactor Y, đừng đổi contract>
-- Audience: <user product / team / Larry review / orchestrator handoff>
+  - MUST: <required work>
+  - MUST NOT: <negative scope: do not touch module X, do not refactor Y, do not change contract Z>
+- Audience: <product user / team / Larry review / orchestrator handoff>
 
-── SUCCESS CRITERIA (ALL MUST BE TRUE) ──
+-- SUCCESS CRITERIA (ALL MUST BE TRUE) --
 
 1. <Specific measurable outcome>
 2. <Specific measurable outcome>
 3. <Specific measurable outcome>
-4. Final deliverable runs/builds without errors (tests pass nếu trong scope)
-5. Bằng chứng được show rõ ràng (diff, log, screenshot, scenario pass/fail)
-6. Docs cập nhật theo `docs/playbooks/documentation.md` nếu thay đổi concept
+4. Final deliverable runs/builds without errors (tests pass if in scope)
+5. Evidence is shown clearly (diff, log, screenshot, scenario pass/fail)
+6. Docs are updated per `docs/playbooks/documentation.md` if a concept changed
 
-── OPERATING RULES — NON-NEGOTIABLE ──
+-- OPERATING RULES: NON-NEGOTIABLE --
 
-1. PLAN FIRST. Output task list / outline trước khi viết code hay spec body.
-2. RESPECT PHASE GATE. Nếu phase = Spec → DỪNG sau khi spec xong, KHÔNG implement. Nếu phase = Plan → DỪNG sau plan, KHÔNG code. Nếu phase = Implement → dừng trước PR/merge để chờ user duyệt.
-3. SELF-VERIFY. Sau mỗi bước: chạy test/typecheck/lint liên quan, capture output, confirm pass.
-4. DEBUG YOURSELF. Fail → diagnose + fix trong cùng phase. Không hand lại Orchestrator trừ khi blocked thực sự.
-5. USE EVERY TOOL. Đọc code, grep, run, MCP, fixtures — không đoán mò.
-6. NO PLACEHOLDERS. Không TODO trong commit, không stub, không "// implement later".
-7. PROGRESS LOG. Track completed / in-flight / decisions / blockers trong response cuối phase.
-8. STAY ON SCOPE. Phát hiện off-spec → ghi note, không tự ý mở rộng. Báo Orchestrator nếu critical.
-9. IF BLOCKED. Log rào cản cụ thể, tiếp tục mọi nhánh parallelizable, không idle.
-10. CHECK SUCCESS BEFORE STOPPING. Re-read SUCCESS CRITERIA, xác nhận từng dòng đã đạt; nếu không, fix trước khi báo done.
+1. PLAN FIRST. Output a task list / outline before writing code or the spec body.
+2. RESPECT PHASE GATE. If phase = Spec, stop after the spec and do not implement. If phase = Plan, stop after the plan and do not code. If phase = Implement, stop before PR/merge and wait for approval.
+3. SELF-VERIFY. After each step, run relevant test/typecheck/lint, capture output, and confirm pass.
+4. DEBUG YOURSELF. If something fails, diagnose and fix within the same phase. Do not hand back to Orchestrator unless truly blocked.
+5. USE EVERY TOOL. Read code, grep, run commands, use MCP, use fixtures. Do not guess.
+6. NO PLACEHOLDERS. No TODOs in commits, no stubs, no "// implement later".
+7. PROGRESS LOG. Track completed / in-flight / decisions / blockers in the phase final response.
+8. STAY ON SCOPE. If you find off-spec work, note it and do not expand scope. Tell Orchestrator if critical.
+9. IF BLOCKED. Log the specific blocker, continue all parallelizable branches, and do not idle.
+10. CHECK SUCCESS BEFORE STOPPING. Re-read SUCCESS CRITERIA and confirm every line is met; if not, fix before reporting done.
 
-── QUALITY BAR ──
+-- QUALITY BAR --
 
-- Code: clean, typed, theo conventions (`AGENTS.md` § Conventions).
-- Architecture: tôn trọng hard rules trong `docs/10-technical-architecture.md` (renderer / main / Go boundaries).
-- Output: vượt được Larry code review + smoke tests.
-- Docs: concept mới / RPC mới / migration mới → update doc canonical theo `documentation.md` map.
-- Commit: short imperative, kèm trailer `DOC-VERIFIED: <reason>` nếu push range chạm `main`.
+- Code: clean, typed, follows conventions (`AGENTS.md`, Conventions section).
+- Architecture: respects hard rules in `docs/10-technical-architecture.md` (renderer / main / Go boundaries).
+- Output: can pass Larry code review + smoke tests.
+- Docs: new concept / new RPC / new migration -> update canonical docs according to the `documentation.md` map.
+- Commit: short imperative message, with `DOC-VERIFIED: <reason>` trailer if the push range touches `main`.
 
-── FINAL DELIVERABLE ──
+-- FINAL DELIVERABLE --
 
-- [OK] Confirm từng Success Criterion đã đạt.
-- [FILE] List mọi file created/modified (path tương đối).
-- [RUN] Lệnh cụ thể để verify (test cmd, smoke scenario, screenshot path).
+- [OK] Confirm every Success Criterion is met.
+- [FILE] List every created/modified file (relative path).
+- [RUN] Exact verification commands (test command, smoke scenario, screenshot path).
 - [PROOF] Diff / log output / screenshot / scenario result.
-- [LOG] Decisions made, trade-offs đã chọn, thứ cần biết.
-- [WARN] Known limitations, follow-up tasks, scope hoãn lại.
-- [STOP] Phase tiếp theo là gì + ai làm (vd "Larry review spec next").
+- [LOG] Decisions made, trade-offs chosen, important context.
+- [WARN] Known limitations, follow-up tasks, deferred scope.
+- [STOP] Next phase + assignee (for example "Larry reviews spec next").

@@ -1,26 +1,26 @@
 <!--
-Template — inline /goal (gửi qua tmux, < 500 ký tự).
-Dùng cho: follow-up nhỏ trong cùng phase, single-edit ≤ 50 LOC, scope cực rõ.
-Khi cần context dài / nhiều file / cross-phase: dùng goal-file.md.
+Template: inline /goal (send through tmux, < 500 characters).
+Use for: small follow-up in the same phase, single-edit <= 50 LOC, very clear scope.
+Use goal-file.md when context is long, many files are involved, or the handoff crosses phases.
 
-Nguồn gốc: template `/goal` của user (Obsidian References).
-Đọc anatomy ở docs/playbooks/agent-orchestration.md § /goal.
+Origin: the user's original `/goal` template (Obsidian References).
+Read anatomy in docs/playbooks/agent-orchestration.md, section `/goal`.
 -->
 
-/goal [OUTCOME 1 dòng — what "done" looks like]
+/goal [ONE-LINE OUTCOME: what "done" looks like]
 
-Bạn là **Tom**. Phase = <Spec | Plan | Implement | Fix>.
+You are **Tom**. Phase = <Spec | Plan | Implement | Fix>.
 
-Context: <slice + branch + state 1-2 dòng>
+Context: <slice + branch + state in 1-2 lines>
 Inputs: <path>
-PHẢI: <bullet>
-KHÔNG: <negative scope>
+MUST: <bullet>
+MUST NOT: <negative scope>
 
 Success:
 1. <measurable>
 2. <measurable>
-3. Build/test pass, evidence rõ.
+3. Build/test pass, evidence clear.
 
-Rules: PLAN FIRST · RESPECT PHASE GATE · SELF-VERIFY · NO PLACEHOLDERS · STOP khi <điều kiện>.
+Rules: PLAN FIRST; RESPECT PHASE GATE; SELF-VERIFY; NO PLACEHOLDERS; STOP when <condition>.
 
-Deliverable: [OK] criteria · [FILE] paths · [RUN] cmd · [PROOF] evidence · [STOP] phase tiếp.
+Deliverable: [OK] criteria; [FILE] paths; [RUN] cmd; [PROOF] evidence; [STOP] next phase.

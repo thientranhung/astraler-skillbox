@@ -1,0 +1,295 @@
+area: skills-and-projects
+cases:
+  - id: TC-PROJ-001
+    title: Thêm project và scan provider state
+    tier: T1
+    primary_screen: Projects
+    related_screens: [Project Detail, Dashboard]
+    type: smoke
+    tags: [project, add-project, scan, cross-screen]
+    invariants: [INV-PROJECT-001]
+    preconditions:
+      - App có configured QA Skill Host Folder.
+      - QA project folder tồn tại và safe để scan.
+    steps:
+      - Mở Projects.
+      - Thêm QA project folder.
+      - Chạy project scan nếu nó không xảy ra automatically.
+      - Mở Project Detail.
+      - Quay lại Dashboard.
+    expected_ui:
+      - Projects list hiển thị added project path.
+      - Project Detail hiển thị detected providers hoặc clear no-provider state.
+      - Manual scan hiển thị completion hoặc error toast.
+    cross_screen_checks:
+      - Dashboard project totals khớp Projects list.
+      - Project Detail provider facts khớp Projects row summary.
+    verifier:
+      app_db:
+        - Project row tồn tại với selected path.
+        - Provider scan facts khớp UI summary.
+      filesystem:
+        - Không files được written ngoài selected QA project folder.
+      evidence:
+        - Screenshot của Projects row và Project Detail.
+        - DB query output cho project và provider facts.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-PROJ-002
+    title: Project Detail auto-scan không duplicate operations hoặc noisy toasts
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Projects]
+    type: edge
+    tags: [project, auto-scan, operation-state, toast]
+    invariants: [INV-PROJECT-001]
+    preconditions:
+      - QA project tồn tại trong Skillbox.
+      - Project scan state là stale hoặc never scanned.
+    steps:
+      - Mở Project Detail.
+      - Chờ initial data load.
+      - Navigate away và back một lần.
+      - Click manual Scan Project.
+    expected_ui:
+      - At most một auto-scan bắt đầu cho cùng project trong mount cycle.
+      - Auto-scan không hiển thị success/loading toast.
+      - Manual scan vẫn available và hiển thị normal manual feedback.
+      - UI không stay stuck trong scanning state.
+    cross_screen_checks:
+      - Projects row phản ánh final scan state sau manual scan completes.
+    verifier:
+      app_db:
+        - Project scan timestamp updates sau scan completion.
+      evidence:
+        - Screenshot hoặc DOM snapshot trong và sau scan.
+        - Operation/log evidence nếu có sẵn.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-SKILL-001
+    title: Skills Library scan hiển thị host skills chính xác
+    tier: T1
+    primary_screen: Skills Library
+    related_screens: [Dashboard, Skill Detail]
+    type: smoke
+    tags: [skills-library, host, scan, cross-screen]
+    invariants: [INV-HOST-001]
+    preconditions:
+      - QA Skill Host Folder chứa ít nhất hai valid skill folders.
+    steps:
+      - Mở Skills Library.
+      - Chạy Scan Skill Host Folder.
+      - Mở một Skill Detail.
+      - Quay lại Dashboard.
+    expected_ui:
+      - Skills Library hiển thị expected host skills.
+      - Skill Detail path/name/provider metadata khớp selected skill.
+      - Dashboard host skill count khớp Skills Library.
+    cross_screen_checks:
+      - Dashboard và Skills Library nhất quán về host skill count.
+      - Skill Detail khớp selected row.
+    verifier:
+      app_db:
+        - Skill rows tồn tại cho expected QA host skills.
+      filesystem:
+        - Listed skills tồn tại dưới configured QA host folder.
+      evidence:
+        - Screenshot của Skills Library và Skill Detail.
+        - DB query output cho skills.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-SKILL-002
+    title: Add Skill Wizard cài đặt selected host skill bằng symlink
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library, Skill Detail, Dashboard]
+    type: critical
+    tags: [skill, add-skill, install, symlink, data-integrity]
+    invariants: [INV-INSTALL-001, INV-HOST-001]
+    preconditions:
+      - QA host có một valid skill chưa được installed trong QA project.
+      - QA project có provider target folder cho active provider.
+    steps:
+      - Mở Project Detail.
+      - Mở Add Skill.
+      - Chọn provider tab.
+      - Chọn một not-installed skill.
+      - Chọn hoặc accept symlink mode.
+      - Click Install.
+      - Mở Skills Library và Skill Detail cho installed skill.
+    expected_ui:
+      - Add Skill hiển thị provider tabs cho detected providers.
+      - Already installed skills, nếu có, disabled và labeled Installed.
+      - Install success được hiển thị chỉ sau filesystem write succeeds.
+      - Project Detail hiển thị skill là installed với mode symlink.
+      - Skills Library hoặc Skill Detail phản ánh project install state.
+    cross_screen_checks:
+      - Project Detail, Skills Library, Skill Detail, và Dashboard nhất quán về installed state/counts nơi displayed.
+    verifier:
+      app_db:
+        - Active install record tồn tại cho project, provider, skill, và symlink mode.
+      filesystem:
+        - Provider target symlink tồn tại.
+        - "`readlink` target points tới QA host skill folder."
+        - Host skill folder vẫn tồn tại.
+      evidence:
+        - Screenshot sau install.
+        - "`readlink` và `stat` output."
+        - DB query output cho install row.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-003
+    title: Loại bỏ installed skill xóa project target mà không delete host skill
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library, Skill Detail, Dashboard]
+    type: critical
+    tags: [skill, remove, symlink, data-integrity, destructive]
+    invariants: [INV-INSTALL-001, INV-INSTALL-002, INV-HOST-001]
+    preconditions:
+      - QA project có một skill installed bằng symlink từ QA host.
+    steps:
+      - Mở Project Detail.
+      - Click Remove cho installed skill.
+      - Xác nhận removal.
+      - Mở Skills Library hoặc Skill Detail cho cùng skill.
+    expected_ui:
+      - Project Detail không còn hiển thị skill là installed cho provider đó.
+      - Skills Library hoặc Skill Detail không còn mark project này là installed.
+      - UI không hiển thị success nếu filesystem removal thất bại.
+    cross_screen_checks:
+      - Dashboard installed totals update nếu displayed.
+      - Project Detail và Skills Library nhất quán về installed state.
+    verifier:
+      app_db:
+        - Active install record được removed hoặc marked removed theo current schema.
+      filesystem:
+        - Project provider target symlink không còn tồn tại.
+        - QA host skill folder vẫn tồn tại.
+      evidence:
+        - Screenshot sau removal.
+        - Filesystem check output cho target và host.
+        - DB query output cho install state.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-004
+    title: Chuyển đổi install mode chỉ thay thế project target
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library, Skill Detail]
+    type: critical
+    tags: [skill, switch-mode, symlink, copy, data-integrity]
+    invariants: [INV-INSTALL-001, INV-INSTALL-002]
+    preconditions:
+      - QA project có một skill installed bằng symlink hoặc copy.
+      - Alternate install mode available cho provider target.
+    steps:
+      - Mở Project Detail.
+      - Mở Switch mode cho installed skill.
+      - Chuyển từ symlink thành rsync/copy, hoặc từ rsync/copy thành symlink.
+      - Xác nhận operation.
+      - Reopen cùng Project Detail row và Skill Detail.
+    expected_ui:
+      - Mode label thay đổi thành selected mode sau success.
+      - UI không hiển thị cả hai modes như active.
+      - Errors visible nếu target không thể safely replaced.
+    cross_screen_checks:
+      - Skills Library hoặc Skill Detail nhất quán với Project Detail về mode/status.
+    verifier:
+      app_db:
+        - Install record mode khớp selected mode.
+      filesystem:
+        - Project target type khớp selected mode.
+        - Old project target không left behind như conflicting active install.
+        - QA host skill folder vẫn intact.
+      evidence:
+        - Screenshot sau switch.
+        - "`stat`/`readlink`/`find` output cho project target."
+        - DB query output cho install mode.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-005
+    title: Install conflict surfaces error mà không partial DB success
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard]
+    type: adversarial
+    tags: [skill, install, conflict, error, data-integrity]
+    invariants: [INV-INSTALL-001]
+    preconditions:
+      - QA project provider target đã có folder hoặc file tại skill install path.
+      - Conflicting target không phải valid managed install.
+    steps:
+      - Mở Project Detail.
+      - Mở Add Skill.
+      - Chọn conflicting skill.
+      - Click Install.
+    expected_ui:
+      - Wizard hiển thị clear install error gần footer.
+      - Không success toast xuất hiện.
+      - Install button recovers hoặc stays safely disabled theo error state.
+    cross_screen_checks:
+      - Project Detail không hiển thị skill như installed sau failed attempt.
+    verifier:
+      app_db:
+        - Không active install record được created cho failed install.
+      filesystem:
+        - Existing conflicting file/folder vẫn unchanged.
+        - Không extra partial target được created.
+      evidence:
+        - Screenshot của install error.
+        - DB query output cho install absence.
+        - Filesystem `stat` output cho conflict target.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-006
+    title: Broken project symlink được report như warning sau scan
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Dashboard, Projects]
+    type: edge
+    tags: [skill, broken-symlink, scan, warning]
+    invariants: [INV-INSTALL-001, INV-PROJECT-001]
+    preconditions:
+      - QA project chứa provider skill symlink có target không còn tồn tại.
+    steps:
+      - Mở Project Detail.
+      - Chạy Scan Project.
+      - Mở Dashboard và Projects.
+    expected_ui:
+      - Project Detail không crash.
+      - Broken symlink xuất hiện với warning hoặc broken status.
+      - User thấy một action như rescan, relink, hoặc remove.
+    cross_screen_checks:
+      - Dashboard/Projects warnings phản ánh broken project state nơi những summaries đó tồn tại.
+    verifier:
+      filesystem:
+        - "`readlink` target missing."
+      evidence:
+        - Screenshot của broken state.
+        - "`readlink` và missing-target check output."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

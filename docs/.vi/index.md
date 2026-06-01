@@ -99,7 +99,7 @@ composition, validation, errors, và testing.
 Repo-native QA bank: YAML test cases, cross-screen invariants, run templates,
 and evidence/report conventions for agent-driven Electron smoke and release QA.
 
-[superpowers/specs/2026-05-26-provider-registry-settings-design.md](superpowers/specs/2026-05-26-provider-registry-settings-design.md)
+[superpowers/specs/2026-05-26-provider-registry-settings-design.md](../../superpowers/specs/2026-05-26-provider-registry-settings-design.md)
 
 Spec cho Provider Registry Settings: Settings trở thành nguồn sự thật để khai
 báo built-in/custom provider, icon, enablement, và path candidates cho global
@@ -146,4 +146,4 @@ README.md
 - Technical architecture: [10-technical-architecture.md](10-technical-architecture.md)
 - Tech stack and scaffold decisions: [11-tech-stack-and-scaffold-decisions.md](11-tech-stack-and-scaffold-decisions.md)
 - Implementation patterns: [12-implementation-patterns.md](12-implementation-patterns.md)
-- Provider Registry Settings design: [superpowers/specs/2026-05-26-provider-registry-settings-design.md](superpowers/specs/2026-05-26-provider-registry-settings-design.md)
+- Provider Registry Settings design: [superpowers/specs/2026-05-26-provider-registry-settings-design.md](../../superpowers/specs/2026-05-26-provider-registry-settings-design.md)
