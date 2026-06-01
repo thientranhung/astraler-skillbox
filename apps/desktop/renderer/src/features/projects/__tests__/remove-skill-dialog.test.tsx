@@ -14,6 +14,15 @@ const baseProps = {
 };
 
 describe("RemoveSkillDialog", () => {
+  it("exposes dialog role and accessible label for screen readers", () => {
+    render(<RemoveSkillDialog {...baseProps} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeTruthy();
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(dialog.getAttribute("aria-labelledby")).toBe("remove-skill-dialog-title");
+    expect(dialog.getAttribute("aria-describedby")).toBe("remove-skill-dialog-desc");
+  });
+
   it("shows skill, provider, and exact path", () => {
     render(<RemoveSkillDialog {...baseProps} onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByText("documentation-writer")).toBeTruthy();

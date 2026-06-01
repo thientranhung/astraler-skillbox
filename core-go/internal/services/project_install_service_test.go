@@ -678,6 +678,92 @@ func TestInstallSkillsInternal_PartialFailureStopsAndRescans(t *testing.T) {
 	}
 }
 
+// TestInstallSkillsInternal_ExternalSymlinkStatusRejected verifies that a skill
+// whose DB status is external_symlink (correctly classified by classifyEntry) is
+// rejected by installSkillsInternal with validation_error before any write occurs.
+func TestInstallSkillsInternal_ExternalSymlinkStatusRejected(t *testing.T) {
+	ctx := context.Background()
+
+	fx := newGenericInstallFixture(t, installFixtureOpts{createProjectSkillsDir: true})
+
+	// Skill is marked external_symlink in the DB — the install must refuse it.
+	hostSkillsDir := fx.hostReader.host.SkillsPath
+	externalTarget := t.TempDir()
+	hostSymlink := filepath.Join(hostSkillsDir, "evil-skill")
+	if err := os.Symlink(externalTarget, hostSymlink); err != nil {
+		t.Fatalf("setup external symlink: %v", err)
+	}
+
+	sk := domain.Skill{
+		ID:           1,
+		Name:         "evil-skill",
+		AbsolutePath: hostSymlink,
+		Status:       domain.SkillStatusExternalSymlink,
+	}
+	fx.skillLister.skills[1] = []domain.Skill{sk}
+
+	_, err := fx.svc.installSkillsInternal(ctx, fx.project, providers.GenericAgentsKey, []int64{1}, noopProgress)
+	ae := mustAppErr(t, err)
+	if ae.Code != domain.CodeValidation {
+		t.Fatalf("error code: got %q want validation_error", ae.Code)
+	}
+
+	// Pre-write rejection: no symlink created, no rescan.
+	skillsDir := filepath.Join(fx.project.Path, ".agents", "skills")
+	entries, _ := os.ReadDir(skillsDir)
+	if len(entries) != 0 {
+		t.Fatalf("skills dir must be empty after rejection, got %d entries", len(entries))
+	}
+	if fx.scanRepo.fullScanCallCount != 0 {
+		t.Fatalf("rescan must not run after pre-write rejection, got %d calls", fx.scanRepo.fullScanCallCount)
+	}
+}
+
+// TestInstallSkillsInternal_DefenseInDepth_StaleAvailableExternalSymlink verifies
+// that a skill whose DB status is still "available" (stale row) but whose
+// AbsolutePath is a host symlink escaping the host skills folder is also rejected.
+// This ensures the realpath check catches stale DB state.
+func TestInstallSkillsInternal_DefenseInDepth_StaleAvailableExternalSymlink(t *testing.T) {
+	ctx := context.Background()
+
+	fx := newGenericInstallFixture(t, installFixtureOpts{createProjectSkillsDir: true})
+
+	hostSkillsDir := fx.hostReader.host.SkillsPath
+	externalTarget := t.TempDir() // outside the host skills dir
+	hostSymlink := filepath.Join(hostSkillsDir, "stale-evil-skill")
+	if err := os.Symlink(externalTarget, hostSymlink); err != nil {
+		t.Fatalf("setup external symlink: %v", err)
+	}
+
+	// Intentionally mark it as available (simulating a stale or buggy DB row).
+	sk := domain.Skill{
+		ID:           1,
+		Name:         "stale-evil-skill",
+		AbsolutePath: hostSymlink,
+		Status:       domain.SkillStatusAvailable,
+	}
+	fx.skillLister.skills[1] = []domain.Skill{sk}
+
+	_, err := fx.svc.installSkillsInternal(ctx, fx.project, providers.GenericAgentsKey, []int64{1}, noopProgress)
+	ae := mustAppErr(t, err)
+	if ae.Code != domain.CodeValidation {
+		t.Fatalf("error code: got %q want validation_error", ae.Code)
+	}
+	if !strings.Contains(ae.TechnicalMessage, "outside the active Skill Host Folder") {
+		t.Fatalf("error message should mention escape: got %q", ae.TechnicalMessage)
+	}
+
+	// No project symlink and no rescan.
+	skillsDir := filepath.Join(fx.project.Path, ".agents", "skills")
+	entries, _ := os.ReadDir(skillsDir)
+	if len(entries) != 0 {
+		t.Fatalf("skills dir must be empty after rejection, got %d entries", len(entries))
+	}
+	if fx.scanRepo.fullScanCallCount != 0 {
+		t.Fatalf("rescan must not run after pre-write rejection, got %d calls", fx.scanRepo.fullScanCallCount)
+	}
+}
+
 // TestInstallSkillsInternal_EnsureDirPathFirstSymlinkFails covers the ensure-dir
 // branch: .agents/skills does not exist, gets created, then the very first
 // CreateSymlink fails. The rescan still runs once, the operation reports

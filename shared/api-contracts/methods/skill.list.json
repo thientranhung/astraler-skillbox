@@ -30,7 +30,7 @@
         "relativePath": { "type": "string" },
         "status": {
           "type": "string",
-          "enum": ["available", "missing", "unreadable", "local_modified", "unknown"]
+          "enum": ["available", "missing", "unreadable", "local_modified", "external_symlink", "unknown"]
         },
         "sourceLabel": { "type": ["string", "null"] },
         "lastScannedAt": { "type": ["string", "null"] },
@@ -48,9 +48,10 @@
         "missing": { "type": "integer" },
         "unreadable": { "type": "integer" },
         "local_modified": { "type": "integer" },
+        "external_symlink": { "type": "integer" },
         "unknown": { "type": "integer" }
       },
-      "required": ["available", "missing", "unreadable", "local_modified", "unknown"],
+      "required": ["available", "missing", "unreadable", "local_modified", "external_symlink", "unknown"],
       "additionalProperties": false
     },
     "SkillListWarning": {
