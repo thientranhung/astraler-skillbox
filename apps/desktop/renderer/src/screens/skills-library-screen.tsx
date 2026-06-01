@@ -9,7 +9,7 @@ import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
 
-type SkillStatus = "all" | "available" | "missing" | "unreadable" | "local_modified" | "unknown";
+type SkillStatus = "all" | "available" | "missing" | "unreadable" | "local_modified" | "external_symlink" | "unknown";
 type ProviderView = "all" | "shared_agents";
 
 export function SkillsLibraryScreen(): React.JSX.Element {
@@ -111,6 +111,9 @@ export function SkillsLibraryScreen(): React.JSX.Element {
           {data.totals.local_modified > 0 && (
             <span className="text-yellow-600">{data.totals.local_modified} modified</span>
           )}
+          {data.totals.external_symlink > 0 && (
+            <span className="text-amber-600">{data.totals.external_symlink} external</span>
+          )}
           {data.totals.unknown > 0 && (
             <span className="text-zinc-400">{data.totals.unknown} unknown</span>
           )}
@@ -168,6 +171,7 @@ export function SkillsLibraryScreen(): React.JSX.Element {
             <option value="missing">Missing</option>
             <option value="unreadable">Unreadable</option>
             <option value="local_modified">Modified</option>
+            <option value="external_symlink">External Symlink</option>
             <option value="unknown">Unknown</option>
           </select>
         </div>

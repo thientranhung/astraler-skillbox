@@ -5,11 +5,12 @@ import "time"
 type SkillStatus string
 
 const (
-	SkillStatusAvailable     SkillStatus = "available"
-	SkillStatusMissing       SkillStatus = "missing"
-	SkillStatusUnreadable    SkillStatus = "unreadable"
-	SkillStatusLocalModified SkillStatus = "local_modified"
-	SkillStatusUnknown       SkillStatus = "unknown"
+	SkillStatusAvailable       SkillStatus = "available"
+	SkillStatusMissing         SkillStatus = "missing"
+	SkillStatusUnreadable      SkillStatus = "unreadable"
+	SkillStatusLocalModified   SkillStatus = "local_modified"
+	SkillStatusExternalSymlink SkillStatus = "external_symlink"
+	SkillStatusUnknown         SkillStatus = "unknown"
 )
 
 type SkillProjectUsage struct {

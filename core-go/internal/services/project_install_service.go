@@ -207,6 +207,17 @@ func (s *ProjectService) installSkillsInternal(
 	for _, sk := range hostSkills {
 		skillByID[sk.ID] = sk
 	}
+	// Resolve activeHost.SkillsPath to its canonical realpath so the containment
+	// check below works correctly on systems where paths have symlink prefixes
+	// (e.g. /var → /private/var on macOS).
+	realHostSkillsPath, evalHostErr := filepath.EvalSymlinks(activeHost.SkillsPath)
+	if evalHostErr != nil {
+		return nil, domain.NewDatabaseError(
+			"Could not resolve host skills path",
+			fmt.Sprintf("host skills path %q: %s", activeHost.SkillsPath, evalHostErr),
+		)
+	}
+
 	resolved := make([]domain.Skill, 0, len(skillIDs))
 	for _, id := range skillIDs {
 		sk, found := skillByID[id]
@@ -220,6 +231,25 @@ func (s *ProjectService) installSkillsInternal(
 			return nil, domain.NewValidationError(
 				"Skill not available",
 				fmt.Sprintf("skill %q (ID %d) has status %q; only available skills can be installed", sk.Name, id, sk.Status),
+			)
+		}
+		// Defense-in-depth: resolve the skill's absolute path to its realpath before
+		// installing. A host skill that is a symlink pointing outside the host skills
+		// folder (external_symlink) must not produce a project install — the project
+		// symlink would transitively escape the active Skill Host Folder, violating the
+		// source-of-truth invariant. This check catches both correctly-classified rows
+		// and any stale DB rows that still report status=available for such a skill.
+		realSkillPath, evalErr := filepath.EvalSymlinks(sk.AbsolutePath)
+		if evalErr != nil {
+			return nil, domain.NewValidationError(
+				"Skill source path cannot be resolved",
+				fmt.Sprintf("skill %q source %q: %s", sk.Name, sk.AbsolutePath, evalErr),
+			)
+		}
+		if !isWithin(realHostSkillsPath, realSkillPath) {
+			return nil, domain.NewValidationError(
+				"Skill escapes Skill Host Folder",
+				fmt.Sprintf("skill %q resolves to %q which is outside the active Skill Host Folder; install refused", sk.Name, realSkillPath),
 			)
 		}
 		resolved = append(resolved, sk)

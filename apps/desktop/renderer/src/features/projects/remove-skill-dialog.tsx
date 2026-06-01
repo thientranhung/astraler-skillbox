@@ -19,10 +19,16 @@ export function RemoveSkillDialog({
 }: RemoveSkillDialogProps): React.JSX.Element {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="w-full max-w-lg rounded-lg border border-zinc-200 bg-white p-5 shadow-xl">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-900">Remove skill from project</h2>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="remove-skill-dialog-title"
+        aria-describedby="remove-skill-dialog-desc"
+        className="w-full max-w-lg rounded-lg border border-zinc-200 bg-white p-5 shadow-xl"
+      >
+        <h2 id="remove-skill-dialog-title" className="mb-3 text-sm font-semibold text-zinc-900">Remove skill from project</h2>
 
-        <div className="mb-3 text-xs text-zinc-700">
+        <div id="remove-skill-dialog-desc" className="mb-3 text-xs text-zinc-700">
           <div className="mb-1">
             Remove <span className="font-medium text-zinc-900">{skillName}</span>
           </div>

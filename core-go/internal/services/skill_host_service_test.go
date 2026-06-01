@@ -214,6 +214,51 @@ func TestScanHostInternal_WarningsScopeIsHost(t *testing.T) {
 	}
 }
 
+// TestClassifyEntry_ExternalSymlink verifies that an external symlink is classified
+// as external_symlink even when IsDir=true (the OS follows a symlink-to-directory,
+// so ScanHostFolder sets both IsDir and External on macOS). This was the exact
+// shape of evil-host-symlink in TC-FS-001.
+func TestClassifyEntry_ExternalSymlink(t *testing.T) {
+	cases := []filesystem.HostEntry{
+		{Name: "evil-dir-symlink", IsSymlink: true, IsDir: true, External: true},
+		{Name: "evil-file-symlink", IsSymlink: true, IsDir: false, External: true},
+	}
+	for _, e := range cases {
+		got := classifyEntry(e)
+		if got != domain.SkillStatusExternalSymlink {
+			t.Errorf("classifyEntry(%+v): got %q want %q", e, got, domain.SkillStatusExternalSymlink)
+		}
+	}
+}
+
+// TestClassifyEntry_InternalSymlink verifies that a symlink pointing within the
+// host skills folder continues to be classified as available.
+func TestClassifyEntry_InternalSymlink(t *testing.T) {
+	e := filesystem.HostEntry{Name: "safe-link", IsSymlink: true, External: false}
+	got := classifyEntry(e)
+	if got != domain.SkillStatusAvailable {
+		t.Errorf("classifyEntry(internal symlink): got %q want %q", got, domain.SkillStatusAvailable)
+	}
+}
+
+// TestClassifyEntry_Dir verifies that a plain directory is classified as available.
+func TestClassifyEntry_Dir(t *testing.T) {
+	e := filesystem.HostEntry{Name: "my-skill", IsDir: true}
+	got := classifyEntry(e)
+	if got != domain.SkillStatusAvailable {
+		t.Errorf("classifyEntry(dir): got %q want %q", got, domain.SkillStatusAvailable)
+	}
+}
+
+// TestClassifyEntry_Broken verifies that a broken symlink is classified as unreadable.
+func TestClassifyEntry_Broken(t *testing.T) {
+	e := filesystem.HostEntry{Name: "dead-link", IsSymlink: true, Broken: true}
+	got := classifyEntry(e)
+	if got != domain.SkillStatusUnreadable {
+		t.Errorf("classifyEntry(broken symlink): got %q want %q", got, domain.SkillStatusUnreadable)
+	}
+}
+
 func TestScanHostInternal_FilesystemError(t *testing.T) {
 	hostRepo := newMockHostRepo()
 	ctx := context.Background()
