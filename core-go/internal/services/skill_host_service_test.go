@@ -214,17 +214,20 @@ func TestScanHostInternal_WarningsScopeIsHost(t *testing.T) {
 	}
 }
 
-// TestClassifyEntry_ExternalSymlink verifies that an external symlink entry is
-// classified as external_symlink (not available), so install.skill rejects it.
+// TestClassifyEntry_ExternalSymlink verifies that an external symlink is classified
+// as external_symlink even when IsDir=true (the OS follows a symlink-to-directory,
+// so ScanHostFolder sets both IsDir and External on macOS). This was the exact
+// shape of evil-host-symlink in TC-FS-001.
 func TestClassifyEntry_ExternalSymlink(t *testing.T) {
-	e := filesystem.HostEntry{
-		Name:      "evil-host-symlink",
-		IsSymlink: true,
-		External:  true,
+	cases := []filesystem.HostEntry{
+		{Name: "evil-dir-symlink", IsSymlink: true, IsDir: true, External: true},
+		{Name: "evil-file-symlink", IsSymlink: true, IsDir: false, External: true},
 	}
-	got := classifyEntry(e)
-	if got != domain.SkillStatusExternalSymlink {
-		t.Errorf("classifyEntry(external symlink): got %q want %q", got, domain.SkillStatusExternalSymlink)
+	for _, e := range cases {
+		got := classifyEntry(e)
+		if got != domain.SkillStatusExternalSymlink {
+			t.Errorf("classifyEntry(%+v): got %q want %q", e, got, domain.SkillStatusExternalSymlink)
+		}
 	}
 }
 
