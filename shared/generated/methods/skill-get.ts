@@ -35,7 +35,7 @@ export interface SkillGetSkill {
   name: string;
   relativePath: string;
   absolutePath: string;
-  status: 'available' | 'missing' | 'unreadable' | 'local_modified' | 'unknown';
+  status: 'available' | 'missing' | 'unreadable' | 'local_modified' | 'external_symlink' | 'unknown';
   sourceLabel: string | null;
   hostPath: string;
   lastScannedAt: string | null;
