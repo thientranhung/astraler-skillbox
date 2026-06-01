@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"os"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 )
@@ -48,11 +49,15 @@ func (s *SettingsService) Get(ctx context.Context) (*SettingsView, error) {
 	if settings.ActiveSkillHostFolderID != nil {
 		host, err := s.hostRepo.GetByID(ctx, *settings.ActiveSkillHostFolderID)
 		if err == nil && host != nil {
+			effectiveStatus := host.Status
+			if _, statErr := os.Stat(host.Path); os.IsNotExist(statErr) {
+				effectiveStatus = domain.SkillHostStatusMissing
+			}
 			ah := &ActiveHostView{
 				HostID:     host.ID,
 				Path:       host.Path,
 				SkillsPath: host.SkillsPath,
-				Status:     host.Status,
+				Status:     effectiveStatus,
 			}
 			if host.LastScannedAt != nil {
 				ts := host.LastScannedAt.UTC().Format("2006-01-02T15:04:05Z")

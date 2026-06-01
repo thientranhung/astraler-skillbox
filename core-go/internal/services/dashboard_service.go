@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"os"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 )
@@ -111,11 +112,15 @@ func (s *DashboardService) Get(ctx context.Context) (*DashboardView, error) {
 			return nil, domain.NewDatabaseError("Could not read skill host folder", err.Error())
 		}
 		if host != nil {
+			effectiveStatus := host.Status
+			if _, statErr := os.Stat(host.Path); os.IsNotExist(statErr) {
+				effectiveStatus = domain.SkillHostStatusMissing
+			}
 			ah := &DashboardActiveHost{
 				HostID:     host.ID,
 				Path:       host.Path,
 				SkillsPath: host.SkillsPath,
-				Status:     host.Status,
+				Status:     effectiveStatus,
 			}
 			if host.LastScannedAt != nil {
 				ts := host.LastScannedAt.UTC().Format("2006-01-02T15:04:05Z")

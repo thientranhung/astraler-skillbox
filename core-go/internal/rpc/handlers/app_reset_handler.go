@@ -14,8 +14,8 @@ type appResetAllResponse struct {
 }
 
 // NewAppResetAllHandler returns a handler for app.resetAll. resetFn must truncate
-// user data tables and reset settings to defaults. Electron triggers app.relaunch()
-// upon receiving the response; the Go process is killed shortly after.
+// user data tables and reset settings to defaults. On success the renderer clears
+// its query cache and navigates to /setup; no process restart occurs.
 func NewAppResetAllHandler(resetFn func() error) jrpc2.Handler {
 	return handler.New(func(ctx context.Context, req *jrpc2.Request) (interface{}, error) {
 		if err := resetFn(); err != nil {

@@ -48,6 +48,14 @@ export function SkillsLibraryScreen(): React.JSX.Element {
 
   return (
     <div className="flex flex-1 flex-col">
+      {activeHost?.status === "missing" && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-medium text-amber-700">Skill Host Folder not found</p>
+          <p className="mt-0.5 text-xs text-amber-600">
+            The configured folder no longer exists. Choose a new host folder in Settings.
+          </p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
         <div>
@@ -64,7 +72,7 @@ export function SkillsLibraryScreen(): React.JSX.Element {
           )}
           <button
             onClick={handleOpenHostFolder}
-            disabled={data?.hostPath == null}
+            disabled={data?.hostPath == null || activeHost?.status === "missing"}
             className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <FolderOpen size={13} />
@@ -72,7 +80,7 @@ export function SkillsLibraryScreen(): React.JSX.Element {
           </button>
           <button
             onClick={handleOpenTerminal}
-            disabled={data?.hostPath == null}
+            disabled={data?.hostPath == null || activeHost?.status === "missing"}
             title="Open terminal at Skill Host Folder"
             className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -81,7 +89,7 @@ export function SkillsLibraryScreen(): React.JSX.Element {
           </button>
           <button
             onClick={handleScan}
-            disabled={isScanning || scanMutation.isPending || activeHost == null}
+            disabled={isScanning || scanMutation.isPending || activeHost == null || activeHost.status === "missing"}
             className="flex cursor-pointer items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw size={13} className={isScanning ? "animate-spin" : ""} />
