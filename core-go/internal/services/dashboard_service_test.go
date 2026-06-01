@@ -152,6 +152,53 @@ func TestDashboardService_ActiveHostPresent(t *testing.T) {
 	}
 }
 
+func TestDashboardService_ActiveHostPathMissing(t *testing.T) {
+	f := defaultFake()
+	hostID := int64(7)
+	f.settings.ActiveSkillHostFolderID = &hostID
+	f.host = &domain.SkillHostFolder{
+		ID:     hostID,
+		Path:   "/nonexistent/skillbox/dashboard/test/path-does-not-exist",
+		Status: domain.SkillHostStatusActive,
+	}
+
+	svc := newDashSvc(f)
+	view, err := svc.Get(context.Background())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if view.ActiveHost == nil {
+		t.Fatal("expected non-nil ActiveHost even when path is missing")
+	}
+	if view.ActiveHost.Status != domain.SkillHostStatusMissing {
+		t.Errorf("expected status %q, got %v", domain.SkillHostStatusMissing, view.ActiveHost.Status)
+	}
+}
+
+func TestDashboardService_ActiveHostPathExists(t *testing.T) {
+	f := defaultFake()
+	hostID := int64(8)
+	f.settings.ActiveSkillHostFolderID = &hostID
+	realPath := t.TempDir()
+	f.host = &domain.SkillHostFolder{
+		ID:     hostID,
+		Path:   realPath,
+		Status: domain.SkillHostStatusActive,
+	}
+
+	svc := newDashSvc(f)
+	view, err := svc.Get(context.Background())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if view.ActiveHost == nil {
+		t.Fatal("expected non-nil ActiveHost")
+	}
+	if view.ActiveHost.Status != domain.SkillHostStatusActive {
+		t.Errorf("expected status %q for existing path, got %v", domain.SkillHostStatusActive, view.ActiveHost.Status)
+	}
+}
+
 func TestDashboardService_HostRowMissing(t *testing.T) {
 	f := defaultFake()
 	hostID := int64(99999)

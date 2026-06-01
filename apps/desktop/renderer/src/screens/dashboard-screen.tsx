@@ -64,6 +64,20 @@ export function DashboardScreen(): React.JSX.Element {
 
   return (
     <div className="p-6 space-y-6">
+      {data.activeHost.status === "missing" && (
+        <div className="rounded border border-amber-200 bg-amber-50 p-3">
+          <p className="text-sm font-medium text-amber-700">Skill Host Folder not found</p>
+          <p className="mt-0.5 text-xs text-amber-600">
+            The configured folder no longer exists on disk. Go to Settings to choose a new folder.
+          </p>
+          <button
+            onClick={() => navigate({ to: "/settings" })}
+            className="mt-2 cursor-pointer rounded border border-amber-300 bg-white px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-50"
+          >
+            Go to Settings
+          </button>
+        </div>
+      )}
       {/* Host block */}
       <section>
         <h2 className="text-base font-semibold text-zinc-900">Skill Host Folder</h2>

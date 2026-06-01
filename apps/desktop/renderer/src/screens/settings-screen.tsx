@@ -260,7 +260,7 @@ function DangerZone(): React.JSX.Element {
       <h3 className="text-sm font-semibold text-red-700">Danger Zone</h3>
       <p className="mt-1 text-xs text-red-600">
         Xóa toàn bộ dữ liệu Skillbox (projects, skills, settings). Ứng dụng sẽ
-        khởi động lại. Hành động này không thể hoàn tác.
+        chuyển về màn hình cài đặt. Hành động này không thể hoàn tác.
       </p>
 
       {step === "idle" && (
@@ -394,6 +394,11 @@ export function SettingsScreen(): React.JSX.Element {
               Change
             </button>
           </div>
+          {settings?.activeHost?.status === "missing" && (
+            <div className="px-4 py-2 text-xs text-red-600 bg-red-50 border-t border-red-100">
+              Folder not found on disk. Choose a different location above.
+            </div>
+          )}
 
           <div className="flex items-center justify-between px-4 py-3">
             <div className="text-sm font-medium text-zinc-700">Default Install Mode</div>

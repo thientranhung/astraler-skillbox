@@ -4,7 +4,7 @@
  */
 
 /**
- * Contract for app.resetAll JSON-RPC method. Deletes the SQLite database and signals the app to restart. Irreversible — all Skillbox data is lost.
+ * Contract for app.resetAll JSON-RPC method. Truncates all user-data tables and resets settings to defaults; user-managed folders on disk are not deleted. Returns success; the renderer clears its query cache and navigates to /setup. Irreversible — all Skillbox metadata is lost.
  */
 export type AppResetAllMethod = AppResetAllRequest | AppResetAllResponse;
 
@@ -14,7 +14,7 @@ export type AppResetAllMethod = AppResetAllRequest | AppResetAllResponse;
 export interface AppResetAllRequest {}
 export interface AppResetAllResponse {
   /**
-   * Always true on success. Electron main triggers app.relaunch() upon receiving this response.
+   * Always true on success. The renderer uses this as a completion signal: it clears the TanStack Query cache and navigates to /setup.
    */
   restarting: boolean;
 }
