@@ -1,0 +1,35 @@
+area: packaged-smoke
+cases:
+  - id: TC-PACKAGE-001
+    title: Packaged app khởi động với bundled Go sidecar và isolated app DB
+    tier: T1
+    primary_screen: Packaged App
+    related_screens: [Setup, Dashboard]
+    type: packaged-smoke
+    tags: [packaging, launch, sidecar, db]
+    invariants: [INV-SAFETY-001]
+    preconditions:
+      - Current packaged macOS artifact đã được rebuild từ target commit.
+      - Test run sử dụng safe app data location hoặc clean test macOS user/profile.
+    steps:
+      - Khởi động packaged app.
+      - Chờ màn hình đầu tiên hoặc Dashboard.
+      - Quit app bình thường.
+      - Inspect sidecar và app logs nếu có sẵn.
+    expected_ui:
+      - App mở không có blank window.
+      - Go sidecar ready.
+      - Setup hoặc Dashboard visible.
+      - App quit mà không orphan sidecar.
+    verifier:
+      filesystem:
+        - Bundled sidecar tồn tại dưới app resources và là executable.
+        - App DB path là packaged app data path, không phải source repo dev DB.
+      evidence:
+        - Screenshot của packaged app first visible screen.
+        - Sidecar path và executable-bit check output.
+        - Process check sau quit.
+    safety:
+      destructive: false
+      allowed_environment: packaged_smoke
+      real_environment: opt_in

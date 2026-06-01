@@ -1,0 +1,295 @@
+area: skills-and-projects
+cases:
+  - id: TC-PROJ-001
+    title: Add project and scan provider state
+    tier: T1
+    primary_screen: Projects
+    related_screens: [Project Detail, Dashboard]
+    type: smoke
+    tags: [project, add-project, scan, cross-screen]
+    invariants: [INV-PROJECT-001]
+    preconditions:
+      - App has a configured QA Skill Host Folder.
+      - QA project folder exists and is safe to scan.
+    steps:
+      - Open Projects.
+      - Add the QA project folder.
+      - Run project scan if it does not happen automatically.
+      - Open Project Detail.
+      - Return to Dashboard.
+    expected_ui:
+      - Projects list shows the added project path.
+      - Project Detail shows detected providers or a clear no-provider state.
+      - Manual scan shows a completion or error toast.
+    cross_screen_checks:
+      - Dashboard project totals match Projects list.
+      - Project Detail provider facts match Projects row summary.
+    verifier:
+      app_db:
+        - Project row exists with the selected path.
+        - Provider scan facts match the UI summary.
+      filesystem:
+        - No files are written outside the selected QA project folder.
+      evidence:
+        - Screenshot of Projects row and Project Detail.
+        - DB query output for project and provider facts.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-PROJ-002
+    title: Project Detail auto-scan does not duplicate operations or noisy toasts
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Projects]
+    type: edge
+    tags: [project, auto-scan, operation-state, toast]
+    invariants: [INV-PROJECT-001]
+    preconditions:
+      - QA project exists in Skillbox.
+      - Project scan state is stale or has never been scanned.
+    steps:
+      - Open Project Detail.
+      - Wait for initial data load.
+      - Navigate away and back once.
+      - Click manual Scan Project.
+    expected_ui:
+      - At most one auto-scan starts for the same project during the mount cycle.
+      - Auto-scan does not show success/loading toast.
+      - Manual scan remains available and shows normal manual feedback.
+      - UI does not stay stuck in scanning state.
+    cross_screen_checks:
+      - Projects row reflects the final scan state after manual scan completes.
+    verifier:
+      app_db:
+        - Project scan timestamp updates after scan completion.
+      evidence:
+        - Screenshot or DOM snapshot during and after scan.
+        - Operation/log evidence if available.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-SKILL-001
+    title: Skills Library scan shows host skills accurately
+    tier: T1
+    primary_screen: Skills Library
+    related_screens: [Dashboard, Skill Detail]
+    type: smoke
+    tags: [skills-library, host, scan, cross-screen]
+    invariants: [INV-HOST-001]
+    preconditions:
+      - QA Skill Host Folder contains at least two valid skill folders.
+    steps:
+      - Open Skills Library.
+      - Run Scan Skill Host Folder.
+      - Open one Skill Detail.
+      - Return to Dashboard.
+    expected_ui:
+      - Skills Library shows the expected host skills.
+      - Skill Detail path/name/provider metadata matches the selected skill.
+      - Dashboard host skill count matches Skills Library.
+    cross_screen_checks:
+      - Dashboard and Skills Library agree on host skill count.
+      - Skill Detail matches the selected row.
+    verifier:
+      app_db:
+        - Skill rows exist for the expected QA host skills.
+      filesystem:
+        - Listed skills exist under the configured QA host folder.
+      evidence:
+        - Screenshot of Skills Library and Skill Detail.
+        - DB query output for skills.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-SKILL-002
+    title: Add Skill Wizard installs selected host skill by symlink
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library, Skill Detail, Dashboard]
+    type: critical
+    tags: [skill, add-skill, install, symlink, data-integrity]
+    invariants: [INV-INSTALL-001, INV-HOST-001]
+    preconditions:
+      - QA host has one valid skill not yet installed in the QA project.
+      - QA project has a provider target folder for the active provider.
+    steps:
+      - Open Project Detail.
+      - Open Add Skill.
+      - Select the provider tab.
+      - Select one not-installed skill.
+      - Choose or accept symlink mode.
+      - Click Install.
+      - Open Skills Library and Skill Detail for the installed skill.
+    expected_ui:
+      - Add Skill shows provider tabs for detected providers.
+      - Already installed skills, if any, are disabled and labeled Installed.
+      - Install success is shown only after the filesystem write succeeds.
+      - Project Detail shows the skill as installed with mode symlink.
+      - Skills Library or Skill Detail reflects the project install state.
+    cross_screen_checks:
+      - Project Detail, Skills Library, Skill Detail, and Dashboard agree on installed state/counts where displayed.
+    verifier:
+      app_db:
+        - Active install record exists for the project, provider, skill, and symlink mode.
+      filesystem:
+        - Provider target symlink exists.
+        - "`readlink` target points to the QA host skill folder."
+        - Host skill folder still exists.
+      evidence:
+        - Screenshot after install.
+        - "`readlink` and `stat` output."
+        - DB query output for install row.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-003
+    title: Remove installed skill deletes project target without deleting host skill
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library, Skill Detail, Dashboard]
+    type: critical
+    tags: [skill, remove, symlink, data-integrity, destructive]
+    invariants: [INV-INSTALL-001, INV-INSTALL-002, INV-HOST-001]
+    preconditions:
+      - QA project has one skill installed by symlink from QA host.
+    steps:
+      - Open Project Detail.
+      - Click Remove for the installed skill.
+      - Confirm removal.
+      - Open Skills Library or Skill Detail for the same skill.
+    expected_ui:
+      - Project Detail no longer shows the skill as installed for that provider.
+      - Skills Library or Skill Detail no longer marks this project as installed.
+      - UI does not show success if filesystem removal failed.
+    cross_screen_checks:
+      - Dashboard installed totals update if displayed.
+      - Project Detail and Skills Library agree on installed state.
+    verifier:
+      app_db:
+        - Active install record is removed or marked removed according to current schema.
+      filesystem:
+        - Project provider target symlink no longer exists.
+        - QA host skill folder still exists.
+      evidence:
+        - Screenshot after removal.
+        - Filesystem check output for target and host.
+        - DB query output for install state.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-004
+    title: Switch install mode replaces only the project target
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library, Skill Detail]
+    type: critical
+    tags: [skill, switch-mode, symlink, copy, data-integrity]
+    invariants: [INV-INSTALL-001, INV-INSTALL-002]
+    preconditions:
+      - QA project has one skill installed by symlink or copy.
+      - The alternate install mode is available for the provider target.
+    steps:
+      - Open Project Detail.
+      - Open Switch mode for the installed skill.
+      - Switch from symlink to rsync/copy, or from rsync/copy to symlink.
+      - Confirm the operation.
+      - Reopen the same Project Detail row and Skill Detail.
+    expected_ui:
+      - Mode label changes to the selected mode after success.
+      - UI does not show both modes as active.
+      - Errors are visible if the target cannot be safely replaced.
+    cross_screen_checks:
+      - Skills Library or Skill Detail agrees with Project Detail on mode/status.
+    verifier:
+      app_db:
+        - Install record mode matches the selected mode.
+      filesystem:
+        - Project target type matches the selected mode.
+        - Old project target is not left behind as a conflicting active install.
+        - QA host skill folder remains intact.
+      evidence:
+        - Screenshot after switch.
+        - "`stat`/`readlink`/`find` output for project target."
+        - DB query output for install mode.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-005
+    title: Install conflict surfaces error without partial DB success
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard]
+    type: adversarial
+    tags: [skill, install, conflict, error, data-integrity]
+    invariants: [INV-INSTALL-001]
+    preconditions:
+      - QA project provider target already has a folder or file at the skill install path.
+      - The conflicting target is not a valid managed install.
+    steps:
+      - Open Project Detail.
+      - Open Add Skill.
+      - Select the conflicting skill.
+      - Click Install.
+    expected_ui:
+      - Wizard shows a clear install error near the footer.
+      - No success toast appears.
+      - Install button recovers or stays safely disabled according to the error state.
+    cross_screen_checks:
+      - Project Detail does not show the skill as installed after the failed attempt.
+    verifier:
+      app_db:
+        - No active install record is created for the failed install.
+      filesystem:
+        - Existing conflicting file/folder remains unchanged.
+        - No extra partial target is created.
+      evidence:
+        - Screenshot of install error.
+        - DB query output for install absence.
+        - Filesystem `stat` output for conflict target.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-006
+    title: Broken project symlink is reported as a warning after scan
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Dashboard, Projects]
+    type: edge
+    tags: [skill, broken-symlink, scan, warning]
+    invariants: [INV-INSTALL-001, INV-PROJECT-001]
+    preconditions:
+      - QA project contains a provider skill symlink whose target no longer exists.
+    steps:
+      - Open Project Detail.
+      - Run Scan Project.
+      - Open Dashboard and Projects.
+    expected_ui:
+      - Project Detail does not crash.
+      - Broken symlink appears with a warning or broken status.
+      - User sees an action such as rescan, relink, or remove.
+    cross_screen_checks:
+      - Dashboard/Projects warnings reflect the broken project state where those summaries exist.
+    verifier:
+      filesystem:
+        - "`readlink` target is missing."
+      evidence:
+        - Screenshot of broken state.
+        - "`readlink` and missing-target check output."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

@@ -1,0 +1,156 @@
+area: setup-and-settings
+cases:
+  - id: TC-SETUP-001
+    title: First launch chọn Skill Host Folder và mở main app
+    tier: T1
+    primary_screen: Setup
+    related_screens: [Dashboard, Skills Library, Settings]
+    type: smoke
+    tags: [setup, host, onboarding, cross-screen]
+    invariants: [INV-HOST-001]
+    preconditions:
+      - App chạy trong QA dev Electron mode với throwaway DB.
+      - QA host folder tồn tại và safe để modify.
+    steps:
+      - Khởi động app với không existing app settings.
+      - Chọn QA Skill Host Folder.
+      - Tiếp tục vào main app.
+      - Mở Settings và Skills Library.
+    expected_ui:
+      - Setup screen không còn block app.
+      - Dashboard reachable.
+      - Settings hiển thị selected Skill Host Folder path.
+      - Skills Library phản ánh host scan state.
+    cross_screen_checks:
+      - Dashboard và Settings nhất quán về configured host path hoặc host warning.
+      - Skills Library state khớp actual host folder contents.
+    verifier:
+      app_db:
+        - App settings chứa selected Skill Host Folder path.
+      filesystem:
+        - QA host folder vẫn tồn tại.
+        - Nếu app tạo `.agents/skills`, nó được tạo chỉ dưới QA host folder.
+      evidence:
+        - Screenshot của Settings sau setup.
+        - DB query output cho app settings.
+        - "`find` hoặc `ls` output cho QA host folder."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-SETUP-002
+    title: Missing Skill Host Folder hiển thị warnings mà không crash
+    tier: T1
+    primary_screen: Dashboard
+    related_screens: [Settings, Skills Library]
+    type: edge
+    tags: [setup, host, missing-path, warning]
+    invariants: [INV-HOST-001]
+    preconditions:
+      - App có configured QA Skill Host Folder.
+      - Configured folder được move hoặc delete bên ngoài app.
+    steps:
+      - Khởi động app.
+      - Mở Dashboard.
+      - Mở Settings.
+      - Mở Skills Library.
+    expected_ui:
+      - App không crash.
+      - Dashboard hoặc Settings hiển thị clear missing host warning.
+      - Skills Library không hiển thị stale skills như current mà không warning.
+      - User có visible path recovery action.
+    cross_screen_checks:
+      - Dashboard, Settings, và Skills Library nhất quán rằng host là missing.
+    verifier:
+      filesystem:
+        - Configured host path là absent.
+      evidence:
+        - Screenshot của warning state.
+        - Filesystem check output cho missing path.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-SETTINGS-001
+    title: Thay đổi Skill Host Folder cập nhật source of truth mà không relink silently
+    tier: T1
+    primary_screen: Settings
+    related_screens: [Dashboard, Skills Library, Project Detail]
+    type: smoke
+    tags: [settings, host, change-host, cross-screen]
+    invariants: [INV-HOST-001, INV-INSTALL-001]
+    preconditions:
+      - App sử dụng QA host folder A.
+      - QA host folder B tồn tại với distinct skill list.
+      - Ít nhất một project install có thể vẫn point tới host folder A.
+    steps:
+      - Mở Settings.
+      - Thay đổi Skill Host Folder thành folder B.
+      - Mở Dashboard.
+      - Mở Skills Library.
+      - Mở project với existing install từ folder A, nếu có.
+    expected_ui:
+      - Settings hiển thị folder B là current host.
+      - Skills Library hiển thị skills từ folder B, không stale folder A contents.
+      - Existing symlinks tới folder A không silently rewritten mà không user action.
+      - Bất kỳ old-host state nào là visible như warning hoặc distinct status.
+    cross_screen_checks:
+      - Dashboard và Skills Library nhất quán về new host scan state.
+      - Project Detail không claim old-host symlinks là current dưới folder B.
+    verifier:
+      app_db:
+        - App settings chứa host folder B.
+      filesystem:
+        - Folder A và folder B đều vẫn intact.
+        - Existing project symlink targets unchanged trừ khi relink action được explicitly performed.
+      evidence:
+        - Screenshot của Settings và Skills Library.
+        - DB query output cho app settings.
+        - "`readlink` output cho bất kỳ existing project symlink."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-SETTINGS-002
+    title: Reset All Data xóa Skillbox metadata mà không delete real skill folders
+    tier: T0
+    primary_screen: Settings
+    related_screens: [Setup, Dashboard, Skills Library, Projects, Global Plugins]
+    type: critical
+    tags: [settings, reset, data-integrity, destructive]
+    invariants: [INV-HOST-001, INV-SAFETY-001]
+    preconditions:
+      - App chạy với QA DB và QA fixture folders chỉ.
+      - QA host folder có ít nhất một skill.
+      - QA project có ít nhất một scanned hoặc installed skill.
+    steps:
+      - Mở Settings.
+      - Trigger Reset All Data từ Danger Zone.
+      - Xác nhận destructive prompt.
+      - Observe app sau reset.
+      - Reopen Dashboard, Skills Library, Projects, và Global Plugins.
+    expected_ui:
+      - App quay lại first-run hoặc unconfigured state.
+      - Projects và plugin scan data gone từ UI.
+      - Không success state claim rằng filesystem sources được deleted.
+    cross_screen_checks:
+      - Dashboard, Projects, Skills Library, và Settings nhất quán về reset state.
+    verifier:
+      app_db:
+        - Projects, skills, scan history, installs, và plugin scan tables là empty hoặc reset.
+        - App settings và network settings ở defaults.
+      filesystem:
+        - QA host skill folder vẫn tồn tại.
+        - QA project folder vẫn tồn tại.
+        - Provider config files không modified trừ khi reset contract rõ ràng nói vậy.
+      evidence:
+        - Screenshot sau reset.
+        - DB table count output.
+        - "`find` output cho QA fixture folders vẫn tồn tại."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

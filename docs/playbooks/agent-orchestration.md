@@ -1,157 +1,159 @@
 # Agent Orchestration Playbook
 
-> Khi bí, đọc TL;DR. Khi cần tra cứu, jump bằng tiêu đề.
+> If stuck, read the TL;DR. When you need detail, jump by heading.
 
 ## TL;DR
 
-- **Tom** code, **Larry** review, **Orchestrator** chỉ điều phối (không quyết định kỹ thuật).
-- Plan dài / nhiều bước / cross-layer / hand-off cross-phase → **dùng `/goal`** để khoá context. Việc ngắn, scope rõ → message thường là đủ.
-- Phase chuẩn: Brainstorm → Branch? → Spec → Spec review → User approve → Plan → Implement → Review → Smoke → PR → Docs.
-- Branch + PR là **bắt buộc** khi có schema migration hoặc breaking change. Phần còn lại xem bảng.
-- Mỗi lỗi orchestration → thêm 1 rule vào playbook này. Không lặp lại 2 lần.
+- **Tom** codes, **Larry** reviews, **Orchestrator** coordinates only (does not make technical decisions).
+- Long / multi-step / cross-layer plans or cross-phase handoffs -> use **`/goal`** to lock context. Short, clear work -> a normal message is enough.
+- Standard phase flow: Brainstorm -> Branch? -> Spec -> Spec review -> User approval -> Plan -> Implement -> Review -> Smoke -> PR -> Docs.
+- Branch + PR is **required** for schema migrations or breaking changes. Use the table for everything else.
+- Each orchestration failure adds one rule to this playbook. Do not repeat a failure twice.
 
 ## Roles
 
-| Tên | tmux pane | Vai trò |
-|------|-----------|------|
+| Name | tmux pane | Role |
+|---|---|---|
 | **Tom** | `agent-tech-skillbox` | Senior dev. Brainstorm, spec, plan, implement. |
-| **Larry** | `agent-lead-skillbox` | Reviewer & QA. Code/spec/security review, smoke. **Không edit file**. |
-| **Orchestrator** | (session này) | PM & coordinator. Quyết **ai** và **khi**, không quyết **gì** hay **làm sao**. |
+| **Larry** | `agent-lead-skillbox` | Reviewer & QA. Code/spec/security review, smoke. **Does not edit files.** |
+| **Orchestrator** | (this session) | PM & coordinator. Decides **who** and **when**, not **what** or **how**. |
 
-Orchestrator chỉ được sửa trực tiếp: playbook này, process docs, doc fix tí hon, hoặc khi user explicit cho phép.
+Orchestrator may edit directly only: this playbook, process docs, tiny doc fixes, or anything the user explicitly allows.
 
-## `/goal` — công cụ cho việc dài
+## `/goal` for Long Work
 
-`/goal` là cách Orchestrator đóng gói một việc lớn cho Tom/Larry khi context dễ trôi. **Không phải đưa task trần; là khoá role + phase + expected output**. Một goal yếu = agent đoán mò → context drift → phải redo. Với plan dài, đầu tư 2 phút viết goal tốt tiết kiệm 30 phút sửa hậu kỳ. Đây là tiện ích để dùng đúng lúc, không phải cổng bắt buộc cho mọi việc.
+`/goal` is how Orchestrator packages a large task for Tom/Larry when context can drift. **It is not a raw task dump; it locks role + phase + expected output.** A weak goal makes the agent guess, causes context drift, and forces redo. For long plans, spending 2 minutes writing a good goal can save 30 minutes of cleanup. This is a tool to use at the right time, not a mandatory gate for everything.
 
-### Khi nào nên dùng `/goal`
+### When To Use `/goal`
 
-- Plan dài / nhiều bước, slice cross-layer, hoặc >1 commit → nên dùng (context dễ trôi).
-- Hand-off cross-phase (Spec → Plan → Implement), cần gắn output phase trước làm input → nên dùng.
-- Single-edit, follow-up nhỏ, scope cực rõ → message thường là đủ, **không cần** `/goal`.
+- Long / multi-step plan, cross-layer slice, or >1 commit -> should use it (context can drift).
+- Cross-phase handoff (Spec -> Plan -> Implement), where the previous phase output becomes the next input -> should use it.
+- Single edit, small follow-up, very clear scope -> normal message is enough; **no `/goal` needed**.
 
-### Anatomy — 5 blocks (cho file-backed goal)
+### Anatomy: 5 Blocks (for file-backed goals)
 
-Một file-backed `/goal` đầy đủ gồm 5 block dưới đây. Inline goal dùng bản rút gọn (xem "Hai flavor") — không cần đủ cả 5 khối. Cấu trúc kế thừa template `/goal` gốc của user, adapt cho phase-gate workflow.
+A full file-backed `/goal` contains the 5 blocks below. Inline goals use the shorter version (see "Two flavors") and do not need every block. This structure inherits the user's original `/goal` template and adapts it for this repo's phase-gated workflow.
 
-1. **CONTEXT** — Project, slice, stack liên quan, current state, working dir/branch, inputs (path tới spec/plan/brainstorm), constraints (PHẢI + KHÔNG), audience. Khoá role + phase ngay đầu block (`Bạn là Tom. Phase = Spec.`).
-2. **SUCCESS CRITERIA** — list đánh số, mỗi dòng measurable. Bắt buộc có 1 dòng "build/test pass without errors" và 1 dòng "evidence shown" (diff, log, screenshot, smoke result). Nếu thay đổi concept → thêm 1 dòng docs cập nhật theo `documentation.md`.
-3. **OPERATING RULES** — 10 rules non-negotiable (Plan first, Respect phase gate, Self-verify, Debug yourself, Use every tool, No placeholders, Progress log, Stay on scope, If blocked, Check success before stopping). Adapt từ template gốc: rule #2 thay "WORK AUTONOMOUSLY" bằng "**RESPECT PHASE GATE**" — dừng đúng phase, không chạy gộp spec → code.
-4. **QUALITY BAR** — code conventions, architecture hard rules (`docs/10`), Larry-review-passable, docs cập nhật, commit trailer `DOC-VERIFIED`.
-5. **FINAL DELIVERABLE** — `[OK]` từng criterion, `[FILE]` paths, `[RUN]` cmd verify, `[PROOF]` evidence, `[LOG]` decisions, `[WARN]` limitations, `[STOP]` phase tiếp theo + ai làm.
+1. **CONTEXT**: project, slice, relevant stack, current state, working dir/branch, inputs (path to spec/plan/brainstorm), constraints (MUST + MUST NOT), audience. Lock role + phase at the top (`You are Tom. Phase = Spec.`).
+2. **SUCCESS CRITERIA**: numbered list, each line measurable. Must include one line for "build/test pass without errors" and one line for "evidence shown" (diff, log, screenshot, smoke result). If a concept changes, add one docs line per `documentation.md`.
+3. **OPERATING RULES**: 10 non-negotiable rules (Plan first, Respect phase gate, Self-verify, Debug yourself, Use every tool, No placeholders, Progress log, Stay on scope, If blocked, Check success before stopping). Adapted from the original template: rule #2 replaces "WORK AUTONOMOUSLY" with **RESPECT PHASE GATE** so the agent stops at the correct phase and does not collapse spec -> code.
+4. **QUALITY BAR**: code conventions, architecture hard rules (`docs/10`), Larry-review-passable output, docs updated, `DOC-VERIFIED` commit trailer.
+5. **FINAL DELIVERABLE**: `[OK]` per criterion, `[FILE]` paths, `[RUN]` verification command, `[PROOF]` evidence, `[LOG]` decisions, `[WARN]` limitations, `[STOP]` next phase + assignee.
 
-### Hai flavor
+### Two Flavors
 
-**Inline** — nội dung < 500 ký tự, gửi thẳng qua tmux. Dùng cho follow-up nhỏ trong cùng phase, single-edit, scope cực rõ. Chỉ giữ phần cốt lõi (outcome + context + success + stop), không cần đủ 5 block.
+**Inline**: < 500 characters, sent directly through tmux. Use for small same-phase follow-ups, single edits, very clear scope. Keep only the essentials (outcome + context + success + stop); it does not need all 5 blocks.
 
-**File-backed** — viết `.scratch/goal-<slice>-<phase>.md` rồi gửi `/goal` 1 dòng trỏ tới file. Dùng khi cần context dài, nhiều file path, snippet, hand-off cross-phase. Naming: `goal-<slice>-<phase>.md` (vd `goal-slice-b.md`, `goal-naming-ui-fixes.md`). Tham khảo `.scratch/goal-*.md` đã có để xem ví dụ thực tế trong dự án.
+**File-backed**: write `.scratch/goal-<slice>-<phase>.md`, then send a one-line `/goal` pointing to the file. Use when context is long, there are many paths/snippets, or the handoff crosses phases. Naming: `goal-<slice>-<phase>.md` (for example `goal-slice-b.md`, `goal-naming-ui-fixes.md`). See existing `.scratch/goal-*.md` files for real examples.
 
 ### Templates
 
-Copy từ `docs/playbooks/templates/`:
+Copy from `docs/playbooks/templates/`:
 
-- [`goal-inline.md`](templates/goal-inline.md) — template ngắn.
-- [`goal-file.md`](templates/goal-file.md) — template đầy đủ.
+- [`goal-inline.md`](templates/goal-inline.md): short template.
+- [`goal-file.md`](templates/goal-file.md): full template.
 
-### Anti-patterns
+### Anti-Patterns
 
-- Việc lớn (cross-layer, nhiều bước) gửi trần kiểu "Tom, implement skill provider tabs" — thiếu CONTEXT/SUCCESS/RULES, agent tự brainstorm + spec + implement gộp → mất kiểm soát phase. (Việc nhỏ scope rõ thì gửi trần là ổn — đây chỉ là vấn đề với plan dài.)
-- Paste lại 50 dòng context vào tmux thay vì link file — dễ hỏng input area, khó re-run.
-- Goal không có khối **KHÔNG** trong CONTEXT.constraints — agent dễ vượt scope sang refactor không liên quan.
-- Bỏ rule **RESPECT PHASE GATE** vì copy nguyên template gốc — agent sẽ chạy autonomous hết spec → code → PR, bỏ qua Larry review và user approval.
-- SUCCESS CRITERIA viết "implement feature X" thay vì measurable outcome — không có cách verify done.
+- Sending large work raw, such as "Tom, implement skill provider tabs": missing CONTEXT/SUCCESS/RULES lets the agent merge brainstorm + spec + implementation and lose phase control. (Small clear work can still be sent raw; this is a problem for long plans.)
+- Pasting 50 lines of context into tmux instead of linking a file: easy to corrupt the input area and hard to rerun.
+- Goal has no **MUST NOT** block in CONTEXT.constraints: agent may expand into unrelated refactors.
+- Dropping **RESPECT PHASE GATE** when copying the original template: agent may autonomously run spec -> code -> PR and skip Larry review/user approval.
+- SUCCESS CRITERIA says "implement feature X" instead of measurable outcomes: no way to verify done.
 
 ## Phase Gates
 
-1. Brainstorm & scope → Tom. Output kèm **Risk Classification** (xem bảng dưới).
-2. Branch decision → Orchestrator áp rule, tạo branch nếu cần, **trước** Spec.
-3. Spec → Tom.
-4. Spec review → Larry.
+1. Brainstorm & scope -> Tom. Output includes **Risk Classification** (see table below).
+2. Branch decision -> Orchestrator applies rule, creates branch if needed, **before** Spec.
+3. Spec -> Tom.
+4. Spec review -> Larry.
 5. User approval.
-6. Implementation plan → Tom.
-7. Implement → Tom; **Tom `gh pr create`** (nếu trên branch).
-8. **Larry `gh pr review` trên PR** — không phải chỉ báo tmux. Nếu có lỗi → Larry comment `--request-changes` + mô tả file:line → Tom fix trên branch + push → Larry re-review. Lặp đến khi sạch → Larry `--approve`.
-9. **Tom `gh pr merge`** sau khi PR có `--approve` từ Larry.
-10. Docs / source-of-truth update — Tom update doc canonical **trong cùng slice** (không nợ sang sau); chi tiết doc nào xem `documentation.md`.
+6. Implementation plan -> Tom.
+7. Implement -> Tom; **Tom runs `gh pr create`** if on a branch.
+8. **Larry runs `gh pr review` on the PR**, not just a tmux report. If there are issues -> Larry comments `--request-changes` + `file:line` -> Tom fixes on branch + pushes -> Larry re-reviews. Repeat until clean -> Larry `--approve`.
+9. **Tom runs `gh pr merge`** after the PR has Larry approval.
+10. Docs / source-of-truth update -> Tom updates canonical docs **in the same slice** (do not defer); see `documentation.md` for which docs.
 
-> Slice = thin cross-layer cut (UI → service → data). Compress phase cho slice nhỏ, nhưng **không skip user approval ở Spec**.
+> Slice = thin cross-layer cut (UI -> service -> data). Compress phases for small slices, but **do not skip user approval at Spec**.
 
 ## Branch & PR Workflow
 
-### Risk Classification (Tom đóng ở cuối brainstorm note)
+### Risk Classification (Tom closes at the end of brainstorm)
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Layers | UI / contract / Go / SQL / docs |
 | Breaking change | yes / no |
 | Schema/migration | yes / no |
-| Est. LOC | <50 / 50–300 / >300 |
+| Est. LOC | <50 / 50-300 / >300 |
 | Workflow | direct-to-main / branch + PR |
 
-### Decision Rule (Orchestrator áp trước Spec)
+### Decision Rule (Orchestrator applies before Spec)
 
-| Điều kiện | Workflow |
+| Condition | Workflow |
 |---|---|
-| Schema/migration: yes **HOẶC** Breaking change: yes | **MUST** branch + PR |
-| Layers ≥ 3 **HOẶC** Est. LOC > 300 | **SHOULD** branch + PR |
-| Multi-slice độc lập song song | worktree per slice |
+| Schema/migration: yes **OR** Breaking change: yes | **MUST** branch + PR |
+| Layers >= 3 **OR** Est. LOC > 300 | **SHOULD** branch + PR |
+| Independent multi-slice parallel work | worktree per slice |
 | UI-only / docs-only, < 50 LOC | OK direct-to-main |
 
-Branch naming: `<type>/<kebab-slug>` (vd `feat/dashboard-plugins-metric`). PR target luôn là `main`. Tom tạo PR ngay sau Larry approve commit cuối.
+Branch naming: `<type>/<kebab-slug>` (for example `feat/dashboard-plugins-metric`). PR target is always `main`. Tom creates the PR immediately after Larry approves the final commit.
 
-**PR flow chuẩn (KHÔNG gộp create + merge):**
+**Standard PR flow (do not combine create + merge):**
 
-Tom push branch → `gh pr create` → Larry `gh pr review` trên PR (lỗi: `--request-changes` + file:line → Tom fix + push → Larry re-review; sạch: `--approve`) → Tom `gh pr merge`.
+Tom pushes branch -> `gh pr create` -> Larry runs `gh pr review` on the PR (issues: `--request-changes` + `file:line` -> Tom fixes + pushes -> Larry re-reviews; clean: `--approve`) -> Tom runs `gh pr merge`.
 
-Review phải nằm **trên PR** (`gh pr review`), không chỉ báo tmux — để PR có dấu vết thật. `reviews: []` sau merge = gate bị bỏ qua.
+Review must happen **on the PR** (`gh pr review`), not only in tmux, so the PR has a real trace. `reviews: []` after merge means the gate was skipped.
+
+> **Same-owner gotcha (will recur):** GitHub blocks `gh pr review --approve` / `--request-changes` on PRs from the *same account* ("Can not approve/request changes on your own pull request"). Reviewer switches to `gh pr comment` and writes a clear **APPROVE / BLOCK + file:line** verdict; Orchestrator reads that comment as the verdict. Note that `reviewDecision` will be **empty** even after review, so do not treat that as "not reviewed". Still use CI checks (`gh pr checks`) + `mergeStateStatus=CLEAN` as merge conditions.
 
 ## tmux Handoff Contract
 
-### Before every handoff
+### Before Every Handoff
 
 ```sh
 tmux capture-pane -t <pane> -p | tail -80
 git status --short
 ```
 
-Verify: TUI đang chạy (không phải shell), input area trống, không có text cũ.
+Verify: TUI is running (not a shell), input area is empty, and no stale text remains.
 
-### Sending a prompt
+### Sending A Prompt
 
-Clear input cũ → send prompt → send Enter **riêng** để submit → capture lại để xác nhận đã vào transcript. Enter đầu chỉ confirm multi-line; phải 2 Enter.
+Clear stale input -> send prompt -> send Enter **separately** to submit -> capture again to confirm it entered the transcript. The first Enter may only confirm multi-line input; a second Enter is often required.
 
-### Selection prompt = nguy hiểm
+### Selection Prompt = Dangerous
 
-Nếu capture cho thấy agent đang ở `Enter to select · ↑/↓ to navigate · Esc to cancel`:
+If capture shows the agent at `Enter to select · ↑/↓ to navigate · Esc to cancel`:
 
-- **KHÔNG** gửi text thẳng — nó sẽ register thành selection (thường là default/Recommended) và corrupt câu trả lời.
-- Đúng: gửi `Escape` → verify input clean → gửi text.
-- Relay user choice vào selection: gửi đúng `Down`/`Up` × N rồi `Enter` → capture ngay để verify ghi nhận đúng.
+- **Do not** send text directly; it may register as a selection (often the default/Recommended option) and corrupt the answer.
+- Correct path: send `Escape` -> verify clean input -> send text.
+- To relay a user choice into a selection prompt: send exact `Down`/`Up` x N, then `Enter`, then capture immediately to verify the right choice was recorded.
 
-### Context & model switching
+### Context & Model Switching
 
-- `/clear` trước task không liên quan hoặc khi đổi phase. **Không clear giữa goal.**
-- Map model theo task: opus/strong cho brainstorm/scope/plan, sonnet/fast cho implement và fix loop.
+- `/clear` before unrelated tasks or when changing phase. **Do not clear in the middle of a goal.**
+- Map model to task: opus/strong for brainstorm/scope/plan, sonnet/fast for implement and fix loop.
 
-### Waiting for an agent
+### Waiting For An Agent
 
-Auto-poll bằng background bash, không bắt user poll tay — **nhưng poll phải có checkpoint, không treo mù**.
+Auto-poll with background bash; do not make the user poll manually. **But polling must have checkpoints and must not wait blindly.**
 
-**Nguyên tắc**: chia poll thành cửa sổ ngắn (~3 phút), hết mỗi cửa sổ thì quay lại Orchestrator để inspect, thay vì 1 lần block 20–30 phút. Loop thoát theo **2 điều kiện**: (a) agent idle, HOẶC (b) phát hiện **stuck-state** (cần can thiệp), HOẶC (c) hết cửa sổ (quay lại check rồi quyết có poll tiếp không).
+**Principle:** split polling into short windows (~3 minutes). After each window, return to Orchestrator to inspect instead of blocking for 20-30 minutes. The loop exits on **three conditions**: (a) agent idle, (b) detected **stuck-state** requiring intervention, or (c) window elapsed (return, inspect, then decide whether to poll again).
 
 ```sh
-# 1 cửa sổ poll = ~3 phút. exit_reason cho Orchestrator biết phải làm gì.
-stable=0; iters=0; max=36   # 36*5s = 3 phút
+# One poll window ~= 3 minutes. exit_reason tells Orchestrator what to do.
+stable=0; iters=0; max=36   # 36*5s = 3 minutes
 exit_reason=window_elapsed
 while [ $iters -lt $max ]; do
   out=$(tmux capture-pane -t <pane> -p 2>/dev/null)
-  # stuck-state: selection/permission prompt, shell leak, lỗi rõ → dừng ngay
+  # stuck-state: selection/permission prompt, shell leak, obvious error -> stop immediately
   if echo "$out" | grep -qE 'Enter to select|Do you want to proceed|❯ 1\.|Yes, |No, go back|\$ $|command not found|Error:'; then
     exit_reason=needs_attention; break
   fi
-  # busy khi còn spinner; idle khi mất spinner ≥40s (8 vòng)
-  # Pattern PHẢI bắt cả format elapsed "Verb… (3m 0s · ↓ 1.2k tokens)" — dùng "… *\(" + token counters.
-  # KHÔNG dùng glyph ✻/✶ làm tín hiệu busy: chúng PERSIST trên dòng summary đã xong ("✻ Churned for 4m") → false-busy treo loop.
+  # busy while spinner remains; idle after spinner absent >=40s (8 loops)
+  # Pattern MUST catch elapsed format "Verb... (3m 0s · ↓ 1.2k tokens)" using "... *\(" + token counters.
+  # Do NOT use ✻/✶ as busy signal: they persist on completed summary lines ("✻ Churned for 4m") and cause false-busy loops.
   if echo "$out" | grep -qE '… *\([0-9]+[smh]|esc to interrupt|◎ /goal active|↓ [0-9]|↑ [0-9]|· [0-9.]+k? tokens'; then stable=0; else stable=$((stable+1)); fi
   if [ $stable -ge 8 ]; then exit_reason=idle; break; fi
   iters=$((iters+1)); sleep 5
@@ -159,12 +161,12 @@ done
 echo "EXIT=$exit_reason after ~$((iters*5))s"; tmux capture-pane -t <pane> -p | grep -n '[^[:space:]]' | tail -40
 ```
 
-- `run_in_background: true`. Mỗi cửa sổ ~3 phút; khi notify thì đọc `EXIT`:
-  - `idle` → agent xong, đọc report.
-  - `needs_attention` → có selection/permission/shell-leak/lỗi → inspect + recover (xem mục Recovery), KHÔNG poll tiếp mù.
-  - `window_elapsed` → còn busy → ghi nhận tiến độ rồi phóng cửa sổ mới (lặp lại tối đa N lần).
-- **Wall-clock budget cứng**: đặt trần tổng (vd 6 cửa sổ ≈ 18 phút cho task lớn). Hết budget mà vẫn busy → capture pane, đánh giá có thật sự tiến triển không (token/spinner đổi), nếu nghi treo → `C-c` + inspect, không để chạy vô hạn.
-- Pattern `… \([0-9]+[smh]` khớp spinner Claude Code; runtime khác cần adapt. Grep stuck-state cũng theo TUI cụ thể.
+- `run_in_background: true`. Each window is ~3 minutes; when notified, read `EXIT`:
+  - `idle` -> agent done, read report.
+  - `needs_attention` -> selection/permission/shell-leak/error -> inspect + recover (see Recovery). Do not keep polling blindly.
+  - `window_elapsed` -> still busy -> note progress and launch a new window (repeat up to N times).
+- **Hard wall-clock budget:** set a total cap (for example 6 windows ~= 18 minutes for a large task). If still busy at budget, capture pane, decide whether real progress is happening (tokens/spinner changed), and if it appears stuck -> `C-c` + inspect. Do not leave it running forever.
+- Pattern `… \([0-9]+[smh]` matches Claude Code spinner; other runtimes may need adaptation. The stuck-state grep is also TUI-specific.
 
 ### Audit
 
@@ -174,53 +176,53 @@ tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} cmd=#{pane_
 
 ## Review & Smoke
 
-Larry chọn loại review theo target. Orchestrator chỉ nêu target + intent, không chỉ định tool.
+Larry chooses review type by target. Orchestrator states target + intent only and does not prescribe the tool.
 
-| Loại | Target |
+| Type | Target |
 |---|---|
 | Code review | diff/commit |
 | PR review | full PR scope |
 | Spec/design review | architecture, risk, missing case |
 | Security review | auth, data exposure, injection |
 
-**Smoke scenarios thiết kế trong phase Spec**, không phải lúc execute. Tom propose scenarios kèm spec → user/Larry duyệt → Larry execute và report pass/fail kèm evidence. Scenario gap phát hiện khi execute → log lại vào spec cho lần sau. Smoke verify end-to-end (UI, CLI, API, IPC, data flow — không chỉ UI), không phải unit.
+**Smoke scenarios are designed in the Spec phase**, not during execution. Tom proposes scenarios with the spec; user/Larry approves them; Larry executes and reports pass/fail with evidence. Scenario gaps found during execution are logged back into the spec for next time. Smoke verifies end-to-end behavior (UI, CLI, API, IPC, data flow), not just UI, and not unit behavior.
 
-**Driving the Electron app**: drive instance `pnpm dev` đang chạy qua CDP — đọc [`agent-browser-smoke.md`](agent-browser-smoke.md) trước (connect port 49222, **không** launch instance thứ 2).
+**Driving the Electron app:** drive the running `pnpm dev` instance through CDP. Read [`agent-browser-smoke.md`](agent-browser-smoke.md) first (connect port 49222, **do not** launch a second instance).
 
-**Nguyên tắc chung cho mọi review/smoke**:
+**General rules for every review/smoke:**
 
-- Scope cụ thể (commit, PR, file, spec).
-- Larry verdict: approve / block / needs-discussion. **Không edit file.**
-- Lead finding → Tom fix scoped commit → Larry chỉ re-review follow-up đó.
-- "No verdict" (Larry không inspect) → rerun từ đầu.
-- Drift docs phát hiện trong review → fix trước khi close.
-- **Reviewer KHÔNG tự-poll chờ fix, KHÔNG tự drive vòng lặp.** Khi review ra finding → report verdict (BLOCK + mô tả file:line) rồi **DỪNG**. Orchestrator kiểm soát handoff: nhận finding → dispatch Tom fix → verify fix → re-engage reviewer để re-smoke. (Bài học G3c: Larry tự mở vòng `while` chờ Tom commit → context cạn + overstep sang **tự sửa file production** (revert lại sau, branch không hỏng nhưng vi phạm role). Reviewer self-drive = nguy cơ drift vai trò + đốt context. Một review = một verdict, một lần.)
+- Scope is specific (commit, PR, file, spec).
+- Larry verdict: approve / block / needs-discussion. **Does not edit files.**
+- Lead finding -> Tom fixes with scoped commit -> Larry only re-reviews that follow-up.
+- "No verdict" (Larry did not inspect) -> rerun from the beginning.
+- Docs drift found during review -> fix before close.
+- **Reviewer does not self-poll for fixes and does not self-drive the loop.** When review finds an issue, report verdict (`BLOCK` + `file:line`) and **stop**. Orchestrator controls handoff: receive finding -> dispatch Tom fix -> verify fix -> re-engage reviewer to re-smoke. (Lesson G3c: Larry opened a `while` loop waiting for Tom commit -> context ran out + overstepped into **editing production files**. It was reverted and the branch survived, but the role boundary was violated. Reviewer self-drive risks role drift + context burn. One review = one verdict, one pass.)
 
 ## Ownership
 
 - One actor per file at a time.
-- Larry không edit file trừ khi user explicit yêu cầu.
-- Orchestrator không implement product code. Agent fail → restore agent trước (clear, restart, split task, switch model) → nếu vẫn kẹt thì hỏi user.
+- Larry does not edit files unless the user explicitly asks.
+- Orchestrator does not implement product code. If an agent fails, restore the agent first (clear, restart, split task, switch model). If still stuck, ask the user.
 
 ## Recovery
 
-**Stale/wrong prompt**: `C-c` → capture → nếu còn hỏng, `C-c C-c` thoát TUI → restart → verify input trống.
+**Stale/wrong prompt:** `C-c` -> capture -> if still broken, `C-c C-c` to exit TUI -> restart -> verify empty input.
 
-**Tom degraded** (stale behavior, wrong scope, context corrupt):
+**Tom degraded** (stale behavior, wrong scope, corrupt context):
 
 1. `C-c`, capture pane.
-2. `/clear` hoặc restart TUI.
-3. Re-send task nhỏ hơn kèm stop condition rõ.
-4. Vẫn lặp → hỏi user. **Không tự implement.**
+2. `/clear` or restart TUI.
+3. Re-send a smaller task with clear stop condition.
+4. If it repeats, ask the user. **Do not self-implement.**
 
-**Shell leak**: agent rớt về shell → restart TUI với flag uninterrupted để permission prompt không stall:
+**Shell leak:** agent dropped to shell -> restart TUI with uninterrupted flag so permission prompts do not stall:
 
 - Claude Code: `claude --dangerously-skip-permissions`
 - Codex: `codex --yolo`
 - OpenCode / agy: `agy --dangerously-skip-permissions`
 
-Không trust process name — phải inspect input area thực.
+Do not trust process name; inspect the input area.
 
 ## Maintenance
 
-Mỗi orchestration failure → thêm 1 rule vào đây. Nguyên tắc playbook: **principles over recipes, references over duplication**. Nếu một rule chỉ áp dụng 1 lần, không thêm vào.
+Each orchestration failure should add one rule to this playbook. Playbook principle: **principles over recipes, references over duplication**. If a rule applies only once, do not add it.

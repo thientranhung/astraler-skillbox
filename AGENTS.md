@@ -19,11 +19,20 @@ apps/desktop/     # Electron + React renderer + main + preload
 core-go/          # Go sidecar (domain, services, repositories, providers, RPC, migrations)
 shared/           # JSON Schema contracts + generated TS types (committed)
 docs/             # Source of truth — see docs/index.md for reading order
+docs/.vi/         # Vietnamese authoring/review mirror for docs/ (tracked)
 fixtures/         # Test fixtures for provider/filesystem
-.scratch/         # Throwaway task briefs (gitignored)
+.scratch/         # Temporary drafts, long handoffs, and task briefs (gitignored)
 ```
 
 Do not create alternate top-level layouts without updating `docs/10-technical-architecture.md`.
+
+`docs/` is the canonical English documentation used by agents/providers. `docs/.vi/`
+is the Vietnamese authoring/review mirror; edit there first when drafting with the
+Vietnamese-speaking owner, then translate/sync approved content back to `docs/`.
+
+Scratch files under `.scratch/` must be date-prefixed for sorting and traceability:
+`YYYY-MM-DD-<topic>.md`, `YYYY-MM-DD-<topic>-<phase>.md`, or
+`YYYY-MM-DD-goal-<slice>-<phase>.md`.
 
 ## Commands
 
@@ -57,17 +66,19 @@ Protocol specs (SQLite PRAGMAs, JSON-RPC transport rules, Electron security defa
 
 ## Conventions
 
-**Language policy**: Vietnamese is the primary working language for this project; docs and prose may be Vietnamese or English. Do not rewrite existing Vietnamese text unless explicitly requested. Code identifiers, commit messages, and shared API contracts stay in English.
+**Language**: preserve the language already used in nearby docs. Do not translate or rewrite prose just to normalize language. Code identifiers, shared API contracts, file names, and commit messages stay in English.
 
-**Commits**: short imperative messages, present tense, no trailing period. Examples: `Add implementation patterns document`, `Fix sort instability in plugins table`.
+**Commits**: short imperative messages in English, present tense, no trailing period. Examples: `Add implementation patterns document`, `Fix sort instability in plugins table`.
 
-**File naming**: lowercase kebab-case for Markdown (`13-release-plan.md`). Major source-of-truth docs use numbered prefixes (`NN-name.md`).
+**File naming**: use lowercase kebab-case for Markdown (`release-plan.md`). Major source-of-truth docs keep numbered prefixes (`NN-name.md`). Scratch files under `.scratch/` must be date-prefixed.
 
-**Pull requests**: include summary, affected modules, verification performed, linked issue/decision doc. UI changes → screenshots or recordings. Architecture changes → update the relevant numbered doc and `docs/index.md`.
+**Pull requests**: when creating a PR, include a short summary and the verification performed. Link related specs, issues, or ADRs when useful. For meaningful UI changes, add a screenshot or short recording when it helps reviewers understand the change.
 
-**Testing**: place tests near the affected layer (Vitest for renderer, `go test` for `core-go`). Contract changes must regenerate `shared/generated` and pass `pnpm check:contracts-drift`.
+**Testing**: place automated tests near the affected layer (Vitest for renderer, `go test` for `core-go`). Contract changes must regenerate `shared/generated` and pass `pnpm check:contracts-drift`. For user-facing workflows, data-integrity paths, plugin behavior, or release readiness, update/run the QA bank under `docs/qa/` as appropriate.
 
 **Documentation discipline**: when you add/change a concept (schema, RPC method, screen, domain object, provider, etc.), update the corresponding doc in the same slice. Read [`docs/playbooks/documentation.md`](docs/playbooks/documentation.md) — it has the source-of-truth map and update matrix. For architecture / tech stack / domain-level decisions, write an ADR under [`docs/decisions/`](docs/decisions/) (see the README there for criteria).
+
+**Governance & orchestration**: read [`docs/playbooks/governance-project.md`](docs/playbooks/governance-project.md) for phase gates, ownership, review/QA, workflow skills, `.scratch/`, and docs/ADR rules. Use [`docs/playbooks/agent-orchestration.md`](docs/playbooks/agent-orchestration.md) only as the operational playbook for coordinating agents/tmux/hand-offs; it must comply with governance.
 
 ## Key Docs
 
@@ -78,5 +89,7 @@ Read `docs/index.md` first for the intended order. Frequently used:
 - `docs/12-implementation-patterns.md` — 16 implementation patterns
 - `docs/06-data-model.md` + `docs/07-schema-dictionary.md` — SQLite schema, PRAGMAs
 - `docs/08-provider-model.md` — provider adapter contract
+- `docs/playbooks/governance-project.md` — project governance, phase gates, review/QA rules
+- `docs/playbooks/agent-orchestration.md` — operational agent/tmux orchestration playbook
 - `docs/playbooks/documentation.md` — keeping docs in sync with code
 - `docs/decisions/` — ADR for project technical decisions
