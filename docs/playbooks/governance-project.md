@@ -171,7 +171,7 @@ If a concept changed and docs are missing, the verdict is `BLOCK`.
 
 - **Smoke scenarios are designed in the Spec phase**, not during execution. The Implementer proposes them; user/Reviewer approves them; Reviewer executes and reports pass/fail with evidence. Gaps found during execution are logged back into the spec.
 - Smoke verifies **end-to-end** behavior (UI, CLI, API, IPC, data flow), not just unit behavior.
-- If smoke belongs to delta/smoke/release/regression QA, use the QA bank: select cases/tags, create a run folder, write `run-plan.yaml`, append `results.jsonl`, write `report.md`, and store evidence under `docs/qa/runs/<run>/evidence/`.
+- If smoke belongs to delta/smoke/release/regression QA, use the `astraler-qa` skill and QA bank: select cases/tags, create a run folder, write `run-plan.yaml`, append `results.jsonl`, write `report.md`, and store evidence under `docs/qa/runs/<run>/evidence/`.
 - Drive the running `pnpm dev` Electron app through CDP. Read [`agent-browser-smoke.md`](agent-browser-smoke.md). **Do not** launch a second instance.
 - When the Reviewer finds an issue, they report the verdict (`BLOCK` + `file:line`) and **stop**. They do not self-poll for fixes, self-drive the loop, or edit production files. One review = one verdict.
 - "No verdict" (no inspection) means rerun from the beginning. Docs drift found during review must be fixed before close.
