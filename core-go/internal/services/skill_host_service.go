@@ -165,7 +165,8 @@ func classifyEntry(e filesystem.HostEntry) domain.SkillStatus {
 		return domain.SkillStatusAvailable
 	}
 	if e.External {
-		return domain.SkillStatusAvailable // external symlink counts as available
+		// External symlinks are surfaced with a warning but must not be installable.
+		return domain.SkillStatusExternalSymlink
 	}
 	return domain.SkillStatusUnknown
 }
