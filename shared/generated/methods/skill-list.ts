@@ -46,7 +46,7 @@ export interface SkillListSkill {
   id: number;
   name: string;
   relativePath: string;
-  status: 'available' | 'missing' | 'unreadable' | 'local_modified' | 'unknown';
+  status: 'available' | 'missing' | 'unreadable' | 'local_modified' | 'external_symlink' | 'unknown';
   sourceLabel: string | null;
   lastScannedAt: string | null;
   projectsUsingCount: number;
@@ -59,6 +59,7 @@ export interface SkillListTotals {
   missing: number;
   unreadable: number;
   local_modified: number;
+  external_symlink: number;
   unknown: number;
 }
 /**

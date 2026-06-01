@@ -27,11 +27,12 @@ type SkillItem struct {
 }
 
 type SkillTotals struct {
-	Available     int
-	Missing       int
-	Unreadable    int
-	LocalModified int
-	Unknown       int
+	Available       int
+	Missing         int
+	Unreadable      int
+	LocalModified   int
+	ExternalSymlink int
+	Unknown         int
 }
 
 type WarningItem struct {
@@ -120,6 +121,8 @@ func (s *SkillLibraryService) List(ctx context.Context, hostID int64) (*SkillsLi
 			view.Totals.Unreadable++
 		case domain.SkillStatusLocalModified:
 			view.Totals.LocalModified++
+		case domain.SkillStatusExternalSymlink:
+			view.Totals.ExternalSymlink++
 		default:
 			view.Totals.Unknown++
 		}

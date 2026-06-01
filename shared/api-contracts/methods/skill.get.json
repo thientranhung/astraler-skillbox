@@ -31,7 +31,7 @@
         "absolutePath": { "type": "string" },
         "status": {
           "type": "string",
-          "enum": ["available", "missing", "unreadable", "local_modified", "unknown"]
+          "enum": ["available", "missing", "unreadable", "local_modified", "external_symlink", "unknown"]
         },
         "sourceLabel": { "type": ["string", "null"] },
         "hostPath": { "type": "string" },

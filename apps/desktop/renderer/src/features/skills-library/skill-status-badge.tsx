@@ -8,6 +8,7 @@ const STATUS_CONFIG: Record<Status, { label: string; className: string }> = {
   missing: { label: "Missing", className: "bg-red-100 text-red-800" },
   unreadable: { label: "Unreadable", className: "bg-red-100 text-red-800" },
   local_modified: { label: "Modified", className: "bg-yellow-100 text-yellow-800" },
+  external_symlink: { label: "External Symlink", className: "bg-amber-100 text-amber-800" },
   unknown: { label: "Unknown", className: "bg-zinc-100 text-zinc-600" },
 };
 

@@ -29,11 +29,12 @@ type skillListSkill struct {
 }
 
 type skillListTotals struct {
-	Available     int `json:"available"`
-	Missing       int `json:"missing"`
-	Unreadable    int `json:"unreadable"`
-	LocalModified int `json:"local_modified"`
-	Unknown       int `json:"unknown"`
+	Available       int `json:"available"`
+	Missing         int `json:"missing"`
+	Unreadable      int `json:"unreadable"`
+	LocalModified   int `json:"local_modified"`
+	ExternalSymlink int `json:"external_symlink"`
+	Unknown         int `json:"unknown"`
 }
 
 type skillListWarning struct {
@@ -66,11 +67,12 @@ func NewSkillListHandler(svc skillListService) jrpc2.Handler {
 			HostPath:   view.HostPath,
 			LastScanAt: view.LastScanAt,
 			Totals: skillListTotals{
-				Available:     view.Totals.Available,
-				Missing:       view.Totals.Missing,
-				Unreadable:    view.Totals.Unreadable,
-				LocalModified: view.Totals.LocalModified,
-				Unknown:       view.Totals.Unknown,
+				Available:       view.Totals.Available,
+				Missing:         view.Totals.Missing,
+				Unreadable:      view.Totals.Unreadable,
+				LocalModified:   view.Totals.LocalModified,
+				ExternalSymlink: view.Totals.ExternalSymlink,
+				Unknown:         view.Totals.Unknown,
 			},
 		}
 
