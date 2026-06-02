@@ -154,3 +154,51 @@ cases:
       destructive: true
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-SETUP-003
+    title: Re-point host folder while project installs exist keeps install records consistent
+    tier: T0
+    primary_screen: Settings
+    related_screens: [Skills Library, Project Detail, Dashboard]
+    type: critical
+    tags: [setup, settings, host, change-host, install, data-integrity, release-full]
+    invariants: [INV-HOST-001, INV-INSTALL-001, INV-DB-001, INV-SAFETY-001]
+    preconditions:
+      - App uses QA host folder A with at least one active project install.
+      - QA host folder B exists and has a distinct valid skill list.
+      - QA executor may mutate only run-local fixture copies.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - configure host A, host B, and a project fixture with one existing host-A install
+    steps:
+      - Open Settings.
+      - Change the Skill Host Folder from host A to host B.
+      - Run Skill Host Folder scan if it does not happen automatically.
+      - Open Skills Library, Project Detail for the installed project, and Dashboard.
+    expected_ui:
+      - Settings shows host B as the current Skill Host Folder.
+      - Skills Library lists host B skills and does not show host A skills as current host skills.
+      - Project Detail does not silently rewrite the existing install target from host A to host B.
+      - Existing host-A install state is shown as old-host, missing-host, or warning according to the product contract.
+      - Dashboard counts remain coherent and do not double-count the same install.
+    cross_screen_checks:
+      - Settings, Skills Library, Project Detail, and Dashboard agree on the active host and install state.
+    verifier:
+      app_db:
+        - App settings contain host B as the active Skill Host Folder.
+        - The existing install row is preserved or explicitly marked stale/missing; no duplicate active install row is created.
+        - Active install counts by project and mode are coherent after the re-point.
+      filesystem:
+        - Host A and host B fixture folders both remain on disk.
+        - Existing project target still points to host A unless the user explicitly performed a relink/switch action.
+        - No files are written outside the run-local release-cycle fixture.
+      evidence:
+        - Settings, Skills Library, and Project Detail screenshots after re-point.
+        - DB query output for app settings, installs, and install counts.
+        - "`readlink`/`stat` output for the existing project target and both host folders."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

@@ -277,3 +277,53 @@ cases:
       destructive: true
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-PROVIDER-011
+    title: Reset of an active override restores built-in path with no file deletion or target rewrite
+    tier: T0
+    primary_screen: Settings
+    related_screens: [Project Detail, Projects]
+    type: critical
+    tags: [provider, path-override, reset, filesystem, data-integrity, release-full]
+    invariants: [INV-PROVIDER-001, INV-PROJECT-001, INV-INSTALL-001, INV-SAFETY-001]
+    preconditions:
+      - QA project has a provider path override that points to a run-local alternate provider path.
+      - The same QA project also has the provider built-in path populated with distinct fixture content.
+      - QA executor may mutate only the run-local project fixture.
+    data_setup:
+      fixture_source: fixtures/qa/provider-overrides/project-with-override
+      copy_to: runs/<run-id>/fixtures/provider-overrides/project-with-override
+      mutate_copy:
+        - keep both the built-in provider path and override provider path present with distinct fixture markers
+    steps:
+      - Open Settings provider path overrides.
+      - Verify the active project-scope override is visible.
+      - Open Project Detail and scan the project while the override is active.
+      - Return to Settings and reset the override.
+      - Scan the same Project Detail again.
+      - Inspect both provider paths outside the app.
+    expected_ui:
+      - Settings clearly shows the override before reset and the built-in path after reset.
+      - Project Detail uses the override path before reset and the built-in path after reset.
+      - Reset does not claim to delete, migrate, or rewrite either provider folder.
+      - Scan reaches a terminal state after reset and does not show stale override facts as current.
+    cross_screen_checks:
+      - Settings, Projects, and Project Detail agree on whether the override is active.
+    verifier:
+      app_db:
+        - Provider path override row exists before reset and is removed or marked reset after reset.
+        - Project provider facts after the final scan point to the built-in path, not the old override path.
+        - No active install record is silently re-targeted from the override path to the built-in path without a user install/switch action.
+      filesystem:
+        - Built-in provider path still exists and its marker content is unchanged.
+        - Override provider path still exists and its marker content is unchanged.
+        - No files are deleted, moved, or rewritten outside the run-local provider-overrides fixture.
+      evidence:
+        - Settings screenshot before and after reset.
+        - Project Detail screenshot before and after final scan.
+        - DB query output for provider_path_overrides, project provider facts, and installs.
+        - "`find`, `stat`, and checksum output for both provider paths before and after reset."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
