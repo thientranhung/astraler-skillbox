@@ -96,6 +96,32 @@ Subagents/workers do not expand scope, change file ownership, or merge phases on
 - `NEEDS_CONTEXT`
 - `BLOCKED`
 
+## Anti-Hallucination Checklist
+
+Before editing code, the Implementer must verify:
+
+- Target files and directories exist.
+- Referenced symbols, components, RPC methods, contract files, tables, and
+  provider names exist before using them.
+- Import paths and package boundaries match nearby code.
+- Nearby patterns were inspected before adding a new abstraction.
+- The touched layer boundary is known: renderer, Electron main, preload, Go
+  core, repository/SQL, filesystem gateway, provider adapter, or shared contract.
+- Contract/schema changes include generated files and drift checks.
+- Docs and QA impact are mapped with
+  [`documentation.md`](documentation.md) and the QA scope table below.
+
+Before issuing a review verdict, the Reviewer must verify:
+
+- The inspected target is explicit: diff, commit, PR, spec, or run report.
+- File/line references and evidence paths exist.
+- Claims are grounded in source, tests, contracts, docs, or QA evidence.
+- A `PASS`/`APPROVE` verdict does not rely only on the implementer's summary.
+- Docs impact is checked when a concept changed.
+
+Before broad code discovery, read [`../context-map.md`](../context-map.md) to
+choose likely paths, then search the targeted areas.
+
 ## Phase Gates
 
 1. **Brainstorm & scope**: output includes **Risk Classification** (table below).

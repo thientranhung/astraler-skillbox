@@ -4,6 +4,9 @@ Hệ QA nằm trong repo cho Astraler Skillbox. Thiết kế cố ý gọn: test
 YAML, kết quả chạy là JSONL append-only, và evidence nằm trong folder của từng
 lần chạy.
 
+Với status semantics, evidence standards, waivers, T0 handling, và clean GO
+rules, đọc [`governance.md`](governance.md).
+
 ## Vì Sao Có QA Bank
 
 Skillbox là app local-first và chạm nhiều vào filesystem. Unit test và contract
@@ -77,6 +80,7 @@ và `docs/playbooks/agent-browser-smoke.md`.
 ```text
 docs/qa/
   README.md
+  governance.md
   schema.md
   invariants.yaml
   cases/

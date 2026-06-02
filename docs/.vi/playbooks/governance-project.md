@@ -95,6 +95,32 @@ Subagent/worker không tự mở rộng scope, không tự đổi owner file, kh
 - `NEEDS_CONTEXT`
 - `BLOCKED`
 
+## Anti-Hallucination Checklist
+
+Trước khi edit code, Implementer phải verify:
+
+- Target files và directories có tồn tại.
+- Symbols, components, RPC methods, contract files, tables, và provider names
+  được nhắc tới có tồn tại trước khi dùng.
+- Import paths và package boundaries khớp với code gần đó.
+- Đã inspect pattern gần đó trước khi thêm abstraction mới.
+- Boundary của layer bị chạm đã rõ: renderer, Electron main, preload, Go core,
+  repository/SQL, filesystem gateway, provider adapter, hoặc shared contract.
+- Contract/schema changes có generated files và drift checks.
+- Docs và QA impact được map qua [`documentation.md`](documentation.md) và bảng
+  QA scope bên dưới.
+
+Trước khi ra review verdict, Reviewer phải verify:
+
+- Target đã inspect rõ ràng: diff, commit, PR, spec, hoặc run report.
+- File/line references và evidence paths có tồn tại.
+- Claims được grounding bằng source, tests, contracts, docs, hoặc QA evidence.
+- Verdict `PASS`/`APPROVE` không chỉ dựa vào summary của Implementer.
+- Docs impact đã được kiểm tra khi concept thay đổi.
+
+Trước khi search code rộng, đọc [`../context-map.md`](../context-map.md) để chọn
+path có khả năng đúng, rồi mới search trong vùng target.
+
 ## Phase Gates
 
 1. **Brainstorm & scope** — output kèm **Risk Classification** (bảng dưới).
