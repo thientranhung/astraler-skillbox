@@ -1,0 +1,162 @@
+area: global-skills
+cases:
+  - id: TC-GLOBAL-001
+    title: Global Skills scan shows approved global provider skill folders
+    tier: T1
+    primary_screen: Global Skills
+    related_screens: [Dashboard, Settings]
+    type: smoke
+    tags: [global-skills, scan, provider, cross-screen, release-full]
+    invariants: [INV-GLOBAL-001, INV-PROVIDER-001]
+    preconditions:
+      - QA HOME contains approved global provider skill folders.
+      - App runs with HOME pointing to the QA home fixture.
+    steps:
+      - Open Global Skills.
+      - Run global scan.
+      - Inspect provider rows and observed entries.
+      - Return to Dashboard.
+    expected_ui:
+      - Global provider paths are under QA HOME.
+      - Existing global skills are listed with provider, path, and status.
+      - Missing providers are labeled as missing or not configured without blocking the app.
+    cross_screen_checks:
+      - Dashboard Global Skills entry point remains consistent with scan status.
+    verifier:
+      app_db:
+        - Global provider locations and global install rows match the UI.
+      filesystem:
+        - Listed paths exist under the copied QA home fixture.
+      evidence:
+        - Global Skills screenshot.
+        - DB global tables query output.
+        - Filesystem listing of global provider folders.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-GLOBAL-002
+    title: Global Skills missing provider path reports warning without stale current entries
+    tier: T1
+    primary_screen: Global Skills
+    related_screens: [Dashboard]
+    type: edge
+    tags: [global-skills, missing-path, warning, release-full]
+    invariants: [INV-GLOBAL-001]
+    preconditions:
+      - App has scanned QA global provider skills.
+      - The scanned global skills folder is moved or deleted outside the app.
+    steps:
+      - Open Global Skills.
+      - Run global scan.
+      - Open Dashboard.
+    expected_ui:
+      - Missing global path is visible as a warning or missing state.
+      - Previously listed global skills are not presented as current without a warning.
+      - App remains usable.
+    verifier:
+      app_db:
+        - Global scan status is missing/unavailable for the provider.
+      filesystem:
+        - Configured global skills path is absent.
+      evidence:
+        - Global Skills warning screenshot.
+        - DB status query output.
+        - Filesystem missing-path check.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-GLOBAL-003
+    title: Global external symlink is classified without following unsafe targets
+    tier: T0
+    primary_screen: Global Skills
+    related_screens: [Settings]
+    type: adversarial
+    tags: [global-skills, symlink, path-escape, data-integrity, release-full]
+    invariants: [INV-GLOBAL-001, INV-SAFETY-001]
+    preconditions:
+      - QA global provider skills folder contains a symlink pointing outside the approved QA fixture.
+    steps:
+      - Open Global Skills.
+      - Run global scan.
+      - Inspect the symlink row.
+    expected_ui:
+      - Symlink is labeled external, unsafe, or warning according to current product vocabulary.
+      - App does not follow or mutate the external target.
+      - No success state claims the external target is managed by Skillbox.
+    verifier:
+      filesystem:
+        - Symlink target is outside the QA fixture and remains unchanged.
+      app_db:
+        - Entry status is not current/managed.
+      evidence:
+        - Screenshot of symlink classification.
+        - "`readlink` output."
+        - DB entry status output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-GLOBAL-004
+    title: Global scan respects disabled provider state
+    tier: T1
+    primary_screen: Global Skills
+    related_screens: [Settings, Projects]
+    type: smoke
+    tags: [global-skills, provider-disabled, settings, release-full]
+    invariants: [INV-PROVIDER-001, INV-GLOBAL-001]
+    preconditions:
+      - QA provider has visible global skill fixture data.
+    steps:
+      - Open Settings.
+      - Disable the provider.
+      - Run Global Skills scan.
+      - Re-enable the provider.
+    expected_ui:
+      - Disabled provider is clearly labeled and excluded or marked disabled according to product contract.
+      - Re-enabling restores scan eligibility.
+      - Only the selected provider's state changes.
+    verifier:
+      app_db:
+        - Provider user setting changes only for the selected provider.
+      evidence:
+        - Settings screenshot before/after.
+        - Global Skills screenshot with provider disabled.
+        - DB provider user settings output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-GLOBAL-005
+    title: Global skill detail matches global list row and filesystem path
+    tier: T2
+    primary_screen: Global Skills
+    related_screens: [Global Skill Detail]
+    type: smoke
+    tags: [global-skills, detail, filesystem, release-full]
+    invariants: [INV-GLOBAL-001]
+    preconditions:
+      - QA global scan has at least one observed global skill.
+    steps:
+      - Open Global Skills.
+      - Open one global skill detail or row expander if available.
+      - Compare provider, name, status, and path.
+    expected_ui:
+      - Detail view/expanded row matches the selected list row.
+      - Filesystem path exists or warning state explains why it does not.
+    verifier:
+      filesystem:
+        - Selected path exists under QA home, or warning state matches absence.
+      evidence:
+        - List screenshot.
+        - Detail/expanded row screenshot.
+        - Filesystem path check.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

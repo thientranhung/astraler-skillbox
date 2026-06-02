@@ -46,3 +46,52 @@ invariants:
     rule: >
       Cases marked destructive must run only on QA fixtures unless the case
       allows real_environment: opt_in and the user approves that exact target.
+
+  - id: INV-GLOBAL-001
+    title: Global skill state agrees between UI, DB, and global filesystem targets
+    applies_to: [Global Skills, Dashboard, Settings]
+    rule: >
+      Global provider skill state must be derived from approved global paths.
+      The UI must not present stale global skills as current when the global
+      path is missing, unreadable, broken, or outside the approved fixture.
+
+  - id: INV-PROVIDER-001
+    title: Provider enablement and path overrides are explicit and reversible
+    applies_to: [Settings, Projects, Global Skills, Global Plugins]
+    rule: >
+      Provider enabled state and path overrides must change only the selected
+      provider slot. Resetting an override must restore built-in path behavior
+      without deleting user files or silently rewriting project targets.
+
+  - id: INV-OPERATION-001
+    title: Long-running operations have one terminal state and recover after restart
+    applies_to: [All]
+    rule: >
+      Scan, install, remove, plugin write, and update-check operations must not
+      duplicate for the same target, must expose terminal success/failure/cancel
+      state, and stale queued/running operations must not leave the UI stuck
+      after app restart.
+
+  - id: INV-DB-001
+    title: SQLite metadata remains internally consistent across app workflows
+    applies_to: [All]
+    rule: >
+      User-visible records must have valid foreign keys and coherent counts.
+      Failed filesystem or provider operations must not leave active metadata
+      that claims success.
+
+  - id: INV-PRIVACY-001
+    title: Local-first privacy contract is preserved
+    applies_to: [Dashboard, Global Plugins, About, Settings]
+    rule: >
+      Skillbox must perform no telemetry, no background polling, and no
+      automatic plugin update network contact. Manual update checks are the
+      only approved outbound network path for plugin sources.
+
+  - id: INV-PACKAGE-001
+    title: Packaged app uses bundled runtime and isolated app data
+    applies_to: [Packaged App]
+    rule: >
+      Packaged builds must launch without a repo checkout or dev toolchain,
+      use the bundled Go sidecar, use packaged app-data DB paths, expose no dev
+      CDP port by default, and leave no orphaned sidecar after quit.

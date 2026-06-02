@@ -1,0 +1,32 @@
+run:
+  id: 2026-06-01-clean-go-triage
+  date: 2026-06-01
+  scope: release-readiness-triage
+  profile: delta
+  app_mode: dev-electron + packaged evidence
+  target_version: 0.1.0
+  operator: codex/astraler-qa
+  target_branch: main
+  target_commit: a69149f
+
+environment:
+  repo_root: <repo-root>
+  fixture_copy: <repo-root>/docs/qa/runs/2026-06-01-clean-go-triage/fixtures
+  cdp_port: 49222
+  qa_home: <repo-root>/docs/qa/runs/2026-06-01-clean-go-triage/fixtures/homes/plugin-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-01-clean-go-triage/fixtures/homes/plugin-home/qa.db
+  qa_host_a: <repo-root>/docs/qa/runs/2026-06-01-clean-go-triage/fixtures/skill-host-a
+  qa_host_b: <repo-root>/docs/qa/runs/2026-06-01-clean-go-triage/fixtures/skill-host-b
+  qa_project: <repo-root>/docs/qa/runs/2026-06-01-clean-go-triage/fixtures/projects/claude-project
+  real_environment_allowed: false
+
+selection:
+  case_ids:
+    - TC-FS-006
+    - TC-PROVIDER-004
+    - TC-ERROR-002
+    - TC-GLOBAL-002
+    - TC-GLOBAL-004
+    - TC-SETTINGS-001
+    - TC-PRIVACY-003
+    - TC-RELEASE-003

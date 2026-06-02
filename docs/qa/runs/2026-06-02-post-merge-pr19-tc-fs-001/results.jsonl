@@ -1,0 +1,1 @@
+{"id":"TC-FS-001","status":"PASS","tier":"T0","evidence":["evidence/tc-fs-001-post-merge.json"],"summary":"Post-merge main keeps external symlink classified external_symlink and install rejected without side effects."}

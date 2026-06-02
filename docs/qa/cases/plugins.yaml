@@ -6,7 +6,7 @@ cases:
     primary_screen: Global Plugins
     related_screens: [Project Detail, Dashboard]
     type: smoke
-    tags: [plugin, scan, version, global-plugins]
+    tags: [plugin, scan, version, global-plugins, release-full]
     invariants: [INV-PLUGIN-001]
     preconditions:
       - App runs with a QA fixture home or a user-approved read-only real environment.
@@ -40,7 +40,7 @@ cases:
     primary_screen: Global Plugins
     related_screens: [Project Detail, Dashboard]
     type: smoke
-    tags: [plugin, toggle, global-plugins, cross-screen]
+    tags: [plugin, toggle, global-plugins, cross-screen, release-full]
     invariants: [INV-PLUGIN-001, INV-SAFETY-001]
     preconditions:
       - Provider supports write operations for plugin enabled state.
@@ -78,7 +78,7 @@ cases:
     primary_screen: Project Detail
     related_screens: [Global Plugins]
     type: smoke
-    tags: [plugin, project-detail, override, effective-state]
+    tags: [plugin, project-detail, override, effective-state, release-full]
     invariants: [INV-PLUGIN-001]
     preconditions:
       - QA project has provider plugin fixture data for user and project layers.
@@ -113,7 +113,7 @@ cases:
     primary_screen: Global Plugins
     related_screens: [Project Detail]
     type: edge
-    tags: [plugin, malformed-settings, scan, safety]
+    tags: [plugin, malformed-settings, scan, safety, release-full]
     invariants: [INV-PLUGIN-001, INV-SAFETY-001]
     preconditions:
       - QA fixture provider settings file is malformed.
@@ -146,7 +146,7 @@ cases:
     primary_screen: Global Plugins
     related_screens: [About, Dashboard]
     type: edge
-    tags: [plugin, update-check, network, privacy]
+    tags: [plugin, update-check, network, privacy, release-full]
     invariants: [INV-SAFETY-001]
     preconditions:
       - App runs in QA dev Electron mode.

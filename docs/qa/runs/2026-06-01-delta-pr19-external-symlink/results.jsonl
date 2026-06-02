@@ -1,0 +1,1 @@
+{"id":"TC-FS-001","status":"PASS","tier":"T0","evidence":["evidence/tc-fs-001-delta.json"],"summary":"External host symlink is classified external_symlink, install.skill rejects it, no project link or install row is created."}

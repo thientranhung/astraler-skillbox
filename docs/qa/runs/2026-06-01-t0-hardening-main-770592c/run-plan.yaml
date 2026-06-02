@@ -1,0 +1,34 @@
+run:
+  id: 2026-06-01-t0-hardening-main-770592c
+  date: 2026-06-01
+  scope: t0-hardening
+  profile: release-full-t0-blocker-rerun
+  app_mode: core-rpc-plus-dev-electron-cdp
+  target_version: 0.1.0
+  operator: codex/astraler-qa
+  target_branch: main
+  target_commit: 770592c
+  parent_run: 2026-06-01-release-full-rerun-main-770592c
+
+environment:
+  repo_root: <repo-root>
+  fixture_copy: <repo-root>/docs/qa/runs/2026-06-01-t0-hardening-main-770592c/fixtures
+  cdp_port: 49222
+  qa_home: <repo-root>/docs/qa/runs/2026-06-01-t0-hardening-main-770592c/fixtures/homes/plugin-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-01-t0-hardening-main-770592c/fixtures/homes/plugin-home/qa.db
+  real_environment_allowed: false
+
+selection:
+  case_ids:
+    - TC-FS-001
+    - TC-FS-002
+    - TC-GLOBAL-003
+    - TC-MIGRATE-002
+    - TC-MIGRATE-003
+    - TC-OPS-004
+    - TC-A11Y-002
+    - TC-SKILL-004
+
+notes:
+  - Focused rerun for T0 cases previously BLOCKED by missing adversarial fixtures/harness.
+  - TC-SKILL-004 is evaluated as implementation-surface status: rsync_copy appears in schema/domain, but install.skill has no mode parameter and current service creates symlinks only.

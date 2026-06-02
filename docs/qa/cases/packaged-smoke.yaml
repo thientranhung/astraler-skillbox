@@ -6,7 +6,7 @@ cases:
     primary_screen: Packaged App
     related_screens: [Setup, Dashboard]
     type: packaged-smoke
-    tags: [packaging, launch, sidecar, db]
+    tags: [packaging, launch, sidecar, db, release-full]
     invariants: [INV-SAFETY-001]
     preconditions:
       - Current packaged macOS artifact has been rebuilt from the target commit.

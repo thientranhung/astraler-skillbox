@@ -1,0 +1,46 @@
+run:
+  id: 2026-06-01-post-merge-pr17-smoke
+  date: 2026-06-01
+  scope: regression
+  profile: delta
+  app_mode: dev-electron
+  target_version: 0.1.0
+  operator: codex/astraler-qa
+  target_branch: main
+  target_commit: a69149f
+  merged_pr: 17
+
+environment:
+  repo_root: <repo-root>
+  desktop_dir: <repo-root>/apps/desktop
+  fixture_source: <repo-root>/fixtures/qa
+  fixture_copy: <repo-root>/docs/qa/runs/2026-06-01-post-merge-pr17-smoke/fixtures
+  cdp_port: 49222
+  qa_home: <repo-root>/docs/qa/runs/2026-06-01-post-merge-pr17-smoke/fixtures/homes/plugin-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-01-post-merge-pr17-smoke/fixtures/homes/plugin-home/qa.db
+  qa_host: <repo-root>/docs/qa/runs/2026-06-01-post-merge-pr17-smoke/fixtures/skill-host-a
+  qa_project: <repo-root>/docs/qa/runs/2026-06-01-post-merge-pr17-smoke/fixtures/projects/claude-project
+  real_environment_allowed: false
+
+selection:
+  include_tiers: [T0, T1]
+  include_tags: [reset, missing-path]
+  exclude_tags: []
+  case_ids:
+    - TC-SETTINGS-002
+    - TC-DASH-003
+    - TC-DB-003
+    - TC-SETUP-002
+
+gates:
+  fail_fast_on_t0: false
+  require_t0_evidence: true
+  plugin_real_toggle_requires_user_approval: true
+  mutate_source_fixtures: false
+  outbound_network_requires_user_approval: true
+
+commands:
+  contracts_drift: "(cd apps/desktop && pnpm check:contracts-drift)"
+  go_targeted: "(cd core-go && go test ./internal/services/... ./internal/rpc/handlers/...)"
+  desktop_reset_hook_test: "(cd apps/desktop && pnpm test -- use-reset-all)"
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=<qa_db_path> HOME=<qa_home> GOCACHE=<go-build-cache> GOMODCACHE=<go-mod-cache> GOPATH=<go-path> SKILLBOX_CDP_PORT=49222 pnpm dev)"

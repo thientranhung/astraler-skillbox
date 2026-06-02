@@ -1,0 +1,13 @@
+{
+  "enabledPlugins": {
+    "qa-plugin@astraler-fixture": true,
+    "qa-disabled@astraler-fixture": false
+  },
+  "extraKnownMarketplaces": [
+    {
+      "name": "astraler-fixture",
+      "type": "directory",
+      "path": "./plugins"
+    }
+  ]
+}
