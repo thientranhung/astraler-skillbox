@@ -94,6 +94,11 @@ composition, validation, errors, và testing.
 
 ## Other Docs
 
+[context-map.md](context-map.md)
+
+Compact routing map for code, docs, contracts, and QA discovery. Read this before
+broad repository search or when starting in a fresh agent context.
+
 [qa/README.md](qa/README.md)
 
 Repo-native QA bank: YAML test cases, cross-screen invariants, run templates,
@@ -118,6 +123,7 @@ trace lý do của các architectural decision; không phải workflow hiện h�
 ```text
 README.md
   -> docs/index.md
+  -> docs/context-map.md
   -> docs/01-product-brief.md
   -> docs/02-product-notes.md
   -> docs/03-information-architecture.md
@@ -135,6 +141,7 @@ README.md
 ## Current Source Of Truth
 
 - Product direction: [01-product-brief.md](01-product-brief.md)
+- Code/docs/QA discovery: [context-map.md](context-map.md)
 - Decisions and tradeoffs: [02-product-notes.md](02-product-notes.md)
 - App structure and core concepts: [03-information-architecture.md](03-information-architecture.md)
 - Detailed user flows: [04-user-flows.md](04-user-flows.md)

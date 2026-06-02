@@ -12,6 +12,20 @@ Core invariants:
 - Skills are distributed to projects via symlink or rsync/copy.
 - **Skillbox is local-first. The only outbound network is manual-trigger plugin update checks against the user's already-installed plugin source hosts — no background polling, no telemetry, no Skillbox-operated server. The app is fully usable offline (see ADR-0002, supersedes ADR-0001).**
 
+## Start Here
+
+- For broad code discovery, read [`docs/context-map.md`](docs/context-map.md) before searching.
+- For feature, cross-layer, review, PR, process, or release-impacting work, read [`docs/playbooks/governance-project.md`](docs/playbooks/governance-project.md).
+- For QA runs, QA verdicts, or clean GO decisions, read [`docs/qa/governance.md`](docs/qa/governance.md).
+- For concept or source-of-truth changes, read [`docs/playbooks/documentation.md`](docs/playbooks/documentation.md).
+- For agent/tmux handoffs only, read [`docs/playbooks/agent-orchestration.md`](docs/playbooks/agent-orchestration.md).
+
+Before editing code or issuing a review/QA verdict, verify target paths and
+symbols exist, inspect nearby patterns, confirm the layer boundary being touched,
+and map docs/QA impact. Use the full checklist in
+[`docs/playbooks/governance-project.md`](docs/playbooks/governance-project.md);
+QA verdicts also use [`docs/qa/governance.md`](docs/qa/governance.md).
+
 ## Repo Layout
 
 ```
@@ -84,6 +98,7 @@ Protocol specs (SQLite PRAGMAs, JSON-RPC transport rules, Electron security defa
 
 Read `docs/index.md` first for the intended order. Frequently used:
 
+- `docs/context-map.md` — compact map for code/docs/QA discovery
 - `docs/10-technical-architecture.md` — architecture boundaries, JSON-RPC, Electron security
 - `docs/11-tech-stack-and-scaffold-decisions.md` — stack decisions with status (decided/recommended/open)
 - `docs/12-implementation-patterns.md` — 16 implementation patterns
