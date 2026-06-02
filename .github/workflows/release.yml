@@ -76,75 +76,8 @@ jobs:
           name: mac-arm64
           path: apps/desktop/dist/*.dmg
 
-  build-mac-x64:
-    runs-on: macos-13
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Go 1.25
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-          cache-dependency-path: apps/desktop/pnpm-lock.yaml
-
-      - name: Build Go sidecar (darwin/amd64)
-        working-directory: core-go
-        env:
-          GOOS: darwin
-          GOARCH: amd64
-          CGO_ENABLED: '0'
-        run: |
-          go build -o ../apps/desktop/resources/core/skillbox-core ./cmd/skillbox-core/
-          chmod 755 ../apps/desktop/resources/core/skillbox-core
-
-      - name: Install dependencies
-        working-directory: apps/desktop
-        run: pnpm install --frozen-lockfile
-
-      - name: Build (electron-vite)
-        working-directory: apps/desktop
-        run: pnpm build
-
-      - name: Generate icon
-        working-directory: apps/desktop
-        run: pnpm generate:icon
-
-      - name: Build with electron-builder (mac x64)
-        working-directory: apps/desktop
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
-            pnpm exec electron-builder --mac --x64 --config electron-builder.yml
-          else
-            pnpm exec electron-builder --mac --x64 --config electron-builder.yml -c.mac.notarize=false
-          fi
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: mac-x64
-          path: apps/desktop/dist/*.dmg
-
   release:
-    needs: [build-mac-arm64, build-mac-x64]
+    needs: [build-mac-arm64]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
