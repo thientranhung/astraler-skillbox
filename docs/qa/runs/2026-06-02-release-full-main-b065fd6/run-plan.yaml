@@ -1,0 +1,192 @@
+run:
+  id: 2026-06-02-release-full-main-b065fd6
+  date: 2026-06-02
+  scope: release
+  profile: release-full
+  app_mode: dev-electron-first-then-packaged-smoke
+  target_version: 0.1.2
+  target_commit: b065fd6ba7976d3db0e6de03abb276bdaf1b35a5
+  operator: agent
+  status: prepared
+
+environment:
+  repo_root: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox
+  desktop_dir: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/apps/desktop
+  fixture_source: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/fixtures/qa
+  fixture_copy: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/fixtures
+  evidence_dir: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/evidence
+  cdp_port: 49222
+  qa_home: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/qa-home
+  qa_db_path: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/qa-home/qa.db
+  qa_host: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/fixtures/default-host
+  qa_project: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/fixtures/projects
+  real_environment_allowed: false
+  packaged_artifact_path: NEEDS_HUMAN
+  network_observation: required for privacy/update-check cases; outbound actions require owner approval
+
+selection:
+  profile_source: docs/qa/profiles/release-full.yaml
+  include_tiers: [T0, T1, T2, T3]
+  include_tags: [release-full]
+  exclude_tags: []
+  total_cases: 105
+  counts_by_tier:
+    T0: 38
+    T1: 58
+    T2: 9
+    T3: 0
+  execution_order:
+    - automated-gates
+    - T0
+    - T1
+    - T2
+    - packaged-smoke
+  case_ids_by_tier:
+    T0:
+      - TC-A11Y-002
+      - TC-DASH-003
+      - TC-DB-001
+      - TC-DB-002
+      - TC-DB-003
+      - TC-DB-005
+      - TC-FS-001
+      - TC-FS-002
+      - TC-FS-003
+      - TC-FS-006
+      - TC-GLOBAL-003
+      - TC-MIGRATE-002
+      - TC-MIGRATE-003
+      - TC-MIGRATE-005
+      - TC-PRIVACY-001
+      - TC-PRIVACY-002
+      - TC-OPS-004
+      - TC-OPS-005
+      - TC-OPS-006
+      - TC-OPS-007
+      - TC-PACKAGE-002
+      - TC-PACKAGE-003
+      - TC-PROVIDER-002
+      - TC-PROVIDER-004
+      - TC-PROVIDER-006
+      - TC-PROVIDER-011
+      - TC-RELEASE-003
+      - TC-RELEASE-006
+      - TC-SETTINGS-002
+      - TC-SETUP-003
+      - TC-PROJ-003
+      - TC-SKILL-002
+      - TC-SKILL-003
+      - TC-SKILL-004
+      - TC-SKILL-005
+      - TC-SKILL-007
+      - TC-SKILL-011
+      - TC-SKILL-012
+    T1:
+      - TC-DASH-001
+      - TC-DASH-002
+      - TC-DB-004
+      - TC-ERROR-002
+      - TC-ERROR-003
+      - TC-FS-004
+      - TC-GLOBAL-001
+      - TC-GLOBAL-002
+      - TC-GLOBAL-004
+      - TC-GLOBAL-006
+      - TC-MIGRATE-001
+      - TC-MIGRATE-004
+      - TC-PRIVACY-003
+      - TC-PRIVACY-004
+      - TC-PRIVACY-005
+      - TC-OPS-001
+      - TC-OPS-002
+      - TC-OPS-003
+      - TC-OPS-008
+      - TC-PACKAGE-001
+      - TC-PACKAGE-004
+      - TC-PLUGIN-001
+      - TC-PLUGIN-002
+      - TC-PLUGIN-003
+      - TC-PLUGIN-004
+      - TC-PLUGIN-005
+      - TC-PLUGIN-006
+      - TC-PLUGIN-007
+      - TC-PROVIDER-001
+      - TC-PROVIDER-003
+      - TC-PROVIDER-007
+      - TC-PROVIDER-008
+      - TC-PROVIDER-009
+      - TC-PROVIDER-010
+      - TC-PROVIDER-012
+      - TC-RELEASE-001
+      - TC-RELEASE-002
+      - TC-RELEASE-004
+      - TC-RELEASE-005
+      - TC-SETTINGS-001
+      - TC-SETTINGS-003
+      - TC-SETTINGS-004
+      - TC-SETUP-001
+      - TC-SETUP-002
+      - TC-SETUP-004
+      - TC-PROJ-001
+      - TC-PROJ-002
+      - TC-PROJ-004
+      - TC-PROJ-005
+      - TC-PROJ-007
+      - TC-PROJ-008
+      - TC-SKILL-001
+      - TC-SKILL-006
+      - TC-SKILL-008
+      - TC-SKILL-009
+      - TC-SKILL-013
+      - TC-SKILL-014
+      - TC-SKILL-015
+    T2:
+      - TC-A11Y-001
+      - TC-A11Y-003
+      - TC-A11Y-004
+      - TC-DASH-004
+      - TC-ERROR-001
+      - TC-ERROR-004
+      - TC-FS-005
+      - TC-GLOBAL-005
+      - TC-PROVIDER-005
+
+fixture_policy:
+  source: fixtures/qa
+  copy_into_run_folder: true
+  mutate_source_fixtures: false
+  real_environment_allowed: false
+  opt_in_required_for:
+    - packaged app launch outside the run folder
+    - signed release artifact verification
+    - outbound network checks
+    - any operation targeting real project, provider, plugin, or host folders
+
+gates:
+  fail_fast_on_t0: true
+  require_t0_evidence: true
+  require_t1_independent_check_when_persisted: true
+  plugin_real_toggle_requires_user_approval: true
+  mutate_source_fixtures: false
+  outbound_network_requires_user_approval: true
+  signed_or_notarized_release_verification: NEEDS_HUMAN until Apple credentials are available
+  tc_skill_004_phase2_waiver: owner accepted for current release scope
+
+commands:
+  prepare_run_dirs: "mkdir -p docs/qa/runs/2026-06-02-release-full-main-b065fd6/{evidence,fixtures,qa-home}"
+  copy_fixtures: "rsync -a fixtures/qa/ docs/qa/runs/2026-06-02-release-full-main-b065fd6/fixtures/"
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/qa-home/qa.db HOME=/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/qa-home pnpm dev)"
+  cdp_health: "curl -s http://127.0.0.1:49222/json/version"
+  automated_gates:
+    - "(cd core-go && go test ./...)"
+    - "(cd apps/desktop && pnpm typecheck)"
+    - "(cd apps/desktop && pnpm test)"
+    - "(cd apps/desktop && pnpm check:contracts-drift)"
+
+execution_notes:
+  - Run automated gates first and record command output under evidence/gates/.
+  - Execute T0 cases before T1. Do not close T0 as blocked until safe UI/RPC/DB/filesystem paths have been attempted.
+  - Execute T1 cases after T0 unless a T0 failure invalidates the environment.
+  - Execute T2 release-full cases after T1 as release-risk discovery, not as primary GO blockers unless they reveal safety or misleading-state issues.
+  - Mark packaged artifact, signing/notarization, Apple credential, and outbound network cases NEEDS_HUMAN when the exact artifact, credential, or owner-approved network action is unavailable.
+  - Mark unsafe or unclear cases BLOCKED or NEEDS_HUMAN and propose a QA bank fix instead of forcing PASS.
