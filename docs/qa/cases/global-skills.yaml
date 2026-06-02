@@ -160,3 +160,47 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: allowed_read_only
+
+  - id: TC-GLOBAL-006
+    title: Global skills path that is a file or broken symlink reports without stale current entries
+    tier: T1
+    primary_screen: Global Skills
+    related_screens: [Settings, Dashboard]
+    type: adversarial
+    tags: [global-skills, negative-topology, broken-symlink, file-path, stale-state, release-full]
+    invariants: [INV-GLOBAL-001, INV-SAFETY-001, INV-DB-001]
+    preconditions:
+      - QA run has global malformed path fixture copied into the run folder.
+      - QA executor may mutate only run-local global fixture paths.
+    data_setup:
+      fixture_source: fixtures/qa/global/skills-malformed
+      copy_to: runs/<run-id>/fixtures/global/skills-malformed
+      mutate_copy:
+        - create variant A where the global skills path is a regular file
+        - create variant B where the global skills path is a symlink to a deleted target
+    steps:
+      - Run the case once per variant.
+      - Configure the provider global skills path to the run-local malformed path.
+      - Open Global Skills and run global scan.
+      - Open Settings and Dashboard.
+    expected_ui:
+      - Global Skills shows an empty, warning, or error state for the malformed path.
+      - No stale current global skill entries are claimed from the malformed path.
+      - Scan reaches a terminal state and does not stay stuck.
+    cross_screen_checks:
+      - Settings, Global Skills, and Dashboard agree that the provider has no current usable global skills for the malformed path.
+    verifier:
+      app_db:
+        - No active/current global skill row is created from the malformed path.
+        - No global scan operation remains queued or running after completion.
+      filesystem:
+        - Malformed file or broken symlink remains unchanged by scan.
+        - No files are written outside the run-local global fixture.
+      evidence:
+        - Global Skills screenshot for each variant.
+        - DB query output for global skills and operation state.
+        - "`stat` and `readlink` output for each malformed path variant."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

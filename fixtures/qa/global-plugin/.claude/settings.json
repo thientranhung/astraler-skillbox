@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "qa-plugin@astraler-fixture": true
+  }
+}

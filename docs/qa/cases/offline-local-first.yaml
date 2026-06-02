@@ -118,3 +118,44 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: allowed_read_only
+
+  - id: TC-PRIVACY-005
+    title: No background polling or telemetry occurs during an extended idle session
+    tier: T1
+    primary_screen: Dashboard
+    related_screens: [Global Plugins, About]
+    type: edge
+    tags: [privacy, network, telemetry, idle, local-first, release-full]
+    invariants: [INV-PRIVACY-001, INV-SAFETY-001]
+    preconditions:
+      - App runs with QA DB, QA HOME, and copied fixtures only.
+      - Network observation command is recorded in the run plan.
+      - No manual plugin or app update action is clicked during the idle window.
+    data_setup:
+      fixture_source: fixtures/qa/network-monitor
+      copy_to: runs/<run-id>/fixtures/network-monitor
+      mutate_copy:
+        - record the approved network monitor command and allowed localhost/dev endpoints in the run plan
+    steps:
+      - Start network observation.
+      - Launch the app and wait on Dashboard for the run-plan idle duration.
+      - Open Global Plugins and About without clicking any update/check action.
+      - Return to Dashboard and continue idle until the duration completes.
+      - Stop network observation.
+    expected_ui:
+      - App remains usable throughout the idle window.
+      - No UI indicates background polling, telemetry, or automatic update checks.
+      - Manual check actions remain explicit user actions.
+    verifier:
+      app_db:
+        - No plugin update-check operation/cache row is created during idle unless a manual action was clicked.
+      network:
+        - No outbound connection appears except approved localhost/dev endpoints recorded in the run plan.
+      evidence:
+        - Network monitor output for the idle window.
+        - Screenshots of Dashboard, Global Plugins, and About during the run.
+        - DB query output for update-check operations/cache rows.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
