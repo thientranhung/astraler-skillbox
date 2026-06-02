@@ -1,0 +1,26 @@
+run:
+  id: 2026-06-01-delta-pr18-global-disabled
+  date: 2026-06-01
+  scope: regression
+  profile: delta
+  app_mode: dev-electron
+  target_version: 0.1.0
+  operator: codex/astraler-qa
+  target_branch: fix/global-scan-respects-disabled-provider
+  target_commit: 576c52b
+  target_pr: 18
+
+environment:
+  repo_root: <repo-root>
+  fixture_copy: <repo-root>/docs/qa/runs/2026-06-01-delta-pr18-global-disabled/fixtures
+  cdp_port: 49222
+  qa_home: <repo-root>/docs/qa/runs/2026-06-01-delta-pr18-global-disabled/fixtures/homes/plugin-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-01-delta-pr18-global-disabled/fixtures/homes/plugin-home/qa.db
+  qa_host: <repo-root>/docs/qa/runs/2026-06-01-delta-pr18-global-disabled/fixtures/skill-host-a
+  real_environment_allowed: false
+
+selection:
+  case_ids:
+    - TC-GLOBAL-004
+    - TC-GLOBAL-002
+    - TC-PROVIDER-004

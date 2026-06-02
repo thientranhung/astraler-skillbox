@@ -1,0 +1,32 @@
+run:
+  id: 2026-06-02-clean-go-post-pr19
+  date: 2026-06-02
+  scope: regression
+  profile: delta
+  app_mode: dev-electron
+  target_branch: main
+  target_commit: e46d9bc
+  merged_pr: 19
+  operator: codex/astraler-qa
+
+environment:
+  repo_root_under_test: <temp-worktree>
+  evidence_root: <repo-root>/docs/qa/runs/2026-06-02-clean-go-post-pr19/evidence
+  fixture_copy: <repo-root>/docs/qa/runs/2026-06-02-clean-go-post-pr19/fixtures
+  qa_home: <repo-root>/docs/qa/runs/2026-06-02-clean-go-post-pr19/fixtures/homes/plugin-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-02-clean-go-post-pr19/fixtures/homes/plugin-home/qa.db
+  real_environment_allowed: false
+
+selection:
+  case_ids:
+    - TC-FS-001
+    - TC-A11Y-002
+  gates:
+    - go test ./...
+    - pnpm typecheck
+    - pnpm test
+    - pnpm check:contracts-drift
+notes:
+  - Focused clean-GO rerun after PR #19 merge. Prior full release rerun exists at 2026-06-01-release-full-rerun-main-770592c.
+  - Execution combined automated gates, core/RPC checks, source inspection, and prior packaged-smoke evidence rather than a full new dev-Electron walkthrough.
+  - TC-SKILL-004 copy/rsync remains release-scope decision because rsync_copy is not implemented in current product surface.

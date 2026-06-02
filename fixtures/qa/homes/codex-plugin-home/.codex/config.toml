@@ -1,0 +1,5 @@
+[plugins."qa-codex-plugin@astraler-fixture"]
+enabled = true
+
+[plugins."qa-codex-disabled@astraler-fixture"]
+enabled = false

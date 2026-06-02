@@ -1,0 +1,110 @@
+area: accessibility-navigation
+cases:
+  - id: TC-A11Y-001
+    title: Primary navigation is keyboard reachable and screen-reader named
+    tier: T2
+    primary_screen: Dashboard
+    related_screens: [Skills Library, Global Skills, Global Plugins, Projects, Settings, About]
+    type: smoke
+    tags: [accessibility, keyboard, navigation, release-full]
+    invariants: [INV-SAFETY-001]
+    preconditions:
+      - App is launched with QA DB and configured host.
+    steps:
+      - Use keyboard navigation from Dashboard through the sidebar.
+      - Activate each primary nav item with keyboard.
+      - Capture accessibility snapshots where available.
+    expected_ui:
+      - Focus is visible.
+      - Links/buttons have meaningful accessible names.
+      - User can reach all primary screens without a mouse.
+    verifier:
+      evidence:
+        - Accessibility snapshot.
+        - Screenshot showing focused navigation.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-A11Y-002
+    title: Destructive actions require explicit accessible confirmation
+    tier: T0
+    primary_screen: Settings
+    related_screens: [Projects, Project Detail]
+    type: critical
+    tags: [accessibility, destructive, confirmation, release-full]
+    invariants: [INV-SAFETY-001]
+    preconditions:
+      - QA DB contains removable project/install data.
+    steps:
+      - Navigate to destructive actions by keyboard.
+      - Attempt Reset All Data, Remove Project, and Remove Skill flows in QA fixture.
+      - Cancel at least one confirmation and confirm one fixture-only action.
+    expected_ui:
+      - Destructive actions have clear labels.
+      - Confirmation cannot be bypassed accidentally.
+      - Cancel leaves data unchanged.
+    verifier:
+      app_db:
+        - Cancelled action does not mutate metadata.
+      filesystem:
+        - Fixture files remain after cancelled destructive action.
+      evidence:
+        - Confirmation screenshots.
+        - DB/filesystem before-after output.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-A11Y-003
+    title: Toasts and inline errors do not hide required recovery actions
+    tier: T2
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard, Settings]
+    type: edge
+    tags: [accessibility, error-state, toast, release-full]
+    invariants: [INV-OPERATION-001]
+    preconditions:
+      - QA fixture can trigger validation or filesystem errors.
+    steps:
+      - Trigger one validation error and one operation failure.
+      - Inspect focus, visible error text, and recovery controls.
+    expected_ui:
+      - Error text remains visible long enough to act on it.
+      - Toasts do not cover primary buttons or confirmations.
+      - Recovery controls are accessible by keyboard.
+    verifier:
+      evidence:
+        - Screenshot of error state.
+        - Accessibility snapshot.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-A11Y-004
+    title: Tables remain readable with long QA fixture paths
+    tier: T2
+    primary_screen: Projects
+    related_screens: [Project Detail, Global Plugins, Settings]
+    type: edge
+    tags: [accessibility, layout, long-path, release-full]
+    invariants: [INV-PROJECT-001, INV-PLUGIN-001]
+    preconditions:
+      - QA fixture paths include long nested run-folder paths.
+    steps:
+      - Open Projects, Project Detail, Global Plugins, and Settings.
+      - Resize app window to a narrow and normal desktop width.
+    expected_ui:
+      - Long paths do not overlap adjacent content.
+      - Essential actions remain reachable.
+      - Tables or cells wrap/truncate predictably.
+    verifier:
+      evidence:
+        - Screenshots at narrow and normal widths.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
