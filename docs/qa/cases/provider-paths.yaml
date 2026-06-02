@@ -233,7 +233,7 @@ cases:
       real_environment: forbidden
 
   - id: TC-PROVIDER-008
-    title: Skills folder deleted just before install ends in terminal failure
+    title: Skills folder deleted just before install reaches a terminal state without hanging
     tier: T1
     primary_screen: Project Detail
     related_screens: [Add Skill Wizard]
@@ -242,7 +242,7 @@ cases:
     invariants: [INV-OPERATION-001, INV-INSTALL-001, INV-DB-001]
     preconditions:
       - QA host has one valid available skill not yet installed in the QA project.
-      - "`generic_agents` is the selected install provider."
+      - "`generic_agents` is the selected install provider. It is allowed to recreate `.agents/skills`."
       - QA executor may mutate only the run-local project fixture.
     data_setup:
       fixture_source: fixtures/qa/projects/generic-agents-project
@@ -257,19 +257,24 @@ cases:
       - Remove the `.agents/skills` directory from the run-local fixture outside the app.
       - Click Install and wait for the operation to reach a terminal state.
     expected_ui:
-      - Install reaches a terminal failure (or recreates and succeeds only if the provider explicitly creates its structure), never an indefinite Installing state.
-      - No success message appears unless the skill target actually exists on disk.
+      - Install reaches a terminal state (success or failure), never an indefinite Installing state.
+      - On terminal success the wizard reports the skill installed and Project Detail shows it.
+      - On terminal failure the wizard shows a clear error and the skill is not shown installed.
+      - A success message appears only after `.agents/skills` and the skill target exist on disk.
     verifier:
       app_db:
-        - No active install record exists when the install did not complete on disk.
-        - No operation for the install remains queued or running after completion.
+        - On terminal success, an active install record exists for the project, provider, skill, and mode.
+        - On terminal failure, no active install record exists.
+        - In both outcomes, no operation for the install remains queued or running after completion.
       filesystem:
-        - No partial or orphan target is left under the QA project fixture.
+        - On terminal success, `.agents/skills` was recreated and the skill target exists under it.
+        - On terminal failure, no partial or orphan target is left under the QA project fixture.
+        - The UI install state and the on-disk skill target agree (no success shown without the target).
         - No files are written outside the run-local QA project fixture and QA host folder.
       evidence:
         - Wizard screenshot at terminal state.
         - DB query output for operation and install rows.
-        - Filesystem listing of `.agents` after the attempt.
+        - "`test -d` for `.agents/skills` and `readlink`/`stat` for the skill target after the attempt."
     safety:
       destructive: true
       allowed_environment: qa_fixture_only

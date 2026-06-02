@@ -58,8 +58,10 @@ did not cover:
   reaches a terminal empty/error state with no DB drift. *(negative-topology
   variants beyond the single missing-folder case)*
 - `TC-PROVIDER-008` — `.agents/skills` deleted immediately before install (live
-  mutation): the install reaches terminal failure, no active install is
-  recorded, the UI does not stay stuck. *(charter-derived; the race that A+B+C
+  mutation): the install reaches a terminal state and the UI does not stay stuck.
+  Because `generic_agents` may recreate `.agents/skills`, success is allowed only
+  if the target is recreated and DB/FS agree; otherwise it ends in a clear
+  terminal failure with no active install. *(charter-derived; the race that A+B+C
   together hinted at)*
 
 ## Method changes shipped with this record
