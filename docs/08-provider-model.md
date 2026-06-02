@@ -223,7 +223,10 @@ Install target resolution mới là nơi chặn write vào provider chưa suppor
 
 Khi rescan thấy provider path cũ đã missing, `project_providers.detection_status`
 nên chuyển thành `missing`, và các installs thuộc provider đó nên được đánh dấu
-`install_status = missing` cho tới khi user relink/rescan được path mới.
+`install_status = missing` cho tới khi user relink/rescan được path mới. Missing
+provider facts must not keep stale current paths: clear `detected_path` and
+`skills_path`, update `last_scanned_at`, and treat existing install rows as
+historical rather than current UI counts.
 
 ## Global Detection Flow
 
