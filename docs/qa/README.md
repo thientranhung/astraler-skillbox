@@ -7,9 +7,11 @@ the run folder.
 For status semantics, evidence standards, waivers, T0 handling, and clean GO
 rules, read [`governance.md`](governance.md).
 
-For *how to generate* cases, read [`methodology.md`](methodology.md). Supporting
-test-design docs: [`fixtures-taxonomy.md`](fixtures-taxonomy.md), exploratory
-[`charters/`](charters/), and production bug-escape records under
+For *how to generate* cases, read [`methodology.md`](methodology.md). For the
+pre-release, all-surface gap analysis and candidate-case backlog, read
+[`test-design-expansion-inventory.md`](test-design-expansion-inventory.md).
+Supporting test-design docs: [`fixtures-taxonomy.md`](fixtures-taxonomy.md),
+exploratory [`charters/`](charters/), and production bug-escape records under
 [`escapes/`](escapes/).
 
 ## Why This Exists
