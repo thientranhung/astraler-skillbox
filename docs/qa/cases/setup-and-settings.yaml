@@ -202,3 +202,141 @@ cases:
       destructive: true
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-SETUP-004
+    title: Host folder pointed at a file or nonexistent path is rejected and prior host is retained
+    tier: T1
+    primary_screen: Settings
+    related_screens: [Setup, Skills Library]
+    type: edge
+    tags: [setup, settings, host, validation, missing-path, release-full]
+    invariants: [INV-HOST-001, INV-SAFETY-001]
+    preconditions:
+      - App has a configured QA Skill Host Folder with at least one valid skill.
+      - QA run has the host topology fixture copied into the run folder.
+    data_setup:
+      fixture_source: fixtures/qa/host-topologies
+      copy_to: runs/<run-id>/fixtures/host-topologies
+      mutate_copy:
+        - use `host-is-file.txt` as the file-path variant and a run-local absent path as the nonexistent-path variant
+    steps:
+      - Open Settings.
+      - Attempt to change Skill Host Folder to the run-local file path.
+      - Attempt to change Skill Host Folder to the run-local nonexistent path.
+      - Open Skills Library.
+    expected_ui:
+      - Each invalid path attempt shows a clear validation error or warning.
+      - Settings continues to show the prior valid Skill Host Folder.
+      - Skills Library still reflects the prior valid host, not the rejected path.
+    verifier:
+      app_db:
+        - App settings retain the prior valid Skill Host Folder path.
+      filesystem:
+        - The file-path fixture remains a file.
+        - The nonexistent path is not silently created unless the product explicitly labels it as a new host creation flow.
+      evidence:
+        - Settings validation screenshot for each variant.
+        - DB query output for app settings.
+        - "`stat` output for the file path and nonexistent path."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-SETTINGS-003
+    title: Re-point host to an empty folder shows zero host skills without dropping install metadata
+    tier: T1
+    primary_screen: Settings
+    related_screens: [Skills Library, Project Detail, Dashboard]
+    type: edge
+    tags: [settings, host, empty-host, install, data-integrity, release-full]
+    invariants: [INV-HOST-001, INV-INSTALL-001, INV-DB-001]
+    preconditions:
+      - App uses run-local release-cycle host A with at least one installed project skill.
+      - QA run has an empty host fixture copied into the run folder.
+    data_setup:
+      fixture_sources:
+        - fixtures/qa/release-cycle
+        - fixtures/qa/host-topologies/empty-host
+      copy_to:
+        release_cycle: runs/<run-id>/fixtures/release-cycle
+        empty_host: runs/<run-id>/fixtures/host-topologies/empty-host
+      mutate_copy:
+        - configure release-cycle host A as the active Skill Host Folder
+        - add `project-with-install` as the QA project and create one managed install from host A inside the run-local project target
+        - keep `.agents/skills` present and empty
+    steps:
+      - Confirm Project Detail shows the seeded managed install for `project-with-install`.
+      - Open Settings.
+      - Change Skill Host Folder to the empty host fixture.
+      - Run host scan if needed.
+      - Open Skills Library, Project Detail for the project with prior install metadata, and Dashboard.
+    expected_ui:
+      - Skills Library shows zero current host skills for the empty host.
+      - Prior project install metadata is not silently deleted.
+      - Old-host or missing-source state is visible where prior installs are shown.
+      - Dashboard counts remain coherent and do not double-count old and empty host state.
+    cross_screen_checks:
+      - Settings, Skills Library, Project Detail, and Dashboard agree on the empty active host.
+    verifier:
+      app_db:
+        - App settings point to the empty host.
+        - Prior install rows remain present or are explicitly marked stale/missing according to contract.
+        - No duplicate skill rows are created for the empty host.
+      filesystem:
+        - Empty host `.agents/skills` remains present and empty.
+        - Prior release-cycle host and project fixture folders remain intact.
+        - No files are written outside the run-local release-cycle and empty-host fixtures.
+      evidence:
+        - Screenshot or DB query proving the seeded install before re-point.
+        - Settings, Skills Library, and Project Detail screenshots.
+        - DB query output for settings, skills, and installs.
+        - "`find` output for the empty host and prior install target."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SETTINGS-004
+    title: Override pointing at a nonexistent path is rejected or flagged and scan behavior is unchanged
+    tier: T1
+    primary_screen: Settings
+    related_screens: [Project Detail, Projects]
+    type: edge
+    tags: [settings, provider, path-override, nonexistent-path, validation, release-full]
+    invariants: [INV-PROVIDER-001, INV-PROJECT-001, INV-SAFETY-001]
+    preconditions:
+      - QA project is registered and can be scanned with built-in provider paths.
+      - QA executor may mutate only run-local fixture paths.
+    data_setup:
+      fixture_source: fixtures/qa/projects/generic-agents-project
+      copy_to: runs/<run-id>/fixtures/projects/generic-agents-project
+      mutate_copy:
+        - choose a nonexistent run-local relative provider override path
+    steps:
+      - Open Settings provider path overrides.
+      - Attempt to save the nonexistent project-scope provider skills path.
+      - Run Project Detail scan for the same project.
+      - Open Projects.
+    expected_ui:
+      - Settings either rejects the nonexistent override or clearly labels it as invalid.
+      - Project scan behavior remains on the prior built-in path if the override was rejected.
+      - No stale nonexistent path is presented as current provider state.
+    cross_screen_checks:
+      - Settings, Project Detail, and Projects agree on whether the override is active.
+    verifier:
+      app_db:
+        - Rejected override creates no active provider_path_overrides row.
+        - If the product stores the invalid override as flagged, scan facts show invalid/missing rather than current.
+      filesystem:
+        - Nonexistent override path remains absent unless the product explicitly creates provider structure in a later install flow.
+        - No files are written outside the run-local project fixture.
+      evidence:
+        - Settings validation/flag screenshot.
+        - Project Detail scan screenshot.
+        - DB query output for provider_path_overrides and provider facts.
+        - "`test -e` output for the nonexistent path."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

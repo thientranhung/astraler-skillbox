@@ -170,3 +170,94 @@ cases:
       destructive: false
       allowed_environment: qa_fixture_or_read_only
       real_environment: allowed_read_only
+
+  - id: TC-PLUGIN-006
+    title: Project plugin override disagreeing with global is labeled as override and not drift
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Global Plugins]
+    type: edge
+    tags: [plugin, project-override, global-plugin, cross-screen, release-full]
+    invariants: [INV-PLUGIN-001, INV-DB-001]
+    preconditions:
+      - QA home uses the copied run-local global plugin fixture.
+      - QA project has project-level plugin settings that intentionally disagree with global state.
+    data_setup:
+      fixture_sources:
+        - fixtures/qa/global-plugin
+        - fixtures/qa/projects/project-plugin-override
+      copy_to:
+        global_plugin_home: runs/<run-id>/fixtures/global-plugin
+        project_plugin_override: runs/<run-id>/fixtures/projects/project-plugin-override
+      mutate_copy:
+        - use `runs/<run-id>/fixtures/global-plugin` as QA HOME for this case
+        - keep project plugin settings with a different enabled/version state than the QA global fixture
+    steps:
+      - Configure QA HOME to the copied global plugin fixture.
+      - Add or open the project-plugin-override QA project.
+      - Run Global Plugins scan.
+      - Run project plugin scan if needed.
+      - Compare Global Plugins and Project Detail plugin sections.
+    expected_ui:
+      - Project Detail labels project-level disagreement as an override or scoped project state.
+      - Global Plugins continues to show global/user layer facts only.
+      - UI does not present the disagreement as unexplained drift or a global mutation.
+    cross_screen_checks:
+      - Project Detail effective state derives from visible global and project layer facts.
+      - Global Plugins row matches the global fixture, not the project override.
+    verifier:
+      app_db:
+        - Plugin facts are stored separately by global/user and project layer.
+        - Effective project state matches the project override where applicable.
+      filesystem:
+        - Global and project settings fixture files remain unchanged.
+      evidence:
+        - Project Detail plugin override screenshot.
+        - Global Plugins screenshot.
+        - DB query output for plugin layer facts.
+        - Fixture settings snippets or checksums.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PLUGIN-007
+    title: Missing provider settings file shows no-plugins state without inventing versions
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Dashboard]
+    type: edge
+    tags: [plugin, missing-settings, no-plugins, data-integrity, release-full]
+    invariants: [INV-PLUGIN-001, INV-DB-001]
+    preconditions:
+      - QA provider global settings path points to a run-local missing file.
+    data_setup:
+      fixture_source: fixtures/qa/global/plugin-settings-missing
+      copy_to: runs/<run-id>/fixtures/global/plugin-settings-missing
+      mutate_copy:
+        - keep the expected provider settings file absent in the run-local copy
+    steps:
+      - Configure provider global settings path to the absent run-local settings file.
+      - Open Global Plugins.
+      - Run plugin scan.
+      - Open Dashboard.
+    expected_ui:
+      - Global Plugins shows a no-plugins, missing-settings, or equivalent empty state.
+      - No plugin versions, enabled states, or update facts are invented from prior scans.
+      - Scan reaches a terminal state.
+    cross_screen_checks:
+      - Dashboard plugin summaries match Global Plugins missing/no-plugin state where displayed.
+    verifier:
+      app_db:
+        - Plugin layer scan status records missing or empty settings according to contract.
+        - No plugin entry/version row is created from the absent settings file.
+      filesystem:
+        - Missing settings file remains absent unless the product explicitly creates it through a user save action.
+      evidence:
+        - Global Plugins screenshot after scan.
+        - DB query output for plugin layer scan and plugin entries.
+        - "`test -e` output for the missing settings path."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden

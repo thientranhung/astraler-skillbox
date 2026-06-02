@@ -252,3 +252,47 @@ cases:
       destructive: true
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-OPS-008
+    title: Plugin-write operation cannot duplicate and reaches a terminal state
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Settings, Project Detail]
+    type: edge
+    tags: [operation, plugin, duplicate, terminal-state, release-full]
+    invariants: [INV-OPERATION-001, INV-PLUGIN-001, INV-DB-001]
+    preconditions:
+      - QA provider plugin settings fixture is copied into the run folder.
+      - QA executor may mutate only run-local plugin settings files.
+    data_setup:
+      fixture_source: fixtures/qa/global-plugin
+      copy_to: runs/<run-id>/fixtures/global-plugin
+      mutate_copy:
+        - point provider global config path at the run-local settings file
+    steps:
+      - Open Global Plugins.
+      - Trigger a plugin enable/disable write or equivalent plugin settings write.
+      - Immediately trigger the same write again if the UI permits, or call the same command through the QA harness.
+      - Wait for terminal state.
+      - Open Settings and Project Detail if the plugin is visible there.
+    expected_ui:
+      - Duplicate plugin-write trigger is disabled, ignored, or returns a clear conflict state.
+      - The operation reaches success, failed, or cancelled and does not stay writing forever.
+      - UI shows one final plugin state and does not flicker between old/new states after terminal completion.
+    cross_screen_checks:
+      - Global Plugins, Settings, and Project Detail agree on the final plugin state where displayed.
+    verifier:
+      app_db:
+        - Operations table has no overlapping queued/running plugin-write operation for the same provider/settings target.
+        - Final plugin layer facts match the settings file after terminal success, or remain unchanged after terminal failure.
+      filesystem:
+        - Run-local settings file content reflects exactly one final write outcome.
+        - No real provider settings file is modified.
+      evidence:
+        - Screenshot during duplicate attempt and after terminal state.
+        - DB query output for operations and plugin layer facts.
+        - Before/after checksum or diff for the run-local settings file.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
