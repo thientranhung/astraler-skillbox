@@ -67,6 +67,7 @@ export function AddSkillWizard({
   const activeProvider = installableProviders.find((p) => p.providerKey === activeProviderKey);
   const installedForActive = installedMap.get(activeProviderKey) ?? new Set<number>();
   const availableSkills = skills.filter((s) => s.status === 'available');
+  const isInstalling = installSkill.isPending || installSkill.operationId != null;
 
   // Set default active tab when providers load
   useEffect(() => {
@@ -104,7 +105,6 @@ export function AddSkillWizard({
         providerKey: activeProviderKey as 'generic_agents' | 'claude',
         skillIds: [...selectedSkillIds] as [number, ...number[]],
       },
-      { onSuccess: () => onClose() },
     );
   }
 
@@ -124,7 +124,7 @@ export function AddSkillWizard({
         </div>
         <p className="mb-1 text-xs font-medium text-zinc-700">No provider is ready for install.</p>
         <p className="mb-4 text-xs text-zinc-500">
-          Run a scan to detect providers in this project, or open Settings to configure one.
+          Create the provider skills folder in this project, then scan again. For Shared Agent Skills, create .agents/skills.
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -250,10 +250,10 @@ export function AddSkillWizard({
           </button>
           <button
             onClick={handleInstall}
-            disabled={selectedSkillIds.size === 0 || installSkill.isPending}
+            disabled={selectedSkillIds.size === 0 || isInstalling}
             className="cursor-pointer rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {installSkill.isPending ? 'Installing…' : 'Install'}
+            {isInstalling ? 'Installing…' : 'Install'}
           </button>
         </div>
       </div>

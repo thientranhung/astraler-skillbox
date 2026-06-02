@@ -23,11 +23,16 @@ func seedProjectProvider(t *testing.T, db *sql.DB, projectID, providerDefinition
 
 func getGenericAgentsDefID(t *testing.T, db *sql.DB) int64 {
 	t.Helper()
+	return getProviderDefID(t, db, "generic_agents")
+}
+
+func getProviderDefID(t *testing.T, db *sql.DB, key string) int64 {
+	t.Helper()
 	var id int64
 	err := db.QueryRowContext(context.Background(),
-		`SELECT id FROM provider_definitions WHERE key='generic_agents'`).Scan(&id)
+		`SELECT id FROM provider_definitions WHERE key=?`, key).Scan(&id)
 	if err != nil {
-		t.Fatalf("getGenericAgentsDefID: %v", err)
+		t.Fatalf("getProviderDefID(%q): %v", key, err)
 	}
 	return id
 }
@@ -106,6 +111,38 @@ func TestProjectProviderRepo_ListByProject_EntryCount(t *testing.T) {
 	}
 	if rows[0].EntryCount != 2 {
 		t.Errorf("EntryCount: got %d want 2", rows[0].EntryCount)
+	}
+}
+
+func TestProjectProviderRepo_ListByProject_EntryCountExcludesMissing(t *testing.T) {
+	db := NewTestDB(t)
+	projRepo := NewProjectRepo(db)
+	ppRepo := NewProjectProviderRepo(db)
+	ctx := context.Background()
+
+	pid := seedProject(t, projRepo, "proj-a", "/tmp/proj-a")
+	defID := getGenericAgentsDefID(t, db)
+	ppID := seedProjectProvider(t, db, pid, defID)
+
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO installs (project_provider_id, skill_name, install_mode, install_status, project_skill_path)
+		 VALUES
+		   (?, 'skill-current', 'direct', 'current', '/tmp/proj-a/.agents/skills/skill-current'),
+		   (?, 'skill-missing', 'direct', 'missing', '/tmp/proj-a/.agents/skills/skill-missing')`,
+		ppID, ppID)
+	if err != nil {
+		t.Fatalf("insert installs: %v", err)
+	}
+
+	rows, err := ppRepo.ListByProject(ctx, pid)
+	if err != nil {
+		t.Fatalf("ListByProject: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 provider row, got %d", len(rows))
+	}
+	if rows[0].EntryCount != 1 {
+		t.Errorf("EntryCount: got %d want 1 (missing installs are historical)", rows[0].EntryCount)
 	}
 }
 

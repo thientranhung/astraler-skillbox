@@ -296,9 +296,13 @@ func (s *ProjectService) installSkillsInternal(
 	}
 	if !pi.Exists {
 		if !pd.CanCreateStructure {
+			displayName := pd.DisplayName
+			if displayName == "" {
+				displayName = pd.Key
+			}
 			return nil, domain.NewProviderError(
 				"Skills folder missing",
-				"Claude skills folder does not exist and cannot be created automatically",
+				fmt.Sprintf("%s skills folder does not exist and cannot be created automatically", displayName),
 			)
 		}
 		if err := s.installFS.EnsureDir(skillsPath); err != nil {

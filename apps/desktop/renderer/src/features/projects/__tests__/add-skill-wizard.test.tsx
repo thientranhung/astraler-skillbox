@@ -172,8 +172,9 @@ describe('AddSkillWizard', () => {
   });
 
   // T4 — install submits providerKey of active tab
-  it('T4: install submits providerKey of active tab', () => {
+  it('T4: install submits providerKey of active tab without closing before operation terminal', () => {
     const mutate = vi.fn();
+    const onClose = vi.fn();
     mockUseInstallSkill.mockReturnValue({
       mutate,
       isPending: false,
@@ -195,7 +196,7 @@ describe('AddSkillWizard', () => {
         providers={providers}
         skills={skills}
         entries={[]}
-        onClose={vi.fn()}
+        onClose={onClose}
       />,
     );
 
@@ -209,10 +210,8 @@ describe('AddSkillWizard', () => {
     // Click Install
     fireEvent.click(screen.getByRole('button', { name: /^install$/i }));
 
-    expect(mutate).toHaveBeenCalledWith(
-      { projectId: 42, providerKey: 'claude', skillIds: [3] },
-      expect.objectContaining({ onSuccess: expect.any(Function) }),
-    );
+    expect(mutate).toHaveBeenCalledWith({ projectId: 42, providerKey: 'claude', skillIds: [3] });
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   // T5 — footer hint shows active skillsPath
@@ -326,6 +325,41 @@ describe('AddSkillWizard', () => {
     const installBtn = screen.getByRole('button', { name: /installing…/i }) as HTMLButtonElement;
     expect(installBtn.disabled).toBe(true);
     expect(installBtn.textContent).toContain('Installing…');
+  });
+
+  it('T9b: install button stays disabled while operation is running but cancel remains available', () => {
+    const onClose = vi.fn();
+    mockUseInstallSkill.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      operationId: 101,
+      isError: false,
+      error: null,
+      reset: vi.fn(),
+    });
+
+    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Generic Agents')];
+    const skills: SkillListSkill[] = [mkSkill(1, 'Skill A')];
+
+    render(
+      <AddSkillWizard
+        projectId={1}
+        providers={providers}
+        skills={skills}
+        entries={[]}
+        onClose={onClose}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Skill A/i }));
+
+    const installBtn = screen.getByRole('button', { name: /installing…/i }) as HTMLButtonElement;
+    expect(installBtn.disabled).toBe(true);
+
+    const cancelBtn = screen.getByRole('button', { name: /cancel/i }) as HTMLButtonElement;
+    expect(cancelBtn.disabled).toBe(false);
+    fireEvent.click(cancelBtn);
+    expect(onClose).toHaveBeenCalled();
   });
 
   // T10 — Error row renders when mutation fails; wizard stays open

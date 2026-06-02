@@ -72,6 +72,47 @@ cases:
       allowed_environment: qa_fixture
       real_environment: allowed_read_only
 
+  - id: TC-PROJ-003
+    title: Rescan marks removed provider folders missing
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Projects, Dashboard]
+    type: critical
+    tags: [project, provider, scan, stale-state, data-integrity, release-full]
+    invariants: [INV-PROJECT-001, INV-INSTALL-001, INV-DB-001]
+    preconditions:
+      - QA project has a detected provider folder and at least one scanned provider install.
+      - QA executor may mutate only the run-local project fixture.
+    steps:
+      - Open Project Detail and verify the provider is detected.
+      - Remove the provider folder from the run-local QA project fixture outside the app.
+      - Run Scan Project again.
+      - Open Projects and Dashboard.
+    expected_ui:
+      - Project Detail no longer presents the deleted provider as current.
+      - Provider state is shown as missing, or the screen shows a clear no-current-provider state.
+      - Deleted provider paths are not displayed as live/current paths.
+      - Installed skill counts do not include installs under the missing provider.
+      - Manual scan reaches a terminal success or error state and the UI does not stay stuck scanning.
+    cross_screen_checks:
+      - Projects row, Project Detail, and Dashboard agree that the provider is no longer current.
+    verifier:
+      app_db:
+        - "`project_providers.detection_status` is `missing` for the deleted provider."
+        - "`project_providers.detected_path` and `skills_path` are null for the missing provider."
+        - Installs under the missing provider have `install_status = missing`.
+      filesystem:
+        - Deleted provider folder is absent from the QA project fixture.
+        - No files are written outside the run-local QA project fixture.
+      evidence:
+        - Screenshot before and after rescan.
+        - DB query output for provider facts and install statuses.
+        - Filesystem `test -e` output for the deleted provider folder.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
   - id: TC-SKILL-001
     title: Skills Library scan shows host skills accurately
     tier: T1
@@ -117,7 +158,7 @@ cases:
     invariants: [INV-INSTALL-001, INV-HOST-001]
     preconditions:
       - QA host has one valid skill not yet installed in the QA project.
-      - QA project has a provider target folder for the active provider.
+      - QA project has a provider target folder for the active provider, or the active provider explicitly supports creating its target structure.
     steps:
       - Open Project Detail.
       - Open Add Skill.
@@ -145,6 +186,52 @@ cases:
         - Screenshot after install.
         - "`readlink` and `stat` output."
         - DB query output for install row.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-007
+    title: Shared Agent install creates missing skills folder without hanging
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard, Skills Library]
+    type: critical
+    tags: [skill, add-skill, install, provider, missing-folder, operation-state, symlink, release-full]
+    invariants: [INV-INSTALL-001, INV-OPERATION-001, INV-DB-001, INV-SAFETY-001]
+    preconditions:
+      - QA host has one valid available skill not yet installed in the QA project.
+      - QA project fixture has `.agents/` but intentionally does not have `.agents/skills/`.
+      - "`generic_agents` is the selected install provider."
+    steps:
+      - Open Project Detail and run Scan Project.
+      - Open Add Skill.
+      - Select the Shared Agent Skills provider tab.
+      - Select one not-installed host skill.
+      - Click Install.
+      - Wait for the install operation to reach a terminal state.
+      - Close the wizard and re-open Project Detail.
+    expected_ui:
+      - Add Skill offers the Shared Agent Skills provider for the detected `.agents` marker.
+      - Install remains visibly in progress only while the operation is running.
+      - The wizard does not stay stuck in Installing after the operation reaches a terminal state.
+      - A success message appears only after `.agents/skills` and the skill target exist.
+      - Project Detail shows the installed skill with mode symlink.
+    cross_screen_checks:
+      - Project Detail and Skills Library agree on the installed state.
+    verifier:
+      app_db:
+        - Active install record exists for the project, provider, skill, and symlink mode.
+        - No operation for the install remains queued or running after completion.
+      filesystem:
+        - "`.agents/skills` exists under the QA project fixture."
+        - Provider target symlink exists under `.agents/skills`.
+        - "`readlink` target points to the QA host skill folder."
+        - No files are written outside the run-local QA project fixture and QA host folder.
+      evidence:
+        - Screenshot of the wizard during install and after terminal state.
+        - DB query output for operation and install rows.
+        - "`test -d`, `readlink`, and `stat` output for `.agents/skills` and target symlink."
     safety:
       destructive: true
       allowed_environment: qa_fixture_only
