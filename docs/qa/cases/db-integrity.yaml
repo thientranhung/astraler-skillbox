@@ -121,3 +121,54 @@ cases:
       destructive: false
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-DB-005
+    title: Foreign-key and count consistency holds after a full add install remove reset cycle
+    tier: T0
+    primary_screen: Dashboard
+    related_screens: [Setup, Projects, Project Detail, Skills Library, Settings]
+    type: critical
+    tags: [db, integrity, foreign-keys, lifecycle, reset, install, remove, release-full]
+    invariants: [INV-DB-001, INV-INSTALL-001, INV-PROJECT-001, INV-SAFETY-001]
+    preconditions:
+      - App runs with QA DB, QA HOME, QA host fixture, and QA project fixture only.
+      - QA executor may mutate only run-local fixture copies.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - start from an empty QA DB plus host/project fixtures for the full lifecycle
+    steps:
+      - Complete Setup by choosing the QA Skill Host Folder.
+      - Scan the Skill Host Folder.
+      - Add the QA project and scan it.
+      - Install one QA host skill into the project.
+      - Remove the installed skill.
+      - Trigger Reset All Data and wait for the app to return to setup or unconfigured state.
+      - Run DB and filesystem checks out of band.
+    expected_ui:
+      - Each workflow step reaches a terminal success or visible failure state.
+      - After removal, the project no longer shows the skill as installed.
+      - After reset, metadata-backed screens show an empty or setup state with no stale project, skill, install, or plugin counts.
+      - No screen shows contradictory counts after the lifecycle.
+    cross_screen_checks:
+      - Dashboard, Projects, Project Detail, Skills Library, and Settings agree after install, after remove, and after reset.
+    verifier:
+      app_db:
+        - "`PRAGMA foreign_key_check` returns no rows after install, after remove, and after reset."
+        - "`PRAGMA integrity_check` returns `ok` after the full cycle."
+        - Dashboard/count queries match source tables after install, remove, and reset.
+        - No active install row remains after remove or reset.
+      filesystem:
+        - QA host skill folder remains intact after install, remove, and reset.
+        - QA project folder remains intact after remove and reset.
+        - Removed project install target is absent after remove.
+        - No files are written outside the run-local release-cycle fixture.
+      evidence:
+        - Screenshots after install, remove, and reset.
+        - DB integrity, FK, and table/count query output after each checkpoint.
+        - Filesystem `find`/`stat` output for host, project, and install target.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

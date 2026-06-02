@@ -150,3 +150,105 @@ cases:
       destructive: true
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-OPS-006
+    title: Install and remove operations cannot duplicate for the same skill and provider target
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard, Dashboard]
+    type: critical
+    tags: [operation, duplicate, install, remove, data-integrity, release-full]
+    invariants: [INV-OPERATION-001, INV-INSTALL-001, INV-DB-001]
+    preconditions:
+      - QA project has one detected provider target and one not-installed QA host skill.
+      - QA project also has one managed install that can be removed.
+      - QA executor may mutate only the run-local project fixture and QA host fixture.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - use the project-with-provider template plus one seeded managed install for remove deduplication
+    steps:
+      - Open Project Detail and Add Skill.
+      - Trigger Install for one not-installed skill.
+      - Immediately trigger the same Install action again if the UI permits, or call the same install command through the QA harness.
+      - Wait for terminal state.
+      - Trigger Remove for one managed install.
+      - Immediately trigger the same Remove action again if the UI permits, or call the same remove command through the QA harness.
+      - Wait for terminal state and return to Project Detail.
+    expected_ui:
+      - Duplicate install and remove triggers are disabled, ignored, or return a clear conflict state.
+      - Only one terminal success or failure is shown per target operation.
+      - UI does not leave the affected row stuck installing or removing.
+      - Final Project Detail state matches the completed operation result.
+    cross_screen_checks:
+      - Dashboard install counts match Project Detail after both operation attempts complete.
+    verifier:
+      app_db:
+        - Operations table has no overlapping queued/running install operation for the same project/provider/skill target.
+        - Operations table has no overlapping queued/running remove operation for the same install target.
+        - At most one active install row exists for the installed project/provider/skill.
+        - Removed target has no active install row after successful remove.
+      filesystem:
+        - Install target exists at most once after install completion.
+        - Removed target is absent after successful remove, while the QA host skill remains intact.
+        - No files are written outside the run-local release-cycle fixture.
+      evidence:
+        - Screenshots during duplicate attempts and after terminal state.
+        - DB query output for operations and installs.
+        - Filesystem listing for the install/remove targets and host skill.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-OPS-007
+    title: App restart during a running install resolves to a terminal state with consistent DB and filesystem
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Dashboard, Skills Library]
+    type: critical
+    tags: [operation, restart, crash, install, recovery, data-integrity, release-full]
+    invariants: [INV-OPERATION-001, INV-INSTALL-001, INV-DB-001]
+    preconditions:
+      - QA run generates the committed large copy-mode fixture skill in the run-local release-cycle fixture.
+      - QA project has one detected provider target and one not-installed QA host skill.
+      - QA executor may mutate only the run-local project fixture and QA host fixture.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - "run `fixtures/qa/release-cycle/scripts/create-large-copy-skill.sh runs/<run-id>/fixtures/release-cycle 512`"
+        - use the generated `zz-large-copy-skill` with the project-with-provider template
+    steps:
+      - Launch dev Electron with QA DB and QA HOME.
+      - Open Project Detail and start installing `zz-large-copy-skill` in Copy (rsync) mode.
+      - Poll operation state out of band until the install operation is queued or running.
+      - Terminate the app process while the install operation is still queued or running.
+      - Relaunch with the same QA DB and QA HOME.
+      - Open Dashboard, Project Detail, and Skills Library.
+    expected_ui:
+      - Relaunched app does not show the interrupted install as running forever.
+      - Interrupted operation is shown as failed, cancelled, stale, or retryable according to the product contract.
+      - A success state is shown only if the filesystem target and DB install record both prove completion.
+      - User can retry or cleanly remove any partial state.
+    cross_screen_checks:
+      - Dashboard, Project Detail, and Skills Library agree on whether the skill is installed after restart.
+    verifier:
+      app_db:
+        - No operation for the interrupted install remains queued or running after relaunch recovery.
+        - If an active install row exists, its target exists on disk and operation status is terminal success.
+        - If the operation recovered as failed/cancelled/stale, no active install row exists for the partial target.
+      filesystem:
+        - Partial target is absent, or is classified as unmanaged/conflict and not shown as active success.
+        - QA host skill folder remains intact.
+        - No files are written outside the run-local release-cycle fixture.
+      evidence:
+        - Output from `create-large-copy-skill.sh`, including generated size and path.
+        - Screenshot before termination if possible and screenshots after relaunch.
+        - DB query output for operations and installs before/after relaunch.
+        - Filesystem listing/stat output for the project target and host skill after relaunch.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

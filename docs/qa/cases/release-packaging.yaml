@@ -140,3 +140,48 @@ cases:
       destructive: false
       allowed_environment: release_candidate_read_only
       real_environment: opt_in
+
+  - id: TC-RELEASE-006
+    title: Packaged app uses packaged app-data DB path and never a repo or dev DB
+    tier: T0
+    primary_screen: Packaged App
+    related_screens: [Release CLI, Setup, Dashboard]
+    type: packaged-smoke
+    tags: [release, packaging, app-data, db, safety, release-full]
+    invariants: [INV-PACKAGE-001, INV-SAFETY-001, INV-DB-001]
+    release_scope: current
+    preconditions:
+      - Current packaged macOS artifact has been rebuilt from the target commit.
+      - Smoke run uses a safe app-data location or a clean test macOS user/profile.
+      - QA executor has owner approval for the exact packaged artifact path under test.
+    data_setup:
+      fixture_source: fixtures/qa/packaged-artifact
+      copy_to: runs/<run-id>/fixtures/packaged-artifact
+      mutate_copy:
+        - record the artifact path, expected smoke app-data path, and forbidden repo/dev DB paths in the run plan
+    steps:
+      - Launch the packaged app without dev Electron environment variables.
+      - Wait for Setup or Dashboard.
+      - Inspect the DB path from app logs, smoke command output, or process/open-file evidence.
+      - Quit the app normally.
+      - Inspect repo/dev DB paths out of band.
+    expected_ui:
+      - Packaged app opens without a blank window.
+      - App does not display a startup error caused by using the repo dev DB.
+      - Setup or Dashboard state reflects the isolated packaged smoke DB only.
+    verifier:
+      filesystem:
+        - Active DB path is under the packaged smoke app-data location.
+        - Active DB path is not under the repository, `apps/desktop`, `core-go`, or any dev QA run from another test.
+        - Repo/dev DB files are absent or timestamp-unchanged during packaged launch.
+      process:
+        - Packaged sidecar process was launched from bundled resources, not `go run`.
+      evidence:
+        - First-screen screenshot.
+        - App log or `lsof` output showing the active DB path.
+        - Filesystem timestamp/path output for forbidden repo/dev DB paths.
+        - Process command/path output for the sidecar.
+    safety:
+      destructive: false
+      allowed_environment: packaged_smoke
+      real_environment: opt_in

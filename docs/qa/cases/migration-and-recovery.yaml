@@ -123,3 +123,52 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: allowed_read_only
+
+  - id: TC-MIGRATE-005
+    title: Partial interrupted migration is reported without touching real app data
+    tier: T0
+    primary_screen: App Launch
+    related_screens: [Setup, Dashboard]
+    type: critical
+    tags: [migration, db, interrupted-migration, recovery, safety, release-full]
+    invariants: [INV-DB-001, INV-SAFETY-001]
+    preconditions:
+      - QA run creates a dirty migration DB under the run folder using the committed partial-migration fixture script.
+      - The generated dirty DB is the only configured DB path.
+      - QA executor may inspect real app-data paths read-only only for timestamp comparison.
+    data_setup:
+      fixture_source: fixtures/qa/db/partial-migration
+      copy_to: runs/<run-id>/fixtures/db/partial-migration
+      mutate_copy:
+        - "run `fixtures/qa/db/partial-migration/create-dirty-db.sh runs/<run-id>/fixtures/db/partial-migration/qa-partial-migration.db`"
+    steps:
+      - Launch app with `SKILLBOX_DB_PATH` pointing to the generated dirty migration QA DB.
+      - Observe startup until Setup, Dashboard, or a migration error appears.
+      - If the app reports an error, quit and relaunch once with the same generated QA DB.
+      - Run DB and filesystem checks out of band.
+    expected_ui:
+      - App never silently falls back to the user's real app DB.
+      - App either completes recovery to the current schema or reports a clear dirty/partial migration error.
+      - If recovery completes, Setup or Dashboard is usable and no stale partial-migration banner remains.
+      - If recovery fails, the error is visible and specific enough to block release.
+    verifier:
+      app_db:
+        - Configured QA DB remains under the run folder.
+        - "Before launch, `schema_migrations` contains `version = 23` and `dirty = 1`."
+        - "`PRAGMA integrity_check` returns `ok` if the app reports recovery success."
+        - Schema migration version is current if recovery succeeds.
+        - If the app reports a dirty migration error, the generated QA DB remains dirty and no alternate DB is used.
+        - No half-applied migration metadata remains if recovery succeeds.
+      filesystem:
+        - Real app-data DB path is not created or timestamp-modified by this launch.
+        - No files are written outside the run-local DB fixture and QA home.
+      evidence:
+        - Startup or migration-error screenshot.
+        - Output from `create-dirty-db.sh`.
+        - DB migration/version/integrity query output.
+        - Filesystem timestamp/path check for QA DB and real app-data DB path.
+        - Relaunch log if the first launch reports a recoverable error.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

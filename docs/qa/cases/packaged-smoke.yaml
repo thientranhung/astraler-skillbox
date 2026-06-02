@@ -65,3 +65,48 @@ cases:
       destructive: false
       allowed_environment: packaged_smoke
       real_environment: opt_in
+
+  - id: TC-PACKAGE-003
+    title: Quit leaves no orphaned Go sidecar process
+    tier: T0
+    primary_screen: Packaged App
+    related_screens: [Release CLI]
+    type: packaged-smoke
+    tags: [packaging, sidecar, quit, process, release-full]
+    invariants: [INV-PACKAGE-001, INV-SAFETY-001]
+    release_scope: current
+    preconditions:
+      - Current packaged macOS artifact has been rebuilt from the target commit.
+      - Test run uses a safe app data location or a clean test macOS user/profile.
+      - QA executor has owner approval for the exact packaged artifact path under test.
+    data_setup:
+      fixture_source: fixtures/qa/packaged-artifact
+      copy_to: runs/<run-id>/fixtures/packaged-artifact
+      mutate_copy:
+        - record the artifact path and smoke app-data path in the run plan
+    steps:
+      - Launch the packaged app from the approved artifact.
+      - Wait for Setup or Dashboard and confirm the sidecar is ready.
+      - Record the app process ID and bundled Go sidecar process ID.
+      - Quit the app normally.
+      - Wait for the normal shutdown window.
+      - Inspect process state out of band.
+    expected_ui:
+      - Packaged app opens without a blank window.
+      - Quit closes the app window normally.
+      - No user-facing error is shown during normal quit.
+    verifier:
+      filesystem:
+        - Bundled sidecar path exists under the packaged app resources and is executable.
+        - Smoke app-data path is isolated from the repo and real app data.
+      process:
+        - No Go sidecar process launched by the packaged app remains after quit.
+        - No sidecar keeps the smoke DB file locked after quit.
+      evidence:
+        - First-screen screenshot.
+        - "`ps`, `pgrep`, or `lsof` output before launch, during launch, and after quit."
+        - Sidecar executable path and smoke DB path output.
+    safety:
+      destructive: false
+      allowed_environment: packaged_smoke
+      real_environment: opt_in
