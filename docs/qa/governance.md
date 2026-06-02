@@ -87,6 +87,25 @@ is small, intentionally curated, and needed as durable review material.
 Generated fixture copies, temporary homes, caches, module downloads, and
 outside-target sandboxes are disposable run artifacts, not canonical evidence.
 
+## Anti-Hallucination Checklist
+
+Before issuing a QA result or clean GO verdict, verify:
+
+- The selected case IDs, tags, tier, and run scope match the change under test.
+- The run folder exists and contains the expected `run-plan.yaml`,
+  `results.jsonl`, `report.md`, and evidence paths.
+- Each `PASS` has enough evidence for its tier; T0/T1 state changes include an
+  independent check when available.
+- `FAIL`, `BLOCKED`, `NEEDS_HUMAN`, and `SKIPPED` use the status meanings in
+  this document and `schema.md`.
+- Destructive or filesystem-writing cases used run-local fixture copies unless
+  the case explicitly allowed opt-in real targets and the owner approved the
+  exact target.
+- The report separates gate results, case results, waivers, skipped/future
+  scope, residual risk, and final GO/NO-GO.
+- Claims in the QA verdict are grounded in case output, screenshots, logs, DB/RPC
+  checks, filesystem checks, source inspection, or contract inspection.
+
 ## Full, Delta, And Clean GO
 
 - First release and release-candidate validation use the `release-full` profile.
