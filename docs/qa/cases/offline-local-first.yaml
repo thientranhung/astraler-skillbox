@@ -1,0 +1,120 @@
+area: offline-local-first
+cases:
+  - id: TC-PRIVACY-001
+    title: App launch performs no outbound network activity
+    tier: T0
+    primary_screen: Dashboard
+    related_screens: [Setup]
+    type: critical
+    tags: [privacy, local-first, network, launch, release-full]
+    invariants: [INV-PRIVACY-001]
+    preconditions:
+      - Network observation is available through logs, firewall, proxy, or OS tooling.
+      - App launches with QA HOME and QA DB.
+    steps:
+      - Launch app and wait on Setup or Dashboard.
+      - Do not click update or plugin update actions.
+      - Observe network activity.
+    expected_ui:
+      - App launches and remains usable.
+      - No network request is made during idle launch.
+    verifier:
+      evidence:
+        - Network observation output.
+        - Screenshot of app idle state.
+        - Operation/update cache DB query.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-PRIVACY-002
+    title: Plugin update check requires explicit manual action
+    tier: T0
+    primary_screen: Global Plugins
+    related_screens: [Dashboard]
+    type: critical
+    tags: [privacy, plugin, update-check, network, release-full]
+    invariants: [INV-PRIVACY-001, INV-PLUGIN-001]
+    preconditions:
+      - QA plugin fixture has marketplace metadata.
+      - Network observation is active.
+    steps:
+      - Open Global Plugins.
+      - Wait without clicking Check Updates.
+      - Click Check Updates only if the test run explicitly allows outbound network.
+    expected_ui:
+      - No plugin update check starts before the explicit action.
+      - Manual action shows success/error result without blocking offline usage.
+    verifier:
+      app_db:
+        - No update-check operation/cache row appears before manual action.
+      evidence:
+        - Network/log evidence before manual action.
+        - DB update cache query.
+        - Screenshot of Global Plugins.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-PRIVACY-003
+    title: App update check is not confused with plugin update check
+    tier: T1
+    primary_screen: About
+    related_screens: [Global Plugins]
+    type: edge
+    tags: [privacy, app-update, plugin-update, network, release-full]
+    invariants: [INV-PRIVACY-001]
+    preconditions:
+      - Network observation is active.
+    steps:
+      - Open About.
+      - Do not click app update action.
+      - Open Global Plugins.
+      - Do not click plugin Check Updates.
+    expected_ui:
+      - App update and plugin update actions are distinct.
+      - Neither runs automatically.
+      - Offline state is understandable.
+    verifier:
+      evidence:
+        - Screenshots of About and Global Plugins.
+        - Network/log evidence.
+        - DB update cache query.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-PRIVACY-004
+    title: Offline mode preserves core local workflows
+    tier: T1
+    primary_screen: Dashboard
+    related_screens: [Skills Library, Projects, Settings]
+    type: smoke
+    tags: [privacy, offline, local-first, release-full]
+    invariants: [INV-PRIVACY-001, INV-HOST-001, INV-PROJECT-001]
+    preconditions:
+      - Network is blocked or disconnected.
+      - QA DB, host, and project fixtures are available locally.
+    steps:
+      - Launch app offline.
+      - Scan QA host.
+      - Add/scan QA project.
+      - Open Settings.
+    expected_ui:
+      - Local workflows remain usable.
+      - Network errors do not appear unless a network action is explicitly clicked.
+      - App does not degrade into an unusable state because it is offline.
+    verifier:
+      app_db:
+        - Local scan metadata is persisted.
+      evidence:
+        - Screenshots of local workflows offline.
+        - Network-off evidence.
+        - DB scan output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

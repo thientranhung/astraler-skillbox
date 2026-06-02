@@ -1,0 +1,1 @@
+{"id":"TC-FS-001","status":"PASS","tier":"T0","evidence":["evidence/tc-fs-001-contract-delta.json"],"summary":"external_symlink is represented in skill.list totals and skill.get; install remains rejected with no filesystem/DB side effect."}

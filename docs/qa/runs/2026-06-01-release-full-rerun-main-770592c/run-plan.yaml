@@ -1,0 +1,107 @@
+run:
+  id: 2026-06-01-release-full-rerun-main-770592c
+  date: 2026-06-01
+  scope: release
+  profile: release-full
+  app_mode: dev-electron
+  target_version: 0.1.0
+  operator: codex/astraler-qa
+  target_branch: main
+  target_commit: 770592c
+  baseline_run: 2026-06-01-release-full
+
+environment:
+  repo_root: <repo-root>
+  fixture_copy: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures
+  cdp_port: 49222
+  qa_home: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/homes/plugin-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/homes/plugin-home/qa.db
+  qa_host_a: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/skill-host-a
+  qa_host_b: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/skill-host-b
+  qa_host_invalid: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/skill-host-invalid
+  qa_project_claude: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/projects/claude-project
+  qa_project_generic: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/projects/generic-agents-project
+  qa_project_conflict: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/edge-cases/conflict-project
+  qa_project_broken: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/edge-cases/broken-symlink-project
+  qa_project_path_escape: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/edge-cases/path-escape-project
+  malformed_plugin_home: <repo-root>/docs/qa/runs/2026-06-01-release-full-rerun-main-770592c/fixtures/homes/malformed-plugin-home
+  real_environment_allowed: false
+
+gates:
+  before_ui:
+    - core-go go test ./...
+    - apps/desktop pnpm typecheck
+    - apps/desktop pnpm test
+    - apps/desktop pnpm check:contracts-drift
+
+selection:
+  order: T0 first, then T1, then T2 where feasible
+  case_ids:
+    - TC-A11Y-002
+    - TC-DASH-003
+    - TC-DB-001
+    - TC-DB-002
+    - TC-DB-003
+    - TC-FS-001
+    - TC-FS-002
+    - TC-FS-003
+    - TC-FS-006
+    - TC-GLOBAL-003
+    - TC-MIGRATE-002
+    - TC-MIGRATE-003
+    - TC-OPS-004
+    - TC-OPS-005
+    - TC-PRIVACY-001
+    - TC-PRIVACY-002
+    - TC-PROVIDER-002
+    - TC-PROVIDER-004
+    - TC-RELEASE-003
+    - TC-SETTINGS-002
+    - TC-SKILL-002
+    - TC-SKILL-003
+    - TC-SKILL-004
+    - TC-SKILL-005
+    - TC-DASH-001
+    - TC-DASH-002
+    - TC-DB-004
+    - TC-ERROR-002
+    - TC-ERROR-003
+    - TC-FS-004
+    - TC-GLOBAL-001
+    - TC-GLOBAL-002
+    - TC-GLOBAL-004
+    - TC-MIGRATE-001
+    - TC-MIGRATE-004
+    - TC-OPS-001
+    - TC-OPS-002
+    - TC-OPS-003
+    - TC-PACKAGE-001
+    - TC-PLUGIN-001
+    - TC-PLUGIN-002
+    - TC-PLUGIN-003
+    - TC-PLUGIN-004
+    - TC-PLUGIN-005
+    - TC-PRIVACY-003
+    - TC-PRIVACY-004
+    - TC-PROJ-001
+    - TC-PROJ-002
+    - TC-PROVIDER-001
+    - TC-PROVIDER-003
+    - TC-RELEASE-001
+    - TC-RELEASE-002
+    - TC-RELEASE-004
+    - TC-RELEASE-005
+    - TC-SETTINGS-001
+    - TC-SETUP-001
+    - TC-SETUP-002
+    - TC-SKILL-001
+    - TC-SKILL-006
+    - TC-A11Y-001
+    - TC-A11Y-003
+    - TC-A11Y-004
+    - TC-DASH-004
+    - TC-ERROR-001
+    - TC-ERROR-004
+    - TC-FS-005
+    - TC-GLOBAL-005
+    - TC-PROVIDER-005

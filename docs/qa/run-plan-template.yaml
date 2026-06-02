@@ -2,6 +2,7 @@ run:
   id: YYYY-MM-DD-scope
   date: YYYY-MM-DD
   scope: delta | smoke | release | regression
+  profile: baseline-smoke | release-full | delta | packaged-release
   app_mode: dev-electron | packaged
   target_version: 0.1.0
   operator: agent
@@ -9,6 +10,8 @@ run:
 environment:
   repo_root: /absolute/path/to/astraler-skillbox
   desktop_dir: /absolute/path/to/astraler-skillbox/apps/desktop
+  fixture_source: /absolute/path/to/astraler-skillbox/fixtures/qa
+  fixture_copy: /absolute/path/to/qa-run/fixtures
   cdp_port: 49222
   qa_home: /absolute/path/to/qa-home
   qa_db_path: /absolute/path/to/qa-home/qa.db
@@ -26,6 +29,8 @@ gates:
   fail_fast_on_t0: true
   require_t0_evidence: true
   plugin_real_toggle_requires_user_approval: true
+  mutate_source_fixtures: false
+  outbound_network_requires_user_approval: true
 
 commands:
   start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=<qa_db_path> HOME=<qa_home> pnpm dev)"

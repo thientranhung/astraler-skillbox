@@ -1,0 +1,152 @@
+area: operations
+cases:
+  - id: TC-OPS-001
+    title: Host scan operation cannot duplicate for the same host target
+    tier: T1
+    primary_screen: Skills Library
+    related_screens: [Dashboard]
+    type: edge
+    tags: [operation, host-scan, duplicate, release-full]
+    invariants: [INV-OPERATION-001, INV-HOST-001]
+    preconditions:
+      - QA host folder contains enough fixture entries for scan progress to be observable.
+    steps:
+      - Open Skills Library.
+      - Trigger Scan Skill Host Folder.
+      - Immediately trigger scan again if the UI permits.
+      - Wait for terminal state.
+    expected_ui:
+      - At most one active host scan is running for the same host.
+      - Duplicate trigger is disabled or returns a clear conflict state.
+      - UI leaves loading state after terminal success/failure.
+    verifier:
+      app_db:
+        - Operations table has no overlapping running host scan operations for the same target.
+      evidence:
+        - Screenshot during scan and after terminal state.
+        - Operations table output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-OPS-002
+    title: Project scan operation cannot duplicate for the same project target
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Projects]
+    type: edge
+    tags: [operation, project-scan, duplicate, release-full]
+    invariants: [INV-OPERATION-001, INV-PROJECT-001]
+    preconditions:
+      - QA project is registered.
+    steps:
+      - Open Project Detail.
+      - Trigger Scan Project.
+      - Trigger Scan Project again before the first scan completes if possible.
+      - Wait for terminal state.
+    expected_ui:
+      - Duplicate scan is prevented or returns a clear conflict state.
+      - Projects row reflects the final scan result.
+      - UI does not show multiple success toasts for one user action.
+    verifier:
+      app_db:
+        - Operations table has no overlapping running project scan operations for the same project.
+      evidence:
+        - DOM snapshot or screenshot during scan.
+        - Operations table output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-OPS-003
+    title: Cancel long-running scan returns UI to a safe retry state
+    tier: T1
+    primary_screen: Skills Library
+    related_screens: [Dashboard]
+    type: edge
+    tags: [operation, cancel, retry, release-full]
+    invariants: [INV-OPERATION-001]
+    preconditions:
+      - QA host fixture has enough entries or a harness delay so scan cancellation is possible.
+    steps:
+      - Start a host or project scan.
+      - Click Cancel if the UI exposes it, or cancel via the operation cancel command in the QA harness.
+      - Retry the scan.
+    expected_ui:
+      - Cancelled operation is visibly cancelled or returns to idle.
+      - Retry is possible and reaches terminal state.
+      - No stale spinner or disabled controls remain.
+    verifier:
+      app_db:
+        - Operation status transitions to cancelled, then a later retry reaches success or failed.
+      evidence:
+        - Screenshot after cancel.
+        - Operations table output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-OPS-004
+    title: Stale running operations are marked failed after app restart
+    tier: T0
+    primary_screen: Dashboard
+    related_screens: [Projects, Skills Library]
+    type: critical
+    tags: [operation, restart, stale-state, data-integrity, release-full]
+    invariants: [INV-OPERATION-001, INV-DB-001]
+    preconditions:
+      - QA DB contains a synthetic queued/running operation from a prior crash, or the app is killed during a fixture operation.
+    steps:
+      - Launch app with the QA DB.
+      - Open Dashboard, Projects, and Skills Library.
+      - Inspect operation state.
+    expected_ui:
+      - App does not remain stuck in a prior running state.
+      - Stale operation is marked failed with a restart explanation.
+      - User can run a fresh scan.
+    verifier:
+      app_db:
+        - Stale queued/running operation status becomes failed.
+      evidence:
+        - App launch screenshot.
+        - Operations table output before/after launch.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-OPS-005
+    title: Operation failure surfaces error without false success toast
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard]
+    type: adversarial
+    tags: [operation, failure, toast, install, data-integrity, release-full]
+    invariants: [INV-OPERATION-001, INV-INSTALL-001]
+    preconditions:
+      - QA project contains a fixture conflict that makes install fail.
+    steps:
+      - Start the conflicting install flow.
+      - Observe operation feedback.
+      - Return to Project Detail.
+    expected_ui:
+      - Error is visible.
+      - No success toast appears for the failed operation.
+      - Project Detail does not show the failed skill as current/installed.
+    verifier:
+      app_db:
+        - Operation status is failed.
+        - No active install record exists for the failed write.
+      filesystem:
+        - Conflict target remains unchanged.
+      evidence:
+        - Error screenshot.
+        - DB operation/install query output.
+        - Filesystem stat output.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

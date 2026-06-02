@@ -120,7 +120,7 @@ Verify: TUI is running (not a shell), input area is empty, and no stale text rem
 
 ### Sending A Prompt
 
-Clear stale input -> send prompt -> send Enter **separately** to submit -> capture again to confirm it entered the transcript. The first Enter may only confirm multi-line input; a second Enter is often required.
+Clear stale input -> send prompt -> send Enter **separately** to submit -> capture again to confirm it entered the transcript and the receiver started processing. The first Enter may only confirm multi-line input; a second Enter is often required. If the prompt remains in the input area, send Enter again and recapture before walking away.
 
 ### Selection Prompt = Dangerous
 

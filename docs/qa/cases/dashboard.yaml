@@ -1,0 +1,129 @@
+area: dashboard
+cases:
+  - id: TC-DASH-001
+    title: Dashboard summary agrees with project, skill, install, and warning records
+    tier: T1
+    primary_screen: Dashboard
+    related_screens: [Projects, Skills Library, Global Skills, Global Plugins]
+    type: smoke
+    tags: [dashboard, counts, cross-screen, release-full]
+    invariants: [INV-HOST-001, INV-PROJECT-001, INV-INSTALL-001, INV-GLOBAL-001, INV-PLUGIN-001]
+    preconditions:
+      - App runs in QA dev Electron mode.
+      - QA host, at least two QA projects, and plugin fixtures have been scanned.
+    steps:
+      - Open Dashboard.
+      - Record host path, skill count, project count, warning count, install mode counts, and global/plugin entry points.
+      - Open Projects, Skills Library, Global Skills, and Global Plugins.
+      - Return to Dashboard.
+    expected_ui:
+      - Dashboard cards remain visible and clickable.
+      - Counts match the corresponding screen totals.
+      - Warning count matches visible warning states across affected screens.
+    cross_screen_checks:
+      - Project count matches Projects list.
+      - Host skill count matches Skills Library.
+      - Install mode totals match Project Detail observed entries.
+    verifier:
+      app_db:
+        - Count projects, skills for active host, active installs, and unresolved warnings.
+      evidence:
+        - Dashboard screenshot.
+        - Screenshots of Projects and Skills Library totals.
+        - DB count query output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-DASH-002
+    title: Dashboard warning state updates after a broken project entry scan
+    tier: T1
+    primary_screen: Dashboard
+    related_screens: [Project Detail, Projects]
+    type: edge
+    tags: [dashboard, warning, broken-symlink, cross-screen, release-full]
+    invariants: [INV-INSTALL-001, INV-PROJECT-001]
+    preconditions:
+      - QA project contains a broken provider skill symlink.
+      - Project scan has been run after the symlink was broken.
+    steps:
+      - Open Project Detail and confirm the broken entry warning.
+      - Open Projects and inspect the warning summary for the project.
+      - Open Dashboard.
+    expected_ui:
+      - Dashboard warning count reflects the unresolved broken entry warning.
+      - Projects and Project Detail show compatible warning state.
+      - Dashboard does not show a green/no-warning state while warning records remain unresolved.
+    verifier:
+      app_db:
+        - Unresolved warning row exists for the broken install.
+      filesystem:
+        - Broken symlink target is absent.
+      evidence:
+        - Dashboard screenshot.
+        - Project Detail warning screenshot.
+        - DB warnings query output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-DASH-003
+    title: Dashboard recovers from empty first-run state after reset
+    tier: T0
+    primary_screen: Dashboard
+    related_screens: [Setup, Settings]
+    type: critical
+    tags: [dashboard, reset, first-run, data-integrity, release-full]
+    invariants: [INV-HOST-001, INV-SAFETY-001]
+    preconditions:
+      - App uses QA DB and QA fixture folders only.
+      - Reset All Data has been confirmed.
+    steps:
+      - Observe app after reset/relaunch.
+      - Open Dashboard if reachable.
+      - Open Setup or Settings depending on app state.
+    expected_ui:
+      - App shows Setup or a clear unconfigured state.
+      - No stale host, project, skill, install, plugin, or warning totals remain visible.
+      - No blank window is shown.
+    verifier:
+      app_db:
+        - App metadata tables are reset.
+      filesystem:
+        - QA host and project folders still exist.
+      evidence:
+        - Screenshot after reset/relaunch.
+        - DB table count output.
+        - Process/CDP health output.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-DASH-004
+    title: Dashboard navigation targets remain usable after repeated scans
+    tier: T2
+    primary_screen: Dashboard
+    related_screens: [Projects, Skills Library, Global Skills, Global Plugins]
+    type: smoke
+    tags: [dashboard, navigation, repeated-use, release-full]
+    invariants: [INV-OPERATION-001]
+    preconditions:
+      - QA host and project have been scanned at least twice in the same app session.
+    steps:
+      - Open Dashboard.
+      - Click each Dashboard navigation target.
+      - Return to Dashboard between each target.
+    expected_ui:
+      - Navigation does not hang or route to a stale detail page.
+      - Screens load without duplicate scan toasts caused by navigation alone.
+    verifier:
+      evidence:
+        - Screenshot or DOM snapshot for each target.
+        - Operation table output showing no unexpected duplicate operations.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

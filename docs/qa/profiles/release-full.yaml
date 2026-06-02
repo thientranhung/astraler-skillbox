@@ -1,0 +1,48 @@
+profile:
+  id: release-full
+  description: >
+    First-release and release-candidate QA profile. Runs all T0/T1 cases and
+    release-relevant T2/T3 cases against copied QA fixtures, plus packaged app
+    smoke when an artifact is available.
+
+selection:
+  include_tiers: [T0, T1, T2, T3]
+  include_tags: [release-full]
+  exclude_tags: []
+  order:
+    - automated-gates
+    - T0
+    - T1
+    - T2
+    - T3
+    - packaged-smoke
+
+fixture_policy:
+  source: fixtures/qa
+  copy_into_run_folder: true
+  mutate_source_fixtures: false
+  real_environment_allowed: false
+  opt_in_required_for:
+    - packaged app launch outside the run folder
+    - signed release artifact verification
+    - outbound network checks
+
+required_gates:
+  - "(cd core-go && go test ./...)"
+  - "(cd apps/desktop && pnpm typecheck)"
+  - "(cd apps/desktop && pnpm test)"
+  - "(cd apps/desktop && pnpm check:contracts-drift)"
+
+required_evidence:
+  T0:
+    - screenshot_or_dom
+    - app_db
+    - filesystem_when_applicable
+  T1:
+    - screenshot_or_dom
+    - independent_check_when_persisted
+  packaged-smoke:
+    - launch_log
+    - sidecar_path_check
+    - db_path_check
+    - orphan_process_check

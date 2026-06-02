@@ -1,0 +1,16 @@
+{
+  "plugins": {
+    "qa-plugin@astraler-fixture": [
+      {
+        "scope": "project",
+        "version": "1.1.0"
+      }
+    ],
+    "qa-project-only@astraler-fixture": [
+      {
+        "scope": "project",
+        "version": "0.1.0"
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@
 - Branch + PR is **required** for schema/migration or breaking changes. Use the Decision Rule table for everything else.
 - **One actor per file.** Implementers code; Reviewers review only and do not edit files.
 - Canonical docs are updated **in the same slice, before review**. Do not defer them.
+- Release decisions use durable QA policy, not ad-hoc judgment. See [`../qa/governance.md`](../qa/governance.md) for result semantics, evidence, waivers, and post-merge clean GO.
 
 ## Roles
 
@@ -107,6 +108,7 @@ Subagents/workers do not expand scope, change file ownership, or merge phases on
 8. **PR create**: if on a branch, push and create a PR. Do not combine create + merge.
 9. **Review + smoke/QA**: Reviewer reviews on the PR when a PR exists. Findings -> `BLOCK`/request changes + `file:line`; Implementer fixes and pushes; Reviewer re-reviews. Repeat until clean -> approve.
 10. **Merge**: Implementer merges after review/QA gates pass.
+11. **Post-merge verification**: for release, T0, filesystem, schema/RPC, or cross-layer changes, run the required delta or release QA on the merge commit before declaring clean GO.
 
 Tiny low-risk work may compress phases: docs-only/test-only/small UI polish, no behavior change, no schema/RPC/provider/filesystem/security touch, <50 LOC, direct-to-main. In that case, the user request counts as approval, but the agent must still provide a short plan, self-verify, and record why branch/spec review/QA bank were skipped.
 
@@ -185,6 +187,11 @@ If a concept changed and docs are missing, the verdict is `BLOCK`.
 | Bug fix | Add or select a regression case, then run related cases. |
 | Release readiness | Run release QA per [`../qa/README.md`](../qa/README.md). |
 | Docs-only/test-only/tiny UI polish | QA bank can be skipped if behavior is unchanged; record the reason. |
+
+QA status semantics, evidence requirements, scope/defer rules, and owner waivers
+are defined in [`../qa/governance.md`](../qa/governance.md). Project governance
+decides when QA is required; QA governance decides how results are recorded and
+interpreted.
 
 ## Docs & ADR
 

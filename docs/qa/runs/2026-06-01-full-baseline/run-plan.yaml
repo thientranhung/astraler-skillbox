@@ -1,0 +1,64 @@
+run:
+  id: 2026-06-01-full-baseline
+  date: 2026-06-01
+  scope: release
+  app_mode: dev-electron
+  target_version: 0.1.0
+  target_commit: 1a623d7
+  operator: codex-agent
+
+environment:
+  repo_root: <repo-root>
+  desktop_dir: <repo-root>/apps/desktop
+  cdp_port: 49222
+  qa_home: <repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-home/qa.db
+  qa_host: <repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-host-a
+  qa_host_b: <repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-host-b
+  qa_project: <repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-project-claude
+  qa_generic_project: <repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-project-generic
+  qa_conflict_project: <repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-conflict-project
+  qa_broken_project: <repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-broken-project
+  real_environment_allowed: false
+  notes:
+    - Fixture data is entirely under this run folder; no real project, host, plugin, or provider data is used.
+    - Packaged smoke is listed because it is T1, but this run targets dev Electron full-stack baseline only.
+
+selection:
+  include_tiers: [T0, T1]
+  include_tags: []
+  exclude_tags: []
+  case_ids:
+    - TC-SETTINGS-002
+    - TC-SKILL-002
+    - TC-SKILL-003
+    - TC-SKILL-004
+    - TC-SKILL-005
+    - TC-SETUP-001
+    - TC-SETUP-002
+    - TC-SETTINGS-001
+    - TC-PROJ-001
+    - TC-PROJ-002
+    - TC-SKILL-001
+    - TC-SKILL-006
+    - TC-PLUGIN-001
+    - TC-PLUGIN-002
+    - TC-PLUGIN-003
+    - TC-PLUGIN-004
+    - TC-PLUGIN-005
+    - TC-PACKAGE-001
+
+gates:
+  fail_fast_on_t0: false
+  require_t0_evidence: true
+  plugin_real_toggle_requires_user_approval: true
+  real_data_guard: true
+
+commands:
+  go_tests: "(cd core-go && go test ./...)"
+  desktop_typecheck: "(cd apps/desktop && pnpm typecheck)"
+  desktop_tests: "(cd apps/desktop && pnpm test)"
+  contracts_drift: "(cd apps/desktop && pnpm check:contracts-drift)"
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=<repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-home/qa.db HOME=<repo-root>/docs/qa/runs/2026-06-01-full-baseline/qa-home SKILLBOX_CDP_PORT=49222 pnpm dev)"
+  cdp_health: "curl -s http://127.0.0.1:49222/json/version"
+  agent_browser_attach: "agent-browser connect 49222"

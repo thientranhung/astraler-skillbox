@@ -58,7 +58,36 @@ cases:
 | `invariants` | References into `docs/qa/invariants.yaml`. |
 | `cross_screen_checks` | UI consistency checks across screens. |
 | `data_setup` | Fixture data to create before steps. |
+| `release_scope` | Optional scope marker: `current`, `future`, `manual`, or `not_applicable`. |
+| `phase` | Optional phase marker when a case belongs to a planned product phase. |
 | `notes` | Short notes for known limitations or manual judgment. |
+
+## Fixture Policy
+
+Reusable fixture templates live under `fixtures/qa/`. A QA run must copy those
+fixtures into its run folder before executing cases. Cases may mutate only the
+run-local copy, never the source fixture templates.
+
+Use `data_setup` when a case needs specific copied fixture state, for example:
+
+```yaml
+data_setup:
+  fixture_source: fixtures/qa/projects/claude-project
+  copy_to: runs/<run-id>/fixtures/projects/claude-project
+  mutate_copy:
+    - create a broken symlink under .claude/skills
+```
+
+## Profiles
+
+Run profiles live under `docs/qa/profiles/`.
+
+| Profile | Purpose |
+|---|---|
+| `baseline-smoke` | Fast safety smoke: T0 plus critical T1. |
+| `release-full` | First-release/release-candidate QA: all `release-full` cases across tiers, plus packaged smoke when an artifact exists. |
+| `delta` | Feature-specific QA selected by tags, primary screen, and impacted invariants. |
+| `packaged-release` | Packaged app launch, sidecar, app-data, signing/notarization, and artifact integrity checks. |
 
 ## Result JSONL
 
@@ -78,3 +107,14 @@ Allowed statuses:
 
 Use `NEEDS_HUMAN` when the next step would touch real plugin/project/provider
 state without explicit approval.
+
+Optional result metadata:
+
+| Field | Purpose |
+|---|---|
+| `decision_basis` | Short reason for the status when not obvious from the summary. |
+| `waiver` | Owner-approved waiver details when a result is accepted with known residual risk. |
+| `deferred_reason` | Reason a case is `SKIPPED` for current scope or phase. |
+| `residual_risk` | Risk that remains after the result is accepted. |
+
+Waivers are metadata, not a separate status. See [`governance.md`](governance.md).
