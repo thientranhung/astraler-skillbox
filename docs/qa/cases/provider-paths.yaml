@@ -327,3 +327,131 @@ cases:
       destructive: true
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-PROVIDER-009
+    title: Two providers detected in one project keep independent path and skill facts
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Projects, Settings]
+    type: smoke
+    tags: [provider, multi-provider, project-scan, path-facts, release-full]
+    invariants: [INV-PROVIDER-001, INV-PROJECT-001, INV-DB-001]
+    preconditions:
+      - QA project fixture contains Shared Agent Skills and Claude provider markers.
+      - Provider path settings use built-in defaults.
+    data_setup:
+      fixture_source: fixtures/qa/projects/project-multi-provider
+      copy_to: runs/<run-id>/fixtures/projects/project-multi-provider
+      mutate_copy:
+        - keep `.agents/skills` and `.claude/skills` as independent provider paths
+    steps:
+      - Add or open the multi-provider QA project.
+      - Run Scan Project.
+      - Inspect each provider section in Project Detail.
+      - Open Settings provider path definitions.
+    expected_ui:
+      - Each provider shows its own detected path and skills path.
+      - A warning, count, or install state under one provider does not appear under the other provider.
+      - Settings defaults remain unchanged by scan.
+    cross_screen_checks:
+      - Project Detail and Projects row agree on the set of detected providers.
+    verifier:
+      app_db:
+        - Project provider fact rows are keyed by distinct provider definitions.
+        - Each provider row stores its own detected path and skills path.
+      filesystem:
+        - Both provider paths exist and remain unchanged.
+      evidence:
+        - Project Detail screenshot showing both provider facts.
+        - DB query output for project provider facts.
+        - Filesystem listing for each provider path.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PROVIDER-010
+    title: Provider disabled after install hides current state without deleting install records
+    tier: T1
+    primary_screen: Settings
+    related_screens: [Project Detail, Skills Library]
+    type: edge
+    tags: [provider, disable, install, data-integrity, release-full]
+    invariants: [INV-PROVIDER-001, INV-INSTALL-001, INV-SAFETY-001]
+    preconditions:
+      - QA project has one managed install for the provider being disabled.
+      - QA executor may mutate only run-local fixture copies.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - use the project-with-install template with one seeded provider install
+    steps:
+      - Open Settings.
+      - Disable the provider with the existing install.
+      - Open Project Detail and Skills Library.
+      - Re-enable the provider and rescan the project.
+    expected_ui:
+      - Disabled state is clear in Settings.
+      - Project Detail does not show disabled-provider installs as current active actions while the provider is disabled.
+      - The provider folder and install target are not deleted.
+      - Re-enabled provider can rescan and recover the install state.
+    cross_screen_checks:
+      - Settings, Project Detail, and Skills Library agree before disable, during disable, and after re-enable.
+    verifier:
+      app_db:
+        - Provider enabled state changes only for the selected provider.
+        - Existing install metadata remains present or is explicitly hidden/disabled, not deleted as a side effect.
+      filesystem:
+        - Provider folder and install target remain on disk throughout disable/re-enable.
+      evidence:
+        - Settings and Project Detail screenshots before/after disable and after re-enable.
+        - DB query output for provider enabled state and install rows.
+        - Filesystem `stat` output for provider folder and install target.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-PROVIDER-012
+    title: Enable or disable one provider does not change other providers' enabled state or paths
+    tier: T1
+    primary_screen: Settings
+    related_screens: [Project Detail]
+    type: edge
+    tags: [provider, enable-disable, settings, isolation, multi-provider, release-full]
+    invariants: [INV-PROVIDER-001, INV-DB-001, INV-SAFETY-001]
+    preconditions:
+      - QA DB has at least two provider definitions visible in Settings.
+      - QA run uses only fixture provider paths or settings.
+    data_setup:
+      fixture_source: fixtures/qa/multi-provider-settings
+      copy_to: runs/<run-id>/fixtures/multi-provider-settings
+      mutate_copy:
+        - keep provider settings fixture read-only; use QA DB state for provider enablement
+    steps:
+      - Open Settings provider list.
+      - Record enabled state and paths for at least two providers.
+      - Disable one provider.
+      - Re-enable that provider.
+      - Open Project Detail for a multi-provider QA project if available.
+    expected_ui:
+      - Only the selected provider's enabled state changes.
+      - Other providers keep their enabled state and configured paths.
+      - Project Detail reflects only the selected provider's disabled/enabled state.
+    cross_screen_checks:
+      - Settings and Project Detail agree on selected provider state and unaffected provider state.
+    verifier:
+      app_db:
+        - Provider setting row changes only for the selected provider key.
+        - Provider path override rows for other providers are unchanged.
+      filesystem:
+        - No provider folders or settings files are deleted or rewritten by enable/disable.
+      evidence:
+        - Settings screenshots before disable, after disable, and after re-enable.
+        - DB query output for provider settings and overrides before/after.
+        - Filesystem stat output for any referenced QA fixture paths.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden

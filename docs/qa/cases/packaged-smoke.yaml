@@ -110,3 +110,63 @@ cases:
       destructive: false
       allowed_environment: packaged_smoke
       real_environment: opt_in
+
+  - id: TC-PACKAGE-004
+    title: Packaged app restart recovers in-progress operations like the dev build
+    tier: T1
+    primary_screen: Packaged App
+    related_screens: [Project Detail, Dashboard]
+    type: packaged-smoke
+    tags: [packaging, restart, operation, recovery, release-full]
+    invariants: [INV-PACKAGE-001, INV-OPERATION-001, INV-DB-001]
+    release_scope: current
+    preconditions:
+      - Current packaged macOS artifact has been rebuilt from the target commit.
+      - Test run uses a safe app data location or a clean test macOS user/profile.
+      - QA executor has owner approval for the exact packaged artifact path under test.
+      - Packaged smoke uses the same run-local release-cycle fixture pattern as dev restart recovery.
+    data_setup:
+      fixture_sources:
+        - fixtures/qa/packaged-artifact
+        - fixtures/qa/release-cycle
+      copy_to:
+        packaged_artifact: runs/<run-id>/fixtures/packaged-artifact
+        release_cycle: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - record artifact path, smoke app-data path, QA DB path, and release-cycle fixture path in the run plan
+        - "run `fixtures/qa/release-cycle/scripts/create-large-copy-skill.sh runs/<run-id>/fixtures/release-cycle 512`"
+        - use the generated `zz-large-copy-skill` with the run-local `project-with-provider` fixture
+    steps:
+      - Launch the packaged app from the approved artifact with isolated smoke app data.
+      - Configure the packaged smoke app to use the run-local release-cycle host A and project-with-provider fixture.
+      - Start installing `zz-large-copy-skill` in Copy (rsync) mode.
+      - Poll operation state out of band until the install operation is queued or running.
+      - Quit or terminate the packaged app while the install operation is still queued or running.
+      - Relaunch the same packaged app with the same smoke app data.
+      - Open Dashboard, Project Detail, and Skills Library.
+    expected_ui:
+      - Packaged relaunch does not show the interrupted operation as running forever.
+      - Interrupted operation is terminal failed/cancelled/stale or completed only if DB and filesystem prove success.
+      - User can retry the affected workflow.
+      - No dev CDP, repo DB, or `go run` behavior is required for recovery.
+    cross_screen_checks:
+      - Dashboard and affected detail screen agree on operation/install state after relaunch.
+    verifier:
+      app_db:
+        - Packaged smoke DB has no queued/running operation left after relaunch recovery.
+        - Install or scan metadata matches the recovered terminal state.
+      filesystem:
+        - Smoke DB path is under packaged smoke app data, not the repo/dev DB.
+        - Partial filesystem target is absent or classified consistently with the UI.
+        - No files are written outside the run-local release-cycle fixture and packaged smoke app-data path.
+      process:
+        - Packaged sidecar launches from bundled resources before and after restart.
+      evidence:
+        - Output from `create-large-copy-skill.sh`, including generated size and path.
+        - Screenshots before termination and after relaunch.
+        - DB operation/install query output from the packaged smoke DB.
+        - Filesystem/process output for smoke DB path, sidecar path, and affected target.
+    safety:
+      destructive: false
+      allowed_environment: packaged_smoke
+      real_environment: opt_in

@@ -480,3 +480,381 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: allowed_read_only
+
+  - id: TC-SKILL-008
+    title: Skill with missing or malformed SKILL.md is listed as invalid and not usable
+    tier: T1
+    primary_screen: Skills Library
+    related_screens: [Add Skill Wizard]
+    type: edge
+    tags: [skills-library, invalid-skill, malformed-frontmatter, validation, release-full]
+    invariants: [INV-HOST-001, INV-SAFETY-001]
+    preconditions:
+      - QA run uses the malformed host fixture as the active Skill Host Folder.
+    data_setup:
+      fixture_source: fixtures/qa/host-topologies/malformed-md
+      copy_to: runs/<run-id>/fixtures/host-topologies/malformed-md
+      mutate_copy:
+        - keep one skill folder without `SKILL.md` and one with malformed frontmatter
+    steps:
+      - Open Skills Library.
+      - Run Skill Host Folder scan.
+      - Open Add Skill for a QA project.
+    expected_ui:
+      - Malformed entries are shown as invalid, ignored with warning, or otherwise not offered as valid installable skills.
+      - Add Skill Wizard does not allow installing malformed entries.
+      - Scan reaches a terminal state and the UI does not stay stuck.
+    verifier:
+      app_db:
+        - Invalid host entries are absent from active installable skill rows or are marked invalid/warning according to contract.
+        - No active install record can be created for the malformed entries.
+      filesystem:
+        - Malformed fixture folders are unchanged by scan.
+      evidence:
+        - Skills Library screenshot after scan.
+        - Add Skill Wizard screenshot or DOM snapshot.
+        - DB query output for skill rows/warnings.
+        - Filesystem listing for malformed entries.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-SKILL-009
+    title: Duplicate skill names across host are disambiguated without collision in install
+    tier: T1
+    primary_screen: Skills Library
+    related_screens: [Add Skill Wizard, Project Detail]
+    type: edge
+    tags: [skills-library, duplicate-name, install, data-integrity, release-full]
+    invariants: [INV-HOST-001, INV-INSTALL-001, INV-DB-001]
+    preconditions:
+      - QA run uses the duplicate-name host fixture as the active Skill Host Folder.
+      - QA project has a detected provider target.
+    data_setup:
+      fixture_source: fixtures/qa/host-topologies/duplicate-names
+      copy_to: runs/<run-id>/fixtures/host-topologies/duplicate-names
+      mutate_copy:
+        - keep two distinct skill folders with the same frontmatter `name`
+    steps:
+      - Open Skills Library and scan the duplicate-name host.
+      - Open Add Skill for the QA project.
+      - Install one of the duplicate-name entries.
+      - Open Project Detail.
+    expected_ui:
+      - Duplicate display names are disambiguated by path, folder, warning, or other visible metadata.
+      - Installing one duplicate does not mark the other duplicate as installed.
+      - Project Detail shows only the selected source path as installed.
+    cross_screen_checks:
+      - Skills Library, Add Skill Wizard, and Project Detail agree on which duplicate source was installed.
+    verifier:
+      app_db:
+        - Skill rows for duplicate folders have distinct IDs/source paths.
+        - Active install row points to the selected duplicate skill ID only.
+      filesystem:
+        - Project target points to or contains only the selected duplicate source.
+        - Both duplicate source folders remain intact.
+      evidence:
+        - Skills Library duplicate rows screenshot.
+        - Project Detail screenshot after install.
+        - DB query output for skill IDs/source paths and install row.
+        - "`readlink`/`stat` output for the project target."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-PROJ-004
+    title: Project folder moved after add reports missing without losing the record
+    tier: T1
+    primary_screen: Projects
+    related_screens: [Project Detail, Dashboard]
+    type: edge
+    tags: [project, missing-path, external-mutation, data-integrity, release-full]
+    invariants: [INV-PROJECT-001, INV-DB-001]
+    preconditions:
+      - QA project is registered from a run-local fixture path.
+      - QA executor may rename or move only the run-local project fixture.
+    data_setup:
+      fixture_source: fixtures/qa/projects/generic-agents-project
+      copy_to: runs/<run-id>/fixtures/projects/generic-agents-project
+      mutate_copy:
+        - start with a valid registered project fixture
+    steps:
+      - Open Projects and confirm the project is listed.
+      - Move or rename the run-local project folder outside the app.
+      - Refresh Projects or run scan.
+      - Open Project Detail and Dashboard.
+    expected_ui:
+      - Project remains listed as a known project record.
+      - Missing path status or warning is visible.
+      - Project Detail does not claim current provider facts from the moved folder.
+      - User has a visible recovery action such as rescan, relink, or remove record.
+    cross_screen_checks:
+      - Projects, Project Detail, and Dashboard agree on missing project state.
+    verifier:
+      app_db:
+        - Project row remains present with missing/stale scan state rather than being silently deleted.
+      filesystem:
+        - Original project path is absent and moved path exists under the run folder.
+      evidence:
+        - Projects and Project Detail screenshots.
+        - DB query output for project row and scan state.
+        - "`test -e` output for original and moved paths."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-PROJ-005
+    title: Adding the same project path twice does not create a duplicate record
+    tier: T1
+    primary_screen: Projects
+    related_screens: [Dashboard, Project Detail]
+    type: edge
+    tags: [project, add-project, duplicate, data-integrity, release-full]
+    invariants: [INV-PROJECT-001, INV-DB-001]
+    preconditions:
+      - QA project fixture exists and is safe to add.
+    data_setup:
+      fixture_source: fixtures/qa/projects/generic-agents-project
+      copy_to: runs/<run-id>/fixtures/projects/generic-agents-project
+      mutate_copy:
+        - keep a single valid project path for duplicate-add attempts
+    steps:
+      - Open Projects.
+      - Add the QA project path.
+      - Attempt to add the exact same path again.
+      - Open Dashboard and Project Detail.
+    expected_ui:
+      - Second add is rejected, ignored, or focuses the existing project with a clear message.
+      - Projects list shows one row for the path.
+      - Dashboard project count is not incremented by the duplicate attempt.
+    cross_screen_checks:
+      - Projects, Dashboard, and Project Detail all reference the same single project record.
+    verifier:
+      app_db:
+        - Exactly one active project row exists for the normalized path.
+      filesystem:
+        - Project folder is not modified by the duplicate add attempt.
+      evidence:
+        - Projects screenshot after duplicate attempt.
+        - DB query output grouping projects by normalized path.
+        - Filesystem stat output for project folder before/after.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PROJ-007
+    title: Project Detail with multiple detected providers shows each provider facts independently
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Projects, Dashboard]
+    type: smoke
+    tags: [project, provider, multi-provider, scan, cross-screen, release-full]
+    invariants: [INV-PROJECT-001, INV-PROVIDER-001, INV-DB-001]
+    preconditions:
+      - QA project fixture contains at least two provider markers with distinct skills/config paths.
+    data_setup:
+      fixture_source: fixtures/qa/projects/project-multi-provider
+      copy_to: runs/<run-id>/fixtures/projects/project-multi-provider
+      mutate_copy:
+        - keep `.agents/skills` and `.claude/skills` as distinct provider targets
+    steps:
+      - Add or open the multi-provider QA project.
+      - Run Scan Project.
+      - Inspect Project Detail provider sections.
+      - Open Projects and Dashboard.
+    expected_ui:
+      - Project Detail shows each detected provider separately.
+      - Provider paths, skill counts, warnings, and install actions do not bleed between providers.
+      - Scan reaches a terminal state.
+    cross_screen_checks:
+      - Projects row and Dashboard totals match the final Project Detail provider facts.
+    verifier:
+      app_db:
+        - Project provider facts have separate rows per provider key.
+        - Detected paths for each provider match its own fixture path.
+      filesystem:
+        - Both provider fixture paths exist and remain unchanged by scan.
+      evidence:
+        - Project Detail screenshot showing both provider sections.
+        - DB query output for project provider facts.
+        - Filesystem listing for each provider path.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PROJ-008
+    title: Project Detail reflects an external mutation only after explicit rescan
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Projects]
+    type: edge
+    tags: [project, provider, external-mutation, scan, stale-state, release-full]
+    invariants: [INV-PROJECT-001, INV-DB-001]
+    preconditions:
+      - QA project has a scanned provider with known current facts.
+      - QA executor may mutate only the run-local project fixture outside the app.
+    data_setup:
+      fixture_source: fixtures/qa/projects/generic-agents-project
+      copy_to: runs/<run-id>/fixtures/projects/generic-agents-project
+      mutate_copy:
+        - start with a well-formed `.agents/skills` provider target
+    steps:
+      - Open Project Detail after a successful scan.
+      - Add or remove one provider entry in the run-local fixture outside the app.
+      - Observe Project Detail before clicking Scan Project.
+      - Click Scan Project and wait for terminal state.
+    expected_ui:
+      - Before explicit rescan, Project Detail does not claim newly mutated filesystem state as freshly verified.
+      - After explicit rescan, Project Detail reflects the external mutation.
+      - UI clearly distinguishes stale/last-scanned facts from current rescan results where applicable.
+    cross_screen_checks:
+      - Projects row reflects the mutation only after the explicit rescan completes.
+    verifier:
+      app_db:
+        - Scan timestamp or operation result changes only after explicit rescan.
+        - Provider/skill facts after rescan match the mutated run-local filesystem.
+      filesystem:
+        - External mutation exists only in the run-local project fixture.
+      evidence:
+        - Project Detail screenshots before mutation, before rescan, and after rescan.
+        - DB query output for scan timestamp and provider facts.
+        - Filesystem listing showing the mutation.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-013
+    title: Remove when the project target was already deleted on disk reconciles to removed
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Skills Library, Dashboard]
+    type: edge
+    tags: [skill, remove, missing-target, external-mutation, data-integrity, release-full]
+    invariants: [INV-INSTALL-001, INV-DB-001]
+    preconditions:
+      - QA project has one managed install.
+      - QA executor may delete only the run-local project target outside the app.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - use the project-with-install template with one seeded managed install
+    steps:
+      - Open Project Detail and confirm the install is listed.
+      - Delete the project install target outside the app.
+      - Click Remove for that install.
+      - Open Skills Library and Dashboard.
+    expected_ui:
+      - Remove reaches a terminal state and does not stay stuck because the target was already absent.
+      - Project Detail no longer shows the install as active.
+      - A warning or reconciliation message is visible if the product reports already-missing target.
+    cross_screen_checks:
+      - Skills Library and Dashboard agree that the install is no longer active.
+    verifier:
+      app_db:
+        - Active install row is removed or marked removed/missing according to contract.
+        - No remove operation remains queued or running.
+      filesystem:
+        - Project target is absent.
+        - QA host skill remains intact.
+      evidence:
+        - Project Detail screenshot after remove.
+        - DB query output for install and operation state.
+        - Filesystem `test -e` output for target and host skill.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-014
+    title: Re-install a previously removed skill produces a clean active record
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard, Skills Library]
+    type: smoke
+    tags: [skill, reinstall, remove, install, data-integrity, release-full]
+    invariants: [INV-INSTALL-001, INV-DB-001]
+    preconditions:
+      - QA project has a provider target and one host skill that can be installed, removed, then re-installed.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - use the project-with-provider template with one available host skill
+    steps:
+      - Install one host skill.
+      - Remove the installed skill.
+      - Re-open Add Skill and install the same host skill again.
+      - Open Project Detail and Skills Library.
+    expected_ui:
+      - Re-install is available after remove.
+      - Final Project Detail shows one active install for the skill.
+      - UI does not resurrect stale removed metadata as a second active install.
+    cross_screen_checks:
+      - Project Detail and Skills Library agree on the final active install.
+    verifier:
+      app_db:
+        - Exactly one active install row exists for the project/provider/skill after re-install.
+        - Prior removed history, if retained, is not counted as active.
+      filesystem:
+        - Final project target exists and points to or contains the selected host skill.
+        - Host skill remains intact.
+      evidence:
+        - Screenshots after remove and after re-install.
+        - DB query output for install history/status.
+        - Filesystem `stat`/`readlink` output for final target.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-015
+    title: Install of the same skill into two providers in one project is independent
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard, Dashboard]
+    type: smoke
+    tags: [skill, install, multi-provider, data-integrity, release-full]
+    invariants: [INV-INSTALL-001, INV-PROVIDER-001, INV-DB-001]
+    preconditions:
+      - QA project has two detected provider targets.
+      - QA host has one skill available to both providers.
+    data_setup:
+      fixture_source: fixtures/qa/projects/project-multi-provider
+      copy_to: runs/<run-id>/fixtures/projects/project-multi-provider
+      mutate_copy:
+        - keep two distinct provider skills targets for the same project
+    steps:
+      - Open Project Detail for the multi-provider project.
+      - Install the same host skill into provider A.
+      - Install the same host skill into provider B.
+      - Remove the install from provider A only.
+      - Inspect provider B and Dashboard.
+    expected_ui:
+      - Provider A and provider B install states are shown separately.
+      - Removing from provider A does not remove provider B's install.
+      - Dashboard/install counts match the remaining provider B install.
+    cross_screen_checks:
+      - Project Detail and Dashboard agree after provider A removal.
+    verifier:
+      app_db:
+        - Separate install rows exist for each provider target after both installs.
+        - After removing provider A, provider B remains active and provider A is removed.
+      filesystem:
+        - Provider A target is absent after remove.
+        - Provider B target remains present.
+        - QA host skill remains intact.
+      evidence:
+        - Project Detail screenshots after both installs and after provider A remove.
+        - DB query output grouped by provider.
+        - Filesystem listing for both provider targets.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

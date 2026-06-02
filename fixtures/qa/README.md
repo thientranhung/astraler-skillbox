@@ -17,6 +17,11 @@ docs/qa/runs/<run-id>/fixtures/
   provider-overrides/
   db/
   packaged-artifact/
+  host-topologies/
+  global/
+  global-plugin/
+  multi-provider-settings/
+  network-monitor/
 ```
 
 Never point destructive QA cases at the repository fixture source directly.
@@ -31,3 +36,13 @@ Release-full P0 templates:
 - `db/partial-migration/` creates a run-local dirty migration DB via script.
 - `packaged-artifact/` is a marker for approved packaged artifact metadata; app
   bundles and DMGs are never committed as fixtures.
+
+Release-full T1 templates:
+
+- `host-topologies/` covers invalid, duplicate, empty, and file-as-host cases.
+- `projects/project-multi-provider/` covers independent provider facts.
+- `projects/project-plugin-override/` covers project plugin override display.
+- `global/` and `global-plugin/` cover global malformed paths, missing settings,
+  and plugin-write operation cases.
+- `multi-provider-settings/` covers provider enablement isolation.
+- `network-monitor/` records approved commands for extended idle privacy checks.
