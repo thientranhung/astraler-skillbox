@@ -8,6 +8,14 @@ import { registerIpcBridge } from "./core-process/ipc-bridge.js";
 // packaged builds (where it's unset) fall back to the built index.html.
 const ELECTRON_RENDERER_URL = process.env["ELECTRON_RENDERER_URL"];
 
+// Phase 1 does not store credentials, cookies, or tokens. On macOS, Chromium's
+// default profile storage can still request a Keychain "Safe Storage" item at
+// startup, which is scary and unnecessary for this product phase. Keep Keychain
+// disabled by default; phase 2 credential work can opt back in explicitly.
+if (process.platform === "darwin" && process.env["SKILLBOX_ENABLE_KEYCHAIN"] !== "1") {
+  app.commandLine.appendSwitch("use-mock-keychain");
+}
+
 // Dev-only: expose the Chrome DevTools Protocol on a fixed localhost port so
 // browser-automation agents (agent-browser) can `connect` to THIS running dev
 // instance instead of launching a second app. Gated on ELECTRON_RENDERER_URL
