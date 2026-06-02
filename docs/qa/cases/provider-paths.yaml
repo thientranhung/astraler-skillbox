@@ -153,3 +153,124 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: forbidden
+
+  - id: TC-PROVIDER-006
+    title: Scan of provider marker without skills folder claims no phantom skills
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Projects, Dashboard]
+    type: adversarial
+    tags: [provider, partial-structure, detection, missing-folder, data-integrity, release-full]
+    invariants: [INV-PROJECT-001, INV-DB-001]
+    preconditions:
+      - "QA project fixture has `.agents/` but intentionally does not have `.agents/skills/`."
+      - QA executor may mutate only the run-local project fixture.
+    data_setup:
+      fixture_source: fixtures/qa/projects/generic-agents-project
+      copy_to: runs/<run-id>/fixtures/projects/generic-agents-project
+      mutate_copy:
+        - remove the .agents/skills directory, leaving .agents present
+    steps:
+      - Open Project Detail and run Scan Project.
+      - Open Projects and Dashboard.
+    expected_ui:
+      - Provider is shown as present but with an incomplete or empty skills structure.
+      - No installed or available skills are claimed under the missing skills folder.
+      - Scan reaches a terminal state and the UI does not stay stuck scanning.
+    cross_screen_checks:
+      - Projects row, Project Detail, and Dashboard agree the provider has zero current skills.
+    verifier:
+      app_db:
+        - Provider detection row records the present marker without a usable skills path, or marks the skills structure incomplete.
+        - No skill or install row exists for skills under the absent `.agents/skills`.
+      filesystem:
+        - "`.agents` exists and `.agents/skills` is absent in the run-local fixture."
+        - No files are written outside the run-local QA project fixture.
+      evidence:
+        - Project Detail screenshot after scan.
+        - DB query output for provider facts and skill/install rows.
+        - "`test -d` output for `.agents` and `.agents/skills`."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-PROVIDER-007
+    title: Provider skills path that is a file or broken symlink scans without drift
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Projects]
+    type: adversarial
+    tags: [provider, partial-structure, negative-topology, broken-symlink, data-integrity, release-full]
+    invariants: [INV-PROJECT-001, INV-OPERATION-001, INV-DB-001]
+    preconditions:
+      - QA executor may mutate only the run-local project fixture.
+    data_setup:
+      fixture_source: fixtures/qa/projects/generic-agents-project
+      copy_to: runs/<run-id>/fixtures/projects/generic-agents-project
+      mutate_copy:
+        - replace .agents/skills with a regular file (variant A) or a symlink to a deleted target (variant B)
+    steps:
+      - Run the case once per variant (file, broken symlink).
+      - Open Project Detail and run Scan Project.
+    expected_ui:
+      - Scan reaches a terminal empty or error state for the malformed skills path.
+      - The UI does not stay stuck scanning and does not claim usable skills.
+    verifier:
+      app_db:
+        - No skill or install row is created from the malformed skills path.
+        - No scan operation remains queued or running after completion.
+      filesystem:
+        - The malformed node is unchanged by the scan in the run-local fixture.
+        - No files are written outside the run-local QA project fixture.
+      evidence:
+        - Project Detail screenshot after scan for each variant.
+        - DB query output for skill/install/operation rows.
+        - "`stat` and `readlink` output for the malformed `.agents/skills` node."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-PROVIDER-008
+    title: Skills folder deleted just before install ends in terminal failure
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard]
+    type: adversarial
+    tags: [provider, live-mutation, install, operation-state, race, data-integrity, release-full]
+    invariants: [INV-OPERATION-001, INV-INSTALL-001, INV-DB-001]
+    preconditions:
+      - QA host has one valid available skill not yet installed in the QA project.
+      - "`generic_agents` is the selected install provider."
+      - QA executor may mutate only the run-local project fixture.
+    data_setup:
+      fixture_source: fixtures/qa/projects/generic-agents-project
+      copy_to: runs/<run-id>/fixtures/projects/generic-agents-project
+      mutate_copy:
+        - scan project so the provider is detected
+        - "remove `.agents/skills` from the run-local copy"
+        - then attempt Add Skill install
+    steps:
+      - Open Project Detail and run Scan Project.
+      - Open Add Skill and select the Shared Agent Skills provider and one not-installed host skill.
+      - Remove the `.agents/skills` directory from the run-local fixture outside the app.
+      - Click Install and wait for the operation to reach a terminal state.
+    expected_ui:
+      - Install reaches a terminal failure (or recreates and succeeds only if the provider explicitly creates its structure), never an indefinite Installing state.
+      - No success message appears unless the skill target actually exists on disk.
+    verifier:
+      app_db:
+        - No active install record exists when the install did not complete on disk.
+        - No operation for the install remains queued or running after completion.
+      filesystem:
+        - No partial or orphan target is left under the QA project fixture.
+        - No files are written outside the run-local QA project fixture and QA host folder.
+      evidence:
+        - Wizard screenshot at terminal state.
+        - DB query output for operation and install rows.
+        - Filesystem listing of `.agents` after the attempt.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

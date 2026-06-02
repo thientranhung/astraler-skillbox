@@ -7,6 +7,11 @@ the run folder.
 For status semantics, evidence standards, waivers, T0 handling, and clean GO
 rules, read [`governance.md`](governance.md).
 
+For *how to generate* cases, read [`methodology.md`](methodology.md). Supporting
+test-design docs: [`fixtures-taxonomy.md`](fixtures-taxonomy.md), exploratory
+[`charters/`](charters/), and production bug-escape records under
+[`escapes/`](escapes/).
+
 ## Why This Exists
 
 Skillbox is local-first and filesystem-heavy. Unit tests and contract tests are
