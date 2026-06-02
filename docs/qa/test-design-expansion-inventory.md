@@ -13,7 +13,7 @@ T1 = core journey, T2 = secondary. Fixtures reference
 [`fixtures-taxonomy.md`](fixtures-taxonomy.md).
 
 Baseline at time of writing: **74 existing cases** (including PR #27 and PR #28
-additions). This inventory proposes **41 new candidate cases**; see the
+additions). This inventory proposes **34 new candidate cases**; see the
 [Summary](#summary).
 
 How to read each surface: **State model** = entity lifecycle edges; **Matrix
@@ -179,7 +179,7 @@ existing case IDs; **Gaps → candidates** = proposed new cases.
 
 ### How many new cases
 
-**41 candidate cases** across 13 surfaces:
+**34 candidate cases** across 13 surfaces:
 
 | Surface | New | of which T0 |
 |---|---|---|
@@ -196,31 +196,36 @@ existing case IDs; **Gaps → candidates** = proposed new cases.
 | DB/migration/recovery | 2 | 2 |
 | Offline/local-first | 1 | 0 |
 | Packaged/release | 3 | 2 |
-| **Total** | **41** | **13** |
+| **Total** | **34** | **10** |
 
-Tier split: **13 T0, ~22 T1, ~6 T2.**
+Tier split: **10 T0, 21 T1, 3 T2.** (The per-surface `New` column sums to 34;
+the `of which T0` column sums to 10.)
 
 ### Which are release-full
 
-All **13 T0** plus the **T1** cases on core journeys and release paths are
-`release-full`. Excluded from `release-full`: the **T2** polish/secondary cases
-(`TC-SKILL-010`, `TC-GLOBAL-007`, `TC-PROJ-006`) — record and triage, do not block
-release. Net: **~35 of 41** carry the `release-full` tag.
+All **10 T0** plus the **21 T1** cases (core journeys and release paths) are
+`release-full`. Excluded from `release-full`: the **3 T2** polish/secondary cases
+(`TC-SKILL-010`, `TC-PROJ-006`, `TC-GLOBAL-007`) — record and triage, do not block
+release. Net: **31 of 34** carry the `release-full` tag.
 
 ### What to write first (P0)
 
-Order by release risk — class-level gaps first (data integrity, async terminal,
-restart recovery), since those are how the 2026-06-02 escape happened:
+P0 = the **10 T0** candidates, ordered by release risk — class-level gaps first
+(data integrity, async terminal, restart recovery), since those are how the
+2026-06-02 escape happened. Each group lists its T0 cases; close T1 follow-ups
+are noted but are not P0.
 
-1. **Install matrix T0** — `TC-SKILL-011` (copy mode), `TC-SKILL-012` (switch mode). Largest untested combination on a destructive path.
-2. **Restart recovery T0** — `TC-OPS-007` (restart during install), `TC-PACKAGE-004`, `TC-RELEASE-006`, `TC-PACKAGE-003` (orphan sidecar). Restart + packaged paths are thin today.
-3. **DB cycle integrity T0** — `TC-DB-005` (full-cycle FK/count), `TC-MIGRATE-005` (interrupted migration).
-4. **Override reset / enablement T0/T1** — `TC-PROVIDER-011`, `TC-PROVIDER-012`, `TC-SETTINGS-004`.
-5. **Op duplication T0** — `TC-OPS-006` (install/remove dedup), `TC-OPS-008`.
-6. **Host re-point T0** — `TC-SETUP-003`.
+1. **Install matrix** — `TC-SKILL-011` (copy mode), `TC-SKILL-012` (switch mode). Largest untested combination on a destructive path. *(T1 follow-ups: TC-SKILL-013/014/015.)*
+2. **Restart recovery** — `TC-OPS-007` (restart during install), `TC-PACKAGE-003` (orphan sidecar), `TC-RELEASE-006` (packaged app-data DB path). *(T1 follow-up: TC-PACKAGE-004.)*
+3. **DB cycle integrity** — `TC-DB-005` (full-cycle FK/count), `TC-MIGRATE-005` (interrupted migration).
+4. **Override reset / enablement** — `TC-PROVIDER-011` (reset restores path, no deletion). *(T1 follow-ups: TC-PROVIDER-012, TC-SETTINGS-004.)*
+5. **Op duplication** — `TC-OPS-006` (install/remove dedup). *(T1 follow-up: TC-OPS-008.)*
+6. **Host re-point** — `TC-SETUP-003` (re-point with installs stays consistent).
 
-P0 set = the **13 T0** candidates. Remaining T1 cases follow once P0 lands; T2
-last.
+The six groups above contain exactly the 10 T0 cases: TC-SKILL-011,
+TC-SKILL-012, TC-OPS-007, TC-PACKAGE-003, TC-RELEASE-006, TC-DB-005,
+TC-MIGRATE-005, TC-PROVIDER-011, TC-OPS-006, TC-SETUP-003. Remaining T1 cases
+follow once P0 lands; T2 last.
 
 ### Fixture roadmap
 
@@ -239,5 +244,5 @@ Most candidates depend on fixture templates that do not exist yet. Build these
 ### Sequencing
 
 1. Land this inventory (proposal). 2. Build the fixture templates above.
-3. Write P0 (13 T0) as YAML. 4. Write release-full T1. 5. Add T2 last.
+3. Write P0 (10 T0) as YAML. 4. Write release-full T1. 5. Add T2 last.
 No YAML cases are added until a surface is explicitly scheduled.
