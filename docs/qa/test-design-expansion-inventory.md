@@ -6,8 +6,8 @@ single place to see, per surface, the state model, the negative-topology /
 failure-matrix dimensions, what existing cases already cover, the gaps, and the
 candidate cases needed for release-grade QA.
 
-This is a **proposal**, not the cases themselves. Candidate IDs are reserved here
-but no YAML is written until a surface is scheduled. Tiers follow
+This inventory starts as a proposal; when a surface is scheduled, its candidate
+IDs are promoted into executable YAML under `docs/qa/cases/`. Tiers follow
 [`README.md`](README.md): T0 = data-integrity/destructive (blocks release),
 T1 = core journey, T2 = secondary. Fixtures reference
 [`fixtures-taxonomy.md`](fixtures-taxonomy.md).
@@ -215,6 +215,10 @@ P0 = the **10 T0** candidates, ordered by release risk — class-level gaps firs
 2026-06-02 escape happened. Each group lists its T0 cases; close T1 follow-ups
 are noted but are not P0.
 
+Status: the 10 P0/T0 candidates below have been promoted from inventory into
+YAML cases. Keep the table here as the design map and continue with the T1
+release-full follow-ups next.
+
 1. **Install matrix** — `TC-SKILL-011` (copy mode), `TC-SKILL-012` (switch mode). Largest untested combination on a destructive path. *(T1 follow-ups: TC-SKILL-013/014/015.)*
 2. **Restart recovery** — `TC-OPS-007` (restart during install), `TC-PACKAGE-003` (orphan sidecar), `TC-RELEASE-006` (packaged app-data DB path). *(T1 follow-up: TC-PACKAGE-004.)*
 3. **DB cycle integrity** — `TC-DB-005` (full-cycle FK/count), `TC-MIGRATE-005` (interrupted migration).
@@ -232,8 +236,10 @@ follow once P0 lands; T2 last.
 Most candidates depend on fixture templates that do not exist yet. Build these
 (per [`fixtures-taxonomy.md`](fixtures-taxonomy.md)) before writing the cases:
 
-- `project-with-provider`, `project-with-install`, `project-with-override`,
-  `project-multi-provider`, `multi-provider-settings`
+- P0 templates added: `release-cycle` (covers `project-with-provider`,
+  `project-with-install`, and host re-point setup), `provider-overrides/project-with-override`,
+  `db/partial-migration`, and `packaged-artifact`.
+- Remaining T1/T2 templates to add: `project-multi-provider`, `multi-provider-settings`
 - `host-with-installs`, `host-is-file`, `empty-host`, `host/skill-malformed-md`,
   `host/duplicate-names`
 - `global/skills-malformed`, `global/plugin-settings-missing`,
@@ -243,6 +249,7 @@ Most candidates depend on fixture templates that do not exist yet. Build these
 
 ### Sequencing
 
-1. Land this inventory (proposal). 2. Build the fixture templates above.
-3. Write P0 (10 T0) as YAML. 4. Write release-full T1. 5. Add T2 last.
-No YAML cases are added until a surface is explicitly scheduled.
+1. Land this inventory. 2. Build fixture templates for the scheduled surface.
+3. Promote P0 (10 T0) to YAML. 4. Write release-full T1. 5. Add T2 last.
+For remaining candidates, do not add YAML until the surface is explicitly
+scheduled.

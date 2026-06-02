@@ -313,6 +313,106 @@ cases:
       allowed_environment: qa_fixture_only
       real_environment: forbidden
 
+  - id: TC-SKILL-011
+    title: Copy-mode install writes the skill into the project target and records mode=copy
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard, Skills Library, Dashboard]
+    type: critical
+    tags: [skill, add-skill, install, copy, rsync-copy, data-integrity, release-full]
+    invariants: [INV-INSTALL-001, INV-INSTALL-002, INV-HOST-001, INV-DB-001]
+    preconditions:
+      - QA host has one valid skill not yet installed in the QA project.
+      - QA project has a detected provider target that supports Copy (rsync) install mode.
+      - QA executor may mutate only the run-local project fixture and QA host fixture.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - use the project-with-provider template with an empty provider skills directory
+    steps:
+      - Open Project Detail.
+      - Open Add Skill.
+      - Select one not-installed QA host skill.
+      - Choose Copy (rsync) mode.
+      - Click Install and wait for the operation to reach a terminal state.
+      - Open Skills Library and Dashboard.
+    expected_ui:
+      - Install remains in progress only while the operation is running.
+      - Success is shown only after the project target folder exists.
+      - Project Detail shows the skill installed with Copy (rsync) mode, not symlink mode.
+      - Skills Library and Dashboard counts agree with the Project Detail state.
+    cross_screen_checks:
+      - Project Detail, Skills Library, and Dashboard agree on the installed state and mode.
+    verifier:
+      app_db:
+        - Active install record exists for the project, provider, skill, and `install_mode = rsync_copy`.
+        - No operation for the install remains queued or running after completion.
+      filesystem:
+        - Project target is a real directory or copied file tree, not a symlink.
+        - Copied target content matches the QA host skill at install time.
+        - QA host skill folder remains intact.
+        - No files are written outside the run-local release-cycle fixture.
+      evidence:
+        - Wizard terminal-state screenshot and Project Detail screenshot.
+        - DB query output for install mode and operation state.
+        - "`test -d`, `test ! -L`, `find`, and checksum/stat output for copied target and host skill."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-SKILL-012
+    title: Switch from symlink to copy and back replaces only the target while host stays intact
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library, Skill Detail, Dashboard]
+    type: critical
+    tags: [skill, switch-mode, symlink, copy, rsync-copy, data-integrity, release-full]
+    invariants: [INV-INSTALL-001, INV-INSTALL-002, INV-HOST-001, INV-DB-001]
+    preconditions:
+      - QA project has one managed symlink install from the QA host.
+      - The same provider target supports Copy (rsync) mode and switching back to symlink.
+      - QA executor may mutate only the run-local project fixture and QA host fixture.
+    data_setup:
+      fixture_source: fixtures/qa/release-cycle
+      copy_to: runs/<run-id>/fixtures/release-cycle
+      mutate_copy:
+        - use the project-with-install template seeded with one symlink install from the QA host
+    steps:
+      - Open Project Detail.
+      - Switch the installed skill from symlink to Copy (rsync).
+      - Wait for the switch operation to reach a terminal state.
+      - Verify the row shows Copy (rsync).
+      - Switch the same skill back to symlink.
+      - Open Skills Library, Skill Detail, and Dashboard.
+    expected_ui:
+      - Each switch reaches one terminal state and never leaves the row stuck switching.
+      - Mode label changes to Copy (rsync) after the first switch and symlink after the second switch.
+      - UI never shows both modes active for the same project/provider/skill target.
+      - Errors, if any, are visible and do not show a false success state.
+    cross_screen_checks:
+      - Project Detail, Skills Library, Skill Detail, and Dashboard agree on the final symlink install state and counts.
+    verifier:
+      app_db:
+        - After the first switch, the active install row has `install_mode = rsync_copy`.
+        - After the second switch, the active install row has `install_mode = symlink`.
+        - No duplicate active install row exists for the same project/provider/skill.
+        - No switch operation remains queued or running after completion.
+      filesystem:
+        - Copy-mode target is not a symlink after the first switch.
+        - Final target is a symlink whose `readlink` points to the QA host skill.
+        - Old project target content is not left behind as a conflicting active install.
+        - QA host skill folder remains intact.
+      evidence:
+        - Project Detail screenshots after each switch.
+        - DB query output after each switch for install mode and operation state.
+        - "`stat`, `readlink`, and `find` output for the target after each switch."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
   - id: TC-SKILL-005
     title: Install conflict surfaces error without partial DB success
     tier: T0
