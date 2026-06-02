@@ -6,7 +6,7 @@ cases:
     primary_screen: Projects
     related_screens: [Project Detail, Dashboard]
     type: smoke
-    tags: [project, add-project, scan, cross-screen]
+    tags: [project, add-project, scan, cross-screen, release-full]
     invariants: [INV-PROJECT-001]
     preconditions:
       - App has a configured QA Skill Host Folder.
@@ -44,7 +44,7 @@ cases:
     primary_screen: Project Detail
     related_screens: [Projects]
     type: edge
-    tags: [project, auto-scan, operation-state, toast]
+    tags: [project, auto-scan, operation-state, toast, release-full]
     invariants: [INV-PROJECT-001]
     preconditions:
       - QA project exists in Skillbox.
@@ -78,7 +78,7 @@ cases:
     primary_screen: Skills Library
     related_screens: [Dashboard, Skill Detail]
     type: smoke
-    tags: [skills-library, host, scan, cross-screen]
+    tags: [skills-library, host, scan, cross-screen, release-full]
     invariants: [INV-HOST-001]
     preconditions:
       - QA Skill Host Folder contains at least two valid skill folders.
@@ -113,7 +113,7 @@ cases:
     primary_screen: Project Detail
     related_screens: [Skills Library, Skill Detail, Dashboard]
     type: critical
-    tags: [skill, add-skill, install, symlink, data-integrity]
+    tags: [skill, add-skill, install, symlink, data-integrity, release-full]
     invariants: [INV-INSTALL-001, INV-HOST-001]
     preconditions:
       - QA host has one valid skill not yet installed in the QA project.
@@ -156,7 +156,7 @@ cases:
     primary_screen: Project Detail
     related_screens: [Skills Library, Skill Detail, Dashboard]
     type: critical
-    tags: [skill, remove, symlink, data-integrity, destructive]
+    tags: [skill, remove, symlink, data-integrity, destructive, release-full]
     invariants: [INV-INSTALL-001, INV-INSTALL-002, INV-HOST-001]
     preconditions:
       - QA project has one skill installed by symlink from QA host.
@@ -193,7 +193,7 @@ cases:
     primary_screen: Project Detail
     related_screens: [Skills Library, Skill Detail]
     type: critical
-    tags: [skill, switch-mode, symlink, copy, data-integrity]
+    tags: [skill, switch-mode, symlink, copy, data-integrity, release-full]
     invariants: [INV-INSTALL-001, INV-INSTALL-002]
     preconditions:
       - QA project has one skill installed by symlink or copy.
@@ -232,7 +232,7 @@ cases:
     primary_screen: Project Detail
     related_screens: [Add Skill Wizard]
     type: adversarial
-    tags: [skill, install, conflict, error, data-integrity]
+    tags: [skill, install, conflict, error, data-integrity, release-full]
     invariants: [INV-INSTALL-001]
     preconditions:
       - QA project provider target already has a folder or file at the skill install path.
@@ -269,7 +269,7 @@ cases:
     primary_screen: Project Detail
     related_screens: [Dashboard, Projects]
     type: edge
-    tags: [skill, broken-symlink, scan, warning]
+    tags: [skill, broken-symlink, scan, warning, release-full]
     invariants: [INV-INSTALL-001, INV-PROJECT-001]
     preconditions:
       - QA project contains a provider skill symlink whose target no longer exists.

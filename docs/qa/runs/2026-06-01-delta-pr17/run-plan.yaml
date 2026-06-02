@@ -1,0 +1,52 @@
+run:
+  id: 2026-06-01-delta-pr17
+  date: 2026-06-01
+  scope: regression
+  profile: delta
+  app_mode: dev-electron
+  target_version: 0.1.0
+  operator: codex/astraler-qa
+  target_branch: fix/reset-blank-missing-host
+  target_commit: 21c8dba
+  target_pr: 17
+
+environment:
+  repo_root: <repo-root>
+  desktop_dir: <repo-root>/apps/desktop
+  fixture_source: <repo-root>/fixtures/qa
+  fixture_copy: <repo-root>/docs/qa/runs/2026-06-01-delta-pr17/fixtures
+  cdp_port: 49222
+  qa_home: <repo-root>/docs/qa/runs/2026-06-01-delta-pr17/fixtures/homes/plugin-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-01-delta-pr17/fixtures/homes/plugin-home/qa.db
+  qa_host: <repo-root>/docs/qa/runs/2026-06-01-delta-pr17/fixtures/skill-host-a
+  qa_host_missing_name: <repo-root>/docs/qa/runs/2026-06-01-delta-pr17/fixtures/skill-host-a-missing
+  qa_project: <repo-root>/docs/qa/runs/2026-06-01-delta-pr17/fixtures/projects/claude-project
+  real_environment_allowed: false
+
+selection:
+  include_tiers: [T0, T1]
+  include_tags: [reset, missing-path, setup, dashboard, skills-library]
+  exclude_tags: []
+  case_ids:
+    - TC-SETTINGS-002
+    - TC-DASH-003
+    - TC-DB-003
+    - TC-SETUP-002
+    - TC-SETUP-001
+    - TC-DASH-001
+    - TC-SKILL-001
+
+gates:
+  fail_fast_on_t0: false
+  require_t0_evidence: true
+  plugin_real_toggle_requires_user_approval: true
+  mutate_source_fixtures: false
+  outbound_network_requires_user_approval: true
+
+commands:
+  go_tests: "(cd core-go && go test ./...)"
+  desktop_typecheck: "(cd apps/desktop && pnpm typecheck)"
+  desktop_tests: "(cd apps/desktop && pnpm test)"
+  contracts_drift: "(cd apps/desktop && pnpm check:contracts-drift)"
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=<repo-root>/docs/qa/runs/2026-06-01-delta-pr17/fixtures/homes/plugin-home/qa.db HOME=<repo-root>/docs/qa/runs/2026-06-01-delta-pr17/fixtures/homes/plugin-home SKILLBOX_CDP_PORT=49222 pnpm dev)"
+  cdp_health: "curl -s http://127.0.0.1:49222/json/version"

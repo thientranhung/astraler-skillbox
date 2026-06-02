@@ -1,0 +1,189 @@
+area: filesystem-safety
+cases:
+  - id: TC-FS-001
+    title: Install rejects host skill path that escapes the active host folder
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library]
+    type: adversarial
+    tags: [filesystem, path-escape, install, data-integrity, release-full]
+    invariants: [INV-HOST-001, INV-INSTALL-001, INV-SAFETY-001]
+    preconditions:
+      - QA host scan includes or attempts to include a symlinked skill path escaping the host.
+    steps:
+      - Scan the QA host.
+      - Attempt to install the escaping entry if it appears selectable.
+    expected_ui:
+      - Escaping entry is rejected, hidden, or labeled unsafe.
+      - Install cannot create a project target pointing outside the approved host source.
+    verifier:
+      filesystem:
+        - External target is unchanged.
+        - No project symlink points to the external target.
+      app_db:
+        - No active install is created for the unsafe entry.
+      evidence:
+        - Host scan screenshot.
+        - "`readlink` output."
+        - DB install absence query.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-FS-002
+    title: Remove refuses symlink that no longer points inside the active host
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Skills Library]
+    type: adversarial
+    tags: [filesystem, remove, symlink, path-escape, data-integrity, release-full]
+    invariants: [INV-INSTALL-002, INV-SAFETY-001]
+    preconditions:
+      - QA project has an install record whose project symlink was externally changed to point outside the active host.
+    steps:
+      - Open Project Detail.
+      - Attempt Remove for the changed entry.
+    expected_ui:
+      - Remove is blocked or fails with a clear safety error.
+      - External target is not deleted or modified.
+      - Host skill folder remains intact.
+    verifier:
+      filesystem:
+        - External target still exists.
+        - Host skill folder still exists.
+      app_db:
+        - Install is not falsely marked removed unless filesystem precheck succeeded.
+      evidence:
+        - Error screenshot.
+        - "`readlink` and filesystem listing."
+        - DB install status output.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-FS-003
+    title: Read-only project target surfaces filesystem error without DB success
+    tier: T0
+    primary_screen: Project Detail
+    related_screens: [Add Skill Wizard]
+    type: adversarial
+    tags: [filesystem, permissions, install, data-integrity, release-full]
+    invariants: [INV-INSTALL-001, INV-SAFETY-001]
+    preconditions:
+      - QA project provider skills folder is made read-only in the run copy.
+    steps:
+      - Attempt to install a QA host skill into the read-only provider target.
+    expected_ui:
+      - Install fails with a clear filesystem error.
+      - UI does not show install success.
+      - DB does not contain an active install record.
+    verifier:
+      app_db:
+        - No active install record exists for the failed write.
+      filesystem:
+        - Provider target permissions are read-only.
+        - No partial target is created.
+      evidence:
+        - Error screenshot.
+        - DB install absence query.
+        - "`stat` output."
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-FS-004
+    title: Unreadable host skills folder is reported without deleting metadata
+    tier: T1
+    primary_screen: Skills Library
+    related_screens: [Dashboard, Settings]
+    type: edge
+    tags: [filesystem, unreadable, host, warning, release-full]
+    invariants: [INV-HOST-001]
+    preconditions:
+      - QA host skills folder permissions are changed to unreadable in the run copy.
+    steps:
+      - Launch app or rescan host.
+      - Open Dashboard, Settings, and Skills Library.
+    expected_ui:
+      - Host is labeled unreadable or warning state.
+      - Previously scanned skills are not shown as current without warning.
+      - App remains usable and recovery action is visible.
+    verifier:
+      filesystem:
+        - QA host skills folder is unreadable for the app process.
+      app_db:
+        - Warning row exists or host status reflects unreadable.
+      evidence:
+        - Warning screenshot.
+        - "Permission `stat` output."
+        - DB warning/status output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-FS-005
+    title: Host scan ignores non-skill files and invalid folders safely
+    tier: T2
+    primary_screen: Skills Library
+    related_screens: [Dashboard]
+    type: edge
+    tags: [filesystem, host-scan, invalid-skill, release-full]
+    invariants: [INV-HOST-001]
+    preconditions:
+      - QA host contains files, dotfiles, and folders without SKILL.md.
+    steps:
+      - Run host scan.
+      - Inspect Skills Library.
+    expected_ui:
+      - Valid skills are listed.
+      - Invalid entries are ignored or shown with a warning according to current product vocabulary.
+      - Counts do not include invalid entries as valid skills.
+    verifier:
+      app_db:
+        - Skill rows match valid skill folders only, or invalid entries have non-available status.
+      filesystem:
+        - Invalid fixture entries exist.
+      evidence:
+        - Skills Library screenshot.
+        - DB skills query.
+        - Host fixture listing.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-FS-006
+    title: Project removal never deletes the project folder
+    tier: T0
+    primary_screen: Projects
+    related_screens: [Dashboard]
+    type: critical
+    tags: [filesystem, project-remove, data-integrity, destructive, release-full]
+    invariants: [INV-PROJECT-001, INV-SAFETY-001]
+    preconditions:
+      - QA project is registered and contains sentinel files.
+    steps:
+      - Open Projects.
+      - Remove the QA project from Skillbox.
+      - Inspect filesystem and Dashboard.
+    expected_ui:
+      - Project disappears from Skillbox.
+      - UI does not claim the project folder was deleted.
+      - Dashboard project count updates.
+    verifier:
+      filesystem:
+        - QA project folder and sentinel files still exist.
+      app_db:
+        - Project metadata row is removed or inactive according to current schema.
+      evidence:
+        - Projects screenshot after removal.
+        - Filesystem listing of project folder.
+        - DB project query.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden

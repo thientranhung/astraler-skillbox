@@ -1,0 +1,142 @@
+area: release-packaging
+cases:
+  - id: TC-RELEASE-001
+    title: Release preflight reports signing and packaging readiness without building
+    tier: T1
+    primary_screen: Release CLI
+    related_screens: [Packaged App]
+    type: packaged-smoke
+    tags: [release, preflight, packaging, release-full]
+    invariants: [INV-PACKAGE-001]
+    preconditions:
+      - "Release scripts are available in `apps/desktop`."
+    steps:
+      - Run release preflight/check command.
+      - Capture stdout/stderr and exit code.
+    expected_ui:
+      - Command reports missing credentials or readiness clearly.
+      - Command does not build, sign, notarize, upload, or mutate app data.
+    verifier:
+      evidence:
+        - Command output.
+        - Git status before/after if useful.
+    safety:
+      destructive: false
+      allowed_environment: local_repo_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-RELEASE-002
+    title: Unsigned packaged DMG launches with bundled Go sidecar in isolated app data
+    tier: T1
+    primary_screen: Packaged App
+    related_screens: [Setup, Dashboard]
+    type: packaged-smoke
+    tags: [release, packaging, dmg, sidecar, db, release-full]
+    invariants: [INV-PACKAGE-001, INV-SAFETY-001]
+    preconditions:
+      - Unsigned or release candidate DMG has been built from the target commit.
+      - Smoke uses temporary user data and QA DB paths.
+    steps:
+      - Run the DMG smoke command or manual packaged smoke flow.
+      - Launch app from the mounted/copied artifact.
+      - Wait for Setup or Dashboard.
+      - Quit app.
+    expected_ui:
+      - App window is not blank.
+      - "Go sidecar becomes ready from bundled resources, not `go run`."
+      - DB path is isolated to smoke app data.
+      - No sidecar remains after quit.
+    verifier:
+      filesystem:
+        - Bundled sidecar exists and is executable.
+        - Smoke DB path is under the temporary user-data directory.
+      evidence:
+        - Screenshot of first visible screen.
+        - Smoke command output.
+        - Process check after quit.
+    safety:
+      destructive: false
+      allowed_environment: packaged_smoke
+      real_environment: opt_in
+
+  - id: TC-RELEASE-003
+    title: Packaged app does not expose development CDP port by default
+    tier: T0
+    primary_screen: Packaged App
+    related_screens: [Release CLI]
+    type: packaged-smoke
+    tags: [release, packaging, cdp, security, release-full]
+    invariants: [INV-PACKAGE-001]
+    preconditions:
+      - Packaged app is launched without dev environment variables.
+    steps:
+      - Launch packaged app.
+      - Probe reserved CDP port range.
+      - Quit app.
+    expected_ui:
+      - App launches normally.
+      - No CDP listener is exposed on reserved dev automation ports.
+    verifier:
+      evidence:
+        - "`lsof` output for CDP port range."
+        - App screenshot.
+        - Process check after quit.
+    safety:
+      destructive: false
+      allowed_environment: packaged_smoke
+      real_environment: opt_in
+
+  - id: TC-RELEASE-004
+    title: Release manifest and checksums match packaged artifact
+    tier: T1
+    primary_screen: Release CLI
+    related_screens: [Packaged App]
+    type: packaged-smoke
+    tags: [release, manifest, checksum, integrity, release-full]
+    invariants: [INV-PACKAGE-001]
+    preconditions:
+      - Release candidate DMG and generated manifest/checksum files exist.
+    steps:
+      - Run manifest generation if not already generated.
+      - Verify SHA256SUMS against the DMG.
+      - Inspect manifest metadata.
+    expected_ui:
+      - Manifest references the selected artifact.
+      - Checksum verification passes.
+      - No network, signing, or upload is performed by manifest generation.
+    verifier:
+      evidence:
+        - Manifest file.
+        - SHA256SUMS verification output.
+        - Command output.
+    safety:
+      destructive: false
+      allowed_environment: local_repo_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-RELEASE-005
+    title: Signed release artifact passes verification gate
+    tier: T1
+    primary_screen: Release CLI
+    related_screens: [Packaged App]
+    type: packaged-smoke
+    tags: [release, signing, notarization, gatekeeper, release-full]
+    invariants: [INV-PACKAGE-001]
+    preconditions:
+      - Signed and notarized release candidate artifact exists.
+      - Apple signing/notarization credentials were used only in the approved release process.
+    steps:
+      - Run release verification command against the artifact.
+      - Capture signature, hardened runtime, notarization, and Gatekeeper checks.
+    expected_ui:
+      - Verification passes for app, sidecar, and container.
+      - Team ID is consistent where applicable.
+      - Failure output is specific enough to block release.
+    verifier:
+      evidence:
+        - Release verification output.
+        - Artifact path and target commit.
+    safety:
+      destructive: false
+      allowed_environment: release_candidate_read_only
+      real_environment: opt_in

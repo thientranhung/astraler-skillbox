@@ -1,0 +1,113 @@
+run:
+  id: 2026-06-01-release-full
+  date: 2026-06-01
+  scope: release
+  profile: release-full
+  app_mode: dev-electron
+  target_version: 0.1.0
+  target_commit: 1a623d7
+  operator: codex-agent
+
+environment:
+  repo_root: <repo-root>
+  desktop_dir: <repo-root>/apps/desktop
+  fixture_source: <repo-root>/fixtures/qa
+  fixture_copy: <repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures
+  cdp_port: 49222
+  qa_home: <repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/homes/plugin-home
+  qa_db_path: <repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/homes/plugin-home/qa.db
+  qa_host: <repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/skill-host-a
+  qa_host_b: <repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/skill-host-b
+  qa_project: <repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/projects/claude-project
+  qa_generic_project: <repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/projects/generic-agents-project
+  qa_no_provider_project: <repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/projects/no-provider-project
+  real_environment_allowed: false
+
+selection:
+  include_tiers: [T0, T1, T2, T3]
+  include_tags: [release-full]
+  exclude_tags: []
+  case_ids:
+    - TC-A11Y-002
+    - TC-DASH-003
+    - TC-DB-001
+    - TC-DB-002
+    - TC-DB-003
+    - TC-FS-001
+    - TC-FS-002
+    - TC-FS-003
+    - TC-FS-006
+    - TC-GLOBAL-003
+    - TC-MIGRATE-002
+    - TC-MIGRATE-003
+    - TC-OPS-004
+    - TC-OPS-005
+    - TC-PRIVACY-001
+    - TC-PRIVACY-002
+    - TC-PROVIDER-002
+    - TC-PROVIDER-004
+    - TC-RELEASE-003
+    - TC-SETTINGS-002
+    - TC-SKILL-002
+    - TC-SKILL-003
+    - TC-SKILL-004
+    - TC-SKILL-005
+    - TC-DASH-001
+    - TC-DASH-002
+    - TC-DB-004
+    - TC-ERROR-002
+    - TC-ERROR-003
+    - TC-FS-004
+    - TC-GLOBAL-001
+    - TC-GLOBAL-002
+    - TC-GLOBAL-004
+    - TC-MIGRATE-001
+    - TC-MIGRATE-004
+    - TC-OPS-001
+    - TC-OPS-002
+    - TC-OPS-003
+    - TC-PACKAGE-001
+    - TC-PLUGIN-001
+    - TC-PLUGIN-002
+    - TC-PLUGIN-003
+    - TC-PLUGIN-004
+    - TC-PLUGIN-005
+    - TC-PRIVACY-003
+    - TC-PRIVACY-004
+    - TC-PROJ-001
+    - TC-PROJ-002
+    - TC-PROVIDER-001
+    - TC-PROVIDER-003
+    - TC-RELEASE-001
+    - TC-RELEASE-002
+    - TC-RELEASE-004
+    - TC-RELEASE-005
+    - TC-SETTINGS-001
+    - TC-SETUP-001
+    - TC-SETUP-002
+    - TC-SKILL-001
+    - TC-SKILL-006
+    - TC-A11Y-001
+    - TC-A11Y-003
+    - TC-A11Y-004
+    - TC-DASH-004
+    - TC-ERROR-001
+    - TC-ERROR-004
+    - TC-FS-005
+    - TC-GLOBAL-005
+    - TC-PROVIDER-005
+
+gates:
+  fail_fast_on_t0: false
+  require_t0_evidence: true
+  plugin_real_toggle_requires_user_approval: true
+  mutate_source_fixtures: false
+  outbound_network_requires_user_approval: true
+
+commands:
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=<repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/homes/plugin-home/qa.db HOME=<repo-root>/docs/qa/runs/2026-06-01-release-full/fixtures/homes/plugin-home SKILLBOX_CDP_PORT=49222 pnpm dev)"
+  cdp_health: "curl -s http://127.0.0.1:49222/json/version"
+  go_tests: "(cd core-go && go test ./...)"
+  desktop_typecheck: "(cd apps/desktop && pnpm typecheck)"
+  desktop_tests: "(cd apps/desktop && pnpm test)"
+  contracts_drift: "(cd apps/desktop && pnpm check:contracts-drift)"

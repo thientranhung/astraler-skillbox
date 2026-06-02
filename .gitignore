@@ -14,3 +14,25 @@ apps/desktop/build/.gen/
 .scratch/
 .antigravitycli/
 docs/playbooks/*.vi.md
+.DS_Store
+
+# Local agent skills. Repo-owned skills must be explicitly unignored.
+.agents/skills/*
+!.agents/skills/astraler-qa/
+!.agents/skills/astraler-qa/**
+
+# QA run outputs: keep run-plan.yaml, results.jsonl, report.md, and curated
+# evidence, but ignore disposable fixture copies, temporary homes, caches, and
+# external target sandboxes generated during execution.
+docs/qa/runs/**/evidence/
+docs/qa/runs/**/fixtures/
+docs/qa/runs/**/qa-home/
+docs/qa/runs/**/qa-*/
+docs/qa/runs/**/outside-targets/
+docs/qa/runs/**/tmp/
+docs/qa/runs/**/temp/
+docs/qa/runs/**/app-data/
+docs/qa/runs/**/Library/Caches/
+docs/qa/runs/**/Library/Application Support/go/telemetry/
+docs/qa/runs/**/go/pkg/mod/
+docs/qa/runs/**/evidence/*.pid

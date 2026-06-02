@@ -1,0 +1,155 @@
+area: provider-paths
+cases:
+  - id: TC-PROVIDER-001
+    title: Project provider path override changes only selected provider slot
+    tier: T1
+    primary_screen: Settings
+    related_screens: [Projects, Project Detail]
+    type: smoke
+    tags: [provider, path-override, settings, project-scan, release-full]
+    invariants: [INV-PROVIDER-001, INV-PROJECT-001]
+    preconditions:
+      - QA project contains a provider folder at a non-default relative path.
+    steps:
+      - Open Settings provider paths.
+      - Override one provider project detect and skills path to the QA non-default relative paths.
+      - Scan the QA project.
+      - Reset the override.
+    expected_ui:
+      - Override is visible in Settings.
+      - Project scan uses the override while it is active.
+      - Reset returns the slot to built-in defaults.
+      - Other providers' paths are unchanged.
+    verifier:
+      app_db:
+        - Provider path override row exists only for the selected provider/scope/purpose.
+        - Override row is removed or reset after reset action.
+      filesystem:
+        - No files are written outside the QA project.
+      evidence:
+        - Settings override screenshot.
+        - Project Detail after scan.
+        - DB provider_path_overrides output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PROVIDER-002
+    title: Invalid project provider override is rejected before scan
+    tier: T0
+    primary_screen: Settings
+    related_screens: [Projects]
+    type: adversarial
+    tags: [provider, path-override, path-escape, validation, release-full]
+    invariants: [INV-PROVIDER-001, INV-SAFETY-001]
+    preconditions:
+      - App runs with QA DB.
+    steps:
+      - Open Settings provider path editor.
+      - "Attempt to save a project-scope path override containing `..` or an absolute path."
+      - Inspect Projects and DB.
+    expected_ui:
+      - UI shows a validation error and does not save the override.
+      - Project scan behavior is unchanged.
+    verifier:
+      app_db:
+        - No provider_path_overrides row exists for the rejected path.
+      evidence:
+        - Validation error screenshot.
+        - DB override absence query.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PROVIDER-003
+    title: Global provider config override stays inside approved QA home
+    tier: T1
+    primary_screen: Settings
+    related_screens: [Global Plugins]
+    type: smoke
+    tags: [provider, global-config, plugin, settings, release-full]
+    invariants: [INV-PROVIDER-001, INV-PLUGIN-001]
+    preconditions:
+      - QA home contains a provider settings file at a non-default absolute path.
+    steps:
+      - Override provider global config path to the QA settings file.
+      - Run Global Plugins scan.
+      - Reset the override.
+    expected_ui:
+      - Global Plugins reads from the override path while active.
+      - Reset returns to the QA HOME default path.
+      - No real user settings path is inspected.
+    verifier:
+      app_db:
+        - Override row points to the QA fixture path only.
+        - Plugin layer scan path matches the override while active.
+      evidence:
+        - Settings screenshot.
+        - Global Plugins screenshot.
+        - DB provider_path_overrides and plugin layer scan output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PROVIDER-004
+    title: Provider disablement does not delete project provider folders
+    tier: T0
+    primary_screen: Settings
+    related_screens: [Project Detail]
+    type: critical
+    tags: [provider, disable, filesystem, data-integrity, release-full]
+    invariants: [INV-PROVIDER-001, INV-SAFETY-001]
+    preconditions:
+      - QA project contains provider folder and at least one observed skill entry.
+    steps:
+      - Open Settings.
+      - Disable the provider.
+      - Open Project Detail and scan if allowed.
+      - Re-enable the provider.
+    expected_ui:
+      - Disabled state is clear.
+      - Project provider folders and entries are not deleted.
+      - Re-enabled provider can be scanned again.
+    verifier:
+      filesystem:
+        - Provider folder and skill entries remain on disk.
+      app_db:
+        - Provider enabled state changes only for the selected provider.
+      evidence:
+        - Settings screenshot before/after.
+        - Filesystem listing.
+        - DB provider settings output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
+
+  - id: TC-PROVIDER-005
+    title: Unknown provider key is rejected without metadata drift
+    tier: T2
+    primary_screen: Settings
+    related_screens: [Provider Registry]
+    type: adversarial
+    tags: [provider, validation, unknown-provider, release-full]
+    invariants: [INV-PROVIDER-001, INV-DB-001]
+    preconditions:
+      - App runs with QA DB.
+    steps:
+      - Attempt to update paths or enablement for an unknown provider key through the same app surface or RPC harness used by QA.
+      - Refresh Settings.
+    expected_ui:
+      - Unknown provider is rejected with a clear validation error.
+      - No orphan provider setting or override row is created.
+    verifier:
+      app_db:
+        - Provider definition and override tables contain no unknown-provider row.
+      evidence:
+        - Error output or UI screenshot.
+        - DB query output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden

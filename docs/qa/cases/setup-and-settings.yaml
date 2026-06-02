@@ -6,7 +6,7 @@ cases:
     primary_screen: Setup
     related_screens: [Dashboard, Skills Library, Settings]
     type: smoke
-    tags: [setup, host, onboarding, cross-screen]
+    tags: [setup, host, onboarding, cross-screen, release-full]
     invariants: [INV-HOST-001]
     preconditions:
       - App runs in QA dev Electron mode with a throwaway DB.
@@ -45,7 +45,7 @@ cases:
     primary_screen: Dashboard
     related_screens: [Settings, Skills Library]
     type: edge
-    tags: [setup, host, missing-path, warning]
+    tags: [setup, host, missing-path, warning, release-full]
     invariants: [INV-HOST-001]
     preconditions:
       - App has a configured QA Skill Host Folder.
@@ -79,7 +79,7 @@ cases:
     primary_screen: Settings
     related_screens: [Dashboard, Skills Library, Project Detail]
     type: smoke
-    tags: [settings, host, change-host, cross-screen]
+    tags: [settings, host, change-host, cross-screen, release-full]
     invariants: [INV-HOST-001, INV-INSTALL-001]
     preconditions:
       - App uses QA host folder A.
@@ -120,7 +120,7 @@ cases:
     primary_screen: Settings
     related_screens: [Setup, Dashboard, Skills Library, Projects, Global Plugins]
     type: critical
-    tags: [settings, reset, data-integrity, destructive]
+    tags: [settings, reset, data-integrity, destructive, release-full]
     invariants: [INV-HOST-001, INV-SAFETY-001]
     preconditions:
       - App runs with QA DB and QA fixture folders only.

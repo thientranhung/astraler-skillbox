@@ -4,6 +4,9 @@ Repo-native QA system for Astraler Skillbox. It is intentionally small: test
 cases live as YAML, run results are append-only JSONL, and evidence stays under
 the run folder.
 
+For status semantics, evidence standards, waivers, T0 handling, and clean GO
+rules, read [`governance.md`](governance.md).
+
 ## Why This Exists
 
 Skillbox is local-first and filesystem-heavy. Unit tests and contract tests are
@@ -58,6 +61,17 @@ Use this before the first release or when validating the QA bank itself.
 5. Update the QA bank when a case is unclear, missing setup, or missing an
    invariant.
 
+For a first release, prefer the stronger release profile:
+
+1. Create `RUN_ID=YYYY-MM-DD-release-full`.
+2. Copy `fixtures/qa/` into the run folder.
+3. Select all cases tagged `release-full`, ordered T0, T1, T2, T3.
+4. Run automated gates first.
+5. Run dev Electron QA with QA env and CDP.
+6. Run packaged smoke after a release artifact exists.
+7. Mark unsafe, unclear, or artifact-dependent cases `BLOCKED` or
+   `NEEDS_HUMAN`; do not force a pass.
+
 ### Ask An Agent To Run QA
 
 Use the `astraler-qa` skill:
@@ -76,8 +90,11 @@ case files, and `docs/playbooks/agent-browser-smoke.md`.
 ```text
 docs/qa/
   README.md
+  governance.md
   schema.md
   invariants.yaml
+  profiles/
+    release-full.yaml
   cases/
     setup-and-settings.yaml
     skills-and-projects.yaml
@@ -100,6 +117,36 @@ docs/qa/
 | T3 | UX polish or minor state. | Record unless misleading or blocking. |
 
 The current bank focuses on T0 and T1.
+
+## Profiles
+
+Use profiles to avoid overloading the phrase "full QA":
+
+| Profile | Scope |
+|---|---|
+| `baseline-smoke` | Fast core safety run: all T0 and the core T1 flows touched by a change. |
+| `release-full` | First-release and release-candidate run: all cases tagged `release-full`, ordered T0 → T1 → T2 → T3, plus packaged smoke when an artifact exists. |
+| `delta` | Feature/change-specific run selected by tags, screens, and impacted invariants. |
+| `packaged-release` | Packaged app launch, sidecar, app-data, CDP, signing/notarization, manifest, and orphan-process checks. |
+
+The first release should use `docs/qa/profiles/release-full.yaml`. A run may
+still mark packaged cases `BLOCKED` if no artifact exists, but the report must
+make that release risk explicit.
+
+## Fixtures
+
+Reusable safe fixture templates live under `fixtures/qa/`. Always copy them into
+the run folder before execution:
+
+```sh
+RUN_ID=2026-06-01-release-full
+mkdir -p "docs/qa/runs/$RUN_ID/fixtures"
+rsync -a fixtures/qa/ "docs/qa/runs/$RUN_ID/fixtures/"
+```
+
+Do not mutate source fixtures in place. Destructive cases must use the copied
+run-local fixture paths and must keep `real_environment_allowed: false` unless a
+case explicitly allows `opt_in` and the user approved that exact target.
 
 ## When To Run
 
@@ -132,6 +179,11 @@ Run folder rules:
   notes.
 - Do not overwrite previous run folders. Create a new `RUN_ID` for every QA
   attempt.
+- Run-local fixture copies, temporary homes, external target sandboxes, caches,
+  module downloads, generated build artifacts, and raw `evidence/` files are
+  disposable run artifacts and ignored by git by default. Commit `run-plan.yaml`,
+  `results.jsonl`, and `report.md` for durable run summaries; add raw evidence
+  only when it is intentionally curated and small.
 
 ## Electron Automation
 

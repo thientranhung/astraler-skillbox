@@ -1,0 +1,115 @@
+area: error-states
+cases:
+  - id: TC-ERROR-001
+    title: Native folder picker cancellation leaves current state unchanged
+    tier: T2
+    primary_screen: Setup
+    related_screens: [Settings, Projects]
+    type: edge
+    tags: [error-state, dialog, cancel, release-full]
+    invariants: [INV-HOST-001, INV-PROJECT-001]
+    preconditions:
+      - App is in setup state or Settings/Projects folder picker is available.
+    steps:
+      - Open a folder picker.
+      - Cancel the picker.
+      - Inspect current screen and DB state.
+    expected_ui:
+      - App remains on the current screen.
+      - No host/project path changes are saved.
+      - No error toast implies failure when user cancelled intentionally.
+    verifier:
+      app_db:
+        - Host/project settings are unchanged.
+      evidence:
+        - Screenshot after cancellation.
+        - DB before-after output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-ERROR-002
+    title: Adding nonexistent project path is rejected
+    tier: T1
+    primary_screen: Projects
+    related_screens: [Dashboard]
+    type: edge
+    tags: [error-state, project, validation, release-full]
+    invariants: [INV-PROJECT-001]
+    preconditions:
+      - App runs with QA DB.
+    steps:
+      - Attempt to add a project path that does not exist using the same project-add path used by the UI.
+      - Refresh Projects and Dashboard.
+    expected_ui:
+      - Validation error is visible.
+      - No project row is created.
+      - Dashboard project count is unchanged.
+    verifier:
+      app_db:
+        - No project row exists for the nonexistent path.
+      evidence:
+        - Error screenshot or RPC error output.
+        - DB project absence query.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-ERROR-003
+    title: Provider settings too-large file is reported without reading as valid data
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Project Detail]
+    type: edge
+    tags: [error-state, plugin, too-large, safety, release-full]
+    invariants: [INV-PLUGIN-001, INV-SAFETY-001]
+    preconditions:
+      - QA provider settings file exceeds the provider parser size limit.
+    steps:
+      - Configure provider global settings path to the oversized QA file.
+      - Run Global Plugins scan.
+    expected_ui:
+      - Scan status is too_large or equivalent.
+      - No plugin facts are claimed from the oversized file.
+      - File is not overwritten.
+    verifier:
+      filesystem:
+        - Oversized file checksum is unchanged.
+      app_db:
+        - Plugin layer scan status is too_large.
+      evidence:
+        - Screenshot.
+        - Checksum before/after.
+        - DB layer scan status output.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-ERROR-004
+    title: Unknown route or stale detail route recovers without blank screen
+    tier: T2
+    primary_screen: App Shell
+    related_screens: [Projects, Skills Library]
+    type: edge
+    tags: [error-state, routing, blank-screen, release-full]
+    invariants: [INV-DB-001]
+    preconditions:
+      - App is running with QA DB.
+    steps:
+      - Navigate to a stale project or skill detail route whose row no longer exists.
+      - Return to a primary screen.
+    expected_ui:
+      - App shows not-found or recoverable error state.
+      - No blank window appears.
+      - Sidebar navigation still works.
+    verifier:
+      evidence:
+        - Screenshot of stale route behavior.
+        - Console/error log if available.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
