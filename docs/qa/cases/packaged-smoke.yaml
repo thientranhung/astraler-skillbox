@@ -33,3 +33,35 @@ cases:
       destructive: false
       allowed_environment: packaged_smoke
       real_environment: opt_in
+
+  - id: TC-PACKAGE-002
+    title: First packaged launch does not request Keychain access before credentials are configured
+    tier: T0
+    primary_screen: Packaged App
+    related_screens: [Setup, Settings]
+    type: packaged-smoke
+    tags: [packaging, launch, keychain, credentials, release-full]
+    invariants: [INV-SAFETY-001]
+    release_scope: current
+    preconditions:
+      - Current packaged macOS artifact has been rebuilt from the target commit.
+      - Test run uses a clean test macOS user/profile or a clean app data location.
+      - No provider/plugin credential has been configured by the user.
+    steps:
+      - Launch the packaged app for the first time.
+      - Observe all macOS system prompts before the first app screen appears.
+      - Quit the app normally.
+    expected_ui:
+      - App opens to Setup or Dashboard.
+      - No macOS Keychain prompt appears for "Safe Storage" or confidential information.
+      - No credential, token, or password prompt appears unless the user explicitly starts a credential setup flow.
+    verifier:
+      evidence:
+        - Screenshot or recording of first launch showing no Keychain prompt before the first app screen.
+        - Launch notes naming the macOS user/profile isolation used for the check.
+      source_check:
+        - Electron main disables Chromium startup Keychain use for phase 1 unless SKILLBOX_ENABLE_KEYCHAIN=1 is set.
+    safety:
+      destructive: false
+      allowed_environment: packaged_smoke
+      real_environment: opt_in
