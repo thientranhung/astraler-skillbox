@@ -56,23 +56,19 @@ jobs:
         working-directory: apps/desktop
         run: pnpm generate:icon
 
-      # Required secrets: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
-      - name: Build with electron-builder (mac arm64, with notarization)
-        if: ${{ secrets.APPLE_ID != '' }}
+      - name: Build with electron-builder (mac arm64)
         working-directory: apps/desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: pnpm exec electron-builder --mac --arm64 --config electron-builder.yml
-
-      - name: Build with electron-builder (mac arm64, no notarization)
-        if: ${{ secrets.APPLE_ID == '' }}
-        working-directory: apps/desktop
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: pnpm exec electron-builder --mac --arm64 --config electron-builder.yml -c.mac.notarize=false
+        run: |
+          if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+            pnpm exec electron-builder --mac --arm64 --config electron-builder.yml
+          else
+            pnpm exec electron-builder --mac --arm64 --config electron-builder.yml -c.mac.notarize=false
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -127,23 +123,19 @@ jobs:
         working-directory: apps/desktop
         run: pnpm generate:icon
 
-      # Required secrets: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
-      - name: Build with electron-builder (mac x64, with notarization)
-        if: ${{ secrets.APPLE_ID != '' }}
+      - name: Build with electron-builder (mac x64)
         working-directory: apps/desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: pnpm exec electron-builder --mac --x64 --config electron-builder.yml
-
-      - name: Build with electron-builder (mac x64, no notarization)
-        if: ${{ secrets.APPLE_ID == '' }}
-        working-directory: apps/desktop
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: pnpm exec electron-builder --mac --x64 --config electron-builder.yml -c.mac.notarize=false
+        run: |
+          if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+            pnpm exec electron-builder --mac --x64 --config electron-builder.yml
+          else
+            pnpm exec electron-builder --mac --x64 --config electron-builder.yml -c.mac.notarize=false
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
