@@ -248,12 +248,10 @@ cases:
       fixture_source: fixtures/qa/projects/generic-agents-project
       copy_to: runs/<run-id>/fixtures/projects/generic-agents-project
       mutate_copy:
-        - scan project so the provider is detected
-        - "remove `.agents/skills` from the run-local copy"
-        - then attempt Add Skill install
+        - "leave `.agents/skills` well-formed (the case mutates it live during steps)"
     steps:
-      - Open Project Detail and run Scan Project.
-      - Open Add Skill and select the Shared Agent Skills provider and one not-installed host skill.
+      - Open Project Detail and run Scan Project so the provider is detected.
+      - Open Add Skill, select the Shared Agent Skills provider, and select one not-installed host skill.
       - Remove the `.agents/skills` directory from the run-local fixture outside the app.
       - Click Install and wait for the operation to reach a terminal state.
     expected_ui:
