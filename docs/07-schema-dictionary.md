@@ -143,6 +143,13 @@ Purpose: lưu danh sách provider/convention mà Skillbox biết.
 | `created_at` | datetime | no | Thời điểm tạo row. |
 | `updated_at` | datetime | no | Thời điểm cập nhật row gần nhất. |
 
+Notes:
+
+- `generic_agents` uses `can_create_structure = 1` so project installs may
+  create the selected project's `.agents/skills` folder. Provider-specific
+  definitions such as `claude` must remain `0` until their conventions are
+  verified and documented.
+
 ## provider_path_candidates
 
 Purpose: lưu các candidate path mà provider adapter dùng để detect/config/install.
