@@ -33,9 +33,9 @@ func networkSettingsHasColumn(t *testing.T, db *sql.DB, col string) bool {
 func TestMigration000023_DropColumn(t *testing.T) {
 	db := NewTestDB(t)
 
-	// After head migration (000023), the gate column must be gone.
+	// After the full migration chain, the gate column must be gone.
 	if networkSettingsHasColumn(t, db, "update_check_enabled") {
-		t.Error("update_check_enabled column should be dropped at head (000023)")
+		t.Error("update_check_enabled column should be dropped at head")
 	}
 
 	// cache_ttl_hours must survive with its default.
@@ -51,8 +51,8 @@ func TestMigration000023_DropColumn(t *testing.T) {
 	if err := db.QueryRow("SELECT database_version FROM app_settings WHERE id = 1").Scan(&dbVersion); err != nil {
 		t.Fatalf("database_version: %v", err)
 	}
-	if dbVersion != 23 {
-		t.Errorf("database_version: got %d want 23", dbVersion)
+	if dbVersion != 24 {
+		t.Errorf("database_version: got %d want 24", dbVersion)
 	}
 
 	// Apply the down migration manually and verify the column is restored as =1.

@@ -31,13 +31,13 @@ func TestMigration000022_UpDown(t *testing.T) {
 		t.Errorf("cache_ttl_hours default: got %d want 6", ttl)
 	}
 
-	// database_version should be at the current head (23).
+	// database_version should be at the current head (24).
 	var dbVersion int
 	if err := db.QueryRow("SELECT database_version FROM app_settings WHERE id = 1").Scan(&dbVersion); err != nil {
 		t.Fatalf("database_version: %v", err)
 	}
-	if dbVersion != 23 {
-		t.Errorf("database_version: got %d want 23", dbVersion)
+	if dbVersion != 24 {
+		t.Errorf("database_version: got %d want 24", dbVersion)
 	}
 
 	// Verify UNIQUE constraint on plugin_update_check_cache.

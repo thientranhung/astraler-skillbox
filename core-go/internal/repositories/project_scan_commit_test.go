@@ -55,6 +55,19 @@ func getProviderDetectionStatus(t *testing.T, db *sql.DB, projectID, defID int64
 	return status
 }
 
+func getProviderStoredFacts(t *testing.T, db *sql.DB, projectID, defID int64) (domain.DetectionStatus, sql.NullString, sql.NullString, sql.NullString) {
+	t.Helper()
+	var status domain.DetectionStatus
+	var detectedPath, skillsPath, lastScannedAt sql.NullString
+	if err := db.QueryRowContext(context.Background(),
+		`SELECT detection_status, detected_path, skills_path, last_scanned_at
+		 FROM project_providers WHERE project_id=? AND provider_definition_id=?`,
+		projectID, defID).Scan(&status, &detectedPath, &skillsPath, &lastScannedAt); err != nil {
+		t.Fatalf("getProviderStoredFacts: %v", err)
+	}
+	return status, detectedPath, skillsPath, lastScannedAt
+}
+
 func countInstallsForProvider(t *testing.T, db *sql.DB, ppID int64) int {
 	t.Helper()
 	var n int
@@ -253,8 +266,78 @@ func TestProjectScanRepo_CommitProjectScan_MarksAbsentProvidersMissing(t *testin
 	if countProjectProviders(t, db, pid) != 1 {
 		t.Errorf("expected provider row to remain (no hard delete)")
 	}
-	if getProviderDetectionStatus(t, db, pid, defID) != domain.DetectionStatusMissing {
+	status, detectedPath, skillsPath, lastScannedAt := getProviderStoredFacts(t, db, pid, defID)
+	if status != domain.DetectionStatusMissing {
 		t.Errorf("expected detection_status=missing after provider disappears")
+	}
+	if detectedPath.Valid {
+		t.Errorf("detected_path should be cleared for missing provider, got %q", detectedPath.String)
+	}
+	if skillsPath.Valid {
+		t.Errorf("skills_path should be cleared for missing provider, got %q", skillsPath.String)
+	}
+	if !lastScannedAt.Valid {
+		t.Errorf("last_scanned_at should update when provider disappears")
+	}
+}
+
+func TestProjectScanRepo_CommitProjectScan_MarksOnlyAbsentProviderMissing(t *testing.T) {
+	db := NewTestDB(t)
+	projRepo := NewProjectRepo(db)
+	repo := NewProjectScanRepo(db)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	pid := seedProject(t, projRepo, "proj-a", "/tmp/proj-a")
+	genericDefID := getGenericAgentsDefID(t, db)
+	claudeDefID := getProviderDefID(t, db, "claude")
+
+	// First scan: two providers detected.
+	_ = repo.CommitProjectScan(ctx, pid, []ProviderScanResult{
+		{
+			ProviderDefinitionID: genericDefID,
+			DetectedPath:         strPtr("/tmp/proj-a/.agents"),
+			SkillsPath:           strPtr("/tmp/proj-a/.agents/skills"),
+			DetectionStatus:      domain.DetectionStatusDetected,
+		},
+		{
+			ProviderDefinitionID: claudeDefID,
+			DetectedPath:         strPtr("/tmp/proj-a/.claude"),
+			SkillsPath:           strPtr("/tmp/proj-a/.claude/skills"),
+			DetectionStatus:      domain.DetectionStatusDetected,
+		},
+	}, nil, now)
+
+	// Second scan: generic remains, claude disappeared.
+	if err := repo.CommitProjectScan(ctx, pid, []ProviderScanResult{{
+		ProviderDefinitionID: genericDefID,
+		DetectedPath:         strPtr("/tmp/proj-a/.agents"),
+		SkillsPath:           strPtr("/tmp/proj-a/.agents/skills"),
+		DetectionStatus:      domain.DetectionStatusDetected,
+	}}, nil, now.Add(time.Minute)); err != nil {
+		t.Fatalf("CommitProjectScan: %v", err)
+	}
+
+	genericStatus, genericDetectedPath, genericSkillsPath, _ := getProviderStoredFacts(t, db, pid, genericDefID)
+	if genericStatus != domain.DetectionStatusDetected {
+		t.Errorf("generic provider should remain detected, got %q", genericStatus)
+	}
+	if !genericDetectedPath.Valid || !genericSkillsPath.Valid {
+		t.Errorf("generic provider current paths should remain populated")
+	}
+
+	claudeStatus, claudeDetectedPath, claudeSkillsPath, claudeLastScannedAt := getProviderStoredFacts(t, db, pid, claudeDefID)
+	if claudeStatus != domain.DetectionStatusMissing {
+		t.Errorf("claude provider should be missing after disappearing, got %q", claudeStatus)
+	}
+	if claudeDetectedPath.Valid {
+		t.Errorf("claude detected_path should be cleared, got %q", claudeDetectedPath.String)
+	}
+	if claudeSkillsPath.Valid {
+		t.Errorf("claude skills_path should be cleared, got %q", claudeSkillsPath.String)
+	}
+	if !claudeLastScannedAt.Valid {
+		t.Errorf("claude last_scanned_at should update when provider disappears")
 	}
 }
 

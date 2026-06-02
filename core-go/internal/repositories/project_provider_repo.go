@@ -39,7 +39,7 @@ func (r *ProjectProviderRepo) ListByProject(ctx context.Context, projectID int64
 			pp.id, pp.project_id, pp.provider_definition_id,
 			pd.key, pd.display_name, pd.status,
 			pp.detected_path, pp.skills_path, pp.detection_status,
-			COUNT(i.id) AS entry_count
+			COUNT(CASE WHEN i.install_status != 'missing' THEN 1 END) AS entry_count
 		FROM project_providers pp
 		JOIN provider_definitions pd ON pd.id = pp.provider_definition_id
 		LEFT JOIN installs i ON i.project_provider_id = pp.id

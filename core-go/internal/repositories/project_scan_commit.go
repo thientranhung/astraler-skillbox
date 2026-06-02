@@ -246,8 +246,11 @@ func markAbsentProvidersMissing(ctx context.Context, tx *sql.Tx, projectID int64
 	if len(seenDefIDs) == 0 {
 		_, err := tx.ExecContext(ctx,
 			`UPDATE project_providers SET detection_status='missing',
+			 detected_path=NULL,
+			 skills_path=NULL,
+			 last_scanned_at=?,
 			 updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')
-			 WHERE project_id=?`, projectID)
+			 WHERE project_id=?`, nowStr, projectID)
 		return err
 	}
 	ph := strings.Repeat("?,", len(seenDefIDs))
@@ -259,9 +262,12 @@ func markAbsentProvidersMissing(ctx context.Context, tx *sql.Tx, projectID int64
 	}
 	_, err := tx.ExecContext(ctx,
 		"UPDATE project_providers SET detection_status='missing',"+
+			" detected_path=NULL,"+
+			" skills_path=NULL,"+
+			" last_scanned_at=?,"+
 			" updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')"+
 			" WHERE project_id=? AND provider_definition_id NOT IN ("+ph+")",
-		args...)
+		append([]interface{}{nowStr}, args...)...)
 	return err
 }
 
