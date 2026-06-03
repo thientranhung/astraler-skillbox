@@ -45,10 +45,19 @@ export function spawnGoCore(): Promise<JsonRpcStdioClient> {
     activeChild = child;
 
     const client = new JsonRpcStdioClient(child);
+
+    const stderrLines: string[] = [];
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderrLines.push(chunk.toString());
+    });
+
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
-      reject(new Error("server.ready timeout"));
-      fatal("Go core did not send server.ready within 10s");
+      const goOutput = stderrLines.join("").trim();
+      const detail = goOutput ? `\n\n${goOutput}` : "";
+      // Pre-ready failure: only reject so the catch block in main() handles it.
+      // Do NOT call fatal() here — fatal() is for mid-run crashes after server.ready.
+      reject(new Error(`server.ready timeout${detail}`));
     }, READY_TIMEOUT_MS);
 
     const unsubscribe = client.on("server.ready", () => {
@@ -76,8 +85,8 @@ export function spawnGoCore(): Promise<JsonRpcStdioClient> {
 
     child.on("error", (err) => {
       clearTimeout(timer);
+      // Pre-ready failure: only reject so the catch block in main() handles it.
       reject(err);
-      fatal(`Failed to spawn Go core: ${err.message}`);
     });
   });
 }

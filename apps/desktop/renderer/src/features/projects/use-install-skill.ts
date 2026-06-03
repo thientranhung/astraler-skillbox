@@ -38,6 +38,7 @@ function failedMessage(meta: InstallMetadata | null, rawMessage: string | null):
 export function useInstallSkill() {
   const queryClient = useQueryClient();
   const [operationId, setOperationId] = useState<number | null>(null);
+  const [lastOperationError, setLastOperationError] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -49,6 +50,7 @@ export function useInstallSkill() {
 
   const mutation = useMutation({
     mutationFn: async (req: InstallSkillRequest) => {
+      setLastOperationError(null);
       const buffered: OperationProgressNotification[] = [];
       const tempUnsub = subscribeAllProgress((p) => buffered.push(p));
       try {
@@ -69,7 +71,9 @@ export function useInstallSkill() {
         if (terminalInBuffer.status === "success") {
           toast.success(successMessage(meta));
         } else if (terminalInBuffer.status === "failed") {
-          toast.error(failedMessage(meta, terminalInBuffer.message));
+          const msg = failedMessage(meta, terminalInBuffer.message);
+          toast.error(msg);
+          setLastOperationError(msg);
         }
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
         void queryClient.invalidateQueries({ queryKey: queryKeys.projects.list() });
@@ -83,7 +87,9 @@ export function useInstallSkill() {
         if (event.status === "success") {
           toast.success(successMessage(meta), { id: toastId });
         } else if (event.status === "failed") {
-          toast.error(failedMessage(meta, event.message), { id: toastId });
+          const msg = failedMessage(meta, event.message);
+          toast.error(msg, { id: toastId });
+          setLastOperationError(msg);
         } else if (event.status === "cancelled") {
           toast.dismiss(toastId);
         } else {
@@ -110,7 +116,8 @@ export function useInstallSkill() {
     unsubRef.current?.();
     unsubRef.current = null;
     setOperationId(null);
+    setLastOperationError(null);
   }, []);
 
-  return { ...mutation, operationId, clearOperation };
+  return { ...mutation, operationId, lastOperationError, clearOperation };
 }
