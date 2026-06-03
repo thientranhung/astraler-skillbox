@@ -232,12 +232,14 @@ export function AddSkillWizard({
             Sẽ ghi vào: {activeProvider.skillsPath}
           </p>
         )}
-        {/* Error row */}
-        {installSkill.isError && (
+        {/* Error row — covers both RPC-level errors and async operation failures (e.g. filesystem_error) */}
+        {(installSkill.isError || installSkill.lastOperationError != null) && (
           <p className="mb-2 text-xs text-red-600">
-            {installSkill.error instanceof Error
-              ? installSkill.error.message
-              : String(installSkill.error)}
+            {installSkill.isError
+              ? (installSkill.error instanceof Error
+                  ? installSkill.error.message
+                  : String(installSkill.error))
+              : installSkill.lastOperationError}
           </p>
         )}
         {/* Button row */}

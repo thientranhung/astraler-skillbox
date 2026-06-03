@@ -50,4 +50,7 @@ contextBridge.exposeInMainWorld("core", {
     ipcRenderer.on("core:event", handler);
     return () => ipcRenderer.off("core:event", handler);
   },
+
+  getStartupError: (): Promise<string | null> =>
+    ipcRenderer.invoke("core:startup-error-get") as Promise<string | null>,
 });

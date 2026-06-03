@@ -100,6 +100,18 @@ func (r *SkillHostFolderRepo) UpsertAndActivate(ctx context.Context, name, path,
 		if err != nil {
 			return 0, false, fmt.Errorf("deactivate old host: %w", err)
 		}
+		// Installs sourced from the now-inactive host must be reclassified so that
+		// UI cross-screen consistency is immediate, without requiring a project scan.
+		_, err = tx.ExecContext(ctx,
+			`UPDATE installs
+			    SET install_status = 'old_host',
+			        updated_at     = strftime('%Y-%m-%dT%H:%M:%SZ','now')
+			  WHERE installed_from_host_folder_id = ?
+			    AND install_status IN ('current', 'outdated', 'needs_sync')`,
+			currentActive.Int64)
+		if err != nil {
+			return 0, false, fmt.Errorf("mark old-host installs: %w", err)
+		}
 	}
 
 	// Update app_settings.

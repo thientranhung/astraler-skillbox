@@ -28,31 +28,41 @@ cases:
       real_environment: allowed_read_only
 
   - id: TC-A11Y-002
-    title: Destructive actions require explicit accessible confirmation
+    title: Cancel destructive confirmations preserves data
     tier: T0
     primary_screen: Settings
     related_screens: [Projects, Project Detail]
     type: critical
-    tags: [accessibility, destructive, confirmation, release-full]
+    tags: [accessibility, destructive, confirmation, cancel, native-dialog, release-full]
     invariants: [INV-SAFETY-001]
     preconditions:
-      - QA DB contains removable project/install data.
+      - App runs with QA DB and run-local removable project/install data.
+      - QA fixture has at least one removable project and one installed skill.
+      - Executor has macOS accessibility permission for `osascript` when a native Electron sheet appears.
     steps:
-      - Navigate to destructive actions by keyboard.
-      - Attempt Reset All Data, Remove Project, and Remove Skill flows in QA fixture.
-      - Cancel at least one confirmation and confirm one fixture-only action.
+      - Capture DB and filesystem baseline for the project, install, host skill, and QA fixture folders.
+      - Navigate to destructive actions by keyboard or accessible controls.
+      - Open Reset All Data confirmation through stage 2, then cancel without typing the final confirmation token.
+      - Open Remove Project confirmation. If it is a native Electron/macOS sheet, use System Events / `osascript` to click `Cancel`; do not use agent-browser while the native sheet is open.
+      - Open Remove Skill confirmation and click `Cancel`.
+      - Re-open Dashboard, Projects, and Project Detail.
     expected_ui:
       - Destructive actions have clear labels.
       - Confirmation cannot be bypassed accidentally.
-      - Cancel leaves data unchanged.
+      - Cancel controls are reachable and clearly named.
+      - Cancel leaves app state visibly unchanged across affected screens.
+      - Native Electron/macOS sheets are handled outside CDP without hanging the browser harness.
+    cross_screen_checks:
+      - Dashboard, Projects, and Project Detail still show the same project/install truth after each cancel.
     verifier:
       app_db:
-        - Cancelled action does not mutate metadata.
+        - Project, install, operation, and host metadata remain unchanged after each cancel.
       filesystem:
-        - Fixture files remain after cancelled destructive action.
+        - Project folder, provider folder, install target, and host skill folder remain after each cancel.
       evidence:
-        - Confirmation screenshots.
-        - DB/filesystem before-after output.
+        - Confirmation screenshots or native-sheet accessibility output.
+        - "`osascript` command/output for native-sheet cancel."
+        - DB/filesystem before-after output for each cancel path.
     safety:
       destructive: true
       allowed_environment: qa_fixture_only
@@ -108,3 +118,50 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: allowed_read_only
+
+  - id: TC-A11Y-005
+    title: Accept destructive confirmations mutates only managed QA targets
+    tier: T0
+    primary_screen: Projects
+    related_screens: [Project Detail, Settings, Dashboard]
+    type: critical
+    tags: [accessibility, destructive, confirmation, accept, native-dialog, release-full]
+    invariants: [INV-SAFETY-001, INV-DB-001, INV-INSTALL-001]
+    preconditions:
+      - App runs with QA DB and copied run-local fixtures only.
+      - QA fixture has one project with an installed skill and a host skill folder.
+      - Executor has macOS accessibility permission for `osascript` when a native Electron sheet appears.
+      - No real project, provider, plugin, or host path is selected.
+    steps:
+      - Capture DB and filesystem baseline for project metadata, install records, project folder, provider folder, install target, and host skill folder.
+      - Remove one installed skill through the Project Detail confirmation and accept the confirmation.
+      - Verify the managed install target is removed or reconciled according to install mode, while the host skill folder remains intact.
+      - Remove the QA project through Projects. If the confirmation is a native Electron/macOS sheet, use System Events / `osascript` to click `OK`; use `OK` only because the target is a run-local QA fixture.
+      - Verify the project metadata is removed from Skillbox while the real project folder on disk remains intact.
+      - Run Reset All Data through the full two-stage confirmation by typing `RESET` and accepting the final confirmation.
+      - Re-open Setup/Dashboard after reset and inspect DB/filesystem.
+    expected_ui:
+      - Each destructive confirmation has an explicit accessible label and a clear accept action.
+      - Accepted Remove Skill removes only the managed install target/metadata, not the host skill source.
+      - Accepted Remove Project removes only Skillbox metadata and managed install links, not the project folder itself.
+      - Accepted Reset All Data clears user metadata and returns to Setup or an unconfigured state.
+      - No success state claims that files outside the run-local QA fixture were touched.
+    cross_screen_checks:
+      - Dashboard, Projects, Project Detail, and Settings agree after each accepted destructive action.
+    verifier:
+      app_db:
+        - Removed skill has no active install record after accept.
+        - Removed project has no project metadata after accept.
+        - Reset All Data clears user data tables while schema/migration metadata remains valid.
+      filesystem:
+        - Host skill folder remains intact after Remove Skill.
+        - Project folder remains intact after Remove Project.
+        - No files outside the run-local QA fixture are created, modified, or deleted.
+      evidence:
+        - Confirmation screenshots or native-sheet accessibility output.
+        - "`osascript` command/output for native-sheet accept."
+        - DB/filesystem before-after output for each accepted destructive action.
+    safety:
+      destructive: true
+      allowed_environment: qa_fixture_only
+      real_environment: forbidden
