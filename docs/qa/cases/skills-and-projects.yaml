@@ -280,7 +280,8 @@ cases:
     primary_screen: Project Detail
     related_screens: [Skills Library, Skill Detail]
     type: critical
-    tags: [skill, switch-mode, symlink, copy, data-integrity, release-full]
+    tags: [skill, switch-mode, symlink, copy, data-integrity, phase2]
+    phase: phase2
     invariants: [INV-INSTALL-001, INV-INSTALL-002]
     preconditions:
       - QA project has one skill installed by symlink or copy.
@@ -319,7 +320,8 @@ cases:
     primary_screen: Project Detail
     related_screens: [Add Skill Wizard, Skills Library, Dashboard]
     type: critical
-    tags: [skill, add-skill, install, copy, rsync-copy, data-integrity, release-full]
+    tags: [skill, add-skill, install, copy, rsync-copy, data-integrity, phase2]
+    phase: phase2
     invariants: [INV-INSTALL-001, INV-INSTALL-002, INV-HOST-001, INV-DB-001]
     preconditions:
       - QA host has one valid skill not yet installed in the QA project.
@@ -368,7 +370,8 @@ cases:
     primary_screen: Project Detail
     related_screens: [Skills Library, Skill Detail, Dashboard]
     type: critical
-    tags: [skill, switch-mode, symlink, copy, rsync-copy, data-integrity, release-full]
+    tags: [skill, switch-mode, symlink, copy, rsync-copy, data-integrity, phase2]
+    phase: phase2
     invariants: [INV-INSTALL-001, INV-INSTALL-002, INV-HOST-001, INV-DB-001]
     preconditions:
       - QA project has one managed symlink install from the QA host.

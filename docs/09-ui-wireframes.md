@@ -1,17 +1,19 @@
 # UI Wireframes
 
-Tài liệu này phác thảo UI ở mức text wireframe. Mục tiêu là kiểm tra thông tin,
-action, trạng thái empty/loading/warning/error trước khi đi vào technical
-architecture hoặc visual design.
+This document outlines the UI at the text wireframe level. The goal is to verify
+information, actions, and empty/loading/warning/error states before moving to
+technical architecture or visual design.
 
 ## Design Principles
 
-- GUI là interface chính.
-- UI ưu tiên quản trị rõ ràng hơn trang trí.
-- Mọi màn hình quan trọng phải có action kế tiếp rõ.
-- Warning phải đi kèm action cụ thể nếu có thể.
-- Project và provider scope phải hiển thị rõ để tránh nhầm skill trùng tên.
-- Symlink, rsync/copy, direct là khái niệm kỹ thuật được hiển thị trực tiếp.
+- GUI is the primary interface.
+- UI prioritizes clear management over decoration.
+- Every key screen must have a clear next action.
+- Warnings must include a specific action where possible.
+- Project and provider scope must be displayed clearly to avoid confusing skills
+  with the same name.
+- Symlink and direct are technical concepts displayed directly. (rsync/copy is
+  deferred — not in the current release)
 
 ## Table Notation
 
@@ -21,7 +23,7 @@ status labels, and confirmation steps where it is the primary information shown 
 
 ## Navigation Shell
 
-Layout đề xuất:
+Proposed layout:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -53,7 +55,7 @@ Global actions:
 
 ## Dashboard
 
-Purpose: hiển thị trạng thái tổng quan khi mở app.
+Purpose: display a summary overview when the app opens.
 
 Wireframe:
 
@@ -99,7 +101,7 @@ Primary actions:
 
 ## Skills Library
 
-Purpose: quản lý skill trong Skill Host Folder.
+Purpose: manage skills in the Skill Host Folder.
 
 Wireframe:
 
@@ -137,7 +139,7 @@ No skills in Skill Host Folder.
 
 ## Skill Detail
 
-Purpose: xem metadata và impact của một skill.
+Purpose: view metadata and impact for a skill.
 
 Wireframe:
 
@@ -159,7 +161,6 @@ Actions
 Projects Using This Skill
   Project              Provider        Mode        Status
   project-a            Shared Agents   symlink     current
-  project-b            Claude          rsync/copy  needs sync
   project-c            Shared Agents   direct      current
 
 Global Usage
@@ -176,7 +177,7 @@ Warnings:
 
 ## Global Skills
 
-Purpose: xem skill/config ở provider global level trên máy.
+Purpose: view skills/config at the provider global level on the machine.
 
 Wireframe:
 
@@ -217,7 +218,7 @@ Rules:
 
 ## Projects
 
-Purpose: danh sách project được add vào Skillbox.
+Purpose: list of projects added to Skillbox.
 
 Wireframe:
 
@@ -249,7 +250,7 @@ Row actions:
 
 ## Project Detail
 
-Purpose: điều phối skill trong một project.
+Purpose: coordinate skills within a project.
 
 Wireframe:
 
@@ -268,8 +269,8 @@ Actions
 
 Installed Skills
   Provider        Skill                 Mode        Status            Actions
-  Shared Agents   documentation-writer  symlink     current           [Switch] [Remove]
-  Shared Agents   adr-helper            rsync/copy  needs sync        [Sync] [Switch] [Remove]
+  Shared Agents   documentation-writer  symlink     current           [Remove]
+  Shared Agents   adr-helper            symlink     current           [Remove]
   Claude          old-skill             symlink     broken symlink    [Relink] [Remove]
   Claude          manual-note           direct      current           [Open]
 ```
@@ -319,7 +320,7 @@ Provider warning examples:
 
 ## Global Plugins
 
-Purpose: xem và toggle enable/disable plugin ở user (global) layer.
+Purpose: view and toggle plugin enable/disable at the user (global) layer.
 
 Wireframe:
 
@@ -353,9 +354,10 @@ Version column rules:
 
 ## Add Skill Flow
 
-Purpose: cài skill từ Skill Host Folder vào project.
+Purpose: install a skill from the Skill Host Folder into a project.
 
-Dialog: fixed-position overlay, max-h 90vh, flex-col layout — không lẹm viewport.
+Dialog: fixed-position overlay, max-h 90vh, flex-col layout — does not overflow
+the viewport.
 
 Flow screens:
 
@@ -371,21 +373,21 @@ Skill list (scrollable, max-h 48):
   [x] browser-automation (Installed)
 
 Footer:
-  Sẽ ghi vào: /repo/content-lab/.claude/
+  Will install to: /repo/content-lab/.claude/
 
   [Cancel] [Install]
 ```
 
 Rules:
 
-- Tab strip: icon + displayName only; path in title tooltip và footer hint.
+- Tab strip: icon + displayName only; path in title tooltip and footer hint.
 - If project has no valid provider, show empty state + Scan CTA.
-- Unsupported/disabled providers không xuất hiện dưới dạng tab.
-- Dialog phủ toàn viewport (fixed overlay, z-50).
+- Unsupported/disabled providers do not appear as tabs.
+- Dialog covers full viewport (fixed overlay, z-50).
 
 ## Updates
 
-Purpose: kiểm tra và xử lý upstream updates.
+Purpose: check and handle upstream updates.
 
 Wireframe:
 
@@ -402,16 +404,14 @@ Available Updates
 Affected Projects: adr-helper
   Project       Provider        Mode        Result after host update
   project-a     Shared Agents   symlink     updates immediately
-  project-b     Shared Agents   rsync/copy  needs sync
   project-c     Claude          direct      unaffected
 
 Affected Global Installs
   Location              Provider        Mode        Result after host update
   User Global           Shared Agents   symlink     updates immediately
-  Claude Global         Claude          rsync/copy  needs sync
 
 Actions
-  [Update Host Copy] [Sync rsync/copy Projects]
+  [Update Host Copy]
 ```
 
 Fetch states:
@@ -426,7 +426,7 @@ Fetch states:
 
 ## Settings
 
-Purpose: cấu hình app-level settings.
+Purpose: configure app-level settings.
 
 Wireframe:
 
@@ -439,8 +439,7 @@ Skill Host Folder
   [Change Folder] [Open Folder] [Scan]
 
 Default Install Mode
-  ( ) symlink
-  ( ) rsync/copy
+  (•) symlink
 
 Providers
   Provider        Status          Create Structure   Icon
@@ -520,7 +519,6 @@ Loading states:
 - Scanning project.
 - Fetching updates.
 - Updating host skill.
-- Syncing rsync/copy install.
 - Installing skill.
 
 UI rules:
@@ -538,7 +536,6 @@ Broken symlink       [Relink] [Remove]
 Project missing      [Update Path] [Remove]
 Fetch failed         [Retry] [Configure Source]
 Unsupported provider [Open Path]
-Needs sync           [Sync]
 ```
 
 Blocking error examples:
@@ -576,7 +573,6 @@ Impact preview is required for:
 
 - Update Host Copy.
 - Change Skill Host Folder.
-- Switch Install Mode.
 - Remove Skill.
 
 Example:
@@ -588,18 +584,11 @@ Symlink projects updated immediately:
   project-a
   project-b
 
-Rsync/copy projects needing sync after update:
-  project-c
-  project-d
-
 Direct installs unaffected:
   project-e
 
 Global symlink installs updated immediately:
   User Global (Shared Agent Skills)
-
-Global rsync/copy installs needing sync:
-  Claude Global
 
 [Update Host Copy] [Cancel]
 ```

@@ -542,7 +542,7 @@ Required:
 - `go test -race` for operation runner/provider scan/filesystem gateway code.
 - React component tests for complex UI states.
 
-Deferred:
+Hoãn lại:
 
 - Playwright until first UI shell exists.
 

@@ -60,7 +60,7 @@ Notes:
 - `active_skill_host_folder_id` trỏ tới Skill Host Folder hiện tại.
 - `active_skill_host_folder_id` nullable để support first-time setup trước khi
   user chọn Skill Host Folder.
-- Phase đầu chỉ cần một active host, nhưng model không chặn multi-host sau này.
+- Sản phẩm hiện tại chỉ hỗ trợ một active host.
 - `default_install_mode` có thể là `symlink` hoặc `rsync_copy`.
 
 ## 2. api_credentials
@@ -198,8 +198,8 @@ Notes:
 - `absolute_path` là path thật trong Skill Host Folder.
 - `source_id` nullable để support local/manual skill.
 - `current_version` hoặc `current_commit` dùng cho Fetch/Update nếu có.
-- `current_checksum` dùng để phát hiện local modification và rsync/copy drift
-  với các source không có git commit rõ ràng.
+- `current_checksum` dùng để phát hiện local modification với các source không
+  có git commit rõ ràng.
 
 ## 5. skill_sources
 
@@ -755,8 +755,7 @@ Notes:
 
 ## 16. operations
 
-Lưu các operation dài hoặc quan trọng như scan, fetch, update, sync, install,
-remove, switch mode.
+Lưu các operation dài hoặc quan trọng như scan, fetch, update, install, remove.
 
 Fields đề xuất:
 
@@ -1378,16 +1377,8 @@ Writes:
 - `skills.current_checksum`
 - `skill_sources.resolved_version/resolved_commit`
 - `operations`
-- `installs.install_status = needs_sync` for affected rsync/copy installs
-
-### Sync Rsync / Copy Project
-
-Writes:
-
-- `installs.installed_version/installed_commit/installed_checksum`
-- `installs.last_synced_at`
-- `installs.install_status`
-- `operations`
+- Sản phẩm hiện tại không ghi sync rows. Project dùng symlink nhận update host
+  thông qua filesystem link.
 
 ### Change Skill Host Folder
 
@@ -1495,15 +1486,6 @@ Represented by:
 installs.install_mode = direct
 installs.install_status = current
 installs.skill_id = null
-```
-
-### Rsync / Copy Outdated
-
-Represented by:
-
-```text
-installs.install_mode = rsync_copy
-installs.install_status = outdated
 ```
 
 ### Fetch Failure

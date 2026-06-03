@@ -21,15 +21,14 @@ model, và các decision quan trọng.
 [03-information-architecture.md](03-information-architecture.md)
 
 Đọc để hiểu các core concepts, màn hình chính trong app, flow add skill, update,
-sync, và settings.
+và settings.
 
 ## 4. User Flows
 
 [04-user-flows.md](04-user-flows.md)
 
 Đọc để hiểu các luồng thao tác chính của user: setup lần đầu, add project, scan,
-install skill, fetch update, sync, switch mode, remove skill, và đổi Skill Host
-Folder.
+install skill, fetch update, remove skill, và đổi Skill Host Folder.
 
 ## 5. Edge Cases And UX States
 
@@ -108,8 +107,8 @@ QA.
 [superpowers/specs/2026-05-26-provider-registry-settings-design.md](../../superpowers/specs/2026-05-26-provider-registry-settings-design.md)
 
 Spec cho Provider Registry Settings: Settings trở thành nguồn sự thật để khai
-báo built-in/custom provider, icon, enablement, và path candidates cho global
-lẫn project skill scopes.
+báo enablement và path candidates của provider built-in cho global lẫn project
+skill scopes.
 
 ## Archive
 

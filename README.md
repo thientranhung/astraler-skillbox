@@ -1,54 +1,56 @@
 # Astraler Skillbox
 
-Astraler Skillbox là một ứng dụng quản trị agent skills theo hướng GUI-first.
-Dự án đóng vai trò như một local control center để quản lý skill trên nhiều
-project và nhiều agent provider khác nhau.
+Astraler Skillbox is a GUI-first desktop app for managing agent skills. It acts
+as a local control center for managing skills across multiple projects and agent
+providers.
 
-Skillbox không chỉ dành cho developer. Người dùng có thể là content creator,
-researcher, marketer, operator, PM, founder, analyst, hoặc bất kỳ ai dùng agent
-skills trong nhiều workflow.
+Skillbox is not just for developers. Users can be content creators, researchers,
+marketers, operators, PMs, founders, analysts, or anyone who uses agent skills
+across multiple workflows.
 
-## Định Vị
+## Positioning
 
 ```text
-Skillbox = local-first control center cho agent skills
+Skillbox = local-first control center for agent skills
 ```
 
-Skillbox giúp người dùng:
+Skillbox helps users:
 
-- Quản lý một Skill Host Folder làm source of truth cho skill trên máy.
-- Xem provider global skills/config để phân biệt global level và project level.
-- Add project vào app và scan skill/provider trong project đó.
-- Cài skill từ Skill Host Folder vào project bằng symlink hoặc rsync/copy.
-- Xem project nào đang dùng skill nào và theo cơ chế nào.
-- Fetch upstream để biết skill nào có bản mới.
-- Quản lý nhiều provider như Claude, Codex, opencode, Antigravity CLI, và các
-  agent provider khác.
+- Manage a Skill Host Folder as the source of truth for skills on the machine.
+- View provider global skills/config to distinguish global level from project
+  level.
+- Add projects to the app and scan skills/providers within those projects.
+- Install skills from the Skill Host Folder into projects via symlink.
+- See which projects are using which skills and by what mechanism.
+- Fetch upstream to find out which skills have new versions.
+- Manage multiple providers such as Claude, Codex, opencode, Antigravity CLI,
+  and other agent providers.
 
-## Mô Hình Chính
+## Core Model
 
 ```text
 Skillbox App
-  GUI quản trị chính
+  Main management GUI
 
 Skill Host Folder
-  Folder do user chọn trong GUI để làm source of truth cho skill trên máy
+  Folder the user selects in the GUI as the source of truth for skills on the machine
 
 Projects
-  Các project được add vào Skillbox
+  Projects added to Skillbox
 
 Global Skills
-  Provider global-level skills/config đang tồn tại trên máy
+  Provider global-level skills/config currently on the machine
 
 Provider Adapters
   Mapping provider -> folder/path/convention
 
 Database
-  SQLite lưu metadata quản trị
+  SQLite storing management metadata
 ```
 
-Skill Host Folder là folder do user chọn và cấu hình trong GUI. Skillbox dùng
-folder này làm source of truth để phân phối skill sang các project khác.
+The Skill Host Folder is the folder the user selects and configures in the GUI.
+Skillbox uses this folder as the source of truth to distribute skills to other
+projects.
 
 ```text
 <skill-host-folder>/
@@ -59,46 +61,38 @@ folder này làm source of truth để phân phối skill sang các project khá
       browser-automation/
 ```
 
-Project bất kỳ sẽ nhận skill từ Skill Host Folder:
+Any project receives skills from the Skill Host Folder:
 
 ```text
 <skill-host-folder>/.agents/skills/<skill>
         |
-        | symlink hoặc rsync/copy
+        | symlink
         v
 target-project/.agents/skills/<skill>
 ```
 
-## Cơ Chế Cài Đặt
+## Install Mechanism
 
 ### Symlink
 
-Symlink là cơ chế chính để nhiều project dùng chung một source of truth.
+Symlink is the current install mechanism, allowing multiple projects to share a
+single source of truth.
 
-- Sửa skill trong Skill Host Folder một lần thì các project symlink nhận thay
-  đổi ngay.
-- Phù hợp khi muốn dùng chung skill và update nhanh trên nhiều project.
+- Editing a skill in the Skill Host Folder once means all symlinked projects
+  receive the change immediately.
+- Best for shared skills and fast updates across many projects.
 
-### Rsync / Copy
+## Current Product Scope
 
-Rsync/copy dùng khi một project cần snapshot ổn định.
+GUI is the primary experience.
 
-- Project nhận một bản copy từ Skill Host Folder.
-- Update Skill Host Folder không tự động đổi project đó.
-- Project cần sync lại nếu muốn nhận thay đổi mới.
-
-## Product Scope Hiện Tại
-
-GUI là trải nghiệm chính. CLI có thể phát triển sau để phục vụ power users và
-automation.
-
-Tech stack đã chốt:
+Confirmed tech stack:
 
 - Desktop framework: Electron
 - UI framework: React
 - Core runtime language: Golang
 
-Các phần chính của app:
+Main app areas:
 
 - Dashboard
 - Skills Library
@@ -109,12 +103,12 @@ Các phần chính của app:
 - Updates
 - Settings
 
-Bắt đầu:
+Get started:
 
 - [SCAFFOLD.md](SCAFFOLD.md) — prerequisites, dev modes, DB, logs, tests, troubleshooting
 - [SMOKE.md](SMOKE.md) — manual end-to-end smoke checklist (slice 1)
 
-Xem thêm:
+See also:
 
 - [Docs Index](docs/index.md)
 - [01 Product Brief](docs/01-product-brief.md)

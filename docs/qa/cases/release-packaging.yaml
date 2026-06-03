@@ -120,7 +120,7 @@ cases:
     primary_screen: Release CLI
     related_screens: [Packaged App]
     type: packaged-smoke
-    tags: [release, signing, notarization, gatekeeper, release-full]
+    tags: [release, signing, notarization, gatekeeper, credentialed]
     invariants: [INV-PACKAGE-001]
     preconditions:
       - Signed and notarized release candidate artifact exists.

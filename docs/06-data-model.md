@@ -1,23 +1,24 @@
 # Data Model
 
-Tài liệu này phác thảo data model cấp cao cho SQLite. Mục tiêu là đủ chặt để
-support UI, user flows, edge cases, fetch/update/sync, và provider adapters,
-nhưng chưa khóa chi tiết implementation như migration syntax hay ORM.
+This document outlines the high-level data model for SQLite. The goal is to be
+specific enough to support UI, user flows, edge cases, fetch/update/sync, and
+provider adapters, without locking in implementation details such as migration
+syntax or ORM.
 
-Filesystem vẫn là source of truth cho skill content. SQLite là source of truth
-cho metadata quản trị.
+The filesystem remains the source of truth for skill content. SQLite is the
+source of truth for management metadata.
 
 ## Design Principles
 
-- Skill content nằm trong Skill Host Folder, không nằm trong database.
-- Database lưu metadata để UI biết skill, source, global provider location,
-  project, provider, global install, project install, scan, fetch, update, sync,
-  và warning state.
-- Filesystem là trạng thái thật khi scan project hoặc Skill Host Folder.
-- Scan có quyền reconcile database với filesystem.
-- Mọi path lưu trong database nên là absolute path để UI/scan ổn định.
-- Các bảng nên có `created_at` và `updated_at`.
-- Các enum nên được lưu dạng text để dễ debug.
+- Skill content lives in the Skill Host Folder, not in the database.
+- The database stores metadata so the UI knows about skills, sources, global
+  provider locations, projects, providers, global installs, project installs,
+  scans, fetches, updates, syncs, and warning state.
+- The filesystem is the true state when scanning a project or Skill Host Folder.
+- Scans have authority to reconcile the database with the filesystem.
+- All paths stored in the database should be absolute paths for stable UI/scan.
+- Tables should have `created_at` and `updated_at`.
+- Enums should be stored as text for easier debugging.
 
 ## Core Entities
 
@@ -42,9 +43,9 @@ operations
 
 ## 1. app_settings
 
-Lưu cấu hình app cấp global.
+Stores global app configuration.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -57,19 +58,20 @@ updated_at
 
 Notes:
 
-- `active_skill_host_folder_id` trỏ tới Skill Host Folder hiện tại.
-- `active_skill_host_folder_id` nullable để support first-time setup trước khi
-  user chọn Skill Host Folder.
-- Phase đầu chỉ cần một active host, nhưng model không chặn multi-host sau này.
-- `default_install_mode` có thể là `symlink` hoặc `rsync_copy`.
+- `active_skill_host_folder_id` points to the current Skill Host Folder.
+- `active_skill_host_folder_id` is nullable to support first-time setup before
+  the user selects a Skill Host Folder.
+- The current product supports one active host.
+- `default_install_mode` can be `symlink` or `rsync_copy`. Currently only
+  `symlink` has UI/RPC support; `rsync_copy` is reserved.
 
 ## 2. api_credentials
 
-Lưu metadata về credentials dùng cho GitHub/Vercel fetch. Giá trị secret thực tế
-nên ưu tiên nằm trong OS keychain. Nếu implementation chọn lưu trong SQLite thì
-phải lưu dạng encrypted value.
+Stores metadata about credentials used for GitHub/Vercel fetch. Actual secret
+values should preferably be in the OS keychain. If the implementation chooses to
+store them in SQLite, they must be stored as encrypted values.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -118,15 +120,15 @@ expired
 
 Notes:
 
-- `credential_ref` trỏ tới keychain item hoặc environment variable name.
-- `value_encrypted` chỉ dùng nếu `storage_type = encrypted_sqlite`.
-- Không lưu plaintext token trong SQLite.
+- `credential_ref` points to the keychain item or environment variable name.
+- `value_encrypted` is used only if `storage_type = encrypted_sqlite`.
+- Do not store plaintext tokens in SQLite.
 
 ## 3. skill_host_folders
 
-Lưu các folder từng được user chọn làm Skill Host Folder.
+Stores folders previously selected by the user as a Skill Host Folder.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -153,16 +155,17 @@ inactive
 
 Notes:
 
-- `path` là folder user chọn.
-- `skills_path` thường là `<skill-host-folder>/.agents/skills`.
-- `status` giúp Dashboard và Settings hiển thị warning nhanh.
-- Khi đổi Skill Host Folder, host cũ không nhất thiết bị xóa khỏi database.
+- `path` is the folder the user selected.
+- `skills_path` is typically `<skill-host-folder>/.agents/skills`.
+- `status` helps Dashboard and Settings display warnings quickly.
+- When switching the Skill Host Folder, the old host does not necessarily get
+  deleted from the database.
 
 ## 4. skills
 
-Đại diện cho một skill trong Skill Host Folder.
+Represents a skill in the Skill Host Folder.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -193,19 +196,19 @@ unknown
 
 Notes:
 
-- `name` là folder name hoặc canonical skill id.
-- `relative_path` thường là `.agents/skills/<skill-name>`.
-- `absolute_path` là path thật trong Skill Host Folder.
-- `source_id` nullable để support local/manual skill.
-- `current_version` hoặc `current_commit` dùng cho Fetch/Update nếu có.
-- `current_checksum` dùng để phát hiện local modification và rsync/copy drift
-  với các source không có git commit rõ ràng.
+- `name` is the folder name or canonical skill id.
+- `relative_path` is typically `.agents/skills/<skill-name>`.
+- `absolute_path` is the actual path in the Skill Host Folder.
+- `source_id` is nullable to support local/manual skills.
+- `current_version` or `current_commit` is used for Fetch/Update if available.
+- `current_checksum` is used to detect local modifications with sources that
+  have no clear git commit.
 
 ## 5. skill_sources
 
-Lưu upstream/source metadata cho skill.
+Stores upstream/source metadata for skills.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -252,18 +255,18 @@ not_fetchable
 
 Notes:
 
-- GitHub source có thể là repo root hoặc subfolder.
-- `github_ref` có thể là branch, tag, hoặc commit.
-- Vercel skills dùng `vercel_skill_id` hoặc metadata tương đương.
-- `last_fetched_at` là lần fetch attempt gần nhất, kể cả failed attempt.
-- `last_successful_fetch_at` là lần fetch thành công gần nhất.
-- Local/manual source có thể dùng `not_fetchable`.
+- A GitHub source may be a repo root or a subfolder.
+- `github_ref` may be a branch, tag, or commit.
+- Vercel skills use `vercel_skill_id` or equivalent metadata.
+- `last_fetched_at` is the most recent fetch attempt, including failed attempts.
+- `last_successful_fetch_at` is the most recent successful fetch.
+- Local/manual sources may use `not_fetchable`.
 
 ## 6. projects
 
-Lưu các project được user add vào Skillbox.
+Stores projects the user has added to Skillbox.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -286,17 +289,17 @@ removed
 
 Notes:
 
-- `path` là project root absolute path.
-- Warning presence và `no_provider_detected` là derived state từ bảng
-  `warnings`, không nằm trong `projects.status`.
-- Project bị remove khỏi database nên có thể hard delete hoặc soft delete bằng
-  `removed`, tùy implementation.
+- `path` is the project root absolute path.
+- Warning presence and `no_provider_detected` are derived state from the
+  `warnings` table, not stored in `projects.status`.
+- Projects removed from the database can use either hard delete or soft delete
+  with `removed`, depending on implementation.
 
 ## 7. provider_definitions
 
-Lưu danh sách provider/convention mà Skillbox biết.
+Stores the list of providers/conventions that Skillbox knows about.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -334,18 +337,19 @@ disabled
 
 Notes:
 
-- Provider adapter implementation sẽ dùng bảng này như metadata UI/config.
-- `can_create_structure` cho biết core Skillbox logic có thể scaffold provider
-  folder cho provider này hay chỉ được scan/install vào structure đã tồn tại.
-- `has_global_level` cho biết provider có global/user-level location mà
-  Skillbox có thể scan hoặc cấu hình.
+- Provider adapter implementations use this table as UI/config metadata.
+- `can_create_structure` indicates whether core Skillbox logic can scaffold the
+  provider folder for this provider, or may only scan/install into an existing
+  structure.
+- `has_global_level` indicates whether the provider has a global/user-level
+  location that Skillbox can scan or configure.
 
 ## 8. provider_path_candidates
 
-Lưu các path candidate mà một provider adapter dùng để detect hoặc install skill.
-Một provider có thể có nhiều candidate path.
+Stores the path candidates that a provider adapter uses to detect or install
+skills. A provider may have multiple candidate paths.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -369,16 +373,18 @@ config
 
 Notes:
 
-- `relative_path` là path tương đối từ project root.
-- `priority` giúp adapter chọn candidate chính khi có nhiều path hợp lệ.
-- Bảng này tránh khóa provider vào một `default_relative_skills_path` duy nhất.
-- Với provider đơn giản, chỉ cần một row `purpose = skills`.
+- `relative_path` is relative from the project root.
+- `priority` helps the adapter choose the primary candidate when multiple valid
+  paths exist.
+- This table avoids locking a provider into a single
+  `default_relative_skills_path`.
+- For simple providers, only a single row with `purpose = skills` is needed.
 
 ## 9. project_providers
 
-Lưu provider được phát hiện hoặc cấu hình trong từng project.
+Stores providers detected or configured in each project.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -405,19 +411,19 @@ format_unknown
 
 Notes:
 
-- Một project có thể có nhiều provider.
-- Add Skill flow dùng bảng này để chọn provider target.
-- `skills_path` là nơi install skill vào provider đó.
-- Khi scan provider, `detected_path` nên lấy từ candidate `purpose = detect`
-  có priority thấp nhất và tồn tại trên disk.
-- `skills_path` nên lấy từ candidate `purpose = skills` đã resolve cho provider
-  đó.
+- A project may have multiple providers.
+- The Add Skill flow uses this table to select a provider target.
+- `skills_path` is where skills are installed for that provider.
+- When scanning a provider, `detected_path` should come from the `purpose =
+  detect` candidate with the lowest priority that exists on disk.
+- `skills_path` should come from the `purpose = skills` candidate resolved for
+  that provider.
 
 ## 10. global_provider_locations
 
-Lưu provider global locations ở cấp user/máy.
+Stores provider global locations at the user/machine level.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -445,19 +451,19 @@ disabled
 
 Notes:
 
-- `path` là absolute path tới global provider root hoặc global convention path.
-  Nullable khi `status = not_configured`.
-- `skills_path` là absolute path nơi provider global level nhận skill/global
-  entries nếu có.
-- Global locations không thuộc project nào.
-- Provider adapter chịu trách nhiệm resolve/cấu hình candidate global paths,
-  core Skillbox logic chịu trách nhiệm scan/write nếu được phép.
+- `path` is the absolute path to the provider global root or global convention
+  path. Nullable when `status = not_configured`.
+- `skills_path` is the absolute path where the provider global level accepts
+  skill/global entries if applicable.
+- Global locations do not belong to any project.
+- The provider adapter is responsible for resolving/configuring candidate global
+  paths; core Skillbox logic is responsible for scanning/writing if permitted.
 
 ## 11. installs
 
-Lưu việc một skill được cài vào một project/provider.
+Stores the installation of a skill into a project/provider.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -482,9 +488,9 @@ updated_at
 Install mode:
 
 ```text
-symlink
-rsync_copy
-direct
+symlink        — current stable path
+rsync_copy     — reserved; not current UI or RPC support
+direct         — unmanaged
 ```
 
 Install status:
@@ -503,33 +509,36 @@ error
 
 Notes:
 
-- `project_id` không được lưu trực tiếp vì `project_provider_id` đã suy ra
-  project qua `project_providers.project_id`.
-- `skill_id` nullable cho `direct` hoặc unknown skill.
-- `skill_name` vẫn cần lưu để hiển thị khi không map được `skill_id`.
-- `skill_name` được ghi tại thời điểm scan/install và không tự động sync ngược
-  từ `skills.name`.
-- `project_skill_path` là entry trong provider folder.
-- `source_skill_path` là path trong Skill Host Folder nếu managed.
-- `install_mode` chỉ lưu cơ chế quản lý/install intent, không lưu detected
-  filesystem anomaly.
-- Khi scan thấy một symlink trên disk, `install_mode = symlink` bất kể symlink
-  đó do Skillbox tạo hay do user tạo thủ công. `install_status` phân biệt trạng
-  thái managed/current, old host, broken, hoặc external symlink.
-- `symlink_target_path` giúp phân biệt valid symlink, old host,
-  external_symlink, và broken_symlink trong `install_status`.
-- `installed_checksum` hữu ích cho rsync/copy outdated detection.
-- Phase 1 dùng hard delete cho install khi user remove skill bằng Skillbox.
-- `missing` đại diện cho install record còn trong database nhưng filesystem đã
-  bị sửa/xóa ngoài app.
-- `error` là catch-all cho filesystem entry không thể phân loại an toàn trong
-  quá trình scan.
+- `project_id` is not stored directly because `project_provider_id` already
+  implies the project via `project_providers.project_id`.
+- `skill_id` is nullable for `direct` or unknown skills.
+- `skill_name` still needs to be stored for display when `skill_id` cannot be
+  mapped.
+- `skill_name` is written at the time of scan/install and does not automatically
+  sync back from `skills.name`.
+- `project_skill_path` is the entry in the provider folder.
+- `source_skill_path` is the path in the Skill Host Folder if managed.
+- `install_mode` only stores the management/install intent, not filesystem
+  anomalies.
+- When a scan finds a symlink on disk, `install_mode = symlink` regardless of
+  whether the symlink was created by Skillbox or the user manually.
+  `install_status` distinguishes managed/current, old host, broken, or external
+  symlink.
+- `symlink_target_path` helps distinguish valid symlink, old host,
+  external_symlink, and broken_symlink in `install_status`.
+- `installed_checksum` is reserved metadata; not current UI/RPC support.
+- Phase 1 uses hard delete for installs when the user removes a skill via
+  Skillbox.
+- `missing` represents an install record still in the database but whose
+  filesystem entry has been modified/deleted outside the app.
+- `error` is the catch-all for filesystem entries that cannot be safely
+  classified during a scan.
 
 ## 12. global_installs
 
-Lưu skill/global entry tồn tại trong provider global location.
+Stores skills/global entries that exist in a provider global location.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -554,9 +563,9 @@ updated_at
 Install mode:
 
 ```text
-symlink
-rsync_copy
-direct
+symlink        — current stable path
+rsync_copy     — reserved; not current UI or RPC support
+direct         — unmanaged
 ```
 
 Install status:
@@ -575,17 +584,18 @@ error
 
 Notes:
 
-- Global installs dùng cùng semantics với project installs, nhưng scope là
-  provider global level.
-- `skill_id` nullable cho direct/unmanaged global entries.
-- Global install cần UI phân biệt rõ với project-level install để tránh nhầm
-  lẫn global contamination với project-specific behavior.
+- Global installs use the same semantics as project installs, but are scoped to
+  the provider global level.
+- `skill_id` is nullable for direct/unmanaged global entries.
+- Global installs need the UI to clearly distinguish them from project-level
+  installs to avoid confusing global contamination with project-specific
+  behavior.
 
 ## 13. fetch_results
 
-Lưu kết quả fetch upstream cho skill/source.
+Stores fetch results from upstream for a skill/source.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -616,20 +626,20 @@ not_fetchable
 
 Notes:
 
-- Bảng này cho phép Updates view hiển thị lịch sử fetch gần nhất.
-- `source_id` là FK chính. Skill context được suy ra qua `skills.source_id`.
-- Nếu cần query nhanh theo skill trong implementation, có thể thêm helper
-  denormalized `skill_id`, nhưng không nên coi nó là FK độc lập.
-- `raw_metadata_json` giúp debug mà không cần schema hóa mọi field provider
-  ngay từ đầu.
-- Phase 1 nên giới hạn retention, ví dụ chỉ giữ N fetch results gần nhất theo
-  `source_id`, để tránh bảng này tăng không giới hạn.
+- This table allows the Updates view to display the most recent fetch history.
+- `source_id` is the primary FK. Skill context is inferred via `skills.source_id`.
+- If the implementation needs fast queries by skill, a helper denormalized
+  `skill_id` may be added, but it should not be treated as an independent FK.
+- `raw_metadata_json` aids debugging without requiring every provider field to be
+  schema-ized from the start.
+- Phase 1 should limit retention, e.g. keep only the N most recent fetch results
+  per `source_id`, to prevent unbounded table growth.
 
 ## 14. scan_results
 
-Lưu kết quả scan gần nhất cho Skill Host Folder hoặc project.
+Stores the most recent or lightweight scan history for a host/project/provider.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -663,19 +673,19 @@ cancelled
 
 Notes:
 
-- UI không cần lưu mọi scan detail trong bảng này nếu detail đã reconcile vào
-  `skills`, `project_providers`, và `installs`.
-- `summary_json` có thể lưu counts như skills found, providers found, warnings.
-- Nếu `operations` đã đủ cho audit trail, implementation có thể gộp scan result
-  vào `operations.metadata_json`. Tài liệu giữ entity này để làm rõ dữ liệu scan
-  cần có.
+- The UI does not need to store every scan detail in this table if details have
+  already been reconciled into `skills`, `project_providers`, and `installs`.
+- `summary_json` may store counts such as skills found, providers found, warnings.
+- If `operations` is already sufficient for audit trail, the implementation may
+  merge scan results into `operations.metadata_json`. This entity is kept here to
+  clarify what scan data is needed.
 
 ## 15. warnings
 
-Lưu warning/recoverable error để Dashboard, Projects, và Project Detail hiển thị
-nhất quán.
+Stores warnings/recoverable errors for consistent display across Dashboard,
+Projects, and Project Detail.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -747,18 +757,19 @@ open_folder
 
 Notes:
 
-- Warnings có thể được regenerate sau scan.
-- `source_operation_id` nullable, trỏ tới operation/scan tạo ra warning nếu có.
-- `is_resolved` giúp UI ẩn warning cũ mà vẫn giữ lịch sử nếu cần.
-- Phase 1 nên ưu tiên regenerate active warnings sau scan thay vì giữ warning
-  history dài hạn.
+- Warnings can be regenerated after a scan.
+- `source_operation_id` is nullable, pointing to the operation/scan that created
+  the warning if applicable.
+- `is_resolved` lets the UI hide old warnings while retaining history if needed.
+- Phase 1 should prioritize regenerating active warnings after each scan rather
+  than maintaining a long warning history.
 
 ## 16. operations
 
-Lưu các operation dài hoặc quan trọng như scan, fetch, update, sync, install,
-remove, switch mode.
+Stores long-running or important operations such as scan, fetch, update, install,
+and remove.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -780,10 +791,10 @@ Operation type:
 scan
 fetch
 update_host_skill
-sync_install
+sync_install            — reserved (rsync_copy mode); not current UI/RPC support
 install_skill
 remove_install
-switch_install_mode
+switch_install_mode     — reserved (rsync_copy mode); not current UI/RPC support
 change_skill_host_folder
 scan_global_skills
 ```
@@ -801,14 +812,16 @@ partial
 
 Notes:
 
-- Dùng cho loading state, progress, audit trail nhẹ, và debug.
-- Không nhất thiết phải build job system ngay; bảng này vẫn hữu ích cho UI.
+- Used for loading state, progress, lightweight audit trail, and debugging.
+- A full job system does not need to be built immediately; this table is still
+  useful for UI.
 
 ## 17. provider_user_settings
 
-Lưu user-level preference cho từng provider, ví dụ provider có được enable hay không.
+Stores user-level preferences for each provider, e.g. whether the provider is
+enabled.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -820,20 +833,20 @@ updated_at
 
 Notes:
 
-- Một row duy nhất cho mỗi `provider_definition_id` (UNIQUE).
-- `enabled` là boolean `0/1`. Phase 1 chỉ dùng để user bật/tắt provider khỏi global
-  scan và install target list.
-- Khác với `provider_definitions.status`: `status` là support state do app quyết
-  định, còn `enabled` ở đây là preference do user quyết định.
-- Khi provider definition bị xóa, row tương ứng cascade delete.
+- A single row per `provider_definition_id` (UNIQUE).
+- `enabled` is a boolean `0/1`. Phase 1 uses this only to let the user
+  enable/disable a provider from the global scan and install target list.
+- Distinct from `provider_definitions.status`: `status` is the support state
+  decided by the app; `enabled` here is a preference decided by the user.
+- When a provider definition is deleted, the corresponding row is cascade-deleted.
 
 ## 18. provider_path_overrides
 
-Lưu override của user cho danh sách path candidate built-in của provider. Một row
-cho mỗi tổ hợp `(provider_definition_id, scope, purpose)`. `paths_json` là JSON
-array path strings thay thế (không merge) candidate built-in.
+Stores user overrides for a provider's built-in path candidates. One row per
+`(provider_definition_id, scope, purpose)` combination. `paths_json` is a JSON
+array of path strings that replaces (does not merge with) built-in candidates.
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -863,24 +876,25 @@ commands
 
 Notes:
 
-- Khi có override, adapter dùng `paths_json` thay vì `provider_path_candidates`
-  cho `(scope, purpose)` đó. Built-in candidate không được merge ngầm.
-- `paths_json` phải parse được thành JSON array string (CHECK constraint).
-- Dùng cho user cần trỏ tới layout phi tiêu chuẩn (ví dụ Claude settings ở
-  custom path) mà không cần Skillbox release version mới.
-- UNIQUE `(provider_definition_id, scope, purpose)` đảm bảo mỗi slot chỉ có một
-  override active.
+- When an override exists, the adapter uses `paths_json` instead of
+  `provider_path_candidates` for that `(scope, purpose)` slot. Built-in
+  candidates are not silently merged.
+- `paths_json` must parse as a valid JSON array of strings (CHECK constraint).
+- Used when users need to point to a non-standard layout (e.g. Claude settings
+  at a custom path) without requiring a new Skillbox release.
+- UNIQUE `(provider_definition_id, scope, purpose)` ensures only one active
+  override per slot.
 
 ## 19. Provider Plugin Layer System
 
-Một số provider (ban đầu là Claude, Codex, Antigravity CLI) hỗ trợ khái niệm
-**plugin** thông qua settings file riêng (`~/.claude/settings.json`,
-`~/.codex/config.toml`, ...). Một plugin có thể được khai báo ở nhiều layer
-khác nhau (user/project/local) và effective state được merge theo precedence
+Some providers (initially Claude, Codex, Antigravity CLI) support the **plugin**
+concept through their own settings files (`~/.claude/settings.json`,
+`~/.codex/config.toml`, …). A plugin may be declared at multiple layers
+(user/project/local) and the effective state is merged by precedence
 `local > project > user`.
 
-Skillbox scan các settings file đó để hiển thị view enabled/disabled per
-project và per provider. Ba bảng phối hợp:
+Skillbox scans those settings files to display the enabled/disabled view per
+project and per provider. Three tables work together:
 
 ```text
 provider_plugin_layer_scans
@@ -888,24 +902,25 @@ provider_plugin_entries
 provider_plugin_marketplaces
 ```
 
-Một `provider_plugin_layer_scan` row đại diện cho **một lần đọc** một settings
-file ở một layer cụ thể (`user`, `project`, hoặc `local`) cho một provider.
-Mỗi scan sinh ra (nếu file đọc được) các `provider_plugin_entries` (khai báo
-enabled/disabled cho từng plugin) và `provider_plugin_marketplaces` (các
-marketplace bổ sung nơi plugin được tải về).
+A `provider_plugin_layer_scan` row represents **one read** of a settings file at
+a specific layer (`user`, `project`, or `local`) for one provider. Each scan
+produces (if the file is readable) `provider_plugin_entries` (declarations of
+enabled/disabled for each plugin) and `provider_plugin_marketplaces` (additional
+marketplaces from which plugins are fetched).
 
 Layer rules:
 
-- `settings_layer = 'user'` → `project_id IS NULL`. Đây là layer global ở cấp
-  user/máy.
+- `settings_layer = 'user'` → `project_id IS NULL`. This is the global layer at
+  the user/machine level.
 - `settings_layer IN ('project', 'local')` → `project_id IS NOT NULL`.
-- Unique theo `(provider_definition_id, settings_layer)` cho user layer (partial
-  index where `project_id IS NULL`), và `(provider_definition_id, project_id,
-  settings_layer)` cho project/local layer.
+- Unique by `(provider_definition_id, settings_layer)` for the user layer
+  (partial index where `project_id IS NULL`), and
+  `(provider_definition_id, project_id, settings_layer)` for the project/local
+  layer.
 
 ### 19.1 provider_plugin_layer_scans
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -941,21 +956,21 @@ path_escape
 
 Notes:
 
-- `scan_status = ok` là điều kiện duy nhất để các entries/marketplaces phát
-  sinh từ scan này được coi là có hiệu lực.
-- `missing` là trạng thái hợp lệ, nghĩa là settings file chưa tồn tại ở layer
-  đó (không phải lỗi).
-- `symlink` và `path_escape` là defensive: scanner từ chối đọc symlink và path
-  thoát khỏi user/project root để tránh leak.
-- `too_large` chặn file lớn bất thường để giới hạn parse cost.
-- `scan_warnings` là JSON array string chứa parse-time warnings (không chứa
-  raw file content), giới hạn kích thước.
-- `source_operation_id` nullable, FK tới `operations.id` đại diện cho lần scan
-  đã tạo row này.
+- `scan_status = ok` is the only condition under which entries/marketplaces
+  generated by this scan are considered valid.
+- `missing` is a valid state meaning the settings file does not exist at that
+  layer (not an error).
+- `symlink` and `path_escape` are defensive: the scanner refuses to read symlinks
+  and paths that escape the user/project root to prevent leaks.
+- `too_large` blocks unusually large files to limit parse cost.
+- `scan_warnings` is a JSON array string containing parse-time warnings (not
+  raw file content), with bounded size.
+- `source_operation_id` is nullable, FK to `operations.id` representing the scan
+  that created this row.
 
 ### 19.2 provider_plugin_entries
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -975,21 +990,22 @@ disabled
 
 Notes:
 
-- Một entry là một dòng khai báo plugin trong settings file của layer tương
-  ứng. Vắng mặt khai báo = `absent` (không có entry row).
-- UNIQUE `(layer_scan_id, plugin_name, marketplace_name)` đảm bảo settings
-  file không thể khai báo trùng cùng plugin trong cùng marketplace.
-- Effective status (`enabled` / `disabled` / `absent` / `unknown`) được resolve
-  ở application layer bằng cách merge các entry rows theo precedence layer; không
-  lưu trực tiếp trong bảng này.
-- `version`: được đọc từ `~/.claude/plugins/installed_plugins.json` khi scan
-  user layer của Claude provider. NULL cho Codex/Antigravity (không có file
-  tương đương) và khi plugin không có bản ghi install. Giá trị `"unknown"` là
-  literal hợp lệ (Claude báo cáo khi không xác định được version).
+- An entry is a single plugin declaration in the settings file for the
+  corresponding layer. Absence of declaration = `absent` (no entry row).
+- UNIQUE `(layer_scan_id, plugin_name, marketplace_name)` ensures the same
+  plugin in the same marketplace cannot be declared twice in the same settings
+  file.
+- Effective status (`enabled` / `disabled` / `absent` / `unknown`) is resolved
+  at the application layer by merging entry rows by layer precedence; it is not
+  stored directly in this table.
+- `version`: read from `~/.claude/plugins/installed_plugins.json` when scanning
+  the user layer for the Claude provider. NULL for Codex/Antigravity (no
+  equivalent file) and when the plugin has no install record. The literal
+  `"unknown"` is valid (Claude reports it when the version cannot be determined).
 
 ### 19.3 provider_plugin_marketplaces
 
-Fields đề xuất:
+Suggested fields:
 
 ```text
 id
@@ -1012,25 +1028,26 @@ hostPattern
 
 Notes:
 
-- Mỗi row là một marketplace được khai báo trong cùng settings file scan đại
-  diện bởi `layer_scan_id`. Marketplace là nguồn (named source) mà plugin được
-  resolve từ đó.
-- `source_summary` là string mô tả nguồn (ví dụ `owner/repo`, git URL, path).
-  Không lưu raw credentials.
-- `source_type` không có CHECK constraint trong migration: enum value được
-  validate ở application layer dựa trên format của settings file provider.
+- Each row is a marketplace declared in the same settings file scan represented
+  by `layer_scan_id`. A marketplace is the named source from which a plugin is
+  resolved.
+- `source_summary` is a string describing the source (e.g. `owner/repo`, git URL,
+  path). Raw credentials are not stored.
+- `source_type` has no CHECK constraint in the migration; enum values are
+  validated at the application layer based on the provider's settings file format.
 
 ## 20. Plugin Update-Check Cache & Network Settings
 
 *(migration 000022 — 2026-05-29)*
 
-Hai bảng hỗ trợ tính năng **G3c plugin update-check**. Tính năng này là
-**always-on, manual-trigger-only** (ADR-0002, supersedes ADR-0001): không còn
-opt-in gate; network chỉ được gọi khi user bấm "Check Updates".
+Two tables support the **G3c plugin update-check** feature. This feature is
+**always-on, manual-trigger-only** (ADR-0002, supersedes ADR-0001): there is no
+longer an opt-in gate; network is only called when the user clicks "Check
+Updates".
 
-> **Migration 000023 (2026-05-31):** cột `network_settings.update_check_enabled`
-> đã bị **drop** (gate cũ vô dụng). Bảng `network_settings` được giữ cho
-> `cache_ttl_hours`.
+> **Migration 000023 (2026-05-31):** column `network_settings.update_check_enabled`
+> has been **dropped** (the old gate is obsolete). The `network_settings` table
+> is kept for `cache_ttl_hours`.
 
 ```text
 plugin_update_check_cache
@@ -1039,26 +1056,27 @@ network_settings
 
 ### 20.1 plugin_update_check_cache
 
-Lưu kết quả mỗi lần `updateCheck.run` kiểm tra upstream SHA cho một plugin cụ
-thể. Cache có TTL 6 giờ (configurable qua `network_settings.cache_ttl_hours`);
-mỗi click "Check Updates" upsert lại row theo UNIQUE key.
+Stores the result of each `updateCheck.run` call that checks the upstream SHA
+for a specific plugin. Cache has a TTL of 6 hours (configurable via
+`network_settings.cache_ttl_hours`); each "Check Updates" click upserts the row
+by UNIQUE key.
 
 Fields:
 
 ```text
 id                 -- INTEGER PRIMARY KEY
-provider_key       -- TEXT NOT NULL; "claude" (Phase 1 chỉ hỗ trợ Claude)
+provider_key       -- TEXT NOT NULL; "claude" (Phase 1 supports Claude only)
 plugin_name        -- TEXT NOT NULL
 marketplace_name   -- TEXT NOT NULL
-source_url         -- TEXT NOT NULL; HTTPS URL từ marketplace.json (allowlist từ disk)
-source_ref         -- TEXT nullable; tag/branch (ví dụ "v1.5.5", "main")
-installed_sha      -- TEXT nullable; gitCommitSha từ installed_plugins.json
-installed_version  -- TEXT nullable; version string từ installed_plugins.json
-remote_sha         -- TEXT nullable; SHA trả về bởi git ls-remote
+source_url         -- TEXT NOT NULL; HTTPS URL from marketplace.json (allowlist from disk)
+source_ref         -- TEXT nullable; tag/branch (e.g. "v1.5.5", "main")
+installed_sha      -- TEXT nullable; gitCommitSha from installed_plugins.json
+installed_version  -- TEXT nullable; version string from installed_plugins.json
+remote_sha         -- TEXT nullable; SHA returned by git ls-remote
 remote_latest_tag  -- TEXT nullable; reserved Phase 2 (semver tag scan)
 update_available   -- INTEGER nullable; 0=false / 1=true / NULL=unknown
-checked_at         -- TEXT NOT NULL; ISO-8601 UTC timestamp của lần check
-error              -- TEXT nullable; error code nếu check thất bại
+checked_at         -- TEXT NOT NULL; ISO-8601 UTC timestamp of the check
+error              -- TEXT nullable; error code if check failed
 UNIQUE(provider_key, plugin_name, marketplace_name)
 ```
 
@@ -1073,33 +1091,34 @@ otherwise
 
 Notes:
 
-- `source_url` phải là HTTPS — `GitLsRemoteClient` từ chối non-HTTPS trước khi
-  spawn subprocess.
-- `error` chứa error code string, ví dụ: `non_https_scheme_rejected`, `timeout`,
-  `git_not_found`, `ref_not_found`, `host_backoff`.
-- Row không có FK tới bảng plugin nào: cache là snapshot độc lập — plugin bị
-  xóa không cascade-delete cache.
+- `source_url` must be HTTPS — `GitLsRemoteClient` rejects non-HTTPS before
+  spawning a subprocess.
+- `error` contains the error code string, e.g.: `non_https_scheme_rejected`,
+  `timeout`, `git_not_found`, `ref_not_found`, `host_backoff`.
+- The row has no FK to any plugin table: the cache is an independent snapshot —
+  deleting a plugin does not cascade-delete the cache.
 
 ### 20.2 network_settings
 
-Bảng singleton (luôn có đúng 1 row với `id = 1`, được insert bởi migration
-000022). Giữ cài đặt cache cho update-check.
+Singleton table (always exactly 1 row with `id = 1`, inserted by migration
+000022). Stores cache settings for update-check.
 
-Fields (sau migration 000023):
+Fields (after migration 000023):
 
 ```text
-id                    -- INTEGER PRIMARY KEY CHECK (id = 1); luôn = 1
-cache_ttl_hours       -- INTEGER NOT NULL DEFAULT 6; TTL cache update-check (giờ)
+id                    -- INTEGER PRIMARY KEY CHECK (id = 1); always = 1
+cache_ttl_hours       -- INTEGER NOT NULL DEFAULT 6; update-check cache TTL (hours)
 created_at            -- TEXT NOT NULL; ISO-8601 UTC
-updated_at            -- TEXT NOT NULL; ISO-8601 UTC; cập nhật khi set_ttl
+updated_at            -- TEXT NOT NULL; ISO-8601 UTC; updated when set_ttl is called
 ```
 
 Notes:
 
-- Cột `update_check_enabled` đã bị drop ở migration 000023 (ADR-0002): update-check
-  là always-on, không còn gate. `UpdateCheckService.RunUpdateCheck` không đọc
-  setting nào nữa — chạy mỗi khi user trigger.
-- `cache_ttl_hours` hiện read-only từ UI (Phase 1); Phase 2 có thể expose slider.
+- Column `update_check_enabled` was dropped at migration 000023 (ADR-0002):
+  update-check is always-on, the gate is gone. `UpdateCheckService.RunUpdateCheck`
+  no longer reads any setting — it runs whenever the user triggers it.
+- `cache_ttl_hours` is read-only from the UI (Phase 1); Phase 2 may expose a
+  slider.
 
 ## Provider Plugin Relationships
 
@@ -1378,16 +1397,8 @@ Writes:
 - `skills.current_checksum`
 - `skill_sources.resolved_version/resolved_commit`
 - `operations`
-- `installs.install_status = needs_sync` for affected rsync/copy installs
-
-### Sync Rsync / Copy Project
-
-Writes:
-
-- `installs.installed_version/installed_commit/installed_checksum`
-- `installs.last_synced_at`
-- `installs.install_status`
-- `operations`
+- No sync rows are written in the current product. Projects using symlink
+  installs receive host updates through the filesystem link.
 
 ### Change Skill Host Folder
 
@@ -1497,15 +1508,6 @@ installs.install_status = current
 installs.skill_id = null
 ```
 
-### Rsync / Copy Outdated
-
-Represented by:
-
-```text
-installs.install_mode = rsync_copy
-installs.install_status = outdated
-```
-
 ### Fetch Failure
 
 Represented by:
@@ -1550,13 +1552,7 @@ skill_sources.last_fetch_status = failed | network_error | auth_required
 
 ## Open Questions
 
-- Projects/skills có cần soft delete dài hạn không? Phase 1 đã chọn hard delete
-  cho user-initiated install removal.
-- Checksum cho rsync/copy nên tính toàn folder hay dựa vào manifest/snapshot
-  metadata?
-- GitHub/Vercel auth credentials nên lưu trong OS keychain, SQLite encrypted
-  table, hay environment?
-- Phase 2 convert skill format có cần bảng `skill_variants` hoặc
-  `provider_skill_formats` không?
-- Có nên thêm `skills.detected_format` ngay từ Phase 1 để chuẩn bị cho convert
-  Phase 2 không?
+- Do projects/skills need long-term soft delete? Phase 1 has chosen hard delete
+  for user-initiated install removal.
+- Should GitHub/Vercel auth credentials be stored in the OS keychain, an
+  encrypted SQLite table, or the environment?

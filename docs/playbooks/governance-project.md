@@ -249,6 +249,21 @@ DOC-VERIFIED: <reason>
 - Reviewer does not edit files unless the user explicitly asks.
 - If an agent fails or gets stuck, recover the agent first (clear, restart, split task, switch model). If still stuck, ask the user. Do not overstep the assigned role.
 
+## Documentation Discipline
+
+- **Docs describe shipped behavior.** Product docs (`01-product-brief.md`,
+  `02-product-notes.md`, and the technical specs) must describe what the current
+  release actually ships. Roadmap ideas and unimplemented modes belong in
+  explicit deferred/backlog locations, not in current-scope docs. Mixing
+  aspirations into current-scope docs causes QA and user confusion.
+- **QA mapping before implementation.** For high-risk user workflows (install,
+  remove, switch, destructive operations, cross-layer state changes), draft QA
+  cases during the Spec phase — not after implementation. Cases discovered
+  post-implementation become technical debt in the next release run.
+- **Release asset, not dist.** Release QA must verify the actual published
+  GitHub Release artifact (download, launch, sidecar, DB path). Testing only
+  a local `dist/` build does not substitute for release asset smoke.
+
 ## Maintenance
 
 Each governance failure should add one rule here. **Principles over recipes, references over duplication.** If a rule applies only once, do not add it.

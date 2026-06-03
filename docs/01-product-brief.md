@@ -1,46 +1,47 @@
 # Product Brief: Astraler Skillbox
 
-## Vấn Đề
+## Problem
 
-Agent skills đang trở thành một phần quan trọng trong workflow với AI agents.
-Người dùng ngày càng thử nghiệm nhiều skill, nhiều project, và nhiều agent
-provider khác nhau như Claude, Codex, opencode, Antigravity CLI, v.v.
+Agent skills are becoming an important part of workflows with AI agents. Users
+are increasingly experimenting with many skills, many projects, and many agent
+providers such as Claude, Codex, opencode, Antigravity CLI, etc.
 
-Việc quản lý skill hiện còn rời rạc:
+Managing skills is currently fragmented:
 
-- Skill nằm ở nhiều nơi khác nhau.
-- Global skill và project-level skill dễ bị lẫn.
-- Mỗi project cần một bộ skill riêng.
-- Mỗi provider có convention riêng về folder, path, naming, hoặc format.
-- Không chỉ developer dùng skill, nên CLI-only không đủ.
-- Update skill bất tiện khi nhiều project dùng chung một skill.
+- Skills live in many different places.
+- Global skills and project-level skills are easily confused.
+- Each project needs its own set of skills.
+- Each provider has its own conventions for folder, path, naming, or format.
+- Not only developers use skills, so CLI-only is not enough.
+- Updating skills is inconvenient when multiple projects share the same skill.
 
-Astraler Skillbox giải quyết vấn đề này bằng một app GUI-first để quản trị
-skill local trên nhiều project và provider.
+Astraler Skillbox solves this problem with a GUI-first app for managing skills
+locally across multiple projects and providers.
 
-## Định Vị Product
+## Product Positioning
 
 ```text
-Skillbox là local-first control center cho agent skills.
+Skillbox is a local-first control center for agent skills.
 ```
 
-Skillbox quản lý:
+Skillbox manages:
 
-- Skill Host Folder: folder do user chọn trong GUI để làm source of truth cho
-  skill trên máy.
-- Skills: các skill có trong host.
+- Skill Host Folder: a folder the user selects in the GUI as the source of truth
+  for skills on the machine.
+- Skills: skills present in the host.
 - Sources: GitHub, Vercel skills, local/manual.
-- Projects: các project được add vào app.
-- Global Skills: skill/config ở provider global level trên máy.
-- Providers: Claude, Codex, opencode, Antigravity CLI, và provider khác.
-- Installs: skill nào được cài vào project/provider nào, bằng mode nào.
-- Updates: Fetch upstream để biết skill nào có bản mới.
+- Projects: projects added to the app.
+- Global Skills: skills/config at the provider global level on the machine.
+- Providers: Claude, Codex, opencode, Antigravity CLI, and other providers.
+- Installs: which skills are installed into which project/provider, and by what
+  mode.
+- Updates: fetch upstream to find out which skills have new versions.
 
-## Người Dùng Mục Tiêu
+## Target Users
 
-Người dùng không chỉ là developer.
+Users are not only developers.
 
-Nhóm người dùng có thể gồm:
+User groups may include:
 
 - Developer
 - Content creator
@@ -51,42 +52,42 @@ Nhóm người dùng có thể gồm:
 - Founder
 - Analyst
 
-Điểm chung là họ dùng nhiều AI agent workflow và cần quản lý skill có kiểm soát.
+Their common ground is that they use many AI agent workflows and need controlled
+skill management.
 
-## Pain Points Đã Chốt
+## Confirmed Pain Points
 
-- Người dùng thử nghiệm nhiều skill, lâu dần không biết skill nào đang ở đâu.
-- Mỗi project cần một bộ skill riêng.
-- Global skill và project-level skill dễ bị lẫn, gây nhiễu context và chồng
-  chéo behavior.
-- Người dùng khó nhìn thấy provider global level đang có skill/config nào.
-- Nhiều provider agent có convention khác nhau về folder, path, naming.
-- Không chỉ developer dùng skill, nên CLI-only là chưa đủ.
-- Update skill bất tiện khi nhiều project dùng chung một skill.
-- Người dùng khó biết project nào đang dùng skill nào, dùng bằng symlink hay
-  copy.
-- Skill discovery và skill management hiện đang rời rạc.
+- Users experiment with many skills; over time they lose track of where each
+  skill is.
+- Each project needs its own set of skills.
+- Global skills and project-level skills are easily confused, causing context
+  noise and overlapping behavior.
+- Users have difficulty seeing which skills/config exist at the provider global
+  level.
+- Many agent providers have different conventions for folder, path, naming.
+- Not only developers use skills, so CLI-only is not sufficient.
+- Updating skills is inconvenient when multiple projects share the same skill.
+- Users have difficulty knowing which project is using which skill.
+- Skill discovery and skill management are currently fragmented.
 
-## Quyết Định Thiết Kế Đã Chốt
+## Confirmed Design Decisions
 
-- Skillbox là GUI-first.
-- CLI để sau, không phải trọng tâm ban đầu.
-- Skill Host Folder là folder do user chọn và cấu hình trong GUI.
-- Skill content source of truth nằm trong Skill Host Folder.
-- Global Skills là khu vực riêng để quan sát provider global level, không trộn
-  với Skill Host Folder hoặc project-level installs.
-- App dùng SQLite ngay từ đầu để lưu metadata quản trị.
-- Skill source ưu tiên GitHub và Vercel skills.
-- Có nút Fetch để kiểm tra upstream update.
-- Convert skill format giữa provider là Phase 2.
-- Health check chi tiết chưa phải trọng tâm.
-- Người dùng cần hiểu các khái niệm kỹ thuật như symlink, rsync/copy, provider,
+- Skillbox is GUI-first.
+- Skill Host Folder is a folder the user selects and configures in the GUI.
+- Skill content source of truth lives in the Skill Host Folder.
+- Global Skills is a separate area for observing the provider global level, not
+  mixed with the Skill Host Folder or project-level installs.
+- The app uses SQLite from the start to store management metadata.
+- Skill sources prioritize GitHub and Vercel skills.
+- There is a Fetch button to check for upstream updates.
+- Detailed health checks are not the current focus.
+- Users need to understand technical concepts such as symlink, provider, and
   Skill Host Folder.
 
 ## Skill Host Folder
 
-Skill Host Folder là folder do user chọn trong GUI để làm source of truth cho
-skill trên máy.
+The Skill Host Folder is a folder the user selects in the GUI as the source of
+truth for skills on the machine.
 
 ```text
 <skill-host-folder>/
@@ -97,65 +98,54 @@ skill trên máy.
       browser-automation/
 ```
 
-Skillbox đọc danh sách skill từ folder này và cài sang project khác bằng
-symlink hoặc rsync/copy.
+Skillbox reads the skill list from this folder and installs skills to other
+projects via symlink.
 
 ## Project Install
 
-Project install là việc một skill từ Skill Host Folder được cài vào một
-project/provider cụ thể.
+A project install is a skill from the Skill Host Folder being installed into a
+specific project/provider.
 
-Luồng chính:
+Main flow:
 
 ```text
 <skill-host-folder>/.agents/skills/<skill>
         |
-        | symlink hoặc rsync/copy
+        | symlink
         v
 target-project/.agents/skills/<skill>
 ```
 
 Install mode:
 
-- `symlink`: project trỏ trực tiếp về skill trong Skill Host Folder.
-- `rsync/copy`: project nhận một bản snapshot từ Skill Host Folder.
-- `direct`: skill đã nằm trong project nhưng không do Skillbox quản lý.
+- `symlink`: the project points directly to the skill in the Skill Host Folder.
+  This is the currently supported mode.
+- `direct`: the skill already exists in the project but is not managed by
+  Skillbox.
 
 ## Provider Model
 
-Skillbox cần provider adapter để hiểu mỗi provider dùng folder/path/convention
-nào.
+Skillbox needs provider adapters to understand which folder/path/convention each
+provider uses.
 
-Giả định hiện tại:
+Current assumptions:
 
-- Claude có thế giới riêng.
-- Nhiều provider còn lại có thể dùng chung convention kiểu `.agents`.
-- Dù vậy, adapter layer vẫn cần tồn tại từ đầu để tránh bị khóa vào một
-  convention.
+- Claude has its own world.
+- Many other providers may share a common convention like `.agents`.
+- Nevertheless, the adapter layer must exist from the start to avoid being locked
+  into a single convention.
 
 ## Updates
 
-Skillbox có nút Fetch để kiểm tra upstream update.
+Skillbox has a Fetch button to check for upstream updates.
 
-Nguồn skill ưu tiên:
+Priority skill sources:
 
-- GitHub repo trực tiếp.
+- GitHub repo directly.
 - GitHub repo + subfolder.
 - GitHub repo + branch/tag/commit.
 - Vercel skills ecosystem.
 - Local/manual skill.
 
-Với symlink install, update Skill Host Folder sẽ ảnh hưởng project ngay.
-
-Với rsync/copy install, update Skill Host Folder không đổi project cho tới khi
-project được sync lại.
-
-## Phase 2
-
-Phase 2 có thể bao gồm:
-
-- Convert skill format giữa các provider.
-- CLI cho automation và power users.
-- Advanced doctor/health checks.
-- Import/export diagnostics.
-- Multi-host management.
+With symlink installs, updating the Skill Host Folder immediately affects the
+project.

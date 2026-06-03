@@ -70,7 +70,6 @@ Nhóm người dùng có thể gồm:
 ## Quyết Định Thiết Kế Đã Chốt
 
 - Skillbox là GUI-first.
-- CLI để sau, không phải trọng tâm ban đầu.
 - Skill Host Folder là folder do user chọn và cấu hình trong GUI.
 - Skill content source of truth nằm trong Skill Host Folder.
 - Global Skills là khu vực riêng để quan sát provider global level, không trộn
