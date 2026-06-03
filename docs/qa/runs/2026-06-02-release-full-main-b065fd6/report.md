@@ -6,13 +6,13 @@
 - App mode: dev Electron first, packaged smoke after artifact/human gates
 - Target version/commit: 0.1.2 / b065fd6ba7976d3db0e6de03abb276bdaf1b35a5
 - Operator: agent
-- Status: PARTIAL RUN — dev-fixture T0 batch complete; P0 delta verified 2026-06-03; packaged/human-gate cases pending
+- Status: PARTIAL RUN — dev-fixture T0 batch complete; P0/A11Y delta verified 2026-06-03; packaged/human-gate cases pending
 
 ## Verdict
 
 IN PROGRESS — not a GO/NO-GO verdict yet.
 
-Gates: ALL PASS. T0 dev-fixture batch complete; original 8 FAIL + 2 BLOCKED results. **P0 delta rerun 2026-06-03: 5/5 delta cases PASS** (TC-MIGRATE-002, TC-MIGRATE-005, TC-FS-003, TC-SETUP-003, TC-DASH-003). Phase 2 waivers (TC-SKILL-004, TC-SKILL-011, TC-SKILL-012) and harness-blocked cases (TC-A11Y-002, TC-OPS-007) unchanged. Packaged/human-gate cases not yet run.
+Gates: ALL PASS. T0 dev-fixture batch complete; original 8 FAIL + 2 BLOCKED results. **P0 delta rerun 2026-06-03: 5/5 delta cases PASS** (TC-MIGRATE-002, TC-MIGRATE-005, TC-FS-003, TC-SETUP-003, TC-DASH-003). **A11Y destructive-confirmation rerun 2026-06-03: 2/2 delta cases PASS** (TC-A11Y-002, TC-A11Y-005). Phase 2 waivers (TC-SKILL-004, TC-SKILL-011, TC-SKILL-012) and TC-OPS-007 remain unchanged. Packaged/human-gate cases not yet run.
 
 ## Original Run Scope Before Delta
 
@@ -23,7 +23,7 @@ Gates: ALL PASS. T0 dev-fixture batch complete; original 8 FAIL + 2 BLOCKED resu
 | T2 | 9 | 0 | 0 | 0 | 0 | 0 |
 | T3 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-Original cases executed before delta: 36 of 105. Delta reruns appended after P0 fixes: 5 PASS entries. `results.jsonl` now contains 41 rows total. (4 T0 packaged/human-gate cases not yet run: TC-PACKAGE-002, TC-PACKAGE-003, TC-RELEASE-003, TC-RELEASE-006)
+Original cases executed before delta: 36 of 105. Delta reruns appended after P0/A11Y fixes and harness hardening: 7 PASS entries. `results.jsonl` now contains 43 rows total. (4 T0 packaged/human-gate cases not yet run: TC-PACKAGE-002, TC-PACKAGE-003, TC-RELEASE-003, TC-RELEASE-006)
 
 ## Required Gates
 
@@ -52,6 +52,8 @@ Gate evidence: `evidence/gates/{go-test,typecheck,vitest,contracts-drift}.txt`
 | TC-FS-003 | FAIL | **PASS** | `use-install-skill.ts` tracks `lastOperationError` state; `add-skill-wizard.tsx` renders inline error row for both RPC errors and async operation failures |
 | TC-SETUP-003 | FAIL | **PASS** | `skill_host_folder_repo.go` `UpsertAndActivate` immediately marks old-host installs as `old_host`; UI Project Detail shows "Linked to old host" (not "Linked to active host") |
 | TC-DASH-003 | FAIL | **PASS** | Original failure was a **QA harness artifact**: stage-2 confirmation requires typing "RESET" then clicking "Xác nhận Reset"; original test only clicked stage-1 "Tiếp tục" twice without completing stage-2. Full two-stage flow completes correctly: DB cleared (projects=0, installs=0), app navigates to Setup. The `use-reset-all.ts` `onError` fix correctly surfaces genuine RPC failures. |
+| TC-A11Y-002 | BLOCKED | **PASS** | Native/macOS sheet handling moved outside CDP with PID-scoped System Events; cancel paths for Remove Skill, Remove Project, and Reset All Data preserve DB/FS state |
+| TC-A11Y-005 | not previously run | **PASS** | Accept paths mutate only managed run-local QA targets: symlink/install removed, project folder preserved, reset clears user metadata and returns to Setup |
 
 ### TC-MIGRATE-002 Delta — PASS
 
@@ -112,12 +114,34 @@ Post-reset: projects=0, installs=0, skill_host_folders=0, active_host=null. App 
 
 Evidence: `evidence/TC-DASH-003-delta-stage1-visible.png`, `evidence/TC-DASH-003-delta-stage2-dialog.png`, `evidence/TC-DASH-003-delta-after-confirm.png`, `evidence/TC-DASH-003-delta-setup-screen.png`, `evidence/TC-DASH-003-delta-db.txt`
 
+### TC-A11Y-002 Delta — PASS
+
+Cancel destructive confirmations were rerun on the run-local `qa-home-a11y3`
+fixture with a single Claude provider and one installed `alpha-skill`.
+
+- Remove Skill cancel: install remained current, symlink remained intact, host source remained intact.
+- Remove Project cancel: native/macOS sheet was handled outside CDP via PID-scoped System Events; project metadata, folder, install symlink, and host skill remained intact.
+- Reset All Data stage-2 cancel: confirmation remained gated on the `RESET` token and cancel preserved DB/FS state.
+
+Evidence: `evidence/TC-A11Y-002-delta-02-remove-skill-dialog.png`, `evidence/TC-A11Y-002-delta-05-remove-project-cancelled.png`, `evidence/TC-A11Y-002-delta-10-reset-stage2-textbox.png`, `evidence/TC-A11Y-002-delta-final-verify.txt`
+
+### TC-A11Y-005 Delta — PASS
+
+Accept destructive confirmations were executed only against run-local QA
+fixtures.
+
+- Remove Skill accept: removed the managed `.claude/skills/alpha-skill` symlink and active install record; host `alpha-skill` source remained intact.
+- Remove Project accept: Skillbox showed `0 projects`; DB marked the project non-active/removed; the project folder on disk remained intact.
+- Reset All Data accept: required typing `RESET`, then cleared user metadata tables (`projects=0`, `installs=0`, `project_providers=0`, `skills=0`, `skill_host_folders=0`) and returned the app to Setup. Run-local fixture folders remained on disk.
+
+Evidence: `evidence/TC-A11Y-005-delta-01-remove-skill-dialog.png`, `evidence/TC-A11Y-005-delta-05-after-remove-project.png`, `evidence/TC-A11Y-005-delta-10-after-reset.png`, `evidence/TC-A11Y-005-delta-11-after-reset-db-fs.txt`
+
 ### Residual Risk After Delta
 
 | Item | Risk | Mitigation |
 |------|------|-----------|
 | TC-SKILL-004, TC-SKILL-011, TC-SKILL-012 | Phase 2 waiver; copy mode not implemented | Owner-accepted; defer to Phase 2 |
-| TC-A11Y-002 | Harness blocked by native macOS sheets during Remove Project flow | Playbook updated; requires osascript; block remains until harness fix |
+| TC-A11Y-002 | Native/macOS sheet harness risk | Cleared for this rerun with PID-scoped System Events / `osascript`; keep playbook rule for future native sheets |
 | TC-OPS-007 | Blocked by copy mode inoperative (TC-SKILL-011) | Unblocks when Phase 2 implements copy mode |
 | Packaged smoke | Not yet run; requires release artifact | Run before release tag |
 
@@ -125,7 +149,7 @@ Evidence: `evidence/TC-DASH-003-delta-stage1-visible.png`, `evidence/TC-DASH-003
 
 ## Blocking Findings (Original — 2026-06-02)
 
-> **Post-delta status**: TC-MIGRATE-002, TC-MIGRATE-005, TC-FS-003, TC-SETUP-003, TC-DASH-003 are **PASS** as of the 2026-06-03 delta rerun. See Delta QA section above for current status. The original findings are preserved below for historical record.
+> **Post-delta status**: TC-MIGRATE-002, TC-MIGRATE-005, TC-FS-003, TC-SETUP-003, TC-DASH-003, TC-A11Y-002, and TC-A11Y-005 are **PASS** as of the 2026-06-03 delta reruns. See Delta QA section above for current status. The original findings are preserved below for historical record.
 
 ### TC-MIGRATE-002 — ~~FAIL~~ PASS after P0 fix (T0)
 
@@ -196,16 +220,21 @@ timeout on both launches silently with no user-visible error screen. Same root c
 
 Original evidence: `evidence/TC-MIGRATE-005-launch-log.txt`, `evidence/TC-MIGRATE-005-relaunch-log.txt`
 
-### TC-A11Y-002 — BLOCKED (T0)
+### TC-A11Y-002 — ~~BLOCKED~~ PASS after A11Y rerun (T0)
 
-Partial evidence collected (Reset All Data two-stage confirmation verified, cancel leaves
+**Original (2026-06-02):** Partial evidence collected (Reset All Data two-stage confirmation verified, cancel leaves
 DB unchanged). Remove Project flow triggered a native Electron/macOS confirmation sheet
 (dialog.showMessageBox) which blocked all CDP commands (Runtime.evaluate, snapshot,
 screenshot) while open. Sheet dismissed before native-dialog playbook rule was established.
 Harness must use osascript to operate native sheets. Test incomplete; no Remove Project
 cancel flow or Remove Skill flow executed.
 
-Evidence: `evidence/TC-A11Y-002-{initial,reset-cancelled,reset-dialog,reset-textbox-required,projects-list}.png`, `evidence/TC-A11Y-002-db-before.txt`
+Original evidence: `evidence/TC-A11Y-002-{initial,reset-cancelled,reset-dialog,reset-textbox-required,projects-list}.png`, `evidence/TC-A11Y-002-db-before.txt`
+
+**Delta (2026-06-03):** PASS. The rerun used a clean run-local Claude-only
+fixture and PID-scoped `osascript` for native sheets. Remove Skill cancel,
+Remove Project cancel, and Reset All Data stage-2 cancel all preserved DB and
+filesystem state.
 
 ### TC-OPS-007 — BLOCKED (T0)
 
@@ -262,7 +291,7 @@ Evidence: `evidence/TC-OPS-007-blocked-evidence.txt`
 | TC-SETUP-003 | T0 | **FAIL** |
 | TC-MIGRATE-003 | T0 | PASS |
 | TC-DASH-003 | T0 | **FAIL** |
-| TC-A11Y-002 | T0 | **BLOCKED** |
+| TC-A11Y-002 | T0 | ~~BLOCKED~~ **PASS after A11Y rerun** |
 | TC-GLOBAL-003 | T0 | PASS |
 | TC-PROVIDER-006 | T0 | PASS |
 | TC-PROVIDER-011 | T0 | PASS |
