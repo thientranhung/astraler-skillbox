@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import path from "path";
 import { spawnGoCore, onFatal } from "./core-process/manager.js";
 import { registerIpcBridge } from "./core-process/ipc-bridge.js";
@@ -27,6 +27,10 @@ if (ELECTRON_RENDERER_URL) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+
+// Stores the pre-ready startup error (Go failed before server.ready).
+// Set before createWindow() so the renderer can query it via core:startup-error-get.
+let preReadyStartupError: string | null = null;
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -75,19 +79,33 @@ function createWindow(): BrowserWindow {
 async function main(): Promise<void> {
   await app.whenReady();
 
+  // The renderer queries this via preload.getStartupError() (ipcRenderer.invoke).
+  // Registered once; returns null for normal launches, or the error message when
+  // Go failed before server.ready.
+  ipcMain.handle("core:startup-error-get", () => preReadyStartupError);
+
   onFatal((message) => {
-    dialog.showErrorBox("Skillbox Core Error", message);
-    app.quit();
+    // Mid-run fatal: Go crashed after server.ready. The window is open; send the
+    // error as a core:event so the renderer can navigate to the startup-error screen.
+    // pre-ready failures never reach this handler (manager.ts no longer calls fatal()
+    // from timeout/spawn-error paths).
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("core:event", "startup.error", { message });
+    } else {
+      dialog.showErrorBox("Skillbox Core Error", message);
+      app.quit();
+    }
   });
 
   try {
     await spawnGoCore();
   } catch (err) {
-    dialog.showErrorBox(
-      "Startup Error",
-      `Failed to start Skillbox core: ${(err as Error).message}`
-    );
-    app.quit();
+    // Go failed before server.ready (invalid/corrupt DB, dirty migration, etc.).
+    // Store the error so the renderer can retrieve it via getStartupError(), then
+    // create the window. The renderer queries the error on mount via IPC handler —
+    // no one-shot event, no race.
+    preReadyStartupError = (err as Error).message;
+    mainWindow = createWindow();
     return;
   }
 

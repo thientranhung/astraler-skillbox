@@ -73,6 +73,126 @@ func TestSkillHostFolderRepo_UpsertAndActivate_SwitchHost(t *testing.T) {
 	}
 }
 
+// TC-SETUP-003 regression: after switching host, installs sourced from the old
+// host must be reclassified to old_host without requiring a project rescan.
+func TestSkillHostFolderRepo_UpsertAndActivate_SwitchHost_MarksInstallsOldHost(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewSkillHostFolderRepo(db)
+	ctx := context.Background()
+
+	// Establish host-a as active.
+	hostAID, _, _ := repo.UpsertAndActivate(ctx, "host-a", "/tmp/host-a", "/tmp/host-a/.agents/skills")
+
+	// Insert a project and provider to satisfy the FK chain.
+	projRepo := NewProjectRepo(db)
+	pid := seedProject(t, projRepo, "proj-x", "/tmp/proj-x")
+	defID := getGenericAgentsDefID(t, db)
+	ppID := seedProjectProvider(t, db, pid, defID)
+
+	// Insert installs linked to host-a with various statuses.
+	seedInstallFromHost := func(name, status string, hostID int64) int64 {
+		res, err := db.ExecContext(ctx,
+			`INSERT INTO installs (project_provider_id, skill_name, install_mode, install_status,
+			                       project_skill_path, installed_from_host_folder_id)
+			 VALUES (?, ?, 'symlink', ?, ?, ?)`, ppID, name, status,
+			"/tmp/proj-x/.agents/skills/"+name, hostID)
+		if err != nil {
+			t.Fatalf("seedInstallFromHost %s: %v", name, err)
+		}
+		id, _ := res.LastInsertId()
+		return id
+	}
+
+	currentID := seedInstallFromHost("skill-a", "current", hostAID)
+	outdatedID := seedInstallFromHost("skill-b", "outdated", hostAID)
+	missingID := seedInstallFromHost("skill-c", "missing", hostAID)   // missing must NOT be reclassified
+	needsSyncID := seedInstallFromHost("skill-d", "needs_sync", hostAID)
+
+	// Switch to host-b.
+	_, _, err := repo.UpsertAndActivate(ctx, "host-b", "/tmp/host-b", "/tmp/host-b/.agents/skills")
+	if err != nil {
+		t.Fatalf("UpsertAndActivate host-b: %v", err)
+	}
+
+	installRepo := NewInstallRepo(db)
+	installs, _ := installRepo.ListByProject(ctx, pid)
+	statusByID := make(map[int64]domain.InstallStatus)
+	for _, inst := range installs {
+		statusByID[inst.ID] = inst.InstallStatus
+	}
+
+	if statusByID[currentID] != domain.InstallStatusOldHost {
+		t.Errorf("skill-a (current): got %q want old_host", statusByID[currentID])
+	}
+	if statusByID[outdatedID] != domain.InstallStatusOldHost {
+		t.Errorf("skill-b (outdated): got %q want old_host", statusByID[outdatedID])
+	}
+	if statusByID[missingID] != domain.InstallStatusMissing {
+		t.Errorf("skill-c (missing): got %q want missing (must not be reclassified)", statusByID[missingID])
+	}
+	if statusByID[needsSyncID] != domain.InstallStatusOldHost {
+		t.Errorf("skill-d (needs_sync): got %q want old_host", statusByID[needsSyncID])
+	}
+}
+
+// After re-point, installs from the NEW active host are not affected.
+func TestSkillHostFolderRepo_UpsertAndActivate_SwitchHost_PreservesNewHostInstalls(t *testing.T) {
+	db := NewTestDB(t)
+	repo := NewSkillHostFolderRepo(db)
+	ctx := context.Background()
+
+	hostAID, _, _ := repo.UpsertAndActivate(ctx, "host-a", "/tmp/host-a", "/tmp/host-a/.agents/skills")
+	hostBID, _, _ := repo.UpsertAndActivate(ctx, "host-b", "/tmp/host-b", "/tmp/host-b/.agents/skills")
+	// Now re-point to host-a; host-b becomes inactive.
+
+	projRepo := NewProjectRepo(db)
+	pid := seedProject(t, projRepo, "proj-x", "/tmp/proj-x")
+	defID := getGenericAgentsDefID(t, db)
+	ppID := seedProjectProvider(t, db, pid, defID)
+
+	// Install linked to host-b (currently active before next switch).
+	res, err := db.ExecContext(ctx,
+		`INSERT INTO installs (project_provider_id, skill_name, install_mode, install_status,
+		                       project_skill_path, installed_from_host_folder_id)
+		 VALUES (?, 'skill-b', 'symlink', 'current', '/tmp/proj-x/.agents/skills/skill-b', ?)`,
+		ppID, hostBID)
+	if err != nil {
+		t.Fatalf("insert install for host-b: %v", err)
+	}
+	bInstallID, _ := res.LastInsertId()
+
+	// Install linked to host-a.
+	res, err = db.ExecContext(ctx,
+		`INSERT INTO installs (project_provider_id, skill_name, install_mode, install_status,
+		                       project_skill_path, installed_from_host_folder_id)
+		 VALUES (?, 'skill-a', 'symlink', 'current', '/tmp/proj-x/.agents/skills/skill-a', ?)`,
+		ppID, hostAID)
+	if err != nil {
+		t.Fatalf("insert install for host-a: %v", err)
+	}
+	aInstallID, _ := res.LastInsertId()
+
+	// Switch back to host-a; host-b becomes inactive.
+	_, _, err = repo.UpsertAndActivate(ctx, "host-a", "/tmp/host-a", "/tmp/host-a/.agents/skills")
+	if err != nil {
+		t.Fatalf("re-point to host-a: %v", err)
+	}
+
+	installRepo := NewInstallRepo(db)
+	installs, _ := installRepo.ListByProject(ctx, pid)
+	statusByID := make(map[int64]domain.InstallStatus)
+	for _, inst := range installs {
+		statusByID[inst.ID] = inst.InstallStatus
+	}
+
+	if statusByID[bInstallID] != domain.InstallStatusOldHost {
+		t.Errorf("host-b install: got %q want old_host", statusByID[bInstallID])
+	}
+	if statusByID[aInstallID] != domain.InstallStatusCurrent {
+		t.Errorf("host-a install: got %q want current (new active host, must be untouched)", statusByID[aInstallID])
+	}
+}
+
 func TestSkillHostFolderRepo_GetByPath_Missing(t *testing.T) {
 	db := NewTestDB(t)
 	repo := NewSkillHostFolderRepo(db)

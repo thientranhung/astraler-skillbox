@@ -28,6 +28,29 @@ agent-browser --cdp 49222 snapshot -i           # then the normal agent-browser 
 - **`get url` fails on Electron** (`Target.createTarget: Not supported`). To read the
   current page URL, query the CDP endpoint instead: `curl -s http://127.0.0.1:49222/json`
   and read the `page` target's `url`.
+- **Native Electron/macOS dialogs are not DOM.** Dialogs created by Electron native
+  APIs, such as `dialog.showMessageBox`, appear as macOS sheets outside the React DOM.
+  While a native sheet is open, CDP can still answer `/json/version` but page commands
+  such as `Runtime.evaluate`, `DOM.getDocument`, `agent-browser snapshot`, `screenshot`,
+  and `click` may hang or time out. If a destructive action opens a system sheet, stop
+  using agent-browser until the sheet is closed. Inspect or operate the sheet with macOS
+  accessibility, for example:
+
+  ```sh
+  osascript <<'OSA'
+  tell application "System Events"
+    tell process "Electron"
+      set frontmost to true
+      click button "Cancel" of sheet 1 of window 1
+    end tell
+  end tell
+  OSA
+  ```
+
+  Use `Cancel` for safety checks; use `OK` only when the case explicitly requires the
+  destructive confirmation and the target is a run-local QA fixture. After the sheet
+  closes, return to `agent-browser --cdp 49222`. When CDP hangs but `/json/list` still
+  shows the app page, check for a native sheet before blaming page size or app crash.
 - **Teardown cleanly.** Quit the dev app normally (closes the port). If killing from the
   shell, kill the **electron-vite watcher first** (else it respawns the app):
   `pkill -f "electron-vite.js dev"`, then the electron + go core. Stop a lingering
