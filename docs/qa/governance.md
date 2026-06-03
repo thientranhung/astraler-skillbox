@@ -18,6 +18,21 @@ evidence belong in `docs/qa/runs/<run-id>/`.
   fixture copies or explicit temporary paths.
 - Full QA establishes release confidence; delta QA protects that confidence
   after each change.
+- **Release-full pruning**: before running a `release-full` profile, prune it
+  to current-scope testable behavior. Cases for unimplemented features must be
+  tagged `phase2` and will `SKIPPED` in the run; do not include them in the
+  go/no-go count.
+- **Release asset verification**: release QA confidence requires verifying the
+  actual GitHub Release artifact (download, launch, sidecar, DB path check),
+  not only local `dist/` builds. A local build smoke is not equivalent.
+- **Native/system dialog harness rule**: native OS dialogs (file picker, alert,
+  confirm) cannot be driven by CDP automation. Cases requiring them must be
+  marked `NEEDS_HUMAN` or must have an explicit harness bypass documented in
+  the case before the run starts.
+- **QA before implementation**: high-risk user workflows (install, remove,
+  switch, destructive operations) must have QA cases mapped before or during
+  spec, not after implementation. Gap discovered post-implementation must be
+  filed as a QA bank update before the next release run.
 
 ## Result Semantics
 

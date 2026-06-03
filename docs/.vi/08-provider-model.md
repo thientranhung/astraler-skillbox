@@ -83,9 +83,8 @@ có thể scan hoặc cấu hình. Global scan chỉ load provider có
 `has_global_level = 1` hoặc đã có configured global location.
 
 `key` là stable identifier để lưu config, seed data, và external references.
-`provider_type` là enum/category để app dispatch adapter implementation. Hai giá
-trị này có thể giống nhau ở provider built-in, nhưng không bắt buộc giống nhau
-với custom provider sau này.
+`provider_type` là enum/category để app dispatch adapter implementation. Provider
+built-in sở hữu các giá trị này.
 
 ## Provider Path Candidates
 
@@ -526,32 +525,10 @@ Core Skillbox logic chịu trách nhiệm:
 - Ghi `project_providers`.
 - Ghi `installs`.
 - Ghi `warnings`.
-- Chạy install/sync/remove.
+- Chạy install/remove.
 - Thực hiện filesystem writes sau khi validate output của adapter.
 
 Boundary này giúp adapter testable và tránh database logic bị phân tán.
-
-## Phase 2 Conversion
-
-Phase 2 có thể thêm skill format conversion giữa provider.
-
-Các khái niệm có thể cần:
-
-```text
-skills.detected_format
-skill_variants
-provider_skill_formats
-convert_skill operation
-```
-
-Provider Model hiện tại không block Phase 2 vì:
-
-- Provider đã là entity riêng.
-- Install đã scoped theo project provider.
-- Path candidates đã tách khỏi provider definition.
-- Operations có thể thêm `convert_skill`.
-
-Phase 1 chưa cần lưu converted variants.
 
 ## Provider Plugin Layer Model
 
@@ -744,5 +721,4 @@ Domain layer expose các struct chính (xem `core-go/internal/domain/provider_pl
 - Claude convention chính xác nên là gì và path nào nên được adapter support?
 - Codex/opencode/Antigravity CLI có cần adapter riêng ngay, hay dùng
   `generic_agents` trước?
-- Có nên cho user tạo custom provider trong UI ở Phase 1 không?
 - Provider icon nên dùng bundled asset, icon key, hay package icon set?

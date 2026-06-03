@@ -1,4 +1,4 @@
-# Technical Architecture
+# Kiến Trúc Kỹ Thuật
 
 Tài liệu này phác thảo kiến trúc kỹ thuật của Astraler Skillbox ở mức module và
 boundary. Mục tiêu là giúp team build app mà không trộn lẫn UI, database,
@@ -24,7 +24,7 @@ Brainstorm kỹ thuật hiện tại được ghi ở:
 - `docs/archive/review-results/technical-architecture-brainstorm.md`
 - `docs/archive/review-results/transport-decision-brainstorm.md`
 
-## Architecture Goals
+## Mục Tiêu Kiến Trúc
 
 - GUI là trải nghiệm chính.
 - Skill Host Folder là source of truth cho skill content.
@@ -35,7 +35,7 @@ Brainstorm kỹ thuật hiện tại được ghi ở:
 - Long-running work như scan, fetch, update, sync phải tạo operation record.
 - UI không tự thao tác filesystem trực tiếp.
 
-## High-Level Shape
+## Cấu Trúc Tổng Quan
 
 ```text
 Electron Desktop App
@@ -63,7 +63,7 @@ Electron Desktop App
 - Provider Adapters hiểu convention của Claude, Generic Agents, Codex, v.v.
 - External Sources xử lý GitHub, Vercel skills, local import.
 
-## Runtime Processes
+## Các Tiến Trình Runtime
 
 Skillbox nên tách tư duy thành ba phần runtime:
 
@@ -97,9 +97,8 @@ request/response lẫn server-push notifications.
 Decision: JSON-RPC Phase 1 dùng NDJSON framing và `creachadair/jrpc2`, trừ khi
 spike implementation phát hiện blocker cụ thể.
 
-Migration path: nếu Phase 2 cần CLI reuse, multi-window, hoặc nhiều consumer
-cùng kết nối tới một Go core đang chạy, giữ JSON-RPC protocol và đổi transport
-sang unix socket/named pipe.
+Sản phẩm hiện tại có một desktop consumer. Giữ JSON-RPC protocol và stdio
+transport trừ khi có requirement được chấp nhận làm thay đổi boundary này.
 
 Dù transport là stdio, UI contract vẫn nên là command/query API thay vì gọi
 trực tiếp implementation detail.
@@ -107,7 +106,7 @@ trực tiếp implementation detail.
 UI không nên import trực tiếp database client, filesystem APIs, hoặc provider
 adapter implementation.
 
-## Transport Decision
+## Quyết Định Transport
 
 Phase 1 dùng stdio JSON-RPC 2.0:
 
@@ -124,7 +123,7 @@ Go core runtime
   -> write logs/debug output to stderr or log file
 ```
 
-Rules:
+Quy tắc:
 
 - Stdout là protocol boundary. Không dùng `fmt.Print*` hoặc log output thường
   vào stdout trong Go core.
@@ -140,14 +139,14 @@ Rules:
 - Production không mở local HTTP server.
 - App error codes không dùng JSON-RPC reserved range `-32768` đến `-32000`.
 
-Implementation details:
+Chi tiết triển khai:
 
 - JSON-RPC Go library: `creachadair/jrpc2`.
 - Framing: NDJSON, one JSON object per line.
 - Dev-only debug server có thể thêm sau qua `SKILLBOX_DEBUG_PORT`, nhưng không
   thuộc production path.
 
-## Module Boundaries
+## Ranh Giới Module
 
 ```text
 app/
@@ -226,7 +225,7 @@ app/
 Conceptual boundary này vẫn đúng, nhưng implementation folder vẫn là candidate
 shape cho tới khi scaffold code thật.
 
-## Application Services
+## Application Services (Dịch Vụ Ứng Dụng)
 
 Application Services là API mà UI gọi. Mỗi service nên expose command/query rõ
 ràng, không leak SQL hoặc raw filesystem detail lên UI.
@@ -256,7 +255,7 @@ Mapping:
 - `ProjectService`: add project, scan project, project detail queries.
 - `ProviderService`: provider detection, provider definitions, icons/status.
 - `GlobalSkillsService`: scan global locations, list global entries, remediation.
-- `InstallService`: install, sync, switch mode, remove project install.
+- `InstallService`: install và remove project symlink installs.
 - `UpdateService`: fetch all, update host copy, impact preview.
 - `ProviderPluginService`: scan, toggle, and remove plugin overrides across
   layers (user/project/local). Owns `pluginWriterFn` and `pluginRemoverFn`
@@ -264,7 +263,7 @@ Mapping:
 - `OperationService`: start/read/cancel operation records.
 - `WarningService`: list/resolve/dismiss warning state nếu cần.
 
-## Command And Query Pattern
+## Mẫu Command Và Query
 
 React UI nên gọi Golang core qua hai loại API:
 
@@ -306,7 +305,7 @@ IPC/transport rules:
 - Nếu dùng stdio JSON-RPC, progress nên đi qua JSON-RPC server-push
   notifications như `operation.progress`, không dùng polling làm primary model.
 
-## Data Access Layer
+## Tầng Truy Cập Dữ Liệu
 
 Repository layer là nơi duy nhất viết SQL trực tiếp.
 
@@ -329,7 +328,7 @@ WarningRepository
 OperationRepository
 ```
 
-Rules:
+Quy tắc:
 
 - Mỗi command lớn nên dùng transaction khi update nhiều bảng.
 - Scan commands nên ghi `scan_results`, update entity status, và reconcile stale
@@ -394,7 +393,7 @@ Write safety rules:
 - Không tạo path ngoài configured global provider location cho global
   remediation.
 
-## Provider Adapter Boundary
+## Ranh Giới Provider Adapter
 
 Provider adapters không truy cập UI và không ghi database trực tiếp.
 
@@ -430,7 +429,7 @@ Core Skillbox logic nhận output này rồi quyết định:
 Provider adapters chỉ trả về facts và capabilities. Product policy nằm ở core
 services.
 
-## Operation Model
+## Mô Hình Operation
 
 Các thao tác sau nên chạy qua Operation runner:
 
@@ -439,8 +438,6 @@ Các thao tác sau nên chạy qua Operation runner:
 - Scan global skills.
 - Fetch updates.
 - Update Skill Host Folder copy.
-- Sync rsync/copy install.
-- Switch install mode.
 - Remove managed install.
 - Change Skill Host Folder.
 
@@ -462,7 +459,7 @@ Operation runner nên:
 - Không để hai operation xung đột chạy cùng lúc trên cùng target.
 - Cho phép retry nếu lỗi không phải validation error.
 
-Recommended progress model nếu dùng stdio JSON-RPC:
+Mô hình progress được khuyến nghị khi dùng stdio JSON-RPC:
 
 - Go core gửi `operation.progress` notifications qua stdout.
 - Electron main parse notification và forward qua preload bridge.
@@ -473,17 +470,14 @@ Recommended progress model nếu dùng stdio JSON-RPC:
   `context.WithCancel` và check cancel ở natural checkpoints.
 - Retry là command mới từ UI, không auto-retry âm thầm trong Go.
 
-Startup and shutdown lifecycle:
+Vòng đời khởi động và tắt:
 
-- Electron main spawns Go with `spawn()`, not `exec()`.
-- Electron main waits up to 10 seconds for `server.ready`.
-- If Go exits or times out before `server.ready`, show blocking startup error;
-  do not silently retry.
-- During an app session, if Go exits unexpectedly, Electron main may restart up
-  to 3 times before showing blocking error.
-- On `before-quit`, Electron main sends SIGTERM, waits 3 seconds, then SIGKILL.
-- Go handles SIGTERM and stdin EOF by marking running operations as failed,
-  closing SQLite, and exiting.
+- Electron main spawn Go bằng `spawn()`, không dùng `exec()`.
+- Electron main chờ tối đa 10 giây để nhận `server.ready`.
+- Nếu Go thoát hoặc timeout trước `server.ready`, hiển thị lỗi blocking khi khởi động; không tự retry.
+- Trong phiên app, nếu Go thoát bất ngờ, Electron main có thể restart tối đa 3 lần trước khi hiển thị lỗi blocking.
+- Khi `before-quit`, Electron main gửi SIGTERM, chờ 3 giây, rồi SIGKILL.
+- Go xử lý SIGTERM và stdin EOF bằng cách đánh dấu operation đang chạy là failed, đóng SQLite, và thoát.
 
 Locking gợi ý:
 
@@ -491,7 +485,7 @@ Locking gợi ý:
 - Một project chỉ nên có một scan/install/sync/remove operation active.
 - Một global provider location chỉ nên có một scan/remediation operation active.
 
-## Scan And Reconcile
+## Scan Và Reconcile
 
 Scan là cơ chế đưa database về gần trạng thái thật của filesystem.
 
@@ -535,15 +529,13 @@ write warnings
 write scan_results
 ```
 
-Reconcile rule:
+Quy tắc reconcile:
 
-- Filesystem state wins for existence/status.
-- SQLite metadata wins for management intent, source mapping, and operation
-  history.
-- If filesystem and database disagree, UI shows explicit status instead of
-  silently hiding the mismatch.
+- Trạng thái filesystem thắng cho existence/status.
+- Metadata SQLite thắng cho management intent, source mapping, và operation history.
+- Nếu filesystem và database không đồng nhất, UI hiển thị trạng thái rõ ràng thay vì ẩn sự không khớp.
 
-## Install, Sync, Remove
+## Cài Đặt, Đồng Bộ, Xóa
 
 Install to project:
 
@@ -552,41 +544,27 @@ validate skill exists in active host
 validate project exists and provider target is supported
 resolve target path via provider adapter
 show impact preview if target exists
-write symlink or rsync/copy through filesystem gateway
+write symlink through filesystem gateway
 upsert installs
 write operation result
 refresh project detail
 ```
 
-Sync rsync/copy:
-
-```text
-validate install is managed rsync_copy
-validate source skill exists
-validate target path belongs to provider scope
-copy host skill to target
-update checksum/version metadata
-write operation result
-```
-
-Remove project install:
+Xóa project install:
 
 ```text
 validate target install
-if managed symlink/copy, remove target entry
+if managed symlink, remove target entry
 if direct/unmanaged, require stronger confirmation
 mark or delete install metadata based on product policy
 write operation result
 ```
 
-Phase 1 does not include Install Skill To Global Location. Global remediation
-can support safe actions such as open folder, update configured path, relink
-managed broken symlink, sync managed global rsync/copy entry if that entry was
-previously created/adopted by Skillbox.
+Phase 1 không bao gồm Install Skill To Global Location. Global remediation có thể hỗ trợ các action an toàn như open folder, update configured path, hoặc relink managed broken symlink nếu entry đó đã được Skillbox tạo/adopt trước đó.
 
-## Fetch And Update Sources
+## Fetch Và Cập Nhật Sources
 
-Source integrations should be separate from provider adapters.
+Source integrations nên tách riêng khỏi provider adapters.
 
 ```text
 GitHubSourceAdapter
@@ -602,13 +580,11 @@ Responsibilities:
 - Report auth/network/not-fetchable states.
 - Download/update Skill Host Folder copy when user confirms.
 
-GitHub/Vercel source logic should not know project providers. After host update,
-UpdateService computes affected project installs and global installs from DB.
+GitHub/Vercel source logic không nên biết về project providers. Sau khi cập nhật host, UpdateService tính toán affected project installs và global installs từ DB.
 
-## UI State Composition
+## Tổ Hợp Trạng Thái UI
 
-Screens should be backed by view models assembled from queries, not by UI joining
-raw tables manually.
+Màn hình nên được hỗ trợ bởi view models được tập hợp từ queries, không phải UI tự join bảng thô.
 
 View models:
 
@@ -623,9 +599,9 @@ UpdatesView
 SettingsView
 ```
 
-Each view model should include:
+Mỗi view model nên bao gồm:
 
-- Primary entities.
+- Các entity chính.
 - Counts.
 - Action availability.
 - Warning summaries.
@@ -633,11 +609,11 @@ Each view model should include:
 - Empty state reason.
 - Next recommended action.
 
-Action availability should come from core rules, not UI-only checks.
+Action availability nên đến từ core rules, không phải UI-only checks.
 
-## Error Handling
+## Xử Lý Lỗi
 
-Use typed application errors:
+Dùng typed application errors:
 
 ```text
 validation_error
@@ -651,7 +627,7 @@ operation_cancelled
 unknown_error
 ```
 
-Every command result should return:
+Mỗi command result nên trả về:
 
 ```text
 status
@@ -662,19 +638,18 @@ user_message
 technical_message
 ```
 
-UI shows `user_message`. Logs/debug tools can show `technical_message`.
+UI hiển thị `user_message`. Logs/debug tools có thể hiển thị `technical_message`.
 
-## Security And Privacy
+## Bảo Mật Và Quyền Riêng Tư
 
-- Do not store plaintext tokens in SQLite.
-- Prefer OS keychain for GitHub/Vercel credentials.
-- Treat project paths and skill content as local private data.
-- Do not send local file content to external service unless user explicitly
-  triggers a source/fetch/conversion feature that requires it.
-- Log paths and operation metadata, but avoid logging secret values.
-- Any future telemetry must be opt-in.
+- Không lưu plaintext tokens trong SQLite.
+- Ưu tiên OS keychain cho GitHub/Vercel credentials.
+- Coi project paths và skill content là dữ liệu riêng tư local.
+- Không gửi local file content đến external service trừ khi user chủ động trigger tính năng source/fetch yêu cầu điều đó.
+- Log paths và operation metadata, nhưng tránh log secret values.
+- Bất kỳ telemetry nào trong tương lai phải là opt-in.
 
-Electron security decisions:
+Quyết định bảo mật Electron:
 
 ```text
 contextIsolation = true
@@ -687,18 +662,18 @@ CSP = default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
 dev only: remote-debugging-port on 127.0.0.1 (default 49222, gated on ELECTRON_RENDERER_URL); packaged builds never open a debugging port
 ```
 
-Dev exposes a Chrome DevTools Protocol port (default `49222`, override `SKILLBOX_CDP_PORT`) so browser-automation agents can `connect` to the running `pnpm dev` instance instead of launching a second app. It is gated on `ELECTRON_RENDERER_URL` (set by electron-vite only in dev) and binds to loopback only — packaged builds never open it. See `AGENTS.md` → "Agent Browser".
+Dev mở một cổng Chrome DevTools Protocol (mặc định `49222`, override `SKILLBOX_CDP_PORT`) để browser-automation agents có thể `connect` vào instance `pnpm dev` đang chạy thay vì launch app thứ hai. Cổng này được gate bởi `ELECTRON_RENDERER_URL` (chỉ có trong dev) và chỉ bind loopback — packaged builds không bao giờ mở cổng này. Xem `AGENTS.md` → "Agent Browser".
 
-## Testing Strategy
+## Chiến Lược Testing
 
-Core test layers:
+Các tầng test chính:
 
-- Domain unit tests for install mode classification and impact preview.
-- Provider adapter tests using fixture folders.
-- Filesystem gateway tests in temp directories.
-- Repository tests against temporary SQLite database.
-- Service tests for scan/install/sync/update flows.
-- UI tests for view states and disabled/enabled actions.
+- Domain unit tests cho install mode classification và impact preview.
+- Provider adapter tests dùng fixture folders.
+- Filesystem gateway tests trong temp directories.
+- Repository tests với temporary SQLite database.
+- Service tests cho scan/install/sync/update flows.
+- UI tests cho view states và disabled/enabled actions.
 
 Critical fixtures:
 
@@ -709,35 +684,25 @@ Critical fixtures:
 - Managed symlink install.
 - Broken symlink install.
 - External symlink install.
-- Managed rsync/copy install.
 - Direct/unmanaged install.
 - Global provider location missing.
 - Global/project overlap.
 
-## Phase Boundaries
+## Ranh Giới Phase
 
 Phase 1:
 
-- GUI-first app.
-- One active Skill Host Folder.
+- App GUI-first.
+- Một Skill Host Folder active.
 - SQLite metadata.
 - Scan Skill Host Folder.
-- Add project and scan project providers.
-- Project install via symlink or rsync/copy.
+- Add project và scan project providers.
+- Project install qua symlink (stable path hiện tại).
 - Global Skills scan/visibility/remediation surface.
-- Fetch/update source metadata for GitHub/Vercel/local where supported.
+- Fetch/update source metadata cho GitHub/Vercel/local khi được hỗ trợ.
 - Updates impact preview.
 
-Phase 2:
-
-- Skill format conversion.
-- Install Skill To Global Location if product decides to support it.
-- Custom provider UI.
-- More source registries.
-- CLI layer over the same Application Services.
-- Multi-host support if needed.
-
-## Architecture Decisions To Confirm
+## Các Quyết Định Kiến Trúc Cần Xác Nhận
 
 Các decision dưới đây là các điểm còn cần chốt trước khi scaffold code thật.
 Transport Phase 1 đã chốt là stdio JSON-RPC 2.0; các chi tiết framing/library
@@ -746,7 +711,7 @@ vẫn còn mở.
 ```text
 IPC transport:
   phase_1_decision = stdio JSON-RPC 2.0
-  phase_2_migration_path = unix socket/named pipe if CLI or multi-window needs it
+  migration_path = giữ JSON-RPC protocol; chỉ đổi transport khi có requirement cụ thể được chấp nhận
   library = creachadair/jrpc2
   framing = NDJSON
   open = dev debug server

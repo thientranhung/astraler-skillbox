@@ -68,7 +68,6 @@ User mở Project Detail
 Install mode:
 
 - `symlink`: skill trong project là symlink tới Skill Host Folder.
-- `rsync/copy`: skill là folder copy và có metadata do Skillbox quản lý.
 - `direct`: skill tồn tại trong project nhưng không do Skillbox quản lý.
 
 Kết quả:
@@ -188,48 +187,6 @@ Kết quả:
 
 - Skill trong Skill Host Folder được cập nhật.
 - Project dùng `symlink` nhận thay đổi ngay.
-- Project dùng `rsync/copy` được đánh dấu cần sync nếu có khác biệt.
-
-## 8. Sync Rsync / Copy Project
-
-Mục tiêu: cập nhật project đang dùng snapshot copy từ Skill Host Folder.
-
-Flow:
-
-```text
-User mở Project Detail hoặc Updates
-  -> User chọn Sync cho một skill hoặc nhiều skill
-  -> Skillbox copy lại skill từ Skill Host Folder sang project
-  -> Skillbox cập nhật install metadata
-  -> UI đánh dấu project đã sync
-```
-
-Kết quả:
-
-- Project dùng bản copy mới nhất từ Skill Host Folder.
-- Install mode vẫn là `rsync/copy`.
-
-## 9. Switch Install Mode
-
-Mục tiêu: đổi cơ chế cài skill trong project.
-
-Flow:
-
-```text
-User mở Project Detail
-  -> User chọn một installed skill
-  -> User chọn Switch Mode
-  -> User chọn symlink hoặc rsync/copy
-  -> Skillbox thay thế entry hiện tại trong provider folder
-  -> Skillbox cập nhật install metadata
-  -> UI hiển thị mode mới
-```
-
-Kết quả:
-
-- Skill trong project chuyển sang install mode mới.
-- Database phản ánh mode mới.
-
 ## 10. Remove Skill From Project
 
 Mục tiêu: gỡ skill khỏi một project/provider.

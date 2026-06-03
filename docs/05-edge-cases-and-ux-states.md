@@ -1,703 +1,693 @@
 # Edge Cases And UX States
 
-Tài liệu này mô tả các tình huống không lý tưởng mà Skillbox cần xử lý để UI/UX
-chặt chẽ hơn. Đây chưa phải technical implementation detail; mục tiêu là định
-nghĩa trạng thái, rủi ro, và phản hồi UI phù hợp.
+This document describes non-ideal situations that Skillbox must handle for a
+tighter UI/UX. This is not implementation detail; the goal is to define states,
+risks, and appropriate UI responses.
 
 ## 1. Skill Host Folder States
 
-### Chưa cấu hình Skill Host Folder
+### Skill Host Folder Not Configured
 
-Tình huống:
+Situation:
 
-- User mở app lần đầu.
-- Database chưa có `skill_host_folder`.
+- User opens the app for the first time.
+- Database does not yet have a `skill_host_folder`.
 
-UI nên:
+UI should:
 
-- Hiển thị onboarding để user chọn Skill Host Folder.
-- Không cho install skill trước khi cấu hình xong.
+- Display onboarding so the user can select a Skill Host Folder.
+- Not allow skill installs until configuration is complete.
 
-### Skill Host Folder không tồn tại
+### Skill Host Folder Does Not Exist
 
-Tình huống:
+Situation:
 
-- Folder đã bị move, rename, unmount, hoặc xóa.
+- Folder has been moved, renamed, unmounted, or deleted.
 
-UI nên:
+UI should:
 
-- Hiển thị warning rõ trên Dashboard và Settings.
-- Cho user chọn lại folder mới.
-- Cho user mở danh sách project/install có thể bị ảnh hưởng.
+- Display a clear warning on Dashboard and Settings.
+- Allow the user to select a new folder.
+- Allow the user to view the list of projects/installs that may be affected.
 
-### Skill Host Folder thiếu `.agents/skills`
+### Skill Host Folder Missing `.agents/skills`
 
-Tình huống:
+Situation:
 
-- User chọn một folder mới hoặc folder chưa được chuẩn hóa.
+- User selects a new folder or a folder that has not been normalized.
 
-UI nên:
+UI should:
 
-- Giải thích Skillbox cần cấu trúc `.agents/skills`.
-- Cho user tạo cấu trúc này bằng một action rõ ràng.
+- Explain that Skillbox needs a `.agents/skills` structure.
+- Allow the user to create this structure via a clear action.
 
-### Skill Host Folder rỗng
+### Skill Host Folder Is Empty
 
-Tình huống:
+Situation:
 
-- `.agents/skills` tồn tại nhưng chưa có skill nào.
+- `.agents/skills` exists but contains no skills.
 
-UI nên:
+UI should:
 
-- Hiển thị empty state trong Skills Library.
-- Đưa action `Add / Import Skill`.
+- Display an empty state in Skills Library.
+- Offer an `Add / Import Skill` action.
 
-### Skill Host Folder không có quyền đọc/ghi
+### Skill Host Folder Has No Read/Write Permission
 
-Tình huống:
+Situation:
 
-- App không thể scan hoặc import/update skill.
+- App cannot scan or import/update skills.
 
-UI nên:
+UI should:
 
-- Phân biệt lỗi read và write.
-- Cho user chọn folder khác hoặc mở folder trong file manager để xử lý quyền.
+- Distinguish read errors from write errors.
+- Allow the user to select a different folder or open the folder in the file
+  manager to fix permissions.
 
-### Skill Host Folder đổi sang path mới
+### Skill Host Folder Changed To New Path
 
-Tình huống:
+Situation:
 
-- User đổi source of truth trong Settings.
+- User changes the source of truth in Settings.
 
-UI nên:
+UI should:
 
-- Scan folder mới trước khi áp dụng.
-- Hiển thị project/install đang trỏ về folder cũ.
-- Đề xuất relink các symlink nếu user muốn.
+- Scan the new folder before applying.
+- Display projects/installs that point to the old folder.
+- Offer to relink symlinks if the user wants.
 
-### Skill Host Folder nằm trên drive ngoài hoặc synced folder
+### Skill Host Folder on External or Synced Drive
 
-Tình huống:
+Situation:
 
-- Folder nằm trên external drive, iCloud, Dropbox, Google Drive, NAS, v.v.
+- Folder is on an external drive, iCloud, Dropbox, Google Drive, NAS, etc.
 
-UI nên:
+UI should:
 
-- Không chặn.
-- Báo warning nếu path tạm thời không available.
-- Cho user rescan khi folder available trở lại.
+- Not block.
+- Warn if the path is temporarily unavailable.
+- Allow rescan when the folder becomes available again.
 
 ## 2. Project States
 
-### Project path không tồn tại
+### Project Path Does Not Exist
 
-Tình huống:
+Situation:
 
-- Project đã bị move, rename, unmount, hoặc xóa.
+- Project has been moved, renamed, unmounted, or deleted.
 
-UI nên:
+UI should:
 
-- Hiển thị project warning trong Projects và Dashboard.
-- Cho user update path hoặc remove project khỏi database.
+- Display a project warning in Projects and Dashboard.
+- Allow the user to update the path or remove the project from the database.
 
-### Project chưa có provider folder nào
+### Project Has No Provider Folders
 
-Tình huống:
+Situation:
 
-- User add một folder project mới nhưng chưa có convention nào được nhận diện.
+- User adds a new project folder but no convention has been detected.
 
-UI nên:
+UI should:
 
-- Hiển thị trạng thái `No provider detected`.
-- Cho user chọn provider/convention muốn setup nếu app hỗ trợ tạo cấu trúc.
+- Display a `No provider detected` state.
+- Allow the user to select a provider/convention to set up if the app supports
+  creating the structure.
 
-### Project có nhiều provider folder
+### Project Has Multiple Provider Folders
 
-Tình huống:
+Situation:
 
-- Project có Claude và `.agents`, hoặc nhiều convention cùng tồn tại.
+- Project has Claude and `.agents`, or multiple conventions coexisting.
 
-UI nên:
+UI should:
 
-- Hiển thị provider badges rõ ràng.
-- Khi install skill, yêu cầu chọn provider target.
+- Display provider badges clearly.
+- When installing a skill, require the user to select a provider target.
 
-### Project có skill thủ công
+### Project Has Manual Skills
 
-Tình huống:
+Situation:
 
-- Skill tồn tại trong provider folder nhưng không có install metadata của
-  Skillbox.
+- A skill exists in the provider folder but has no Skillbox install metadata.
 
-UI nên:
+UI should:
 
-- Phân loại là `direct`.
-- Không tự nhận là managed install.
-- Cho user adopt/import vào Skillbox nếu feature này được hỗ trợ sau.
+- Classify it as `direct`.
+- Not claim it as a managed install.
+- Allow the user to adopt/import it into Skillbox if this feature is supported
+  later.
 
-### Project có skill trùng tên ở nhiều provider
+### Project Has Skill With Duplicate Name Across Providers
 
-Tình huống:
+Situation:
 
-- `skill-a` tồn tại trong Claude folder và `.agents/skills`.
+- `skill-a` exists in both the Claude folder and `.agents/skills`.
 
-UI nên:
+UI should:
 
-- Hiển thị theo provider scope, không gộp mù.
-- Trong Project Detail, skill row nên thể hiện provider rõ ràng.
+- Display by provider scope, not merge blindly.
+- In Project Detail, skill rows should clearly show the provider.
 
 ## 3. Global Skill States
 
-### Chưa cấu hình global provider location
+### Global Provider Location Not Configured
 
-Tình huống:
+Situation:
 
-- Provider có global level nhưng Skillbox chưa biết path global của provider đó.
+- Provider has a global level but Skillbox does not yet know the global path for
+  that provider.
 
-UI nên:
+UI should:
 
-- Hiển thị provider global state là `not configured`.
-- Cho user configure path nếu provider adapter support global location.
+- Display the provider global state as `not configured`.
+- Allow the user to configure the path if the provider adapter supports global
+  location.
 
-### Global provider location không tồn tại
+### Global Provider Location Does Not Exist
 
-Tình huống:
+Situation:
 
-- Global path từng tồn tại nhưng bị move, unmount, hoặc xóa.
+- Global path previously existed but has been moved, unmounted, or deleted.
 
-UI nên:
+UI should:
 
-- Hiển thị warning trong Dashboard và Global Skills.
-- Cho user update path, rescan, hoặc disable location.
+- Display a warning in Dashboard and Global Skills.
+- Allow the user to update the path, rescan, or disable the location.
 
-### Global provider location tồn tại nhưng rỗng
+### Global Provider Location Exists But Is Empty
 
-Tình huống:
+Situation:
 
-- Provider global folder tồn tại nhưng không có skill/global entries.
+- Provider global folder exists but contains no skills/global entries.
 
-UI nên:
+UI should:
 
-- Hiển thị empty state theo provider.
-- Không coi đây là lỗi.
+- Display an empty state by provider.
+- Not treat this as an error.
 
-### Global skill unmanaged/direct
+### Global Skill Unmanaged/Direct
 
-Tình huống:
+Situation:
 
-- Global entry tồn tại nhưng không do Skillbox quản lý.
+- A global entry exists but is not managed by Skillbox.
 
-UI nên:
+UI should:
 
-- Phân loại là `direct`.
-- Hiển thị rõ đây là global-level entry.
-- Không tự remove hoặc relink.
+- Classify it as `direct`.
+- Clearly display that this is a global-level entry.
+- Not automatically remove or relink it.
 
-### Global skill trùng với project-level skill
+### Global Skill Overlaps With Project-Level Skill
 
-Tình huống:
+Situation:
 
-- Cùng skill name tồn tại ở global level và project-level.
+- The same skill name exists at both global level and project level.
 
-UI nên:
+UI should:
 
-- Hiển thị warning/informational state để user biết có thể có chồng chéo.
-- Không tự quyết định precedence vì provider behavior có thể khác nhau.
+- Display a warning/informational state so the user knows there may be overlap.
+- Not automatically decide precedence since provider behavior may differ.
 
-### Global symlink bị broken hoặc external
+### Global Symlink Is Broken or External
 
-Tình huống:
+Situation:
 
-- Global entry là symlink hỏng hoặc trỏ ngoài Skill Host Folder.
+- Global entry is a broken symlink or points outside the Skill Host Folder.
 
-UI nên:
+UI should:
 
-- Phân loại tương tự project install: `broken_symlink` hoặc `external_symlink`.
-- Cho user relink, remove, hoặc leave as-is.
+- Classify similarly to project install: `broken_symlink` or
+  `external_symlink`.
+- Allow the user to relink, remove, or leave as-is.
 
 ## 4. Install States
 
-### Symlink hợp lệ
+### Valid Symlink
 
-Tình huống:
+Situation:
 
-- Project skill là symlink trỏ tới Skill Host Folder.
+- Project skill is a symlink pointing to the Skill Host Folder.
 
-UI nên:
+UI should:
 
-- Hiển thị mode `symlink`.
-- Hiển thị source path.
-- Cho open source folder và open project folder.
+- Display mode `symlink`.
+- Display the source path.
+- Allow opening the source folder and the project folder.
 
-### Symlink bị broken
+### Broken Symlink
 
-Tình huống:
+Situation:
 
-- Symlink target không còn tồn tại.
+- Symlink target no longer exists.
 
-UI nên:
+UI should:
 
-- Hiển thị warning trong Project Detail.
-- Cho user relink, remove, hoặc switch sang rsync/copy nếu có source tương ứng.
+- Display a warning in Project Detail.
+- Allow the user to relink or remove.
 
-### Symlink trỏ tới Skill Host Folder cũ
+### Symlink Points to Old Skill Host Folder
 
-Tình huống:
+Situation:
 
-- User đã đổi Skill Host Folder, nhưng project còn symlink tới host cũ.
+- User has changed the Skill Host Folder, but the project still has a symlink
+  to the old host.
 
-UI nên:
+UI should:
 
-- Phân loại là symlink nhưng đánh dấu `old host`.
-- Cho user relink sang Skill Host Folder hiện tại.
+- Classify as symlink but mark as `old host`.
+- Allow the user to relink to the current Skill Host Folder.
 
-### Symlink trỏ ngoài Skill Host Folder
+### Symlink Points Outside Skill Host Folder
 
-Tình huống:
+Situation:
 
-- Skill trong project là symlink nhưng target không nằm trong Skill Host Folder
-  hiện tại.
+- Skill in the project is a symlink but the target is not in the current Skill
+  Host Folder.
 
-UI nên:
+UI should:
 
-- Phân loại là `external symlink`.
-- Không tự sửa.
-- Cho user remove, relink, hoặc leave as-is.
+- Classify as `external symlink`.
+- Not auto-fix.
+- Allow the user to remove, relink, or leave as-is.
 
-### Rsync/copy current
+### Rsync/Copy States
 
-Tình huống:
+> **Deferred.** Rsync/copy mode is not implemented. The states `rsync/copy
+> current` and `rsync/copy outdated` are not in the current release.
 
-- Project copy khớp với snapshot/source metadata mới nhất.
+### Direct Install
 
-UI nên:
+Situation:
 
-- Hiển thị mode `rsync/copy`.
-- Hiển thị trạng thái `current`.
+- Skill is a regular folder with no Skillbox metadata.
 
-### Rsync/copy outdated
+UI should:
 
-Tình huống:
+- Display mode `direct`.
+- Not display update/sync actions as for a managed install.
 
-- Skill Host Folder đã update nhưng project copy chưa sync.
+### Target Folder Already Exists When Installing
 
-UI nên:
+Situation:
 
-- Hiển thị trạng thái `outdated`.
-- Cho user sync một skill hoặc nhiều skill.
+- User installs a skill but the provider folder already has an entry with the
+  same name.
 
-### Direct install
+UI should:
 
-Tình huống:
+- Block overwriting by default.
+- Allow the user to choose replace, skip, or cancel.
+- If replacing, require clear confirmation since this is a destructive action.
 
-- Skill là folder thường, không có metadata Skillbox.
+### Conflict When Switching Mode
 
-UI nên:
-
-- Hiển thị mode `direct`.
-- Không hiển thị update/sync action như managed install.
-
-### Target folder đã tồn tại khi install
-
-Tình huống:
-
-- User install skill nhưng provider folder đã có entry cùng tên.
-
-UI nên:
-
-- Chặn ghi đè mặc định.
-- Cho user chọn replace, skip, hoặc cancel.
-- Nếu replace, cần confirm rõ vì đây là destructive action.
-
-### Conflict khi switch mode
-
-Tình huống:
-
-- Đổi từ symlink sang copy hoặc ngược lại nhưng target path không thể thay thế.
-
-UI nên:
-
-- Không partial-update metadata nếu filesystem operation fail.
-- Hiển thị lỗi và giữ trạng thái cũ.
+> **Deferred.** Switching install mode is not implemented. This case does not
+> apply in the current release.
 
 ## 5. Fetch And Update States
 
-### Skill không có source metadata
+### Skill Has No Source Metadata
 
-Tình huống:
+Situation:
 
-- Skill local/manual không biết upstream ở đâu.
+- A local/manual skill does not know where its upstream is.
 
-UI nên:
+UI should:
 
-- Hiển thị source là `local/manual`.
-- Disable Fetch cho skill đó hoặc cho user cấu hình source.
+- Display source as `local/manual`.
+- Disable Fetch for that skill or allow the user to configure a source.
 
-### GitHub repo không truy cập được
+### GitHub Repo Unreachable
 
-Tình huống:
+Situation:
 
-- Repo bị xóa, private, sai URL, hoặc thiếu auth.
+- Repo has been deleted, is private, has wrong URL, or is missing auth.
 
-UI nên:
+UI should:
 
-- Hiển thị fetch error theo từng skill.
-- Không làm hỏng state fetch của skill khác.
-- Cho user sửa source metadata.
+- Display fetch errors per skill.
+- Not corrupt the fetch state of other skills.
+- Allow the user to fix the source metadata.
 
-### Vercel skills fetch fail
+### Vercel Skills Fetch Fails
 
-Tình huống:
+Situation:
 
-- Vercel skills source tạm thời không truy cập được hoặc response không hợp lệ.
+- Vercel skills source is temporarily unreachable or returns an invalid response.
 
-UI nên:
+UI should:
 
-- Hiển thị lỗi recoverable.
-- Cho retry.
+- Display a recoverable error.
+- Allow retry.
 
-### Network offline
+### Network Offline
 
-Tình huống:
+Situation:
 
-- Fetch không thể kết nối network.
+- Fetch cannot reach the network.
 
-UI nên:
+UI should:
 
-- Hiển thị global fetch warning.
-- Giữ nguyên last known update state.
-- Cho retry khi network có lại.
+- Display a global fetch warning.
+- Keep the last known update state.
+- Allow retry when the network comes back.
 
-### Upstream có update
+### Upstream Has Update
 
-Tình huống:
+Situation:
 
-- Fetch phát hiện version/commit mới.
+- Fetch detects a new version/commit.
 
-UI nên:
+UI should:
 
-- Hiển thị skill trong Updates.
-- Hiển thị affected projects và install modes.
+- Display the skill in Updates.
+- Display affected projects and install modes.
 
-### Upstream không có update
+### Upstream Has No Update
 
-Tình huống:
+Situation:
 
-- Skill đang ở bản mới nhất.
+- Skill is at the latest version.
 
-UI nên:
+UI should:
 
-- Hiển thị trạng thái `up to date`.
-- Không đưa vào danh sách cần action.
+- Display `up to date` state.
+- Not add it to the action list.
 
-### Local skill đã sửa khác upstream
+### Local Skill Has Been Modified From Upstream
 
-Tình huống:
+Situation:
 
-- Skill trong Skill Host Folder có local modifications.
+- Skill in the Skill Host Folder has local modifications.
 
-UI nên:
+UI should:
 
-- Không tự overwrite.
-- Hiển thị trạng thái cần review.
-- Cho user chọn giữ local, overwrite, hoặc tạo snapshot tùy design sau này.
+- Not auto-overwrite.
+- Display a state that needs review.
+- Allow the user to choose to keep local, overwrite, or create a snapshot
+  depending on the final design.
 
-### Update ảnh hưởng nhiều symlink projects
+### Update Affects Many Symlinked Projects
 
-Tình huống:
+Situation:
 
-- Một skill được nhiều project symlink dùng chung.
+- A skill is symlinked and shared by many projects.
 
-UI nên:
+UI should:
 
-- Trước update, hiển thị affected projects.
-- Sau update, các project symlink được coi là nhận thay đổi ngay.
+- Before updating, display affected projects.
+- After updating, symlinked projects are considered to have received the change
+  immediately.
 
-### Rsync/copy projects cần sync sau update
+### Rsync/Copy Projects Need Sync After Update
 
-Tình huống:
-
-- Skill Host Folder đã update, project copy chưa update.
-
-UI nên:
-
-- Hiển thị các project cần sync.
-- Cho sync từng project hoặc sync batch.
+> **Deferred.** Rsync/copy mode is not implemented. This case does not apply in
+> the current release.
 
 ## 6. Provider States
 
-### Provider được nhận diện rõ
+### Provider Clearly Detected
 
-Tình huống:
+Situation:
 
-- Project có folder/path đúng convention của provider adapter.
+- Project has folder/path matching the provider adapter's convention.
 
-UI nên:
+UI should:
 
-- Hiển thị provider badge/icon.
-- Cho install skill vào provider đó.
+- Display a provider badge/icon.
+- Allow installing skills into that provider.
 
-### Provider convention chưa được support
+### Provider Convention Not Yet Supported
 
-Tình huống:
+Situation:
 
-- Project có dấu hiệu dùng provider nhưng Skillbox chưa có adapter.
+- Project shows signs of using a provider but Skillbox has no adapter for it.
 
-UI nên:
+UI should:
 
-- Hiển thị là `unsupported provider`.
-- Không tự ghi file vào path chưa hiểu rõ.
+- Display as `unsupported provider`.
+- Not write to paths it does not understand.
 
-### Provider folder tồn tại nhưng format lạ
+### Provider Folder Exists But Has Unexpected Format
 
-Tình huống:
+Situation:
 
-- Folder đúng tên convention nhưng cấu trúc bên trong không như expected.
+- Folder name matches the convention but the internal structure is not as
+  expected.
 
-UI nên:
+UI should:
 
-- Hiển thị warning.
-- Cho user xem path và rescan.
+- Display a warning.
+- Allow the user to view the path and rescan.
 
-### Claude và `.agents` cùng tồn tại
+### Claude and `.agents` Coexist
 
-Tình huống:
+Situation:
 
-- Project dùng cả Claude-specific convention và shared `.agents` convention.
+- Project uses both the Claude-specific convention and the shared `.agents`
+  convention.
 
-UI nên:
+UI should:
 
-- Tách provider scope rõ.
-- Add Skill flow phải chọn provider target.
+- Separate provider scopes clearly.
+- Add Skill flow must require selecting a provider target.
 
 ## 7. Add Skill Wizard States
 
-### 0 installable providers (empty state)
+### 0 Installable Providers (Empty State)
 
-Tình huống:
+Situation:
 
-- Project không có provider nào hợp lệ để install (không có provider nào có
-  `detection_status = detected/configured` và `provider_definitions.status =
-  supported/experimental` và `skills_path` resolve được).
+- Project has no valid provider for install (no provider with
+  `detection_status = detected/configured` and
+  `provider_definitions.status = supported/experimental` and a resolvable
+  `skills_path`).
 
-UI nên:
+UI should:
 
-- Hiển thị empty state card trong wizard: "No provider is ready for install."
-- Đưa CTA "Scan project" như primary action.
-- Khi user nhấn "Scan project", gọi `useScanProject` và đóng wizard.
-- Không hiển thị tab strip, danh sách skill, hoặc nút Install.
+- Display empty state card in wizard: "No provider is ready for install."
+- Offer CTA "Scan project" as primary action.
+- When user clicks "Scan project", call `useScanProject` and close the wizard.
+- Not display the tab strip, skill list, or Install button.
 
-### Skill đã installed tại provider của tab đang active
+### Skill Already Installed at Active Tab's Provider
 
-Tình huống:
+Situation:
 
-- Skill trong danh sách đã có install record tại provider của tab đang active.
+- A skill in the list already has an install record at the active tab's provider.
 
-UI nên:
+UI should:
 
-- Hiển thị checkbox của skill đó ở trạng thái disabled + opacity-50.
-- Gắn badge "Installed" cạnh tên skill.
-- Không cho phép user tick lại skill đó ở tab hiện tại.
-- Skill vẫn có thể chọn được ở tab của provider khác nếu chưa installed tại
-  provider đó (installed-state là per-provider, không globally disabled).
+- Display that skill's checkbox as disabled + opacity-50.
+- Show an "Installed" badge next to the skill name.
+- Not allow the user to check that skill at the current tab.
+- The skill may still be selected at another provider's tab if not yet installed
+  there (installed-state is per-provider, not globally disabled).
 
-### Chuyển tab reset selection
+### Switching Tab Resets Selection
 
-Tình huống:
+Situation:
 
-- User đã tick một số skill ở tab A, sau đó chuyển sang tab B.
+- User has checked some skills in tab A, then switches to tab B.
 
-UI nên:
+UI should:
 
-- Xóa toàn bộ `selectedSkillIds` khi tab thay đổi.
-- Xóa install error (nếu có) khi tab thay đổi.
-- Tab B bắt đầu với selection trống, không kế thừa lựa chọn của tab A.
+- Clear all `selectedSkillIds` when the tab changes.
+- Clear the install error (if any) when the tab changes.
+- Tab B starts with an empty selection, not inheriting tab A's choices.
 
-### Provider là experimental
+### Provider Is Experimental
 
-Tình huống:
+Situation:
 
-- Tab trong wizard tương ứng với provider có `provider_definitions.status =
-  experimental`.
+- The wizard tab corresponds to a provider with
+  `provider_definitions.status = experimental`.
 
-UI nên:
+UI should:
 
-- Hiển thị badge "experimental" trong tab header cạnh display name.
-- Vẫn cho phép install bình thường (experimental không block install).
-- Không cần modal confirm thêm chỉ vì experimental.
+- Display an "experimental" badge in the tab header next to the display name.
+- Still allow normal install (experimental does not block install).
+- Not require an extra confirmation modal just for experimental.
 
-### Install error (ví dụ: conflict_error 1005)
+### Install Error (e.g. conflict_error 1005)
 
-Tình huống:
+Situation:
 
-- Skillbox trả về lỗi khi user nhấn Install (ví dụ target folder đã tồn tại,
-  permission denied, conflict_error code 1005, ...).
+- Skillbox returns an error when the user clicks Install (e.g. target folder
+  already exists, permission denied, conflict_error code 1005, …).
 
-UI nên:
+UI should:
 
-- Giữ wizard mở, không đóng sau lỗi.
-- Hiển thị error row trong footer (text-red-600) ngay phía trên Cancel/Install.
-- Cho user sửa selection hoặc nhấn Cancel để thoát.
-- Error row bị xóa nếu user chuyển tab hoặc thay đổi selection.
-- Không partial-update database nếu install operation thất bại.
+- Keep the wizard open; do not close after an error.
+- Display an error row in the footer (text-red-600) just above Cancel/Install.
+- Allow the user to fix the selection or click Cancel to exit.
+- Clear the error row if the user switches tabs or changes selection.
+- Not partial-update the database if the install operation fails.
 
 ## 8. Database And App State
 
-### Database chưa tồn tại
+### Database Does Not Exist
 
-Tình huống:
+Situation:
 
-- User mở app lần đầu hoặc database bị xóa.
+- User opens the app for the first time, or the database has been deleted.
 
-UI nên:
+UI should:
 
-- Tạo database mới.
-- Chạy First-Time Setup.
+- Create a new database.
+- Run First-Time Setup.
 
-### Database corrupt
+### Database Corrupt
 
-Tình huống:
+Situation:
 
-- SQLite file không đọc được hoặc schema lỗi.
+- SQLite file is unreadable or has schema errors.
 
-UI nên:
+UI should:
 
-- Không crash im lặng.
-- Hiển thị lỗi blocking.
-- Cho user chọn backup/export file lỗi nếu có thể.
+- Not crash silently.
+- Display a blocking error.
+- Allow the user to back up/export the corrupt file if possible.
 
-### Database lệch filesystem
+### Database Diverged From Filesystem
 
-Tình huống:
+Situation:
 
-- Database ghi có install nhưng filesystem đã bị sửa ngoài app.
+- Database records an install but the filesystem has been modified outside the
+  app.
 
-UI nên:
+UI should:
 
-- Rescan để reconcile.
-- Ưu tiên filesystem là trạng thái thật.
+- Rescan to reconcile.
+- Treat the filesystem as the true state.
 
-### Filesystem có skill nhưng database không biết
+### Filesystem Has Skill That Database Does Not Know About
 
-Tình huống:
+Situation:
 
-- User copy skill thủ công vào project hoặc Skill Host Folder.
+- User manually copies a skill into a project or Skill Host Folder.
 
-UI nên:
+UI should:
 
-- Scan phát hiện và hiển thị.
-- Với project install, phân loại `direct` nếu không có metadata.
-- Với Skill Host Folder, thêm skill vào library sau scan.
+- Detect it on scan and display it.
+- For project installs, classify as `direct` if no metadata.
+- For Skill Host Folder, add skill to library after scan.
 
-### Schema migration
+### Schema Migration
 
-Tình huống:
+Situation:
 
-- App version mới cần thay đổi SQLite schema.
+- A new app version requires a SQLite schema change.
 
-UI nên:
+UI should:
 
-- Chạy migration trước khi mở app chính.
-- Nếu migration fail, hiển thị lỗi rõ và không ghi tiếp dữ liệu mới.
+- Run migration before opening the main app.
+- If migration fails, display a clear error and not continue writing new data.
 
 ## 8. UI/UX States
 
-### Empty state
+### Empty State
 
-Áp dụng cho:
+Applies to:
 
-- Chưa có Skill Host Folder.
-- Skill Host Folder rỗng.
-- Chưa có project.
-- Chưa có global skills.
-- Project chưa có skill.
+- No Skill Host Folder configured.
+- Skill Host Folder empty.
+- No projects.
+- No global skills.
+- Project has no skills.
 
-UI nên:
+UI should:
 
-- Nói rõ trạng thái hiện tại.
-- Đưa một primary action tiếp theo.
+- Clearly state the current condition.
+- Offer a single primary next action.
 
-### Auto-scan on mount
+### Auto-Scan on Mount
 
-Project Detail, Global Skills, và Plugins screens tự động trigger scan khi mount nếu data stale:
+Project Detail, Global Skills, and Plugins screens automatically trigger a scan
+on mount if data is stale:
 
-- **Trigger condition**: `lastScannedAt == null` (chưa bao giờ scan) HOẶC `Date.now() - lastScannedAt > 10 phút`.
-- **Anti double-trigger**: 3 guards — hook-level `isPending/operationId` check; session-level `sessionAutoScanRegistry` (Set theo `"auto-scan:<target>:<id>"`); component-level `useRef` flag.
-- **Toast policy**: auto-scan dùng `silent: true` → không có loading/success toast. Error toast vẫn hiển thị. Manual scan dùng `silent: false` (default) → đầy đủ toast.
-- **Manual Scan button**: luôn giữ, không bị block bởi auto-scan.
-- **Projects list**: KHÔNG auto-scan (nhiều projects, tránh bão operations).
+- **Trigger condition**: `lastScannedAt == null` (never scanned) OR
+  `Date.now() - lastScannedAt > 10 minutes`.
+- **Anti double-trigger**: 3 guards — hook-level `isPending/operationId` check;
+  session-level `sessionAutoScanRegistry` (Set keyed by
+  `"auto-scan:<target>:<id>"`); component-level `useRef` flag.
+- **Toast policy**: auto-scan uses `silent: true` → no loading/success toast.
+  Error toast still displays. Manual scan uses `silent: false` (default) →
+  full toast.
+- **Manual Scan button**: always present, not blocked by auto-scan.
+- **Projects list**: does NOT auto-scan (many projects; avoids an operation
+  storm).
 
-### Loading/scanning state
+### Loading/Scanning State
 
-Áp dụng cho:
+Applies to:
 
-- Scan Skill Host Folder.
-- Scan project.
-- Scan global locations.
-- Fetch update.
-- Sync rsync/copy.
+- Scanning Skill Host Folder.
+- Scanning project.
+- Scanning global locations.
+- Fetching update.
 
-UI nên:
+UI should:
 
-- Hiển thị progress hoặc busy state.
-- Không cho chạy trùng thao tác nguy hiểm trên cùng target.
+- Display progress or busy state.
+- Not allow a duplicate dangerous operation on the same target.
 
-### Confirm destructive action
+### Confirm Destructive Action
 
-Áp dụng cho:
+Applies to:
 
-- Remove skill khỏi project.
-- Replace existing folder.
-- Change Skill Host Folder khi có affected symlinks.
-- Delete project khỏi database.
+- Removing a skill from a project.
+- Replacing an existing folder.
+- Changing Skill Host Folder when there are affected symlinks.
+- Deleting a project from the database.
 
-UI nên:
+UI should:
 
-- Hiển thị object bị ảnh hưởng.
-- Yêu cầu confirm rõ.
+- Display the affected objects.
+- Require clear confirmation.
 
-### Recoverable warning
+### Recoverable Warning
 
-Áp dụng cho:
+Applies to:
 
 - Missing path.
 - Broken symlink.
-- Fetch fail.
+- Fetch failure.
 - Unsupported provider.
 
-UI nên:
+UI should:
 
-- Không chặn toàn app.
-- Đưa action cụ thể như rescan, retry, relink, choose folder, remove.
+- Not block the whole app.
+- Offer a specific action such as rescan, retry, relink, choose folder, remove.
 
-### Blocking error
+### Blocking Error
 
-Áp dụng cho:
+Applies to:
 
-- Database corrupt.
-- Không thể đọc Skill Host Folder.
-- Không thể ghi khi user đang install/update.
+- Corrupt database.
+- Cannot read Skill Host Folder.
+- Cannot write when user is installing/updating.
 
-UI nên:
+UI should:
 
-- Chặn action liên quan.
-- Giải thích lỗi và bước xử lý tiếp theo.
+- Block the related action.
+- Explain the error and the next step.
 
-### Impact preview
+### Impact Preview
 
-Áp dụng cho:
+Applies to:
 
-- Update skill trong Skill Host Folder.
-- Change Skill Host Folder.
-- Switch install mode.
+- Updating a skill in the Skill Host Folder.
+- Changing Skill Host Folder.
+- Switching install mode.
 
-UI nên:
+UI should:
 
-- Hiển thị project/provider/skill bị ảnh hưởng trước khi user xác nhận.
+- Display affected projects/providers/skills before the user confirms.
 
-### Quick actions
+### Quick Actions
 
-Các trạng thái lỗi nên có action nhanh:
+Error states should have quick actions:
 
 - Open folder.
 - Rescan.
@@ -706,3 +696,4 @@ Các trạng thái lỗi nên có action nhanh:
 - Sync.
 - Remove from database.
 - Configure source.
+- Open folder.

@@ -4,8 +4,8 @@
 
 ### Skill Host Folder
 
-Folder do user chọn và cấu hình trong GUI để lưu source of truth cho skill trên
-máy.
+A folder the user selects and configures in the GUI to store the source of truth
+for skills on the machine.
 
 ```text
 <skill-host-folder>/
@@ -17,15 +17,15 @@ máy.
 
 ### Skill
 
-Một skill cụ thể nằm trong Skill Host Folder.
+A specific skill residing in the Skill Host Folder.
 
-Skill có thể có source từ GitHub, Vercel skills, hoặc local/manual.
+A skill may have a source from GitHub, Vercel skills, or local/manual.
 
 ### Source
 
-Nguồn gốc của skill.
+The origin of a skill.
 
-Các source type ban đầu:
+Initial source types:
 
 - `github`
 - `vercel_skills`
@@ -34,24 +34,24 @@ Các source type ban đầu:
 
 ### Project
 
-Một project được user add vào Skillbox.
+A project the user adds to Skillbox.
 
-Skillbox scan project để biết provider nào có trong project và skill nào đang
-được cài.
+Skillbox scans a project to find out which providers are present and which skills
+are installed.
 
 ### Global Provider Location
 
-Provider-level/global location là nơi một provider lưu skill, command, hoặc
-config ở cấp user/máy, không thuộc riêng project nào.
+A provider-level/global location is where a provider stores skills, commands, or
+config at the user/machine level, not belonging to any specific project.
 
-Skillbox scan global locations để user biết global skill nào đang tồn tại và có
-thể ảnh hưởng nhiều project.
+Skillbox scans global locations so the user can see which global skills exist and
+may affect multiple projects.
 
 ### Provider
 
-Agent provider hoặc convention mà project đang dùng.
+An agent provider or convention that a project is using.
 
-Ví dụ:
+Examples:
 
 - Claude
 - Codex
@@ -61,32 +61,34 @@ Ví dụ:
 
 ### Install
 
-Việc một skill được cài từ Skill Host Folder vào một project/provider.
+The act of a skill being installed from the Skill Host Folder into a
+project/provider.
 
 Install mode:
 
-- `symlink`
-- `rsync/copy`
-- `direct`
+- `symlink` — current stable path.
+- `direct` — unmanaged skill already in project.
+- `rsync/copy` — deferred; not current UI or RPC support.
 
 ### Global Install
 
-Skill/config tồn tại ở global provider location.
+A skill/config that exists in a global provider location.
 
-Global install có thể là managed hoặc direct, tương tự project install, nhưng
-scope là provider global level thay vì project/provider.
+A global install may be managed or direct, similar to a project install, but
+scoped to the provider global level rather than a project/provider.
 
 ### Fetch
 
-Kiểm tra upstream để biết skill có bản mới không.
+Check upstream to find out if a skill has a new version.
 
 ### Update
 
-Đưa thay đổi từ upstream về Skill Host Folder.
+Bring the change from upstream into the Skill Host Folder.
 
 ### Sync
 
-Đưa thay đổi từ Skill Host Folder sang project cài bằng rsync/copy.
+> **Deferred.** Rsync/copy sync is a future flow; not implemented in the current
+> release.
 
 ## Main App Areas
 
@@ -102,181 +104,180 @@ Updates
 Settings
 ```
 
-Sidebar navigation thứ tự: Dashboard → Host Skills → Global Skills → Global Plugins → Projects → Settings → About.
+Sidebar navigation order: Dashboard → Host Skills → Global Skills → Global
+Plugins → Projects → Settings → About.
 
 ## Dashboard
 
-Dashboard hiển thị tổng quan:
+Dashboard displays an overview:
 
-- Tổng số skill trong Skill Host Folder.
-- Tổng số global skills được phát hiện.
-- Tổng số project đã add.
-- Lối tắt đến Global Plugins (navigation row, mirror Global Skills pattern).
-- Skill có update sau lần Fetch gần nhất.
-- Project đang dùng symlink.
-- Project đang dùng rsync/copy.
-- Warning cơ bản như host missing, broken path, provider path missing.
+- Total number of skills in the Skill Host Folder.
+- Total number of global skills discovered.
+- Total number of projects added.
+- Shortcut to Global Plugins (navigation row, mirrors Global Skills pattern).
+- Skills with updates since the last Fetch.
+- Projects using symlink.
+- Basic warnings such as host missing, broken path, provider path missing.
 
 ## Skills Library
 
-Skills Library là nơi quản lý skill trong Skill Host Folder.
+Skills Library is where skills in the Skill Host Folder are managed.
 
-Hiển thị:
+Displays:
 
-- Tên skill.
+- Skill name.
 - Source: GitHub, Vercel skills, local, manual.
-- Provider compatibility nếu biết.
+- Provider compatibility if known.
 - Last fetched.
-- Update available hay không.
-- Số project đang dùng skill.
+- Whether an update is available.
+- Number of projects using the skill.
 
-Action:
+Actions:
 
-- Add/import skill vào host.
+- Add/import skill to host.
 - Fetch update.
 - Open skill folder.
 - View skill detail.
 
 ## Global Skills
 
-Global Skills là nơi xem skill/config ở provider global level trên máy.
+Global Skills is where skills/config at the provider global level on the machine
+are viewed.
 
-Hiển thị:
+Displays:
 
 - Provider.
 - Global location path.
 - Skill/global entry name.
-- Mode: symlink, rsync/copy, direct.
+- Mode: symlink, direct. (rsync/copy: reserved, not current UI support)
 - Status: current, missing, external symlink, broken symlink, unmanaged.
-- Skill Host Folder source nếu map được.
-- Warning nếu global skill có thể gây nhiễu project-level behavior.
+- Skill Host Folder source if mappable.
+- Warning if a global skill may interfere with project-level behavior.
 
-Action:
+Actions:
 
 - Scan global locations.
 - Open global provider folder.
-- Remove global entry nếu user xác nhận.
-- Relink hoặc sync nếu entry được Skillbox quản lý.
-- Adopt/import sau này nếu feature này được support.
+- Remove global entry if the user confirms.
+- Relink or sync if the entry is managed by Skillbox.
+- Adopt/import later if this feature is supported.
 
 Phase 1 scope:
 
-- Global Skills là scan, visibility, và remediation surface.
-- Chưa có flow Install Skill To Global Location.
-- Add Skill flow chỉ target project providers.
+- Global Skills is a scan, visibility, and remediation surface.
+- No Install Skill To Global Location flow yet.
+- Add Skill flow only targets project providers.
 
 ## Global Plugins
 
-Global Plugins là nơi xem và quản lý plugin ở global (user) layer cho các provider hỗ
-trợ plugin convention (Claude, Codex, Antigravity CLI).
+Global Plugins is where plugins at the global (user) layer are viewed and managed
+for providers that support the plugin convention (Claude, Codex, Antigravity CLI).
 
 File: `apps/desktop/renderer/src/screens/plugins-screen.tsx`.
 
-Hiển thị (group theo provider):
+Displays (grouped by provider):
 
-- Settings file path đang được Skillbox scan (ví dụ `~/.claude/settings.json`).
+- Settings file path being scanned by Skillbox (e.g. `~/.claude/settings.json`).
 - Layer scan status: ok, not configured, unreadable, malformed, too large,
   symlink, path escape.
-- Danh sách plugin với name, marketplace name, status enabled/disabled.
-- Danh sách marketplace với name, source type, source summary.
+- Plugin list with name, marketplace name, status enabled/disabled.
+- Marketplace list with name, source type, source summary.
 
-Action:
+Actions:
 
-- Rescan user-layer settings file của một provider.
-- Toggle enable/disable globally cho một plugin (chỉ provider có write
+- Rescan user-layer settings file for a provider.
+- Toggle enable/disable globally for a plugin (only for providers with write
   support: Claude, Codex, Antigravity CLI).
 
 Phase 1 scope:
 
-- Chỉ global (user) layer được hiển thị ở Global Plugins. Project layer và effective
-  state per project nằm trong Project Detail.
-- Local layer (`settings.local.json`) là read-only.
-- Managed settings (enterprise config) là out-of-scope.
+- Only the global (user) layer is shown in Global Plugins. The project layer and
+  effective state per project are in Project Detail.
+- Local layer (`settings.local.json`) is read-only.
+- Managed settings (enterprise config) are out of scope.
 
-> **Naming note:** UI hiển thị label `Global` cho layer mà code/contract dùng
-> identifier `user` (`layer: "user"`, `PluginLayerUser`, SQL `settings_layer =
-> 'user'`). End-user terminology favors `Global`; code/data terminology giữ
-> `user` để không phá contract và DB.
+> **Naming note:** The UI displays the label `Global` for the layer that
+> code/contracts use the identifier `user` (`layer: "user"`, `PluginLayerUser`,
+> SQL `settings_layer = 'user'`). End-user terminology favors `Global`;
+> code/data terminology keeps `user` to avoid breaking contracts and the DB.
 
 ## Projects
 
-Projects là danh sách project được add vào Skillbox.
+Projects is the list of projects added to Skillbox.
 
-Hiển thị:
+Displays:
 
 - Project name.
 - Project path.
 - Providers detected.
-- Số skill đang cài.
-- Warning status nếu có.
+- Number of skills installed.
+- Warning status if any.
 
-Action:
+Actions:
 
 - Add project.
 - Scan project.
 - Open project detail.
-- Remove project khỏi Skillbox database.
+- Remove project from the Skillbox database.
 
 ## Project Detail
 
-Project Detail là màn hình chính để điều phối skill trong một project.
+Project Detail is the primary screen for coordinating skills within a project.
 
-Hiển thị:
+Displays:
 
 - Project path.
 - Provider detected.
 - Skills installed.
-- Mode: symlink, rsync/copy, direct.
-- Source skill trong host nếu map được.
-- Update/sync status nếu là rsync/copy.
-- Plugin tab: plugin version column — Claude lấy từ `installed_plugins.json`
-  (user + project scope); Codex lấy từ cache dir `~/.codex/plugins/cache/`
-  (cache là global, apply cho cả user layer và project layer); Antigravity CLI
-  không có nguồn version → hiển thị `—`.
+- Mode: symlink, direct. (rsync/copy: reserved, not current UI support)
+- Source skill in host if mappable.
+- Plugin tab: plugin version column — Claude reads from `installed_plugins.json`
+  (user + project scope); Codex reads from cache dir
+  `~/.codex/plugins/cache/` (cache is global, applies to both user layer and
+  project layer); Antigravity CLI has no version source → displays `—`.
 
-Action:
+Actions:
 
 - Add skill.
 - Remove skill.
-- Switch mode giữa symlink và rsync/copy.
 - Rescan.
 - Open project folder.
 
 ## Add Skill Flow
 
-Flow mở Add Skill Wizard từ Project Detail.
+Flow to open the Add Skill Wizard from Project Detail.
 
 ```text
 Project Detail
   -> Add Skill
-  -> Wizard mở tab strip, mỗi tab là một installable provider
-     (tab header: ProviderIcon + display name + skills path badge + "experimental" badge nếu có)
-  -> User chọn tab provider muốn install vào
-  -> User tick skill trong danh sách của tab đó
-     (skill đã installed ở provider đó bị disable + "Installed" badge)
-  -> Footer hiển thị path hint của tab đang active
-  -> User nhấn Install
-  -> Skill được install vào provider của tab đang active
+  -> Wizard opens a tab strip, each tab is an installable provider
+     (tab header: ProviderIcon + display name + skills path badge + "experimental" badge if applicable)
+  -> User selects the tab of the provider they want to install into
+  -> User checks skills in the list for that tab
+     (already installed skills at that provider are disabled + "Installed" badge)
+  -> Footer shows the path hint for the active tab
+  -> User clicks Install
+  -> Skill is installed into the provider of the active tab
 ```
 
-Nếu không có installable provider nào (0 provider hợp lệ), wizard hiển thị empty
-state "No provider is ready for install." kèm CTA "Scan project".
+If there are no installable providers (0 valid providers), the wizard shows the
+empty state "No provider is ready for install." with CTA "Scan project".
 
-Selection reset khi user chuyển tab.
+Selection is reset when the user switches tabs.
 
 ## Skill Detail
 
-Hiển thị:
+Displays:
 
-- Tên skill.
+- Skill name.
 - Host path.
 - Source type.
-- Source URL hoặc Vercel source id.
-- Current version/commit nếu có.
+- Source URL or Vercel source id.
+- Current version/commit if available.
 - Last fetched.
 - Projects using this skill.
 
-Action:
+Actions:
 
 - Fetch.
 - Update host copy.
@@ -285,47 +286,48 @@ Action:
 
 ## Updates
 
-Updates là màn hình tập trung cho việc kiểm tra và xử lý update.
+Updates is the central screen for checking and handling updates.
 
-Hiển thị:
+Displays:
 
-- Nút Fetch All.
-- Danh sách skill có bản mới.
+- Fetch All button.
+- List of skills with new versions.
 - Current version.
 - Latest version.
 - Affected projects.
 - Project install modes.
 
-Action:
+Actions:
 
 - Update skill in host.
-- Sync rsync/copy projects.
 - View affected projects.
 
 ## Settings
 
-Settings quản lý:
+Settings manages:
 
 - Skill Host Folder path.
 - Default install mode.
 - Provider configs.
 - Database location.
-- GitHub/Vercel settings nếu cần.
+- GitHub/Vercel settings if needed.
 
 ## About
 
-About screen hiển thị thông tin về ứng dụng và tác giả.
+About screen displays information about the app and its author.
 
 File: `apps/desktop/renderer/src/screens/about-screen.tsx`.
 
-Hiển thị:
+Displays:
 
-- Tên ứng dụng và version (từ `VITE_APP_VERSION`).
-- Author links: Email, GitHub, Blog — click mở browser.
-- Update check: nút "Check for Updates" gọi `app.checkUpdate` RPC.
-  - Trạng thái: idle / checking / up-to-date / available / error.
-  - Khi có bản mới: hiển thị `latestVersion` và link "View release" đến GitHub Releases.
+- App name and version (from `VITE_APP_VERSION`).
+- Author links: Email, GitHub, Blog — click to open in browser.
+- Update check: "Check for Updates" button calls `app.checkUpdate` RPC.
+  - States: idle / checking / up-to-date / available / error.
+  - When a new version is available: displays `latestVersion` and a "View
+    release" link to GitHub Releases.
 
-`app.checkUpdate` gọi GitHub Releases API, always-on (không gate) — auto-check khi mở About screen (ADR-0002).
+`app.checkUpdate` calls the GitHub Releases API, always-on (no gate) — auto-checks
+when the About screen is opened (ADR-0002).
 
 <!-- DOC-VERIFIED: about-screen, use-check-app-update, method-allowlist app.checkUpdate -->

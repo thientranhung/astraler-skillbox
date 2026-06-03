@@ -117,7 +117,8 @@ cases:
     primary_screen: Packaged App
     related_screens: [Project Detail, Dashboard]
     type: packaged-smoke
-    tags: [packaging, restart, operation, recovery, release-full]
+    tags: [packaging, restart, operation, recovery, phase2]
+    phase: phase2
     invariants: [INV-PACKAGE-001, INV-OPERATION-001, INV-DB-001]
     release_scope: current
     preconditions:

@@ -8,7 +8,7 @@ profile:
 selection:
   include_tiers: [T0, T1, T2, T3]
   include_tags: [release-full]
-  exclude_tags: []
+  exclude_tags: [phase2, deferred, credentialed]
   order:
     - automated-gates
     - T0

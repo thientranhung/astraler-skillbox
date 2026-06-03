@@ -678,10 +678,7 @@ Có thể hoãn:
 
 - Hành vi Auto-update.
 - Trình nền (persistent daemon).
-- CLI.
 - Multi-window.
-- Cài đặt Skill vào vị trí Global (Install Skill To Global Location).
-- Custom provider UI.
 
 ## Tập Quyết Định Scaffold Đề Xuất Cho Giai Đoạn 1
 

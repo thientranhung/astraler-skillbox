@@ -1,22 +1,24 @@
 # Implementation Patterns
 
-Tài liệu này chốt các pattern sẽ dùng khi implement Astraler Skillbox. Mục tiêu
-là biến architecture trong `10-technical-architecture.md` và tech stack trong
-`11-tech-stack-and-scaffold-decisions.md` thành quy tắc code cụ thể.
+This document confirms the patterns to use when implementing Astraler Skillbox.
+The goal is to translate the architecture in `10-technical-architecture.md` and
+the tech stack in `11-tech-stack-and-scaffold-decisions.md` into concrete code
+rules.
 
 ## Pattern Principles
 
-- Pattern phục vụ boundary, không phải để làm code phức tạp hơn.
-- UI không sở hữu business rules, filesystem writes, SQLite, provider logic.
-- Electron main không chứa nghiệp vụ; nó giữ lifecycle, preload bridge, native
-  dialogs, và allowlist.
-- Go core là nơi giữ command/query handlers, services, repositories, provider
-  adapters, filesystem gateway, operation runner.
-- Mọi operation có side effect phải có validation, audit/log, và error path rõ.
+- Patterns serve boundaries, not code complexity.
+- UI does not own business rules, filesystem writes, SQLite, or provider logic.
+- Electron main contains no business logic; it holds lifecycle, the preload
+  bridge, native dialogs, and the allowlist.
+- Go core is where command/query handlers, services, repositories, provider
+  adapters, the filesystem gateway, and the operation runner live.
+- Every operation with side effects must have validation, audit/log, and a clear
+  error path.
 
 ## 1. Process Coordinator
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 apps/desktop/electron/main/
@@ -25,25 +27,26 @@ apps/desktop/electron/core-process/
 
 Responsibility:
 
-- Spawn Go sidecar bằng `spawn()`, không dùng `exec()`.
-- Parse stdout như JSON-RPC NDJSON protocol stream.
-- Forward responses/notifications an toàn tới renderer qua preload bridge.
-- Read stderr như log stream.
-- Chờ `server.ready` tối đa 10 giây.
-- Nếu Go exit trước `server.ready` hoặc timeout, show blocking startup error.
-- Khi app quit, gửi SIGTERM, chờ 3 giây, rồi SIGKILL nếu cần.
-- Mid-session crash có thể restart tối đa 3 lần, sau đó show blocking error.
+- Spawn Go sidecar with `spawn()`, not `exec()`.
+- Parse stdout as a JSON-RPC NDJSON protocol stream.
+- Forward responses/notifications safely to the renderer through the preload
+  bridge.
+- Read stderr as a log stream.
+- Wait for `server.ready` for up to 10 seconds.
+- If Go exits before `server.ready` or times out, show a blocking startup error.
+- On app quit, send SIGTERM, wait 3 seconds, then SIGKILL if needed.
+- Mid-session crash may restart up to 3 times, then show a blocking error.
 
-Không làm:
+Do not:
 
-- Không chứa business logic.
-- Không đọc/ghi SQLite.
-- Không tự thao tác Skill Host Folder hoặc project files.
-- Không expose raw Go transport details cho renderer.
+- Contain business logic.
+- Read/write SQLite.
+- Directly operate on the Skill Host Folder or project files.
+- Expose raw Go transport details to the renderer.
 
 ## 2. Narrow Preload Bridge
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 apps/desktop/electron/preload/
@@ -52,10 +55,11 @@ apps/desktop/renderer/src/lib/core-client/
 
 Responsibility:
 
-- Expose API hẹp kiểu `invoke(method, params)` và `onEvent(event, callback)`.
-- Renderer không import `ipcRenderer` trực tiếp.
-- Renderer không biết Go binary path, stdin/stdout, hoặc process lifecycle.
-- Electron main validate method allowlist trước khi forward sang Go.
+- Expose a narrow API such as `invoke(method, params)` and
+  `onEvent(event, callback)`.
+- Renderer does not import `ipcRenderer` directly.
+- Renderer does not know the Go binary path, stdin/stdout, or process lifecycle.
+- Electron main validates the method allowlist before forwarding to Go.
 
 Security defaults:
 
@@ -68,7 +72,7 @@ CSP = default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'
 
 ## 3. JSON-RPC Command/Query Boundary
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/rpc/
@@ -89,20 +93,20 @@ progress_notification = operation.progress
 
 Rules:
 
-- Stdout chỉ dành cho JSON-RPC protocol messages.
-- Logs đi vào stderr hoặc log file.
-- Requests có `id`; notifications không có `id`.
-- App error codes không dùng JSON-RPC reserved range `-32768` đến `-32000`.
-- Long-running commands trả `operation_id`.
-- Progress đi bằng server-push notifications, không dùng polling làm primary
+- Stdout is for JSON-RPC protocol messages only.
+- Logs go to stderr or a log file.
+- Requests have `id`; notifications do not have `id`.
+- App error codes do not use the JSON-RPC reserved range `-32768` to `-32000`.
+- Long-running commands return `operation_id`.
+- Progress goes via server-push notifications; do not use polling as the primary
   model.
-- Contract schemas nằm trong `shared/api-contracts`.
-- Generated TypeScript types được commit.
-- Go structs viết tay trong Phase 1, có contract tests validate JSON Schema.
+- Contract schemas live in `shared/api-contracts`.
+- Generated TypeScript types are committed.
+- Go structs are hand-written in Phase 1; contract tests validate JSON Schema.
 
 ## 4. CQRS For UI-Facing API
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/services/
@@ -112,10 +116,11 @@ apps/desktop/renderer/src/
 
 Queries:
 
-- Không có side effect.
-- Trả view model đã chuẩn bị sẵn cho UI.
-- Có thể join nhiều bảng thông qua repository layer.
-- React render dữ liệu, không tự join hoặc suy luận nghiệp vụ phức tạp.
+- No side effects.
+- Return view models prepared for the UI.
+- May join multiple tables through the repository layer.
+- React renders data; it does not self-join or reason about complex business
+  logic.
 
 Examples:
 
@@ -130,9 +135,9 @@ getUpdateOverview()
 Commands:
 
 - Validate input.
-- Có thể ghi SQLite hoặc filesystem.
-- Với tác vụ dài, tạo operation và trả `operation_id`.
-- Không chạy write operation trực tiếp trong renderer.
+- May write SQLite or the filesystem.
+- For long-running tasks, create an operation and return `operation_id`.
+- Do not run write operations directly in the renderer.
 
 Examples:
 
@@ -150,7 +155,7 @@ operation.cancel(operationId)
 
 ## 5. Application Service Layer
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/services/
@@ -159,10 +164,10 @@ core-go/internal/services/
 Responsibility:
 
 - Orchestrate use cases.
-- Gọi repositories, filesystem gateway, provider adapters, operation runner.
-- Quyết định product policy.
-- Không viết SQL trực tiếp.
-- Không bypass filesystem gateway.
+- Call repositories, filesystem gateway, provider adapters, operation runner.
+- Make product policy decisions.
+- Do not write SQL directly.
+- Do not bypass the filesystem gateway.
 
 Examples:
 
@@ -179,12 +184,12 @@ SettingsService
 
 Rule:
 
-- Provider adapter trả facts/capabilities.
-- Service quyết định action nào được phép.
+- Provider adapters return facts/capabilities.
+- Services decide which actions are permitted.
 
 ## 6. Repository Pattern
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/repositories/
@@ -192,17 +197,17 @@ core-go/internal/repositories/
 
 Responsibility:
 
-- Là nơi duy nhất viết SQL trực tiếp.
-- Quản lý transactions.
-- Cung cấp query methods cho services.
-- Giữ SQLite details ra khỏi service layer.
+- The only place where SQL is written directly.
+- Manages transactions.
+- Provides query methods for services.
+- Keeps SQLite details out of the service layer.
 
 Rules:
 
-- Multi-table writes dùng transaction.
-- Scan/reconcile update entity status và stale rows trong transaction.
-- Hot queries cần index và được kiểm tra bằng `EXPLAIN QUERY PLAN` khi cần.
-- Repository tests dùng temp SQLite database.
+- Multi-table writes use transactions.
+- Scan/reconcile updates entity status and stale rows in a transaction.
+- Hot queries need indexes; check with `EXPLAIN QUERY PLAN` when needed.
+- Repository tests use a temporary SQLite database.
 
 SQLite startup:
 
@@ -215,7 +220,7 @@ PRAGMA synchronous=NORMAL;
 
 ## 7. Filesystem Gateway
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/filesystem/
@@ -224,28 +229,30 @@ core-go/internal/filesystem/
 Responsibility:
 
 - Normalize absolute paths.
-- Resolve realpath khi cần.
-- Validate allowed roots trước mọi write.
+- Resolve realpath when needed.
+- Validate allowed roots before any write.
 - Detect symlink, broken symlink, external symlink.
 - Create/remove symlink.
-- Copy folder cho rsync/copy.
+- Copy folder for rsync/copy. _(Reserved — not implemented in current release.)_
 - Remove managed install entries.
-- Read directory entries cho scan.
+- Read directory entries for scan.
 
 Hard rules:
 
-- Không service nào được gọi trực tiếp `os.WriteFile`, `os.Remove`,
-  `os.Rename`, hoặc copy/symlink helpers ngoài gateway khi thao tác lên skill,
-  project, provider, hoặc host folder.
-- Invalid write outside allowed root bị block cứng, không có "continue anyway".
-- Direct/unmanaged entries cần confirmation policy ở service/UI trước khi
-  gateway được gọi.
-- Khi remove symlink, không follow target rồi xóa target; chỉ remove link.
-- Path từ renderer luôn là untrusted input.
+- No service may call `os.WriteFile`, `os.Remove`, `os.Rename`, or
+  copy/symlink helpers directly when operating on skills, projects, providers,
+  or the host folder; all writes go through the gateway.
+- Invalid writes outside the allowed root are hard-blocked — no "continue
+  anyway".
+- Direct/unmanaged entries require a confirmation policy at the service/UI level
+  before the gateway is called.
+- When removing a symlink, do not follow the target and delete it; only remove
+  the link.
+- Paths from the renderer are always treated as untrusted input.
 
 ## 8. Provider Adapter Pattern
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/providers/
@@ -253,20 +260,20 @@ core-go/internal/providers/
 
 Responsibility:
 
-- Detect provider trong project.
+- Detect provider within a project.
 - Resolve provider project paths.
-- Resolve provider global locations nếu provider có global level.
-- Scan entries trong provider scope.
+- Resolve provider global locations if the provider has a global level.
+- Scan entries in the provider scope.
 - Classify facts: detected paths, entries, capabilities, warnings.
 
-Không làm:
+Do not:
 
-- Không ghi DB.
-- Không viết filesystem.
-- Không quyết định install/update policy.
-- Không render UI state.
+- Write to the DB.
+- Write to the filesystem.
+- Make install/update policy decisions.
+- Render UI state.
 
-Adapter output nên là facts:
+Adapter output should be facts:
 
 ```text
 provider key
@@ -278,23 +285,23 @@ capabilities
 global locations if applicable
 ```
 
-Plugin config writers and removers cũng nằm trong `providers/` vì chúng là
-provider-specific logic (JSON cho Claude, TOML cho Codex):
+Plugin config writers and removers also live in `providers/` because they are
+provider-specific logic (JSON for Claude, TOML for Codex):
 
 ```text
 pluginWriterFn  func(filePath, allowedDir, pluginName, marketplaceName string, enabled bool) error
 pluginRemoverFn func(filePath, allowedDir, pluginName, marketplaceName string) error
 ```
 
-- `WriteJSONPluginEnabled` / `RemoveJSONPlugin`: cho JSON-based providers (Claude).
-- `WriteTOMLPluginEnabled` / `RemoveTOMLPlugin`: cho TOML-based providers (Codex).
-- Tất cả enforce path confinement, symlink checks, file size cap (1 MiB).
-- `ProviderPluginService.writerFor(providerKey)` / `removerFor(providerKey)` chọn
-  implementation dựa trên provider config format.
+- `WriteJSONPluginEnabled` / `RemoveJSONPlugin`: for JSON-based providers (Claude).
+- `WriteTOMLPluginEnabled` / `RemoveTOMLPlugin`: for TOML-based providers (Codex).
+- All enforce path confinement, symlink checks, file size cap (1 MiB).
+- `ProviderPluginService.writerFor(providerKey)` / `removerFor(providerKey)`
+  selects the implementation based on the provider config format.
 
 ## 9. Source Adapter Pattern
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/sources/
@@ -304,20 +311,21 @@ Responsibility:
 
 - GitHub/Vercel/local/manual source metadata.
 - Fetch latest version metadata.
-- Download/update host copy khi user xác nhận.
-- Map auth/network/not-fetchable errors thành taxonomy chung.
+- Download/update host copy when user confirms.
+- Map auth/network/not-fetchable errors to a common taxonomy.
 
-Không làm:
+Do not:
 
-- Không biết project providers.
-- Không quyết định affected projects.
-- Không sync rsync/copy installs.
+- Know about project providers.
+- Decide affected projects.
+- Sync rsync/copy installs.
 
-UpdateService sẽ dùng DB để tính affected project installs và global installs.
+UpdateService uses the DB to compute affected project installs and global
+installs.
 
 ## 10. Operation Runner And State Machine
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/operations/
@@ -335,18 +343,19 @@ cancelled
 
 Responsibility:
 
-- Tạo operation record.
-- Chạy long-running tasks trong goroutine có context.
+- Create operation record.
+- Run long-running tasks in a goroutine with context.
 - Emit `operation.progress` notifications.
-- Hỗ trợ `operation.cancel`.
-- Lock theo target để tránh operation xung đột.
-- Mark running operations failed khi sidecar shutdown/crash path cần cleanup.
+- Support `operation.cancel`.
+- Lock per target to avoid conflicting operations.
+- Mark running operations as failed when the sidecar shutdown/crash path needs
+  cleanup.
 
 Phase 1 locking:
 
 - Single active operation per target.
-- Nếu target đang bận, trả `conflict_error` fail-fast.
-- Không queue tự động trong Phase 1.
+- If the target is busy, return a `conflict_error` fail-fast.
+- No automatic queueing in Phase 1.
 
 Examples:
 
@@ -359,13 +368,14 @@ target = install:{id}
 
 Progress rules:
 
-- Không flood IPC.
-- Progress nên theo phase/entry, không cần percent giả nếu không đo được.
-- Khi operation xong, UI re-fetch view model.
+- Do not flood IPC.
+- Progress should track phase/entry; do not fabricate a fake percent if not
+  measurable.
+- When the operation ends, the UI re-fetches the view model.
 
 ## 11. Manual Constructor DI
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/cmd/skillbox-core/main.go
@@ -374,15 +384,15 @@ core-go/internal/app/
 
 Decision:
 
-- Phase 1 dùng manual constructor dependency injection.
-- Không dùng `google/wire`, `uber-go/dig`, hoặc DI container.
+- Phase 1 uses manual constructor dependency injection.
+- Do not use `google/wire`, `uber-go/dig`, or a DI container.
 
 Why:
 
-- Dễ đọc.
-- Dễ review bởi AI/người.
-- Ít magic.
-- Phù hợp khi số lượng services còn kiểm soát được.
+- Easy to read.
+- Easy to review for AI and humans.
+- Less magic.
+- Appropriate when the number of services remains manageable.
 
 Recommended shape:
 
@@ -399,12 +409,12 @@ rpcServer.Register("project.scan", projectService.ScanProject)
 rpcServer.Register("install.skill", installService.InstallSkill)
 ```
 
-Nếu composition root phình quá lớn, tạo `internal/app` để gom wiring logic,
-không đưa DI framework vào sớm.
+If the composition root grows too large, create `internal/app` to group wiring
+logic; do not introduce a DI framework prematurely.
 
 ## 12. View Model Composition
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/services/
@@ -413,11 +423,11 @@ apps/desktop/renderer/src/screens/
 
 Rules:
 
-- Go query handlers trả view model phù hợp màn hình.
-- React không tự join `skills`, `installs`, `projects`, `warnings`.
-- View model gồm action availability, warnings, empty-state reason, loading
-  state nếu cần.
-- TanStack Query cache view models và invalidate sau command/operation.
+- Go query handlers return view models suitable for each screen.
+- React does not self-join `skills`, `installs`, `projects`, `warnings`.
+- View models include action availability, warnings, empty-state reason, and
+  loading state as needed.
+- TanStack Query caches view models and invalidates them after command/operation.
 
 Examples:
 
@@ -434,7 +444,7 @@ SettingsView
 
 ## 13. UI Component Composition
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 apps/desktop/renderer/src/components/
@@ -470,7 +480,7 @@ Avoid:
 
 ## 14. Form Validation Pattern
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 apps/desktop/renderer/src/
@@ -480,19 +490,19 @@ shared/api-contracts/
 
 Decision:
 
-- React Hook Form + Zod cho UI/form validation.
-- JSON Schema cho wire/API contract.
+- React Hook Form + Zod for UI/form validation.
+- JSON Schema for wire/API contract.
 - Go validates params again in command/query handlers.
 
 Duplication is intentional:
 
-- UI validation tối ưu user experience.
-- JSON Schema tối ưu contract.
-- Go validation bảo vệ core khỏi untrusted renderer input.
+- UI validation optimizes user experience.
+- JSON Schema optimizes the contract.
+- Go validation protects the core from untrusted renderer input.
 
 ## 15. Error Taxonomy Pattern
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/internal/domain/errors.go
@@ -516,14 +526,14 @@ unknown_error
 
 Rules:
 
-- JSON-RPC error response map từ domain error taxonomy.
-- `conflict_error` dùng khi operation target đang bận.
-- UI hiển thị user message; logs giữ technical message.
-- Không log secrets hoặc full payload chứa sensitive data.
+- JSON-RPC error responses map from the domain error taxonomy.
+- `conflict_error` is used when the operation target is busy.
+- UI displays the user message; logs hold the technical message.
+- Do not log secrets or full payloads containing sensitive data.
 
 ## 16. Testing Pattern
 
-Nơi áp dụng:
+Where it applies:
 
 ```text
 core-go/
@@ -535,7 +545,7 @@ shared/api-contracts/
 Required:
 
 - Go unit tests for pure domain logic.
-- Repository tests with temp SQLite.
+- Repository tests with temporary SQLite.
 - Filesystem gateway tests in temp directories.
 - Provider adapter tests with fixture folders.
 - JSON-RPC contract tests against JSON Schema.
@@ -544,7 +554,7 @@ Required:
 
 Deferred:
 
-- Playwright until first UI shell exists.
+- Playwright until the first UI shell exists.
 
 ## What We Keep From The External Pattern Report
 

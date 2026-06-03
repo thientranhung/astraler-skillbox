@@ -208,7 +208,8 @@ cases:
     primary_screen: Project Detail
     related_screens: [Dashboard, Skills Library]
     type: critical
-    tags: [operation, restart, crash, install, recovery, data-integrity, release-full]
+    tags: [operation, restart, crash, install, recovery, data-integrity, phase2]
+    phase: phase2
     invariants: [INV-OPERATION-001, INV-INSTALL-001, INV-DB-001]
     preconditions:
       - QA run generates the committed large copy-mode fixture skill in the run-local release-cycle fixture.

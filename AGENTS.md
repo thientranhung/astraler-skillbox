@@ -9,7 +9,7 @@ Astraler Skillbox is a local-first desktop app for managing agent skills across 
 Core invariants:
 - **Skill Host Folder** is source of truth for skill content.
 - **SQLite** is source of truth for management metadata.
-- Skills are distributed to projects via symlink or rsync/copy.
+- Skills are distributed to projects via symlink (current stable path).
 - **Skillbox is local-first. The only outbound network is manual-trigger plugin update checks against the user's already-installed plugin source hosts — no background polling, no telemetry, no Skillbox-operated server. The app is fully usable offline (see ADR-0002, supersedes ADR-0001).**
 
 ## Start Here
@@ -66,7 +66,7 @@ Scratch files under `.scratch/` must be date-prefixed for sorting and traceabili
 
 Three dev modes: **Go-only** (Go tests + JSON-RPC harness), **UI-only** (renderer with mocked client), **Full-stack** (Electron + real Go sidecar).
 
-Release: push tag `v*.*.*` → `.github/workflows/release.yml` builds 4 platforms + creates a GitHub Release. Bump `apps/desktop/package.json` version first; set secrets `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` for Mac notarize.
+Release: push tag `v*.*.*` → `.github/workflows/release.yml` builds a macOS release artifact + creates a GitHub Release. Bump `apps/desktop/package.json` version first; set secrets `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` for Mac notarize. Current releases are macOS-only unsigned DMG; Gatekeeper bypass instructions accompany the release until Apple credentials exist.
 
 ## Architecture Boundaries (Hard Rules)
 
