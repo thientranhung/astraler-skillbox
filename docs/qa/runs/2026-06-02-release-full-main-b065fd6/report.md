@@ -6,14 +6,14 @@
 - App mode: dev Electron first, packaged smoke after artifact/human gates
 - Target version/commit: 0.1.2 / b065fd6ba7976d3db0e6de03abb276bdaf1b35a5
 - Operator: agent
-- Status: PARTIAL RUN — dev-fixture T0 batch complete; P0/A11Y delta verified 2026-06-03; unsigned macOS packaged smoke complete
+- Status: PARTIAL RUN — dev-fixture T0 batch complete; P0/A11Y delta verified 2026-06-03; GitHub Release macOS asset smoke complete 2026-06-04
 
 ## Verdict
 
 CONDITIONAL GO for the unsigned macOS DMG release candidate, with owner-accepted
 waivers for Apple notarization/signing and Phase 2 copy-mode workflows.
 
-Gates: ALL PASS. T0 dev-fixture batch complete; original 8 FAIL + 2 BLOCKED results. **P0 delta rerun 2026-06-03: 5/5 delta cases PASS** (TC-MIGRATE-002, TC-MIGRATE-005, TC-FS-003, TC-SETUP-003, TC-DASH-003). **A11Y destructive-confirmation rerun 2026-06-03: 2/2 delta cases PASS** (TC-A11Y-002, TC-A11Y-005). **Unsigned macOS packaged smoke 2026-06-03: 8 PASS + 1 NEEDS_HUMAN** (TC-PACKAGE-001, TC-PACKAGE-002, TC-PACKAGE-003, TC-RELEASE-001, TC-RELEASE-002, TC-RELEASE-003, TC-RELEASE-004, TC-RELEASE-006 PASS; TC-RELEASE-005 NEEDS_HUMAN/waived). Phase 2 waivers (TC-SKILL-004, TC-SKILL-011, TC-SKILL-012) and TC-OPS-007 remain unchanged.
+Gates: ALL PASS. T0 dev-fixture batch complete; original 8 FAIL + 2 BLOCKED results. **P0 delta rerun 2026-06-03: 5/5 delta cases PASS** (TC-MIGRATE-002, TC-MIGRATE-005, TC-FS-003, TC-SETUP-003, TC-DASH-003). **A11Y destructive-confirmation rerun 2026-06-03: 2/2 delta cases PASS** (TC-A11Y-002, TC-A11Y-005). **GitHub Release macOS asset smoke 2026-06-04: 8 PASS + 1 NEEDS_HUMAN** (TC-PACKAGE-001, TC-PACKAGE-002, TC-PACKAGE-003, TC-RELEASE-001, TC-RELEASE-002, TC-RELEASE-003, TC-RELEASE-004, TC-RELEASE-006 PASS; TC-RELEASE-005 NEEDS_HUMAN/waived). Phase 2 waivers (TC-SKILL-004, TC-SKILL-011, TC-SKILL-012) and TC-OPS-007 remain unchanged.
 
 ## Original Run Scope Before Delta
 
@@ -24,7 +24,7 @@ Gates: ALL PASS. T0 dev-fixture batch complete; original 8 FAIL + 2 BLOCKED resu
 | T2 | 9 | 0 | 0 | 0 | 0 | 0 |
 | T3 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-Original cases executed before delta: 36 of 105. Delta reruns appended after P0/A11Y fixes and harness hardening: 7 PASS entries. Packaged/release smoke appended: 8 PASS + 1 NEEDS_HUMAN. `results.jsonl` now contains 52 rows total.
+Original cases executed before delta: 36 of 105. Delta reruns appended after P0/A11Y fixes and harness hardening: 7 PASS entries. Local packaged/release smoke appended: 8 PASS + 1 NEEDS_HUMAN. GitHub Release asset rerun appended: 7 PASS + 1 NEEDS_HUMAN; TC-RELEASE-001 preflight remains valid from the previous packaged batch. `results.jsonl` now contains 60 rows total.
 
 ## Required Gates
 
@@ -137,36 +137,43 @@ fixtures.
 
 Evidence: `evidence/TC-A11Y-005-delta-01-remove-skill-dialog.png`, `evidence/TC-A11Y-005-delta-05-after-remove-project.png`, `evidence/TC-A11Y-005-delta-10-after-reset.png`, `evidence/TC-A11Y-005-delta-11-after-reset-db-fs.txt`
 
-## Packaged Smoke — unsigned macOS artifact (2026-06-03)
+## Packaged Smoke — GitHub Release macOS asset (2026-06-04)
 
-**Artifact under test:** `apps/desktop/dist/astraler-skillbox-0.1.2-arm64.dmg`
+**Artifact under test:** GitHub Release `v0.1.2` asset
+`astraler-skillbox-0.1.2-arm64.dmg`
 
-**Build source:** local `main@04950f6` (`Record A11Y QA rerun results`), package version `0.1.2`.
+**Release URL:** <https://github.com/thientranhung/astraler-skillbox/releases/tag/v0.1.2>
 
-**SHA256:** `1c27c1912c5561608397c085eddfda5e50b10bb99ea8b47aa77581790c2c2d5e`
+**Build source:** GitHub Actions Release run `26895443727` from tag `v0.1.2`
+at `main@1cc86ce`.
+
+**Byte size:** `130639143`
+
+**SHA256:** `45945954cda2ca17153648812b59f7e0147f38baf136e8ff31c90b30c70f420b`
 
 ### Packaged Case Results
 
 | Case | Status | Notes |
 |------|--------|-------|
 | TC-RELEASE-001 | PASS | Preflight reports missing signing/notarization credentials clearly; all non-credential readiness checks pass |
-| TC-PACKAGE-001 | PASS | DMG mounted, copied to temp install root, launched, Go core ready, clean quit |
-| TC-PACKAGE-002 | PASS | Fresh packaged launch reached ready without Keychain/Safe Storage prompt; source gates `use-mock-keychain` by default |
+| TC-PACKAGE-001 | PASS | Downloaded release DMG mounted, copied to temp install root, launched, Go core ready, clean quit |
+| TC-PACKAGE-002 | PASS | Fresh launch from downloaded release DMG reached ready without Keychain/Safe Storage prompt; source gates `use-mock-keychain` by default |
 | TC-PACKAGE-003 | PASS | No orphaned packaged `skillbox-core` after quit |
-| TC-RELEASE-002 | PASS | Unsigned DMG launches with bundled sidecar and isolated smoke DB |
+| TC-RELEASE-002 | PASS | Downloaded release DMG launches with bundled sidecar and isolated smoke DB |
 | TC-RELEASE-003 | PASS | No CDP listener exposed on reserved ports `49222-49250` during packaged launch |
-| TC-RELEASE-004 | PASS | Manifest generated and `SHA256SUMS` verification passes |
-| TC-RELEASE-005 | NEEDS_HUMAN | Unsigned/ad-hoc DMG correctly fails Developer ID, hardened runtime, Gatekeeper, and stapling verification; owner accepted waiver until Apple credentials are available |
+| TC-RELEASE-004 | PASS | Downloaded GitHub Release asset size/SHA256 match release metadata |
+| TC-RELEASE-005 | NEEDS_HUMAN | Release DMG has valid ad-hoc codesign/hardened runtime/entitlements but correctly fails Developer ID, Team ID, Gatekeeper, and stapling; owner accepted waiver until Apple credentials are available |
 | TC-RELEASE-006 | PASS | Packaged app uses temp packaged smoke DB paths, not repo/dev DB |
 
 ### Packaged Evidence Highlights
 
-- `release:mac:dmg-smoke` output: mounted DMG read-only, copied `Astraler Skillbox.app` to temp, launched bundled sidecar from `Contents/Resources/core/skillbox-core`, opened temp `SKILLBOX_DB_PATH`, reached `[manager] Go core ready`, quit cleanly, no orphaned sidecar, detached DMG.
+- Downloaded release asset hash/size: SHA256 `45945954cda2ca17153648812b59f7e0147f38baf136e8ff31c90b30c70f420b`, byte size `130639143`, matching GitHub Release metadata.
+- `release:mac:dmg-smoke` output: mounted the downloaded release DMG read-only, copied `Astraler Skillbox.app` to temp, launched bundled sidecar from `Contents/Resources/core/skillbox-core`, opened temp `SKILLBOX_DB_PATH`, reached `[manager] Go core ready`, quit cleanly, no orphaned sidecar, detached DMG.
 - CDP probe: no listeners on `49222-49250` before launch, during packaged launch, or after quit.
-- DB path probe: active smoke DB opened under `/tmp/skillbox-cdp-smoke-*/skillbox.db` and `/var/folders/.../skillbox-dmgsmoke-ud-*/skillbox.db`, never under the repo.
-- Signing verification: `release:mac:verify` correctly fails the unsigned artifact for Developer ID/notarization/Gatekeeper.
+- DB path probe: active smoke DB opened under `/tmp/skillbox-ghasset-ud-*/skillbox.db` and `/var/folders/.../skillbox-dmgsmoke-ud-*/skillbox.db`, never under the repo.
+- Signing verification: `release:mac:verify` on the downloaded release asset passes codesign/hardened runtime/entitlements checks but correctly fails Developer ID/notarization/Gatekeeper.
 
-Evidence: `evidence/packaged-smoke/TC-PACKAGE-001-003-RELEASE-002-006-dmg-smoke.txt`, `evidence/packaged-smoke/TC-PACKAGE-002-keychain-source-check.txt`, `evidence/packaged-smoke/TC-RELEASE-003-006-cdp-db-path.txt`, `evidence/packaged-smoke/TC-RELEASE-004-manifest-checksum.txt`, `evidence/packaged-smoke/TC-RELEASE-005-unsigned-verify.txt`
+Evidence: `evidence/packaged-smoke/TC-PACKAGE-001-003-RELEASE-002-006-github-asset-dmg-smoke.txt`, `evidence/packaged-smoke/TC-PACKAGE-002-keychain-source-check.txt`, `evidence/packaged-smoke/TC-RELEASE-003-006-github-asset-cdp-db-path.txt`, `evidence/packaged-smoke/TC-RELEASE-005-github-asset-unsigned-verify.txt`
 
 ### Residual Risk After Delta
 
@@ -281,8 +288,8 @@ Evidence: `evidence/TC-OPS-007-blocked-evidence.txt`
 
 - Signed/notarized release verification remains `NEEDS_HUMAN` until Apple
   credentials are available.
-- Unsigned macOS packaged smoke has executed against
-  `apps/desktop/dist/astraler-skillbox-0.1.2-arm64.dmg`.
+- Unsigned macOS packaged smoke has executed against the downloaded GitHub
+  Release `v0.1.2` asset `astraler-skillbox-0.1.2-arm64.dmg`.
 - Outbound network observations or manual update checks require explicit owner
   approval at execution time.
 - `TC-SKILL-004` has an owner-accepted Phase 2 waiver for current release
