@@ -69,7 +69,8 @@ describe("GlobalSkillsScreen", () => {
     mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc] } });
 
     render(<GlobalSkillsScreen />);
-    expect(screen.getByText("Generic Agents")).toBeTruthy();
+    // Provider name appears in both tab and location header
+    expect(screen.getAllByText("Generic Agents").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("active")).toBeTruthy();
   });
 
@@ -172,5 +173,83 @@ describe("GlobalSkillsScreen", () => {
     render(<GlobalSkillsScreen />);
     fireEvent.click(screen.getByRole("button", { name: /scan global/i }));
     expect(mockMutate).toHaveBeenCalled();
+  });
+
+  // UX-005: provider tabs
+  it("shows All tab with total entry count when locations are present", () => {
+    const loc1 = makeLocation({
+      providerKey: "generic_agents",
+      providerDisplayName: "Generic Agents",
+      entries: [
+        { globalInstallId: 1, skillName: "skill-a", skillId: 1, mode: "symlink", status: "current", globalSkillPath: "/p/a", sourceSkillPath: null, symlinkTargetPath: null },
+        { globalInstallId: 2, skillName: "skill-b", skillId: 2, mode: "symlink", status: "current", globalSkillPath: "/p/b", sourceSkillPath: null, symlinkTargetPath: null },
+      ],
+    });
+    const loc2 = makeLocation({
+      globalProviderLocationId: 2,
+      providerKey: "claude",
+      providerDisplayName: "Claude",
+      entries: [
+        { globalInstallId: 3, skillName: "skill-c", skillId: 3, mode: "symlink", status: "current", globalSkillPath: "/c/c", sourceSkillPath: null, symlinkTargetPath: null },
+      ],
+    });
+    mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc1, loc2] } });
+
+    render(<GlobalSkillsScreen />);
+    // "All" tab should exist and show total count 3
+    expect(screen.getByRole("button", { name: /^All/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Generic Agents/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Claude/ })).toBeTruthy();
+  });
+
+  it("clicking a provider tab shows only that provider's location", () => {
+    const loc1 = makeLocation({
+      globalProviderLocationId: 1,
+      providerKey: "generic_agents",
+      providerDisplayName: "Generic Agents",
+      status: "active",
+    });
+    const loc2 = makeLocation({
+      globalProviderLocationId: 2,
+      providerKey: "claude",
+      providerDisplayName: "Claude",
+      status: "active",
+    });
+    mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc1, loc2] } });
+
+    render(<GlobalSkillsScreen />);
+    // Initially both provider sections visible (status badge appears once per location section)
+    expect(screen.getAllByText("active")).toHaveLength(2);
+    // Click Claude tab — the tab button label contains "Claude"
+    const claudeTab = screen.getAllByRole("button", { name: /Claude/ })[0];
+    fireEvent.click(claudeTab);
+    // Only Claude location section remains — one "active" badge in the content area
+    // (status badges are inside location sections, not in the tab bar)
+    expect(screen.getAllByText("active")).toHaveLength(1);
+  });
+
+  it("provider tab with no entries shows count 0", () => {
+    const loc = makeLocation({
+      providerKey: "generic_agents",
+      providerDisplayName: "Generic Agents",
+      status: "no_global_skills",
+      entries: [],
+    });
+    mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc] } });
+
+    render(<GlobalSkillsScreen />);
+    // All tab shows 0
+    const allTab = screen.getByRole("button", { name: /^All/ });
+    expect(allTab.textContent).toMatch(/0/);
+  });
+
+  // UX-006: path display trims trailing slash
+  it("trims trailing slash from displayed location path", () => {
+    const loc = makeLocation({ path: "/Users/test/.agents/", skillsPath: "/Users/test/.agents/skills/" });
+    mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc] } });
+
+    render(<GlobalSkillsScreen />);
+    expect(screen.getByText("/Users/test/.agents/skills")).toBeTruthy();
+    expect(screen.queryByText("/Users/test/.agents/skills/")).toBeNull();
   });
 });
