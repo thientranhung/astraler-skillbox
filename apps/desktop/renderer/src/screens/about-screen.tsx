@@ -1,6 +1,7 @@
-import React from "react";
-import { ExternalLink, GitFork, Mail, Globe, RefreshCw } from "lucide-react";
+import React, { useState } from "react";
+import { ExternalLink, GitFork, Mail, Globe, RefreshCw, Download, Copy, Check } from "lucide-react";
 import { useCheckAppUpdate } from "../features/app-about/use-check-app-update.js";
+import { methods } from "../lib/core-client/methods.js";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "0.1.0";
 
@@ -40,8 +41,36 @@ const UPDATE_STATUS_LABEL: Record<string, string> = {
   error: "Could not check for updates",
 };
 
+type DiagnosticsActionState = "idle" | "pending" | "done" | "error";
+
 export function AboutScreen(): React.JSX.Element {
   const update = useCheckAppUpdate();
+  const [exportState, setExportState] = useState<DiagnosticsActionState>("idle");
+  const [copyState, setCopyState] = useState<DiagnosticsActionState>("idle");
+
+  async function handleExport(): Promise<void> {
+    setExportState("pending");
+    try {
+      const result = await methods.exportDiagnostics();
+      setExportState(result.saved ? "done" : "idle");
+    } catch {
+      setExportState("error");
+    } finally {
+      setTimeout(() => setExportState("idle"), 3000);
+    }
+  }
+
+  async function handleCopy(): Promise<void> {
+    setCopyState("pending");
+    try {
+      await methods.copyDiagnostics();
+      setCopyState("done");
+    } catch {
+      setCopyState("error");
+    } finally {
+      setTimeout(() => setCopyState("idle"), 3000);
+    }
+  }
 
   return (
     <div className="p-6 space-y-8 max-w-lg">
@@ -126,6 +155,48 @@ export function AboutScreen(): React.JSX.Element {
               <ExternalLink size={12} />
               View release
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* Diagnostics */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
+          Diagnostics
+        </h3>
+        <div className="rounded border border-zinc-200 px-4 py-3 space-y-3">
+          <p className="text-xs text-zinc-500">
+            Export a local diagnostics file or copy it to your clipboard to help with bug reports.
+            No data is sent automatically — export is always manual.
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => void handleExport()}
+              disabled={exportState === "pending"}
+              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              {exportState === "done" ? (
+                <Check size={12} className="text-emerald-600" />
+              ) : (
+                <Download size={12} className={exportState === "pending" ? "animate-pulse" : ""} />
+              )}
+              {exportState === "done" ? "Saved" : "Export Diagnostics…"}
+            </button>
+            <button
+              onClick={() => void handleCopy()}
+              disabled={copyState === "pending"}
+              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+            >
+              {copyState === "done" ? (
+                <Check size={12} className="text-emerald-600" />
+              ) : (
+                <Copy size={12} className={copyState === "pending" ? "animate-pulse" : ""} />
+              )}
+              {copyState === "done" ? "Copied!" : "Copy to Clipboard"}
+            </button>
+          </div>
+          {(exportState === "error" || copyState === "error") && (
+            <p className="text-xs text-amber-700">Failed — try again.</p>
           )}
         </div>
       </div>
