@@ -1,0 +1,34 @@
+area: display
+cases:
+  - id: TC-DISPLAY-001
+    title: Trailing slash is trimmed in displayed paths without mutating stored path
+    tier: T2
+    primary_screen: Settings
+    related_screens: [Global Skills, Global Plugins]
+    type: smoke
+    tags: [display, path-format, trailing-slash, release-full]
+    invariants: [INV-SAFETY-001]
+    preconditions:
+      - App is configured with a QA Skill Host Folder path that has a trailing slash.
+      - At least one global provider location path has a trailing slash.
+    steps:
+      - Open Settings and inspect the Skill Host Folder path display.
+      - Open Global Skills and inspect provider location and skill entry paths.
+      - Open Global Plugins and inspect provider settings paths.
+      - Check the stored DB and filesystem paths after each screen visit.
+    expected_ui:
+      - All displayed paths have no trailing slash.
+      - The UI does not display paths ending with "/".
+    cross_screen_checks:
+      - Settings, Global Skills, and Global Plugins all show trimmed paths.
+    verifier:
+      app_db:
+        - Stored paths in skill_host_folders and global_provider_locations are unchanged (trailing slash, if originally present, is preserved in storage).
+      evidence:
+        - Screenshot of Settings showing trimmed host path.
+        - Screenshot of Global Skills showing trimmed provider path.
+        - DB query output for skill_host_folders.path and global_provider_locations.path confirming stored values are unchanged.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

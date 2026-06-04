@@ -77,10 +77,10 @@ cases:
       real_environment: forbidden
 
   - id: TC-SETTINGS-001
-    title: Change Skill Host Folder updates source of truth without relinking silently
+    title: Change Skill Host Folder via Host Skills updates source of truth without relinking silently
     tier: T1
-    primary_screen: Settings
-    related_screens: [Dashboard, Skills Library, Project Detail]
+    primary_screen: Host Skills
+    related_screens: [Settings, Dashboard, Skills Library, Project Detail]
     type: smoke
     tags: [settings, host, change-host, cross-screen, release-full]
     invariants: [INV-HOST-001, INV-INSTALL-001]
@@ -89,19 +89,22 @@ cases:
       - QA host folder B exists with a distinct skill list.
       - At least one project install may still point to host folder A.
     steps:
-      - Open Settings.
-      - Change Skill Host Folder to folder B.
+      - Open Settings and confirm it shows the current host path as read-only with a "Manage in Host Skills" link.
+      - Navigate to Host Skills via the link or sidebar.
+      - Change Skill Host Folder to folder B from Host Skills.
       - Open Dashboard.
       - Open Skills Library.
       - Open a project with an existing install from folder A, if present.
+      - Return to Settings.
     expected_ui:
-      - Settings shows folder B as the current host.
+      - Settings shows folder B as the current host (read-only, no Change button).
       - Skills Library shows skills from folder B, not stale folder A contents.
       - Existing symlinks to folder A are not silently rewritten without user action.
       - Any old-host state is visible as a warning or distinct status.
     cross_screen_checks:
       - Dashboard and Skills Library agree on the new host scan state.
       - Project Detail does not claim old-host symlinks are current under folder B.
+      - Settings shows the updated host path without a Change button.
     verifier:
       app_db:
         - App settings contain host folder B.
@@ -109,13 +112,65 @@ cases:
         - Folder A and folder B both remain intact.
         - Existing project symlink targets are unchanged unless a relink action was explicitly performed.
       evidence:
-        - Screenshot of Settings and Skills Library.
+        - Screenshot of Settings (read-only host row and Manage in Host Skills link).
+        - Screenshot of Settings after change showing folder B path.
         - DB query output for app settings.
         - "`readlink` output for any existing project symlink."
     safety:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: forbidden
+
+  - id: TC-SETTINGS-005
+    title: Settings provider columns appear in declared order
+    tier: T2
+    primary_screen: Settings
+    related_screens: []
+    type: smoke
+    tags: [settings, provider, column-order, release-full]
+    invariants: []
+    preconditions:
+      - App has at least one provider with global-level support.
+    steps:
+      - Open Settings.
+      - Inspect the provider registry table column headers.
+    expected_ui:
+      - "Column headers after Provider and Key appear in this order from left to right: Provider detection path, Global config, Project config, Global skills, Project skills."
+      - No deviation from this order is acceptable.
+    verifier:
+      evidence:
+        - Screenshot of Settings provider registry table showing full column header row.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-SETTINGS-006
+    title: Settings Skill Host Folder is read-only with link to Host Skills
+    tier: T2
+    primary_screen: Settings
+    related_screens: [Host Skills]
+    type: smoke
+    tags: [settings, host, read-only, navigation, release-full]
+    invariants: [INV-HOST-001]
+    preconditions:
+      - App has a configured QA Skill Host Folder.
+    steps:
+      - Open Settings.
+      - Inspect the Skill Host Folder row.
+      - Click the "Manage in Host Skills" link.
+    expected_ui:
+      - Settings shows the current host folder path as read-only text (no Change button, no folder picker).
+      - A "Manage in Host Skills" link or equivalent is visible.
+      - Clicking the link navigates to Host Skills screen.
+    verifier:
+      evidence:
+        - Screenshot of Settings Skill Host Folder row (no Change button, link visible).
+        - Screenshot of Host Skills screen after navigating via the link.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
 
   - id: TC-SETTINGS-002
     title: Reset All Data clears Skillbox metadata without deleting real skill folders

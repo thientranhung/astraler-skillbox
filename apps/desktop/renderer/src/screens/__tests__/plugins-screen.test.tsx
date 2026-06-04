@@ -88,6 +88,17 @@ describe("PluginsScreen", () => {
     expect(screen.getByText("never scanned")).toBeTruthy();
   });
 
+  it("falls back to legacy global view when globals array is empty", () => {
+    const global = makeGlobal({
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "legacy-plugin", marketplaceName: "local", status: "enabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getByText("legacy-plugin")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^All/ }).textContent).toContain("1");
+  });
+
   it("shows 'not configured' for missing status — not error language", () => {
     const global = makeGlobal({ userLayerStatus: "missing" });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
@@ -336,5 +347,70 @@ describe("PluginsScreen", () => {
     // legacy-plugin (undefined version) should show "—"
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("2.0.0")).toBeTruthy();
+  });
+
+  // UX-005: provider tabs
+  it("shows All tab and per-provider tabs when globals are present", () => {
+    const claude = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "p1", marketplaceName: "npm", status: "enabled" }],
+    });
+    const codex = makeGlobal({
+      providerKey: "codex",
+      userLayerStatus: "ok",
+      plugins: [
+        { pluginName: "p2", marketplaceName: "npm", status: "enabled" },
+        { pluginName: "p3", marketplaceName: "npm", status: "enabled" },
+      ],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [claude, codex], global: claude, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getByRole("button", { name: /^All/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Claude/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Codex/ })).toBeTruthy();
+  });
+
+  it("clicking a provider tab shows only that provider's plugins", () => {
+    const claude = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "claude-plugin", marketplaceName: "npm", status: "enabled" }],
+    });
+    const codex = makeGlobal({
+      providerKey: "codex",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "codex-plugin", marketplaceName: "npm", status: "enabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [claude, codex], global: claude, projects: [] } });
+    render(<PluginsScreen />);
+    // Both visible initially
+    expect(screen.getByText("claude-plugin")).toBeTruthy();
+    expect(screen.getByText("codex-plugin")).toBeTruthy();
+    // Click Claude tab
+    fireEvent.click(screen.getByRole("button", { name: /Claude/ }));
+    expect(screen.getByText("claude-plugin")).toBeTruthy();
+    expect(screen.queryByText("codex-plugin")).toBeNull();
+  });
+
+  it("provider tab count shows 0 when provider has no plugins", () => {
+    const claude = makeGlobal({ providerKey: "claude", userLayerStatus: "ok", plugins: [] });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [claude], global: claude, projects: [] } });
+    render(<PluginsScreen />);
+    const allTab = screen.getByRole("button", { name: /^All/ });
+    expect(allTab.textContent).toMatch(/0/);
+  });
+
+  // UX-006: userLayerPath with trailing slash is trimmed
+  it("trims trailing slash from displayed userLayerPath", () => {
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerPath: "/Users/test/.claude/settings.json/",
+      userLayerStatus: "ok",
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    render(<PluginsScreen />);
+    expect(screen.getByText("/Users/test/.claude/settings.json")).toBeTruthy();
+    expect(screen.queryByText("/Users/test/.claude/settings.json/")).toBeNull();
   });
 });
