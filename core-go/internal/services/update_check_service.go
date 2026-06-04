@@ -30,6 +30,8 @@ type UpdateCheckService struct {
 	cacheRepo       *repositories.UpdateCheckCacheRepo
 	client          network.UpdateCheckClient
 	claudeConfigDir string
+	// BatchDeadline overrides updateCheckBatchDeadline when non-zero; set in tests.
+	BatchDeadline time.Duration
 }
 
 func NewUpdateCheckService(
@@ -117,7 +119,11 @@ func (s *UpdateCheckService) RunUpdateCheck(ctx context.Context) (RunResult, err
 	}
 
 	// Run with concurrency cap + batch deadline.
-	batchCtx, cancel := context.WithTimeout(ctx, updateCheckBatchDeadline)
+	deadline := s.BatchDeadline
+	if deadline == 0 {
+		deadline = updateCheckBatchDeadline
+	}
+	batchCtx, cancel := context.WithTimeout(ctx, deadline)
 	defer cancel()
 
 	sem := semaphore.NewWeighted(updateCheckConcurrency)
@@ -128,10 +134,19 @@ func (s *UpdateCheckService) RunUpdateCheck(ctx context.Context) (RunResult, err
 	resCh := make(chan domain.UpdateCheckPluginResult, len(items))
 
 	var wg sync.WaitGroup
-	for _, item := range items {
+	for i, item := range items {
 		item := item
 		if err := sem.Acquire(batchCtx, 1); err != nil {
-			break // batch deadline or context cancelled
+			// Emit a terminal timeout result for every work item that never started.
+			for _, ti := range items[i:] {
+				resCh <- domain.UpdateCheckPluginResult{
+					ProviderKey:     ti.providerKey,
+					PluginName:      ti.pluginName,
+					MarketplaceName: ti.marketplaceName,
+					Error:           "timeout",
+				}
+			}
+			break
 		}
 		wg.Add(1)
 		go func() {
