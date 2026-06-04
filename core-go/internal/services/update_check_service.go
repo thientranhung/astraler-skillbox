@@ -22,7 +22,7 @@ import (
 
 const (
 	updateCheckConcurrency = 4
-	updateCheckBatchDeadline = 60 * time.Second
+	updateCheckBatchDeadline = 30 * time.Second
 	updateCheckHostFailThreshold = 3
 )
 

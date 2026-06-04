@@ -39,6 +39,17 @@ function pluginStatusClass(status: PPGlobalEntry["status"]): string {
   return status === "enabled" ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500";
 }
 
+function updateCheckErrorLabel(error: string): string {
+  switch (error) {
+    case "timeout": return "Check timed out";
+    case "git_ls_remote_failed": return "Network error";
+    case "host_backoff": return "Too many failures";
+    case "ref_not_found": return "Ref not found";
+    case "non_https_scheme_rejected": return "Invalid source URL";
+    default: return "Check failed";
+  }
+}
+
 function providerLabel(providerKey: string): string {
   switch (providerKey) {
     case "claude": return "Claude";
@@ -155,6 +166,7 @@ function GlobalPluginView({
                 {g.plugins.map((p, i) => {
                   const updateResult = updateMap.get(`${p.pluginName}@${p.marketplaceName}`);
                   const hasUpdate = updateResult?.updateAvailable === true;
+                  const checkError = updateResult?.error != null && updateResult.error !== "" ? updateResult.error : null;
                   return (
                   <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
                     <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">
@@ -163,6 +175,14 @@ function GlobalPluginView({
                         {hasUpdate && (
                           <span className="rounded bg-blue-100 px-1 py-0.5 text-[10px] font-semibold text-blue-700" title="Update available">
                             ↑ update
+                          </span>
+                        )}
+                        {checkError != null && (
+                          <span
+                            className="rounded bg-yellow-100 px-1 py-0.5 text-[10px] font-medium text-yellow-700"
+                            title={`Update check: ${checkError}`}
+                          >
+                            ⚠ {updateCheckErrorLabel(checkError)}
                           </span>
                         )}
                       </span>

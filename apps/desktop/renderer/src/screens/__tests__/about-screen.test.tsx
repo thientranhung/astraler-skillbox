@@ -19,6 +19,7 @@ const idleState = {
   latestVersion: null,
   updateAvailable: false,
   releaseUrl: null,
+  errorCode: null,
   check: vi.fn(),
 };
 
@@ -81,5 +82,31 @@ describe("AboutScreen", () => {
     const btn = screen.getByText("Check for Updates").closest("button");
     expect(btn?.disabled).toBe(true);
     expect(screen.getByText("Checking…")).toBeTruthy();
+  });
+
+  it("shows network error message for network_error code", () => {
+    mockUseCheckAppUpdate.mockReturnValue({
+      ...idleState,
+      status: "error",
+      errorCode: "network_error",
+    });
+    render(<AboutScreen />);
+    expect(screen.getByText(/No internet connection/)).toBeTruthy();
+  });
+
+  it("shows generic error message for unknown error code", () => {
+    mockUseCheckAppUpdate.mockReturnValue({
+      ...idleState,
+      status: "error",
+      errorCode: null,
+    });
+    render(<AboutScreen />);
+    expect(screen.getByText("Could not check for updates")).toBeTruthy();
+  });
+
+  it("shows 'App Updates' section header to distinguish from plugin updates", () => {
+    mockUseCheckAppUpdate.mockReturnValue(idleState);
+    render(<AboutScreen />);
+    expect(screen.getByText("App Updates")).toBeTruthy();
   });
 });
