@@ -282,6 +282,43 @@ describe("PluginsScreen", () => {
     expect(screen.getByText("unknown")).toBeTruthy();
   });
 
+  it("shows per-plugin error badge when update check timed out", () => {
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "slow-plugin", marketplaceName: "npm", status: "enabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    mockUseRunUpdateCheck.mockReturnValue({
+      run: vi.fn(),
+      isRunning: false,
+      isRateLimited: () => false,
+      status: "all_failed",
+      results: [{ pluginName: "slow-plugin", marketplaceName: "npm", updateAvailable: null, error: "timeout" }],
+    });
+    render(<PluginsScreen />);
+    expect(screen.getByTitle("Update check: timeout")).toBeTruthy();
+    expect(screen.getByText(/Check timed out/)).toBeTruthy();
+  });
+
+  it("shows per-plugin network error badge", () => {
+    const global = makeGlobal({
+      providerKey: "claude",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "net-plugin", marketplaceName: "npm", status: "enabled" }],
+    });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [global], global, projects: [] } });
+    mockUseRunUpdateCheck.mockReturnValue({
+      run: vi.fn(),
+      isRunning: false,
+      isRateLimited: () => false,
+      status: "all_failed",
+      results: [{ pluginName: "net-plugin", marketplaceName: "npm", updateAvailable: null, error: "git_ls_remote_failed" }],
+    });
+    render(<PluginsScreen />);
+    expect(screen.getByText(/Network error/)).toBeTruthy();
+  });
+
   it("shows '—' defensively when version field is undefined (legacy DB)", () => {
     const global = makeGlobal({
       providerKey: "claude",

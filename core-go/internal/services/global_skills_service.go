@@ -21,16 +21,17 @@ type globalScanSummary struct {
 
 // GlobalSkillsService handles global skills read operations.
 type GlobalSkillsService struct {
-	globalRepo    GlobalRepo
-	scanRepo      GlobalScanWriter
-	settingsRepo  AppSettingsRepo
-	hostLister    SkillHostLister
-	skillsByHost  SkillsByHostLister
-	registry      ProviderRegistry
-	fs            GlobalFilesystem
-	runner        OperationRunner
-	pathResolver  GlobalProviderPathResolver
-	enabledReader ProviderEnabledReader // optional; nil → treat all providers as enabled
+	globalRepo             GlobalRepo
+	scanRepo               GlobalScanWriter
+	settingsRepo           AppSettingsRepo
+	hostLister             SkillHostLister
+	skillsByHost           SkillsByHostLister
+	registry               ProviderRegistry
+	fs                     GlobalFilesystem
+	runner                 OperationRunner
+	pathResolver           GlobalProviderPathResolver
+	enabledReader          ProviderEnabledReader // optional; nil → treat all providers as enabled
+	providerRegistryLister ProviderRegistryLister // optional; when set, scan iterates all registry providers
 }
 
 func NewGlobalSkillsService(
@@ -65,6 +66,15 @@ func (s *GlobalSkillsService) WithGlobalPathResolver(r GlobalProviderPathResolve
 // providers are skipped during scan and their stale global entries are cleared.
 func (s *GlobalSkillsService) WithEnabledReader(r ProviderEnabledReader) *GlobalSkillsService {
 	s.enabledReader = r
+	return s
+}
+
+// WithProviderRegistryLister injects the provider registry lister. When set, the scan
+// iterates all DB registry providers and emits an explicit state for every row — providers
+// without a global adapter receive no_global_skills, providers excluded from the resolver
+// receive not_configured. Silent omission is a bug; this enforces full coverage.
+func (s *GlobalSkillsService) WithProviderRegistryLister(l ProviderRegistryLister) *GlobalSkillsService {
+	s.providerRegistryLister = l
 	return s
 }
 
@@ -123,141 +133,192 @@ func (s *GlobalSkillsService) scanGlobalInternal(ctx context.Context, progress o
 
 	summary := &globalScanSummary{}
 
-	// Iterate all registered adapters; only process those that implement GlobalProviderAdapter.
-	for _, adapter := range s.registry.All() {
-		ga, ok := adapter.(providers.GlobalProviderAdapter)
-		if !ok {
-			continue
+	if s.providerRegistryLister != nil {
+		// Registry-driven: iterate every DB provider entry so that every registry row
+		// has an explicit state in global_provider_locations. Silent omission is a bug.
+		registryEntries, regErr := s.providerRegistryLister.ListAll(ctx)
+		if regErr != nil {
+			return nil, domain.NewDatabaseError("Could not load provider registry for global scan", regErr.Error())
 		}
 
-		// Look up provider definition — gating: skip if not seeded, fail on real DB errors.
-		defID, _, _, lookupErr := s.globalRepo.ProviderDefByKey(ctx, adapter.Key())
-		if lookupErr != nil {
-			return nil, domain.NewDatabaseError("Could not look up provider definition for "+adapter.Key(), lookupErr.Error())
-		}
-		if defID == 0 {
-			// Provider not seeded in DB → skip silently.
-			continue
-		}
-
-		// If the user has disabled this provider, commit a disabled record (which
-		// also deletes any stale global_installs rows) and skip the filesystem detect.
-		if enabled, exists := enabledMap[adapter.Key()]; exists && !enabled {
-			if commitErr := s.scanRepo.CommitGlobalScan(ctx, defID, nil, nil,
-				domain.GlobalLocationStatusDisabled,
-				[]repositories.GlobalInstallScanResult{}, []domain.Warning{},
-				time.Now().UTC()); commitErr != nil {
-				return nil, domain.NewDatabaseError("Could not commit disabled scan for "+adapter.Key(), commitErr.Error())
+		// Build a key → GlobalProviderAdapter map from the adapter registry.
+		adapterMap := make(map[string]providers.GlobalProviderAdapter, len(registryEntries))
+		for _, a := range s.registry.All() {
+			if ga, ok := a.(providers.GlobalProviderAdapter); ok {
+				adapterMap[a.Key()] = ga
 			}
-			continue
 		}
 
-		// Resolve effective paths: resolver result ?? adapter defaults.
-		var paths providers.GlobalScopePaths
-		if globalPathsMap != nil {
-			if p, found := globalPathsMap[adapter.Key()]; found {
-				paths = p
-			} else {
-				// Not in resolver map means has_global_level=false for this provider → skip.
+		for _, regEntry := range registryEntries {
+			key := regEntry.Definition.Key
+			defID := regEntry.Definition.ID
+
+			if err := s.scanOneProvider(ctx, progress, key, defID, homeDir, enabledMap, globalPathsMap, adapterMap, hostSummaries, summary); err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		// Legacy adapter-driven iteration: only processes adapters that implement
+		// GlobalProviderAdapter. Providers without a global adapter are silently skipped.
+		// Use WithProviderRegistryLister to enable full registry coverage.
+		for _, adapter := range s.registry.All() {
+			ga, ok := adapter.(providers.GlobalProviderAdapter)
+			if !ok {
 				continue
 			}
-		} else {
-			paths = ga.DefaultGlobalPaths()
-		}
 
-		res, detectErr := ga.DetectGlobal(homeDir, paths, s.fs)
-		if detectErr != nil {
-			return nil, domain.NewFilesystemError("Could not detect global skills for "+adapter.Key(), detectErr.Error())
-		}
-
-		progress("classifying_entries", 0, 0, "")
-
-		// Classify entries using the existing project-install semantics.
-		rescan := "rescan"
-		installs := make([]repositories.GlobalInstallScanResult, 0, len(res.Entries))
-		for _, entry := range res.Entries {
-			c := ClassifyAdapterEntry(entry, hostSummaries)
-			inst := repositories.GlobalInstallScanResult{
-				SkillID:                   c.SkillID,
-				SkillName:                 entry.Name,
-				InstallMode:               c.Mode,
-				InstallStatus:             c.Status,
-				GlobalSkillPath:           entry.Path,
-				SourceSkillPath:           c.SourceSkillPath,
-				SymlinkTargetPath:         c.SymlinkTargetPath,
-				InstalledFromHostFolderID: c.InstalledFromHostFolderID,
+			defID, _, _, lookupErr := s.globalRepo.ProviderDefByKey(ctx, adapter.Key())
+			if lookupErr != nil {
+				return nil, domain.NewDatabaseError("Could not look up provider definition for "+adapter.Key(), lookupErr.Error())
+			}
+			if defID == 0 {
+				continue
 			}
 
-			switch c.Status {
-			case domain.InstallStatusBrokenSymlink:
-				w := domain.Warning{
-					ScopeType: domain.WarningScopeGlobalInstall,
-					Severity:  domain.WarningSeverityWarning,
-					Code:      "broken_symlink",
-					Message:   "Global skill " + entry.Name + " has a broken symlink",
-					ActionKey: &rescan,
-				}
-				inst.Warning = &w
-			case domain.InstallStatusExternalSymlink:
-				w := domain.Warning{
-					ScopeType: domain.WarningScopeGlobalInstall,
-					Severity:  domain.WarningSeverityWarning,
-					Code:      "external_symlink",
-					Message:   "Global skill " + entry.Name + " is a symlink to an external location",
-					ActionKey: &rescan,
-				}
-				inst.Warning = &w
-			case domain.InstallStatusOldHost:
-				w := domain.Warning{
-					ScopeType: domain.WarningScopeGlobalInstall,
-					Severity:  domain.WarningSeverityWarning,
-					Code:      "old_host_symlink",
-					Message:   "Global skill " + entry.Name + " is a symlink to an old host folder",
-					ActionKey: &rescan,
-				}
-				inst.Warning = &w
-			}
-
-			installs = append(installs, inst)
-		}
-
-		// Convert adapter location-scoped warnings to domain.Warning.
-		locWarnings := make([]domain.Warning, 0, len(res.Warnings))
-		for _, aw := range res.Warnings {
-			w := domain.Warning{
-				ScopeType: domain.WarningScopeGlobalProviderLocation,
-				Severity:  aw.Severity,
-				Code:      aw.Code,
-				Message:   aw.Message,
-				ActionKey: &rescan,
-			}
-			locWarnings = append(locWarnings, w)
-		}
-
-		var pathPtr, skillsPtr *string
-		if res.GlobalPath != "" {
-			pathPtr = &res.GlobalPath
-		}
-		if res.GlobalSkillsPath != "" {
-			skillsPtr = &res.GlobalSkillsPath
-		}
-
-		if commitErr := s.scanRepo.CommitGlobalScan(ctx, defID, pathPtr, skillsPtr,
-			res.Status, installs, locWarnings, time.Now().UTC()); commitErr != nil {
-			return nil, domain.NewDatabaseError("Could not commit global scan for "+adapter.Key(), commitErr.Error())
-		}
-
-		summary.EntriesFound += len(installs)
-		summary.WarningsCreated += len(locWarnings)
-		for _, inst := range installs {
-			if inst.Warning != nil {
-				summary.WarningsCreated++
+			adapterMap := map[string]providers.GlobalProviderAdapter{adapter.Key(): ga}
+			if err := s.scanOneProvider(ctx, progress, adapter.Key(), defID, homeDir, enabledMap, globalPathsMap, adapterMap, hostSummaries, summary); err != nil {
+				return nil, err
 			}
 		}
 	}
 
 	progress("done", 0, 0, "")
 	return summary, nil
+}
+
+// scanOneProvider handles one provider key during a global scan, writing an explicit
+// state to global_provider_locations regardless of global-adapter availability.
+func (s *GlobalSkillsService) scanOneProvider(
+	ctx context.Context,
+	progress operations.ProgressFn,
+	key string,
+	defID int64,
+	homeDir string,
+	enabledMap map[string]bool,
+	globalPathsMap map[string]providers.GlobalScopePaths,
+	adapterMap map[string]providers.GlobalProviderAdapter,
+	hostSummaries []HostSummary,
+	summary *globalScanSummary,
+) error {
+	// Disabled provider: commit disabled, clear stale entries.
+	if enabled, exists := enabledMap[key]; exists && !enabled {
+		return s.scanRepo.CommitGlobalScan(ctx, defID, nil, nil,
+			domain.GlobalLocationStatusDisabled,
+			[]repositories.GlobalInstallScanResult{}, []domain.Warning{},
+			time.Now().UTC())
+	}
+
+	ga, hasGlobal := adapterMap[key]
+	if !hasGlobal {
+		// Provider is in the registry but has no global adapter → no global skills support.
+		return s.scanRepo.CommitGlobalScan(ctx, defID, nil, nil,
+			domain.GlobalLocationStatusNoGlobalSkills,
+			[]repositories.GlobalInstallScanResult{}, []domain.Warning{},
+			time.Now().UTC())
+	}
+
+	// Resolve effective paths.
+	var paths providers.GlobalScopePaths
+	if globalPathsMap != nil {
+		p, found := globalPathsMap[key]
+		if !found {
+			// Path resolver excludes this provider: not configured for global skills.
+			return s.scanRepo.CommitGlobalScan(ctx, defID, nil, nil,
+				domain.GlobalLocationStatusNotConfigured,
+				[]repositories.GlobalInstallScanResult{}, []domain.Warning{},
+				time.Now().UTC())
+		}
+		paths = p
+	} else {
+		paths = ga.DefaultGlobalPaths()
+	}
+
+	res, detectErr := ga.DetectGlobal(homeDir, paths, s.fs)
+	if detectErr != nil {
+		return domain.NewFilesystemError("Could not detect global skills for "+key, detectErr.Error())
+	}
+
+	progress("classifying_entries", 0, 0, "")
+
+	rescan := "rescan"
+	installs := make([]repositories.GlobalInstallScanResult, 0, len(res.Entries))
+	for _, entry := range res.Entries {
+		c := ClassifyAdapterEntry(entry, hostSummaries)
+		inst := repositories.GlobalInstallScanResult{
+			SkillID:                   c.SkillID,
+			SkillName:                 entry.Name,
+			InstallMode:               c.Mode,
+			InstallStatus:             c.Status,
+			GlobalSkillPath:           entry.Path,
+			SourceSkillPath:           c.SourceSkillPath,
+			SymlinkTargetPath:         c.SymlinkTargetPath,
+			InstalledFromHostFolderID: c.InstalledFromHostFolderID,
+		}
+		switch c.Status {
+		case domain.InstallStatusBrokenSymlink:
+			w := domain.Warning{
+				ScopeType: domain.WarningScopeGlobalInstall,
+				Severity:  domain.WarningSeverityWarning,
+				Code:      "broken_symlink",
+				Message:   "Global skill " + entry.Name + " has a broken symlink",
+				ActionKey: &rescan,
+			}
+			inst.Warning = &w
+		case domain.InstallStatusExternalSymlink:
+			w := domain.Warning{
+				ScopeType: domain.WarningScopeGlobalInstall,
+				Severity:  domain.WarningSeverityWarning,
+				Code:      "external_symlink",
+				Message:   "Global skill " + entry.Name + " is a symlink to an external location",
+				ActionKey: &rescan,
+			}
+			inst.Warning = &w
+		case domain.InstallStatusOldHost:
+			w := domain.Warning{
+				ScopeType: domain.WarningScopeGlobalInstall,
+				Severity:  domain.WarningSeverityWarning,
+				Code:      "old_host_symlink",
+				Message:   "Global skill " + entry.Name + " is a symlink to an old host folder",
+				ActionKey: &rescan,
+			}
+			inst.Warning = &w
+		}
+		installs = append(installs, inst)
+	}
+
+	locWarnings := make([]domain.Warning, 0, len(res.Warnings))
+	for _, aw := range res.Warnings {
+		w := domain.Warning{
+			ScopeType: domain.WarningScopeGlobalProviderLocation,
+			Severity:  aw.Severity,
+			Code:      aw.Code,
+			Message:   aw.Message,
+			ActionKey: &rescan,
+		}
+		locWarnings = append(locWarnings, w)
+	}
+
+	var pathPtr, skillsPtr *string
+	if res.GlobalPath != "" {
+		pathPtr = &res.GlobalPath
+	}
+	if res.GlobalSkillsPath != "" {
+		skillsPtr = &res.GlobalSkillsPath
+	}
+
+	if commitErr := s.scanRepo.CommitGlobalScan(ctx, defID, pathPtr, skillsPtr,
+		res.Status, installs, locWarnings, time.Now().UTC()); commitErr != nil {
+		return domain.NewDatabaseError("Could not commit global scan for "+key, commitErr.Error())
+	}
+
+	summary.EntriesFound += len(installs)
+	summary.WarningsCreated += len(locWarnings)
+	for _, inst := range installs {
+		if inst.Warning != nil {
+			summary.WarningsCreated++
+		}
+	}
+	return nil
 }
 
 // buildHostSummaries loads skills for each host, active hosts first.

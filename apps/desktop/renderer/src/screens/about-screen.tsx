@@ -25,6 +25,13 @@ const LINKS = [
   },
 ] as const;
 
+const APP_UPDATE_ERROR_LABEL: Record<string, string> = {
+  network_error: "No internet connection — could not reach GitHub.",
+  no_releases: "No releases found on GitHub.",
+  http_error: "GitHub returned an unexpected response.",
+  parse_error: "Could not parse the release information.",
+};
+
 const UPDATE_STATUS_LABEL: Record<string, string> = {
   idle: "",
   checking: "Checking…",
@@ -69,10 +76,10 @@ export function AboutScreen(): React.JSX.Element {
         </div>
       </div>
 
-      {/* Update check */}
+      {/* App update check */}
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
-          Updates
+          App Updates
         </h3>
         <div className="rounded border border-zinc-200 px-4 py-3 space-y-3">
           <div className="flex items-center justify-between gap-4">
@@ -96,11 +103,15 @@ export function AboutScreen(): React.JSX.Element {
                 update.status === "available"
                   ? "text-emerald-700"
                   : update.status === "error"
-                    ? "text-zinc-500"
+                    ? "text-amber-700"
                     : "text-zinc-600"
               }`}
             >
-              {UPDATE_STATUS_LABEL[update.status]}
+              {update.status === "error"
+                ? (update.errorCode != null && APP_UPDATE_ERROR_LABEL[update.errorCode]
+                    ? APP_UPDATE_ERROR_LABEL[update.errorCode]
+                    : UPDATE_STATUS_LABEL["error"])
+                : UPDATE_STATUS_LABEL[update.status]}
               {update.status === "available" && update.latestVersion && (
                 <span className="ml-1 font-mono text-xs">({update.latestVersion})</span>
               )}

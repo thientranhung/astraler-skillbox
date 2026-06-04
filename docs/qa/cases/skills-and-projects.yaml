@@ -1,38 +1,47 @@
 area: skills-and-projects
 cases:
   - id: TC-PROJ-001
-    title: Add project and scan provider state
+    title: Add project and scan provider state, including no-provider guidance
     tier: T1
     primary_screen: Projects
     related_screens: [Project Detail, Dashboard]
     type: smoke
-    tags: [project, add-project, scan, cross-screen, release-full]
+    tags: [project, add-project, scan, no-provider, cross-screen, release-full]
     invariants: [INV-PROJECT-001]
     preconditions:
       - App has a configured QA Skill Host Folder.
-      - QA project folder exists and is safe to scan.
+      - QA project folder A has at least one provider folder.
+      - QA project folder B has no provider folders.
     steps:
       - Open Projects.
-      - Add the QA project folder.
+      - Add QA project folder A (with providers).
       - Run project scan if it does not happen automatically.
-      - Open Project Detail.
+      - Open Project Detail for folder A.
+      - Return to Projects.
+      - Add QA project folder B (no providers).
+      - Open Project Detail for folder B.
       - Return to Dashboard.
     expected_ui:
-      - Projects list shows the added project path.
-      - Project Detail shows detected providers or a clear no-provider state.
-      - Manual scan shows a completion or error toast.
+      - Projects list shows both added project paths.
+      - Project Detail for folder A shows detected providers.
+      - Project Detail for folder B shows no-provider guidance with folder creation instructions.
+      - Project Detail for folder B does not claim any provider is detected.
+      - No provider folders are auto-created in folder B by the app.
     cross_screen_checks:
       - Dashboard project totals match Projects list.
       - Project Detail provider facts match Projects row summary.
     verifier:
       app_db:
-        - Project row exists with the selected path.
+        - Project rows exist for both folders.
         - Provider scan facts match the UI summary.
       filesystem:
-        - No files are written outside the selected QA project folder.
+        - No files are written outside the selected QA project folders.
+        - No provider folders are created in folder B by the app.
       evidence:
-        - Screenshot of Projects row and Project Detail.
+        - Screenshot of Projects row and Project Detail for folder A (with providers).
+        - Screenshot of Project Detail for folder B showing no-provider guidance.
         - DB query output for project and provider facts.
+        - "`find` output for folder B confirming no provider folders created."
     safety:
       destructive: false
       allowed_environment: qa_fixture
@@ -861,3 +870,39 @@ cases:
       destructive: true
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-PROJ-009
+    title: Project Detail no-provider state shows guidance without creating filesystem folders
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Projects]
+    type: edge
+    tags: [project, no-provider, guidance, filesystem-safety, release-full]
+    invariants: [INV-PROJECT-001, INV-SAFETY-001]
+    preconditions:
+      - App has a configured QA Skill Host Folder.
+      - QA project folder has no provider folders (no .agents/skills, no .claude/skills, etc.).
+      - QA project is added to Skillbox and scanned.
+    steps:
+      - Open Project Detail for the no-provider QA project.
+      - Inspect the Providers section.
+      - Inspect the filesystem of the QA project folder after viewing the detail.
+    expected_ui:
+      - Providers section shows a guidance message explaining how to create provider folders manually.
+      - Guidance text mentions at least one provider folder example (e.g., .agents/skills or .claude/skills).
+      - No empty state simply says "No providers detected" without guidance.
+      - No install-related action buttons are shown that imply the app will create provider folders.
+    fail_criteria:
+      - App auto-creates any provider folder in the project directory.
+      - No guidance text appears; only a generic "no providers" message is shown.
+    verifier:
+      filesystem:
+        - No new directories are created under the QA project folder after opening Project Detail.
+        - "`find` output shows QA project folder contents are unchanged."
+      evidence:
+        - Screenshot of Project Detail Providers section with guidance message.
+        - "`find` output for QA project folder confirming no new directories created."
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

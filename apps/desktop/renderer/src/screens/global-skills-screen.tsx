@@ -15,7 +15,17 @@ function statusBadgeClass(status: GlobalListLocation["status"]): string {
     case "empty": return "bg-zinc-100 text-zinc-500";
     case "missing": return "bg-red-100 text-red-600";
     case "not_configured": return "bg-zinc-100 text-zinc-400";
+    case "no_global_skills": return "bg-zinc-100 text-zinc-400";
+    case "disabled": return "bg-zinc-100 text-zinc-400";
     default: return "bg-yellow-100 text-yellow-700";
+  }
+}
+
+function statusLabel(status: GlobalListLocation["status"]): string {
+  switch (status) {
+    case "no_global_skills": return "no global skills";
+    case "not_configured": return "not configured";
+    default: return status;
   }
 }
 
@@ -113,7 +123,7 @@ export function GlobalSkillsScreen(): React.JSX.Element {
                       {loc.providerDisplayName}
                     </span>
                     <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${statusBadgeClass(loc.status)}`}>
-                      {loc.status}
+                      {statusLabel(loc.status)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

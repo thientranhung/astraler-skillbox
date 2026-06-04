@@ -441,12 +441,13 @@ unreadable
 invalid_structure
 empty
 disabled
+no_global_skills
 ```
 
 Notes:
 
 - `path` là absolute path tới global provider root hoặc global convention path.
-  Nullable khi `status = not_configured`.
+  Nullable khi `status = not_configured` hoặc `status = no_global_skills`.
 - `skills_path` là absolute path nơi provider global level nhận skill/global
   entries nếu có.
 - Global locations không thuộc project nào.

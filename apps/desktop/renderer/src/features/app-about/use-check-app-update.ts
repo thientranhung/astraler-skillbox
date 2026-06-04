@@ -17,6 +17,7 @@ export interface CheckAppUpdateState {
   latestVersion: string | null;
   updateAvailable: boolean;
   releaseUrl: string | null;
+  errorCode: string | null;
   check: () => void;
 }
 
@@ -49,6 +50,7 @@ export function useCheckAppUpdate(): CheckAppUpdateState {
     latestVersion: data?.latestVersion ?? null,
     updateAvailable: data?.updateAvailable ?? false,
     releaseUrl: data?.releaseUrl ?? null,
+    errorCode: data?.error ?? null,
     check: mutation.mutate,
   };
 }

@@ -1,35 +1,43 @@
 area: global-skills
 cases:
   - id: TC-GLOBAL-001
-    title: Global Skills scan shows approved global provider skill folders
+    title: Global Skills scan shows an explicit state for every Settings provider registry row
     tier: T1
     primary_screen: Global Skills
     related_screens: [Dashboard, Settings]
     type: smoke
-    tags: [global-skills, scan, provider, cross-screen, release-full]
+    tags: [global-skills, scan, provider, registry-coverage, cross-screen, release-full]
     invariants: [INV-GLOBAL-001, INV-PROVIDER-001]
     preconditions:
-      - QA HOME contains approved global provider skill folders.
+      - QA HOME contains approved global provider skill folders for at least one provider.
       - App runs with HOME pointing to the QA home fixture.
+      - Settings provider registry has at least two providers (one global-capable, one not).
     steps:
+      - Open Settings and note all providers visible in the provider registry.
       - Open Global Skills.
       - Run global scan.
-      - Inspect provider rows and observed entries.
+      - Inspect all provider rows.
       - Return to Dashboard.
     expected_ui:
-      - Global provider paths are under QA HOME.
-      - Existing global skills are listed with provider, path, and status.
-      - Missing providers are labeled as missing or not configured without blocking the app.
+      - Every provider shown in Settings/provider registry appears in Global Skills after scan.
+      - Global-capable providers show active, empty, missing, or a scan-state label.
+      - Providers without global skills support show "no global skills" state.
+      - Disabled providers show "disabled" state.
+      - No provider in Settings/provider registry is silently absent from Global Skills.
     cross_screen_checks:
       - Dashboard Global Skills entry point remains consistent with scan status.
+      - Settings provider list and Global Skills provider list cover the same provider set.
     verifier:
       app_db:
+        - global_provider_locations has one row per provider definition in provider_definitions.
+        - No provider_definitions row is absent from global_provider_locations after scan.
         - Global provider locations and global install rows match the UI.
       filesystem:
         - Listed paths exist under the copied QA home fixture.
       evidence:
-        - Global Skills screenshot.
-        - DB global tables query output.
+        - Global Skills screenshot showing all provider rows.
+        - Settings provider registry screenshot.
+        - DB query output for global_provider_locations and provider_definitions counts.
         - Filesystem listing of global provider folders.
     safety:
       destructive: false
@@ -204,3 +212,42 @@ cases:
       destructive: true
       allowed_environment: qa_fixture_only
       real_environment: forbidden
+
+  - id: TC-GLOBAL-007
+    title: Global Skills accounts for every Settings provider registry provider with an explicit state
+    tier: T1
+    primary_screen: Global Skills
+    related_screens: [Settings]
+    type: invariant
+    tags: [global-skills, registry-coverage, provider, release-full]
+    invariants: [INV-GLOBAL-001, INV-PROVIDER-001]
+    preconditions:
+      - App is configured with a QA HOME fixture.
+      - Settings provider registry contains at least: one global-capable provider, one non-global provider, one disabled provider.
+    steps:
+      - Open Settings and record all providers in the provider registry table.
+      - Open Global Skills.
+      - Run global scan.
+      - Verify each Settings provider has a corresponding row in Global Skills.
+    expected_ui:
+      - Every provider in Settings/provider registry has an explicit state row in Global Skills.
+      - Global-capable provider with a path: shows active, empty, missing, or error state.
+      - Provider with no global skills support: shows "no global skills" state label.
+      - Disabled provider: shows "disabled" state label.
+      - Provider configured but path missing: shows "missing" state label.
+      - No provider from the Settings registry is silently absent from Global Skills output.
+    fail_criteria:
+      - Any provider visible in Settings/provider registry has no corresponding row in Global Skills after scan.
+      - Any provider row appears without an explicit, displayable status.
+    verifier:
+      app_db:
+        - COUNT of provider_definitions equals COUNT of global_provider_locations after scan.
+        - Each global_provider_locations row has a non-null, non-empty status string.
+      evidence:
+        - Global Skills full-list screenshot.
+        - Settings provider registry screenshot.
+        - DB query output comparing provider definitions to global locations, e.g. SELECT pd.key, gl.status FROM provider_definitions pd LEFT JOIN global_provider_locations gl ON gl.provider_definition_id = pd.id.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
