@@ -6,12 +6,27 @@ import { resolveCoreSpawn } from "./core-go-path.js";
 const READY_TIMEOUT_MS = 10_000;
 const MAX_RESTARTS = 3;
 const SIGKILL_DELAY_MS = 3_000;
+const MAX_LOG_LINES = 100;
 
 let goClient: JsonRpcStdioClient | null = null;
 let activeChild: ChildProcess | null = null;
 let restartCount = 0;
 let intentionalShutdown = false;
 let onFatalError: ((message: string) => void) | null = null;
+
+const coreLogBuffer: string[] = [];
+
+function pushLogChunk(chunk: string): void {
+  const lines = chunk.split("\n");
+  coreLogBuffer.push(...lines);
+  if (coreLogBuffer.length > MAX_LOG_LINES) {
+    coreLogBuffer.splice(0, coreLogBuffer.length - MAX_LOG_LINES);
+  }
+}
+
+export function getCoreLogs(): string[] {
+  return [...coreLogBuffer];
+}
 
 export function getGoClient(): JsonRpcStdioClient {
   if (!goClient) throw new Error("Go client not initialized");
@@ -48,7 +63,9 @@ export function spawnGoCore(): Promise<JsonRpcStdioClient> {
 
     const stderrLines: string[] = [];
     child.stderr?.on("data", (chunk: Buffer) => {
-      stderrLines.push(chunk.toString());
+      const text = chunk.toString();
+      stderrLines.push(text);
+      pushLogChunk(text);
     });
 
     const timer = setTimeout(() => {

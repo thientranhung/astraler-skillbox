@@ -1,16 +1,28 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 
 vi.mock("../../features/app-about/use-check-app-update.js", () => ({
   useCheckAppUpdate: vi.fn(),
 }));
 
+vi.mock("../../lib/core-client/methods.js", () => ({
+  methods: {
+    exportDiagnostics: vi.fn(),
+    copyDiagnostics: vi.fn(),
+  },
+}));
+
 import { AboutScreen } from "../about-screen.js";
 import { useCheckAppUpdate } from "../../features/app-about/use-check-app-update.js";
+import { methods } from "../../lib/core-client/methods.js";
 
 const mockUseCheckAppUpdate = useCheckAppUpdate as ReturnType<typeof vi.fn>;
+const mockMethods = methods as unknown as {
+  exportDiagnostics: ReturnType<typeof vi.fn>;
+  copyDiagnostics: ReturnType<typeof vi.fn>;
+};
 
 const idleState = {
   isPending: false,
@@ -23,7 +35,11 @@ const idleState = {
   check: vi.fn(),
 };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockMethods.exportDiagnostics.mockResolvedValue({ saved: true, filePath: "/tmp/skillbox-diagnostics.txt" });
+  mockMethods.copyDiagnostics.mockResolvedValue({ copied: true });
+});
 afterEach(() => cleanup());
 
 describe("AboutScreen", () => {
@@ -108,5 +124,32 @@ describe("AboutScreen", () => {
     mockUseCheckAppUpdate.mockReturnValue(idleState);
     render(<AboutScreen />);
     expect(screen.getByText("App Updates")).toBeTruthy();
+  });
+
+  it("shows Diagnostics actions", () => {
+    mockUseCheckAppUpdate.mockReturnValue(idleState);
+    render(<AboutScreen />);
+    expect(screen.getByText("Diagnostics")).toBeTruthy();
+    expect(screen.getByText("Export Diagnostics…")).toBeTruthy();
+    expect(screen.getByText("Copy to Clipboard")).toBeTruthy();
+    expect(screen.getByText(/No data is sent automatically/i)).toBeTruthy();
+  });
+
+  it("copies diagnostics on request", async () => {
+    mockUseCheckAppUpdate.mockReturnValue(idleState);
+    render(<AboutScreen />);
+    fireEvent.click(screen.getByText("Copy to Clipboard"));
+    await waitFor(() => expect(mockMethods.copyDiagnostics).toHaveBeenCalledOnce());
+    expect(await screen.findByText("Copied!")).toBeTruthy();
+  });
+
+  it("does not show Saved when export is canceled", async () => {
+    mockMethods.exportDiagnostics.mockResolvedValue({ saved: false, filePath: null });
+    mockUseCheckAppUpdate.mockReturnValue(idleState);
+    render(<AboutScreen />);
+    fireEvent.click(screen.getByText("Export Diagnostics…"));
+    await waitFor(() => expect(mockMethods.exportDiagnostics).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.queryByText("Saved")).toBeNull());
+    expect(screen.getByText("Export Diagnostics…")).toBeTruthy();
   });
 });

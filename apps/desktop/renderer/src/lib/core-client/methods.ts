@@ -132,4 +132,10 @@ export const methods = {
 
   checkAppUpdate: () =>
     invoke<AppCheckUpdateResponse>("app.checkUpdate", {}),
+
+  exportDiagnostics: () =>
+    invoke<{ saved: boolean; filePath: string | null }>("dialog.exportDiagnostics", {}),
+
+  copyDiagnostics: () =>
+    invoke<{ copied: boolean }>("dialog.copyDiagnostics", {}),
 };

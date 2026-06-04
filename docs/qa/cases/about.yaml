@@ -62,6 +62,52 @@ cases:
       allowed_environment: qa_fixture_or_read_only
       real_environment: allowed_read_only
 
+  - id: TC-DIAG-001
+    title: Export Diagnostics and Copy Diagnostics are user-triggered and contain no secrets or skill contents
+    tier: T1
+    primary_screen: About
+    related_screens: []
+    type: smoke
+    tags: [about, diagnostics, privacy, local-first, release-full]
+    invariants: [INV-PRIVACY-001]
+    release_scope: manual
+    notes: Native Save Dialog cannot be driven by CDP. Automated release-full may verify Copy to Clipboard plus source/unit coverage for dialog.exportDiagnostics; mark the export-save substep NEEDS_HUMAN unless a human chooses the save path or a documented Electron-main harness stubs the save dialog.
+    preconditions:
+      - App runs in dev Electron mode.
+      - At least one provider path is configured so the DB path is deterministic.
+    steps:
+      - Open About screen.
+      - Observe the Diagnostics section with Export and Copy buttons.
+      - Click "Copy to Clipboard".
+      - Paste clipboard contents into a text editor.
+      - Inspect the pasted text.
+      - Click "Export Diagnostics…".
+      - NEEDS_HUMAN or harness bypass: choose a save path in the native Save Dialog, or verify dialog.exportDiagnostics via an Electron-main test/harness that stubs the save dialog and filesystem write.
+      - Open the exported file in a text editor.
+      - Inspect the exported text.
+    expected_ui:
+      - Diagnostics section is visible under App Updates in the About screen.
+      - Export and Copy buttons are present and enabled.
+      - After Copy, button briefly shows "Copied!" confirmation.
+      - After Export, button briefly shows "Saved" confirmation and no error is shown.
+      - The diagnostic text includes app version, platform info, and DB path.
+      - The DB path is displayed with home directory replaced by "~" (not the absolute path).
+      - The text does not contain any skill file contents or plugin file contents.
+      - No automatic network request is triggered by clicking either button.
+    verifier:
+      filesystem:
+        - Exported .txt file exists at the chosen path.
+        - File content includes "=== Astraler Skillbox Diagnostics ===" header.
+        - File content does not contain the user's absolute home directory path.
+      evidence:
+        - Screenshot of About screen showing Diagnostics section.
+        - Content of exported or pasted diagnostics text (redacted if needed).
+        - Human save-dialog evidence or Electron-main harness/source-inspection output for dialog.exportDiagnostics.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
+
   - id: TC-ABOUT-003
     title: About Check Updates handles network failure gracefully
     tier: T1
