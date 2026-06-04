@@ -3,9 +3,11 @@ package services_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/astraler/skillbox/core-go/internal/network"
 	"github.com/astraler/skillbox/core-go/internal/repositories"
@@ -134,6 +136,83 @@ func TestUpdateCheck_AlwaysOn_MockClient(t *testing.T) {
 	}
 	if cached.RemoteSHA != newSHA {
 		t.Errorf("cached RemoteSHA: got %q want %q", cached.RemoteSHA, newSHA)
+	}
+}
+
+// blockingLsClient blocks each LsRemote call until the context is done,
+// simulating a slow network. Used to exercise the batch-deadline path.
+type blockingLsClient struct{}
+
+func (c *blockingLsClient) LsRemote(ctx context.Context, url, _ string) network.UpdateCheckResult {
+	<-ctx.Done()
+	return network.UpdateCheckResult{SourceURL: url, Error: "context_cancelled"}
+}
+
+// TestUpdateCheck_BatchDeadline_NotStartedItemsGetTimeoutResult verifies TC-PLUGIN-009:
+// when the batch deadline fires before all queued work items can start, every item that
+// never acquired the semaphore is returned with Error == "timeout", so the renderer
+// sees a complete, accurate result set.
+func TestUpdateCheck_BatchDeadline_NotStartedItemsGetTimeoutResult(t *testing.T) {
+	const pluginCount = 6 // > updateCheckConcurrency (4); items 4-5 will never start
+
+	db := openTestDB(t)
+	cacheRepo := repositories.NewUpdateCheckCacheRepo(db)
+
+	claudeDir := t.TempDir()
+	mktDir := filepath.Join(claudeDir, "plugins", "marketplaces", "slow-market", ".claude-plugin")
+	if err := os.MkdirAll(mktDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Build marketplace.json with pluginCount plugins.
+	pluginsJSON := `{"name":"slow-market","plugins":[`
+	for i := 0; i < pluginCount; i++ {
+		if i > 0 {
+			pluginsJSON += ","
+		}
+		pluginsJSON += fmt.Sprintf(`{"name":"slow-plugin-%d","source":{"source":"git-subdir","url":"https://github.com/example/plugins-%d.git","ref":"main","sha":"abc%d"}}`, i, i, i)
+	}
+	pluginsJSON += `]}`
+	if err := os.WriteFile(filepath.Join(mktDir, "marketplace.json"), []byte(pluginsJSON), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(claudeDir, "plugins", "installed_plugins.json"),
+		[]byte(`{"version":2,"plugins":{}}`),
+		0644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := services.NewUpdateCheckService(cacheRepo, &blockingLsClient{}, claudeDir)
+	svc.BatchDeadline = 50 * time.Millisecond
+
+	result, err := svc.RunUpdateCheck(context.Background())
+	if err != nil {
+		t.Fatalf("RunUpdateCheck: %v", err)
+	}
+	if result.Status != "ok" {
+		t.Errorf("status: got %q want %q", result.Status, "ok")
+	}
+	if len(result.Plugins) != pluginCount {
+		t.Errorf("plugin count: got %d want %d — not-started items are missing terminal results", len(result.Plugins), pluginCount)
+	}
+
+	timeoutCount := 0
+	for _, p := range result.Plugins {
+		if p.Error == "" {
+			t.Errorf("plugin %q/%q has no error but all items should have failed (deadline or timeout)", p.PluginName, p.MarketplaceName)
+		}
+		if p.Error == "timeout" {
+			timeoutCount++
+		}
+	}
+
+	// Items beyond the concurrency cap (pluginCount - updateCheckConcurrency) should be "timeout".
+	// updateCheckConcurrency is an unexported constant (4); at least 2 items must be timeout.
+	if timeoutCount < pluginCount-4 {
+		t.Errorf("expected at least %d timeout results (not-started items), got %d", pluginCount-4, timeoutCount)
 	}
 }
 
