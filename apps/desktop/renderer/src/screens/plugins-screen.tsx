@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { RefreshCw, ArrowUpCircle } from "lucide-react";
 import { useProviderPluginList } from "../features/provider-plugins/use-provider-plugin-list.js";
 import { useScanProviderPluginsGlobal } from "../features/provider-plugins/use-scan-provider-plugins-global.js";
@@ -7,6 +7,7 @@ import { useRunUpdateCheck } from "../features/update-check/use-run-update-check
 import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
+import { displayPath } from "../lib/display-path.js";
 import type { PPGlobalView, PPGlobalEntry, UpdateCheckPluginResult } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
@@ -123,7 +124,7 @@ function GlobalPluginView({
             </span>
           )}
         </div>
-        <p className="font-mono text-xs text-zinc-400">{g.userLayerPath}</p>
+        <p className="font-mono text-xs text-zinc-400">{displayPath(g.userLayerPath)}</p>
         {g.managedOutOfScope && (
           <p className="text-xs text-zinc-400">
             Some settings in this file are managed outside Skillbox.
@@ -227,22 +228,77 @@ function GlobalPluginView({
   );
 }
 
+function ProviderTab({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={onClick}
+      className={`-mb-px mr-0.5 rounded-t px-3 py-1.5 text-xs font-medium border-b-2 ${
+        active
+          ? "border-zinc-700 text-zinc-900"
+          : "border-transparent text-zinc-500 hover:text-zinc-700"
+      }`}
+    >
+      {label}
+      <span
+        className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] ${
+          active ? "bg-zinc-200 text-zinc-700" : "bg-zinc-100 text-zinc-500"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
 export function PluginsScreen(): React.JSX.Element {
   const { data, isPending, isError, error } = useProviderPluginList();
   const scanMutation = useScanProviderPluginsGlobal();
   const setEnabledMutation = useSetProviderPluginEnabled();
   const updateCheck = useRunUpdateCheck();
+  const [activeProvider, setActiveProvider] = useState<string>("all");
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
 
   // Build updateAvailable lookup from last check results.
-  const updateMap = React.useMemo(() => {
+  const updateMap = useMemo(() => {
     const m = new Map<string, UpdateCheckPluginResult>();
     for (const r of updateCheck.results) {
       m.set(`${r.pluginName}@${r.marketplaceName}`, r);
     }
     return m;
   }, [updateCheck.results]);
+
+  const allGlobals = useMemo(() => {
+    if (data == null) return [];
+    return data.globals.length > 0 ? data.globals : [data.global];
+  }, [data]);
+
+  const providerTabs = useMemo(() => {
+    return allGlobals.map((g) => ({
+      key: g.providerKey,
+      displayName: providerLabel(g.providerKey),
+      count: g.plugins.length,
+    }));
+  }, [allGlobals]);
+
+  const totalCount = useMemo(
+    () => allGlobals.reduce((sum, g) => sum + g.plugins.length, 0),
+    [allGlobals],
+  );
+
+  const visibleGlobals = useMemo(() => {
+    return activeProvider === "all" ? allGlobals : allGlobals.filter((g) => g.providerKey === activeProvider);
+  }, [allGlobals, activeProvider]);
 
   const autoScannedRef = useRef(false);
   const oldestScannedAt = (() => {
@@ -301,6 +357,27 @@ export function PluginsScreen(): React.JSX.Element {
         </div>
       </div>
 
+      {/* Provider tabs */}
+      {!isPending && !isError && allGlobals.length > 0 && (
+        <div className="flex border-b border-zinc-200 px-4 pt-2">
+          <ProviderTab
+            label="All"
+            count={totalCount}
+            active={activeProvider === "all"}
+            onClick={() => setActiveProvider("all")}
+          />
+          {providerTabs.map((tab) => (
+            <ProviderTab
+              key={tab.key}
+              label={tab.displayName}
+              count={tab.count}
+              active={activeProvider === tab.key}
+              onClick={() => setActiveProvider(tab.key)}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {isPending && (
@@ -324,7 +401,7 @@ export function PluginsScreen(): React.JSX.Element {
 
         {!isPending && !isError && data != null && (
           <div className="flex flex-col gap-6 p-4">
-            {(data.globals.length > 0 ? data.globals : [data.global]).map((global) => (
+            {visibleGlobals.map((global) => (
               <GlobalPluginView
                 key={global.providerKey}
                 global={global}

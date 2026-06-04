@@ -1,15 +1,14 @@
 import React, { useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { FolderOpen, Pencil, RotateCcw } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Pencil, RotateCcw } from "lucide-react";
 import { useAppSettings } from "../features/app-settings/use-app-settings.js";
 import { useResetAll } from "../features/app-settings/use-reset-all.js";
-import { useChooseHost } from "../features/skill-host/use-choose-host.js";
 import { useProviderList } from "../features/providers/use-provider-list.js";
 import { useResetProviderPaths } from "../features/providers/use-reset-provider-paths.js";
 import { ProviderPathsEditor } from "../features/providers/provider-paths-editor.js";
-import { methods } from "../lib/core-client/methods.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
+import { displayPath } from "../lib/display-path.js";
 import type { ProviderListProvider } from "@contracts/index.js";
 
 type ProviderPathScope = "project" | "global";
@@ -174,11 +173,11 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
           />
         </td>
         <td className="px-3 py-2">
-          <SlotCell
-            data={projectSkills}
-            hasSlotOverride={slotHasOverride(provider, "project", "skills")}
-            onEdit={() => setEditSlot({ scope: "project", purpose: "skills", paths: projectSkills.paths })}
-            onReset={() => handleResetSlot("project", "skills")}
+          <OptionalSlotCell
+            data={globalConfig ?? { paths: [], source: "builtin" }}
+            hasSlotOverride={slotHasOverride(provider, "global", "config")}
+            onEdit={() => setEditSlot({ scope: "global", purpose: "config", paths: globalConfig?.paths ?? [] })}
+            onReset={() => handleResetSlot("global", "config")}
             isResetting={resetMutation.isPending}
           />
         </td>
@@ -201,11 +200,11 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
           />
         </td>
         <td className="px-3 py-2">
-          <OptionalSlotCell
-            data={globalConfig ?? { paths: [], source: "builtin" }}
-            hasSlotOverride={slotHasOverride(provider, "global", "config")}
-            onEdit={() => setEditSlot({ scope: "global", purpose: "config", paths: globalConfig?.paths ?? [] })}
-            onReset={() => handleResetSlot("global", "config")}
+          <SlotCell
+            data={projectSkills}
+            hasSlotOverride={slotHasOverride(provider, "project", "skills")}
+            onEdit={() => setEditSlot({ scope: "project", purpose: "skills", paths: projectSkills.paths })}
+            onReset={() => handleResetSlot("project", "skills")}
             isResetting={resetMutation.isPending}
           />
         </td>
@@ -336,25 +335,8 @@ function DangerZone(): React.JSX.Element {
 }
 
 export function SettingsScreen(): React.JSX.Element {
-  const navigate = useNavigate();
   const { data: settings, isPending, isError, error } = useAppSettings();
   const { data: providerData } = useProviderList();
-  const chooseMutation = useChooseHost();
-
-  async function handleChangeFolder(): Promise<void> {
-    try {
-      const result = await methods.openHostFolder();
-      if (result.path != null) {
-        chooseMutation.mutate(result.path, {
-          onSuccess: () => {
-            void navigate({ to: "/skills" });
-          },
-        });
-      }
-    } catch {
-      // openHostFolder errors are not critical; dialog just closed
-    }
-  }
 
   if (isPending) {
     return (
@@ -378,25 +360,23 @@ export function SettingsScreen(): React.JSX.Element {
         <h2 className="text-base font-semibold text-zinc-900">Settings</h2>
 
         <div className="mt-4 max-w-lg divide-y divide-zinc-100 rounded border border-zinc-200">
-          <div className="flex items-center justify-between px-4 py-3">
-            <div>
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-zinc-700">Skill Host Folder</div>
-              <div className="mt-0.5 font-mono text-xs text-zinc-500">
-                {settings?.activeHost?.path ?? "Not configured"}
-              </div>
+              <Link
+                to="/skills"
+                className="text-xs text-zinc-500 hover:text-zinc-800 hover:underline"
+              >
+                Manage in Host Skills →
+              </Link>
             </div>
-            <button
-              onClick={handleChangeFolder}
-              disabled={chooseMutation.isPending}
-              className="flex items-center gap-1.5 rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
-            >
-              <FolderOpen size={13} />
-              Change
-            </button>
+            <div className="mt-0.5 font-mono text-xs text-zinc-500">
+              {settings?.activeHost?.path != null ? displayPath(settings.activeHost.path) : "Not configured"}
+            </div>
           </div>
           {settings?.activeHost?.status === "missing" && (
             <div className="px-4 py-2 text-xs text-red-600 bg-red-50 border-t border-red-100">
-              Folder not found on disk. Choose a different location above.
+              Folder not found on disk. Go to Host Skills to change it.
             </div>
           )}
 
@@ -406,18 +386,7 @@ export function SettingsScreen(): React.JSX.Element {
               {INSTALL_MODE_LABEL[settings?.defaultInstallMode ?? ""] ?? settings?.defaultInstallMode ?? "—"}
             </div>
           </div>
-
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="text-sm font-medium text-zinc-700">Database Version</div>
-            <div className="text-sm text-zinc-500">{settings?.databaseVersion ?? "—"}</div>
-          </div>
         </div>
-
-        {chooseMutation.error != null && (
-          <div className="mt-4 max-w-lg">
-            <ErrorDisplay error={chooseMutation.error} />
-          </div>
-        )}
       </div>
 
       <div>
@@ -433,10 +402,10 @@ export function SettingsScreen(): React.JSX.Element {
                 <th className="px-3 py-2 font-medium">Provider</th>
                 <th className="px-3 py-2 font-medium">Key</th>
                 <th className="px-3 py-2 font-medium">Provider detection path</th>
-                <th className="px-3 py-2 font-medium">Project skills</th>
+                <th className="px-3 py-2 font-medium">Global config</th>
                 <th className="px-3 py-2 font-medium">Project config</th>
                 <th className="px-3 py-2 font-medium">Global skills</th>
-                <th className="px-3 py-2 font-medium">Global config</th>
+                <th className="px-3 py-2 font-medium">Project skills</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">

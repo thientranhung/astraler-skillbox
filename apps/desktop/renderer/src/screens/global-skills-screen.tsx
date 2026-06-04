@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { RefreshCw, FolderOpen } from "lucide-react";
 import { useGlobalList } from "../features/global-skills/use-global-list.js";
 import { useScanGlobal } from "../features/global-skills/use-scan-global.js";
@@ -6,6 +6,7 @@ import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
+import { displayPath } from "../lib/display-path.js";
 import type { GlobalListLocation, GlobalListEntry } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
@@ -38,9 +39,42 @@ function entryStatusBadgeClass(status: GlobalListEntry["status"]): string {
   }
 }
 
+function ProviderTab({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}): React.JSX.Element {
+  return (
+    <button
+      onClick={onClick}
+      className={`-mb-px mr-0.5 rounded-t px-3 py-1.5 text-xs font-medium border-b-2 ${
+        active
+          ? "border-zinc-700 text-zinc-900"
+          : "border-transparent text-zinc-500 hover:text-zinc-700"
+      }`}
+    >
+      {label}
+      <span
+        className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] ${
+          active ? "bg-zinc-200 text-zinc-700" : "bg-zinc-100 text-zinc-500"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
 export function GlobalSkillsScreen(): React.JSX.Element {
   const { data, isPending, isError, error } = useGlobalList();
   const scanMutation = useScanGlobal();
+  const [activeProvider, setActiveProvider] = useState<string>("all");
 
   const isScanning = scanMutation.operationId != null;
   const locations = data?.locations ?? [];
@@ -66,6 +100,28 @@ export function GlobalSkillsScreen(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, oldestScannedAt]);
 
+  const providerTabs = useMemo(() => {
+    const seen = new Set<string>();
+    const tabs: Array<{ key: string; displayName: string; count: number }> = [];
+    for (const loc of locations) {
+      if (!seen.has(loc.providerKey)) {
+        seen.add(loc.providerKey);
+        const count = locations
+          .filter((l) => l.providerKey === loc.providerKey)
+          .reduce((sum, l) => sum + l.entries.length, 0);
+        tabs.push({ key: loc.providerKey, displayName: loc.providerDisplayName, count });
+      }
+    }
+    return tabs;
+  }, [locations]);
+
+  const totalCount = locations.reduce((sum, l) => sum + l.entries.length, 0);
+
+  const visibleLocations =
+    activeProvider === "all"
+      ? locations
+      : locations.filter((l) => l.providerKey === activeProvider);
+
   function handleOpenFolder(path: string): void {
     void methods.openPath(path);
   }
@@ -90,6 +146,27 @@ export function GlobalSkillsScreen(): React.JSX.Element {
         </button>
       </div>
 
+      {/* Provider tabs */}
+      {!isPending && !isError && locations.length > 0 && (
+        <div className="flex border-b border-zinc-200 px-4 pt-2">
+          <ProviderTab
+            label="All"
+            count={totalCount}
+            active={activeProvider === "all"}
+            onClick={() => setActiveProvider("all")}
+          />
+          {providerTabs.map((tab) => (
+            <ProviderTab
+              key={tab.key}
+              label={tab.displayName}
+              count={tab.count}
+              active={activeProvider === tab.key}
+              onClick={() => setActiveProvider(tab.key)}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {isPending && (
@@ -111,9 +188,16 @@ export function GlobalSkillsScreen(): React.JSX.Element {
           />
         )}
 
-        {!isPending && !isError && locations.length > 0 && (
+        {!isPending && !isError && locations.length > 0 && visibleLocations.length === 0 && (
+          <EmptyState
+            message="No skills for this provider."
+            description="This provider has no global skills in the current scan."
+          />
+        )}
+
+        {!isPending && !isError && visibleLocations.length > 0 && (
           <div className="divide-y divide-zinc-100">
-            {locations.map((loc) => (
+            {visibleLocations.map((loc) => (
               <div key={loc.globalProviderLocationId} className="p-4">
                 {/* Location header */}
                 <div className="mb-2 flex items-center justify-between">
@@ -145,7 +229,9 @@ export function GlobalSkillsScreen(): React.JSX.Element {
                 </div>
 
                 {loc.path != null && (
-                  <p className="mb-2 font-mono text-xs text-zinc-400">{loc.skillsPath ?? loc.path}</p>
+                  <p className="mb-2 font-mono text-xs text-zinc-400">
+                    {displayPath(loc.skillsPath ?? loc.path)}
+                  </p>
                 )}
 
                 {/* Entries table */}
@@ -170,7 +256,9 @@ export function GlobalSkillsScreen(): React.JSX.Element {
                               {entry.status}
                             </span>
                           </td>
-                          <td className="px-3 py-1.5 font-mono text-xs text-zinc-400">{entry.globalSkillPath}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs text-zinc-400">
+                            {displayPath(entry.globalSkillPath)}
+                          </td>
                           <td className="px-3 py-1.5">
                             <button
                               onClick={() => handleOpenFolder(entry.globalSkillPath)}
