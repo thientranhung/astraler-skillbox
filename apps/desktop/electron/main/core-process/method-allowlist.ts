@@ -31,4 +31,6 @@ export const ALLOWLIST = new Set([
   "updateCheck.run",
   "app.resetAll",
   "app.checkUpdate",
+  "dialog.exportDiagnostics",
+  "dialog.copyDiagnostics",
 ]);

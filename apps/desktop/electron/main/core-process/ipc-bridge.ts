@@ -1,7 +1,11 @@
-import { ipcMain, BrowserWindow, dialog, shell } from "electron";
+import { ipcMain, BrowserWindow, dialog, shell, clipboard, app } from "electron";
 import { execFile } from "child_process";
-import { getGoClient } from "./manager.js";
+import os from "os";
+import path from "path";
+import fs from "fs/promises";
+import { getGoClient, getCoreLogs } from "./manager.js";
 import { ALLOWLIST } from "./method-allowlist.js";
+import { buildDiagnosticsText } from "./diagnostics.js";
 
 let notifUnsub: (() => void) | null = null;
 
@@ -82,6 +86,51 @@ export function registerIpcBridge(win: BrowserWindow): void {
         );
       });
       return { opened: true };
+    }
+
+    // Collect diagnostics snapshot for export or copy.
+    if (method === "dialog.exportDiagnostics" || method === "dialog.copyDiagnostics") {
+      const homeDir = os.homedir();
+      const dbPath =
+        process.env["SKILLBOX_DB_PATH"] ??
+        path.join(app.getPath("userData"), "skillbox.db");
+      const text = buildDiagnosticsText({
+        appVersion: app.getVersion(),
+        electronVersion: process.versions.electron ?? "unknown",
+        chromeVersion: process.versions.chrome ?? "unknown",
+        nodeVersion: process.versions.node ?? "unknown",
+        platform: process.platform,
+        arch: process.arch,
+        dbPath,
+        homeDir,
+        exportedAt: new Date().toISOString(),
+        coreLogLines: getCoreLogs(),
+      });
+
+      if (method === "dialog.copyDiagnostics") {
+        clipboard.writeText(text);
+        return { copied: true };
+      }
+
+      // dialog.exportDiagnostics: show save dialog
+      const parentWin = BrowserWindow.fromWebContents(event.sender);
+      const saveResult = parentWin
+        ? await dialog.showSaveDialog(parentWin, {
+            title: "Export Diagnostics",
+            defaultPath: `skillbox-diagnostics-${Date.now()}.txt`,
+            filters: [{ name: "Text Files", extensions: ["txt"] }],
+          })
+        : await dialog.showSaveDialog({
+            title: "Export Diagnostics",
+            defaultPath: `skillbox-diagnostics-${Date.now()}.txt`,
+            filters: [{ name: "Text Files", extensions: ["txt"] }],
+          });
+
+      if (saveResult.canceled || !saveResult.filePath) {
+        return { saved: false, filePath: null };
+      }
+      await fs.writeFile(saveResult.filePath, text, "utf-8");
+      return { saved: true, filePath: saveResult.filePath };
     }
 
     const result = await getGoClient().call(method, params);
