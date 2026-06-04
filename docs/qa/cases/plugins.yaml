@@ -299,3 +299,34 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: forbidden
+
+  - id: TC-PLUGIN-010
+    title: Global Plugins provider tabs show counts and empty states
+    tier: T2
+    primary_screen: Global Plugins
+    related_screens: []
+    type: smoke
+    tags: [plugin, provider-tabs, counts, empty-state, release-full]
+    invariants: [INV-PLUGIN-001]
+    preconditions:
+      - App has scanned global plugins with at least two providers (one with plugins, one without).
+    steps:
+      - Open Global Plugins.
+      - Run global plugin scan if not yet scanned.
+      - Inspect the provider tab bar.
+      - Click each provider tab.
+    expected_ui:
+      - An "All" tab is visible with the total plugin count across all providers.
+      - Each provider has its own tab showing its plugin count (may be 0).
+      - Clicking a provider tab shows only that provider's plugin view.
+      - A provider with 0 plugins shows a "no plugins" or empty state in its tab view.
+      - Clicking "All" restores all provider plugin views.
+    verifier:
+      evidence:
+        - Screenshot of Global Plugins tab bar with all provider tabs and counts.
+        - Screenshot of a single-provider tab view.
+        - Screenshot of a provider tab with 0 plugins showing empty state.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

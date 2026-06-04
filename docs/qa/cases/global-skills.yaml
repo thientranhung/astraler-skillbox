@@ -251,3 +251,34 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: allowed_read_only
+
+  - id: TC-GLOBAL-008
+    title: Global Skills provider tabs show counts and empty states
+    tier: T2
+    primary_screen: Global Skills
+    related_screens: []
+    type: smoke
+    tags: [global-skills, provider-tabs, counts, empty-state, release-full]
+    invariants: [INV-GLOBAL-001]
+    preconditions:
+      - App has scanned global skills with at least two providers (one with skills, one without).
+    steps:
+      - Open Global Skills.
+      - Run global scan if not yet scanned.
+      - Inspect the provider tab bar.
+      - Click each provider tab.
+    expected_ui:
+      - An "All" tab is visible with the total skill entry count.
+      - Each provider has its own tab showing its skill entry count (may be 0).
+      - Clicking a provider tab shows only that provider's location section.
+      - A provider with 0 entries shows a clear empty state message in its tab view.
+      - Clicking "All" restores all provider locations.
+    verifier:
+      evidence:
+        - Screenshot of Global Skills tab bar with all provider tabs and counts.
+        - Screenshot of a single-provider tab view.
+        - Screenshot of a provider tab with 0 entries showing empty state.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

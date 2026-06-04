@@ -19,6 +19,9 @@ vi.mock("../../lib/core-client/methods.js", () => ({
 }));
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: vi.fn(),
+  Link: ({ to, children, className }: { to: string; children: React.ReactNode; className?: string }) => (
+    <a href={to} className={className} data-testid="router-link">{children}</a>
+  ),
 }));
 vi.mock("../../features/providers/provider-paths-editor.js", () => ({
   ProviderPathsEditor: ({ onClose }: { onClose: () => void }) => (
@@ -291,6 +294,57 @@ describe("SettingsScreen", () => {
     });
     render(<SettingsScreen />);
     expect(screen.getByRole("button", { name: /reset to default/i })).not.toBeNull();
+  });
+
+  // UX-002: host folder is read-only with Manage in Host Skills link
+  it("does not show a Change button for Skill Host Folder", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({ data: undefined });
+    render(<SettingsScreen />);
+    expect(screen.queryByRole("button", { name: /change/i })).toBeNull();
+  });
+
+  it("shows Manage in Host Skills link pointing to /skills", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({ data: undefined });
+    render(<SettingsScreen />);
+    const link = screen.getByText(/Manage in Host Skills/i);
+    expect(link).not.toBeNull();
+    expect(link.closest("a")?.getAttribute("href")).toBe("/skills");
+  });
+
+  // UX-001: column order — Global config column appears before Project skills column
+  it("renders Global config column header before Project skills column header", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({ data: { providers: [makeProvider()] } });
+    const { container } = render(<SettingsScreen />);
+    const headers = Array.from(container.querySelectorAll("thead th")).map((th) => th.textContent?.trim());
+    const globalConfigIdx = headers.findIndex((h) => h === "Global config");
+    const projectSkillsIdx = headers.findIndex((h) => h === "Project skills");
+    expect(globalConfigIdx).toBeGreaterThan(-1);
+    expect(projectSkillsIdx).toBeGreaterThan(-1);
+    expect(globalConfigIdx).toBeLessThan(projectSkillsIdx);
+  });
+
+  // UX-007: database version not shown in Settings
+  it("does not show Database Version in Settings", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({ data: undefined });
+    render(<SettingsScreen />);
+    expect(screen.queryByText(/database version/i)).toBeNull();
+  });
+
+  // UX-006: host path with trailing slash is trimmed in display
+  it("trims trailing slash from displayed host path", () => {
+    mockUseAppSettings.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: { ...baseSettings, activeHost: { ...baseSettings.activeHost, path: "/tmp/my-host/" } },
+    });
+    mockUseProviderList.mockReturnValue({ data: undefined });
+    render(<SettingsScreen />);
+    expect(screen.getByText("/tmp/my-host")).not.toBeNull();
+    expect(screen.queryByText("/tmp/my-host/")).toBeNull();
   });
 
 });
