@@ -215,7 +215,7 @@ Purpose: lưu provider global locations ở cấp user/máy.
 | `name` | text | yes | Tên hiển thị cho global location, ví dụ Claude Global hoặc Generic Agents Global. |
 | `path` | text | yes | Absolute path tới provider global root/location. Nullable khi global location chưa được cấu hình. |
 | `skills_path` | text | yes | Absolute path nơi provider global level nhận skill/global entries nếu có. |
-| `status` | text | no | Global location state. Allowed: `active`, `not_configured`, `missing`, `unreadable`, `invalid_structure`, `empty`, `disabled`. |
+| `status` | text | no | Global location state. Allowed: `active`, `not_configured`, `missing`, `unreadable`, `invalid_structure`, `empty`, `disabled`, `no_global_skills`. |
 | `last_scanned_at` | datetime | yes | Lần gần nhất app scan global location này. |
 | `created_at` | datetime | no | Thời điểm tạo row. |
 | `updated_at` | datetime | no | Thời điểm cập nhật row gần nhất. |

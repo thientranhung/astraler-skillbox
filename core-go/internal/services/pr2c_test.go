@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/providers"
+	"github.com/astraler/skillbox/core-go/internal/repositories"
 )
 
 // -- mock GlobalProviderPathResolver --
@@ -138,20 +140,16 @@ func TestPR2C_GlobalOverride_ChangesPath(t *testing.T) {
 	}
 }
 
-// TestPR2C_ProviderNotInResolver_Skipped verifies that when the resolver map does not include
-// a key for the adapter, that adapter is skipped (has_global_level=false semantics).
-func TestPR2C_ProviderNotInResolver_Skipped(t *testing.T) {
-	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Shared Agent Skills", status: "supported"}
-	scanWriter := &mockGlobalScanWriter{}
+// TestPR2C_ProviderNotInResolver_CommitsNotConfigured verifies that when the resolver map
+// does not include a key for an otherwise global-capable adapter, the registry-driven scan
+// commits a not_configured status rather than silently omitting the provider.
+func TestPR2C_ProviderNotInResolver_CommitsNotConfigured(t *testing.T) {
 	home := "/fakehome"
 
-	// Adapter IS global-capable but resolver excludes it (simulates has_global_level=false).
+	// Adapter IS global-capable but resolver excludes it (has_global_level=false semantics).
 	capAdapter := &capturingGlobalAdapter{
-		key: providers.GenericAgentsKey,
-		result: providers.GlobalDetectResult{
-			Present: true,
-			Status:  domain.GlobalLocationStatusActive,
-		},
+		key:          providers.GenericAgentsKey,
+		result:       providers.GlobalDetectResult{Present: true, Status: domain.GlobalLocationStatusActive},
 		capturedPath: &providers.GlobalScopePaths{},
 	}
 
@@ -160,30 +158,38 @@ func TestPR2C_ProviderNotInResolver_Skipped(t *testing.T) {
 		paths: map[string]providers.GlobalScopePaths{},
 	}
 
+	// Registry lister returns one entry for generic_agents.
+	regLister := &mockRegistryLister{
+		entries: []domain.ProviderRegistryEntry{
+			{Definition: domain.ProviderDefinition{ID: 1, Key: providers.GenericAgentsKey, DisplayName: "Shared Agent Skills", Status: domain.ProviderStatusSupported}},
+		},
+	}
+
+	multiWriter := &multiCommitWriter{}
 	fs := newMockGlobalFS(home)
-	svc := newGlobalServiceWithResolver(globalRepo, scanWriter, fs, capAdapter, resolver)
+	svc := newGlobalServiceWithResolver(&mockGlobalRepo{defID: 1}, multiWriter, fs, capAdapter, resolver).
+		WithProviderRegistryLister(regLister)
 
 	_, err := svc.ScanGlobal(context.Background())
 	if err != nil {
 		t.Fatalf("ScanGlobal: %v", err)
 	}
-	// CommitGlobalScan should not have been called since the provider was skipped.
-	if len(scanWriter.committed) != 0 {
-		t.Errorf("committed installs: got %d want 0 (adapter should be skipped)", len(scanWriter.committed))
+	if len(multiWriter.commits) != 1 {
+		t.Fatalf("expected 1 commit, got %d", len(multiWriter.commits))
+	}
+	if multiWriter.commits[0].status != domain.GlobalLocationStatusNotConfigured {
+		t.Errorf("expected not_configured, got %q", multiWriter.commits[0].status)
 	}
 }
 
-// TestPR2C_NoGlobalAdapter_Skipped verifies that adapters not implementing GlobalProviderAdapter
-// are skipped even if they are in the resolver map.
-func TestPR2C_NoGlobalAdapter_Skipped(t *testing.T) {
-	globalRepo := &mockGlobalRepo{defID: 1, displayName: "Codex", status: "supported"}
-	scanWriter := &mockGlobalScanWriter{}
+// TestPR2C_NoGlobalAdapter_CommitsNoGlobalSkills verifies that adapters not implementing
+// GlobalProviderAdapter cause the registry-driven scan to commit a no_global_skills status
+// rather than silently omitting the provider row.
+func TestPR2C_NoGlobalAdapter_CommitsNoGlobalSkills(t *testing.T) {
 	home := "/fakehome"
 
 	// Non-global adapter (only implements ProviderAdapter, not GlobalProviderAdapter).
 	nonGlobalAdapter := &nonGlobalProviderAdapter{key: "codex"}
-
-	// Registry with the non-global adapter.
 	registry := &singleAdapterRegistry{adapter: nonGlobalAdapter}
 
 	resolver := &mockGlobalPathResolver{
@@ -192,20 +198,29 @@ func TestPR2C_NoGlobalAdapter_Skipped(t *testing.T) {
 		},
 	}
 
+	regLister := &mockRegistryLister{
+		entries: []domain.ProviderRegistryEntry{
+			{Definition: domain.ProviderDefinition{ID: 1, Key: "codex", DisplayName: "Codex", Status: domain.ProviderStatusSupported}},
+		},
+	}
+
+	multiWriter := &multiCommitWriter{}
 	fs := newMockGlobalFS(home)
 	svc := NewGlobalSkillsService(
-		globalRepo, scanWriter, newMockSettings(nil),
+		&mockGlobalRepo{defID: 1}, multiWriter, newMockSettings(nil),
 		&mockHostLister{}, &mockSkillsByHostLister{skills: make(map[int64][]domain.Skill)},
 		registry, fs, &syncRunner{},
-	).WithGlobalPathResolver(resolver)
+	).WithGlobalPathResolver(resolver).WithProviderRegistryLister(regLister)
 
 	_, err := svc.ScanGlobal(context.Background())
 	if err != nil {
 		t.Fatalf("ScanGlobal: %v", err)
 	}
-	// Must not commit any scan since codex is not a GlobalProviderAdapter.
-	if len(scanWriter.committed) != 0 {
-		t.Errorf("committed installs: got %d want 0 (non-global adapter should be skipped)", len(scanWriter.committed))
+	if len(multiWriter.commits) != 1 {
+		t.Fatalf("expected 1 commit, got %d", len(multiWriter.commits))
+	}
+	if multiWriter.commits[0].status != domain.GlobalLocationStatusNoGlobalSkills {
+		t.Errorf("expected no_global_skills, got %q", multiWriter.commits[0].status)
 	}
 }
 
@@ -369,4 +384,149 @@ func TestPR2C_ProviderDefNotFound_SkipsSilently(t *testing.T) {
 	if len(scanWriter.committed) != 0 {
 		t.Errorf("expected 0 commits for not-found provider, got %d", len(scanWriter.committed))
 	}
+}
+
+// -- mock registry lister --
+
+type mockRegistryLister struct {
+	entries []domain.ProviderRegistryEntry
+	err     error
+}
+
+func (m *mockRegistryLister) ListAll(_ context.Context) ([]domain.ProviderRegistryEntry, error) {
+	return m.entries, m.err
+}
+
+// -- multi-commit writer for registry-driven tests --
+
+type commitRecord struct {
+	defID    int64
+	status   domain.GlobalLocationStatus
+	installs []repositories.GlobalInstallScanResult
+}
+
+type multiCommitWriter struct {
+	commits []commitRecord
+	err     error
+}
+
+func (w *multiCommitWriter) CommitGlobalScan(
+	_ context.Context, defID int64, _, _ *string,
+	status domain.GlobalLocationStatus, installs []repositories.GlobalInstallScanResult,
+	_ []domain.Warning, _ time.Time,
+) error {
+	w.commits = append(w.commits, commitRecord{defID: defID, status: status, installs: installs})
+	return w.err
+}
+
+// TestPR2C_RegistryDriven_FullCoverage verifies that when a registry lister is injected,
+// every provider in the registry receives an explicit state:
+//   - provider with a global adapter → scanned (active/missing/etc.)
+//   - provider without a global adapter → no_global_skills
+//   - disabled provider → disabled
+//   - global-capable provider excluded from resolver → not_configured
+func TestPR2C_RegistryDriven_FullCoverage(t *testing.T) {
+	home := "/fakehome"
+	skillsPath := home + "/.agents/skills"
+
+	// Four providers in the registry:
+	// 1. generic_agents — global-capable adapter, in resolver → normal scan
+	// 2. codex         — no global adapter → no_global_skills
+	// 3. claude        — global-capable adapter, excluded from resolver → not_configured
+	// 4. disabled_prov — disabled → disabled
+	regLister := &mockRegistryLister{
+		entries: []domain.ProviderRegistryEntry{
+			{Definition: domain.ProviderDefinition{ID: 1, Key: providers.GenericAgentsKey, Status: domain.ProviderStatusSupported}},
+			{Definition: domain.ProviderDefinition{ID: 2, Key: "codex", Status: domain.ProviderStatusSupported}},
+			{Definition: domain.ProviderDefinition{ID: 3, Key: "claude", Status: domain.ProviderStatusSupported}},
+			{Definition: domain.ProviderDefinition{ID: 4, Key: "disabled_prov", Status: domain.ProviderStatusSupported}},
+		},
+	}
+
+	// Adapter registry: generic_agents and claude have global adapters; codex does not.
+	genericAdapter := &mockGlobalAdapter{
+		key: providers.GenericAgentsKey,
+		result: providers.GlobalDetectResult{
+			Present:          true,
+			GlobalPath:       home + "/.agents",
+			GlobalSkillsPath: skillsPath,
+			Status:           domain.GlobalLocationStatusActive,
+		},
+	}
+	claudeAdapter := &mockGlobalAdapter{
+		key:    "claude",
+		result: providers.GlobalDetectResult{Present: false, Status: domain.GlobalLocationStatusMissing},
+	}
+	codexNonGlobal := &nonGlobalProviderAdapter{key: "codex"}
+
+	type multiAdapter struct {
+		adapters []providers.ProviderAdapter
+	}
+	multiReg := struct {
+		adapters []providers.ProviderAdapter
+	}{
+		adapters: []providers.ProviderAdapter{genericAdapter, claudeAdapter, codexNonGlobal},
+	}
+	registry := &multiAdapterRegistry{adapters: multiReg.adapters}
+
+	// Resolver: only generic_agents has a global path; claude is excluded.
+	resolver := &mockGlobalPathResolver{
+		paths: map[string]providers.GlobalScopePaths{
+			providers.GenericAgentsKey: {DetectRel: "~/.agents", SkillsRel: "~/.agents/skills"},
+		},
+	}
+
+	// Enabled reader: disabled_prov is disabled.
+	enabledReader := &mockEnabledReader{m: map[string]bool{"disabled_prov": false}}
+
+	multiWriter := &multiCommitWriter{}
+	fs := newMockGlobalFS(home)
+
+	svc := NewGlobalSkillsService(
+		&mockGlobalRepo{defID: 1}, multiWriter, newMockSettings(nil),
+		&mockHostLister{}, &mockSkillsByHostLister{skills: make(map[int64][]domain.Skill)},
+		registry, fs, &syncRunner{},
+	).WithGlobalPathResolver(resolver).WithEnabledReader(enabledReader).WithProviderRegistryLister(regLister)
+
+	_, err := svc.ScanGlobal(context.Background())
+	if err != nil {
+		t.Fatalf("ScanGlobal: %v", err)
+	}
+
+	if len(multiWriter.commits) != 4 {
+		t.Fatalf("expected 4 commits (one per registry row), got %d", len(multiWriter.commits))
+	}
+
+	statusByDefID := map[int64]domain.GlobalLocationStatus{}
+	for _, c := range multiWriter.commits {
+		statusByDefID[c.defID] = c.status
+	}
+
+	if statusByDefID[1] != domain.GlobalLocationStatusActive {
+		t.Errorf("generic_agents (defID=1): expected active, got %q", statusByDefID[1])
+	}
+	if statusByDefID[2] != domain.GlobalLocationStatusNoGlobalSkills {
+		t.Errorf("codex (defID=2): expected no_global_skills, got %q", statusByDefID[2])
+	}
+	if statusByDefID[3] != domain.GlobalLocationStatusNotConfigured {
+		t.Errorf("claude (defID=3): expected not_configured, got %q", statusByDefID[3])
+	}
+	if statusByDefID[4] != domain.GlobalLocationStatusDisabled {
+		t.Errorf("disabled_prov (defID=4): expected disabled, got %q", statusByDefID[4])
+	}
+}
+
+// multiAdapterRegistry holds multiple adapters.
+type multiAdapterRegistry struct {
+	adapters []providers.ProviderAdapter
+}
+
+func (r *multiAdapterRegistry) All() []providers.ProviderAdapter { return r.adapters }
+func (r *multiAdapterRegistry) Get(key string) (providers.ProviderAdapter, bool) {
+	for _, a := range r.adapters {
+		if a.Key() == key {
+			return a, true
+		}
+	}
+	return nil, false
 }

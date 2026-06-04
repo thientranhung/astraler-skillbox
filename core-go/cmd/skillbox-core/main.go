@@ -86,7 +86,8 @@ func main() {
 	globalLocationRepo := repositories.NewGlobalLocationRepo(db)
 	globalSvc := services.NewGlobalSkillsService(globalLocationRepo, globalScanRepo, appSettingsRepo, hostRepo, skillRepo, providerRegistry, fs, runner).
 		WithGlobalPathResolver(providerRegistrySvc).
-		WithEnabledReader(providerRegistrySvc)
+		WithEnabledReader(providerRegistrySvc).
+		WithProviderRegistryLister(pdRepo)
 
 	providerPluginRepo := repositories.NewProviderPluginRepo(db)
 	providerPluginSvc := services.NewProviderPluginService(providerPluginRepo, pdRepo, projectRepo, providerRegistrySvc, runner)

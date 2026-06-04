@@ -25,7 +25,15 @@ export interface GlobalListLocation {
   providerStatus: string;
   path: string | null;
   skillsPath: string | null;
-  status: 'active' | 'not_configured' | 'missing' | 'unreadable' | 'invalid_structure' | 'empty' | 'disabled';
+  status:
+    | 'active'
+    | 'not_configured'
+    | 'missing'
+    | 'unreadable'
+    | 'invalid_structure'
+    | 'empty'
+    | 'disabled'
+    | 'no_global_skills';
   lastScannedAt: string | null;
   entries: GlobalListEntry[];
   warnings: GlobalListWarning[];
