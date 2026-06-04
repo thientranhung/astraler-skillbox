@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { RefreshCw, FolderOpen, Search, TerminalSquare } from "lucide-react";
 import { useActiveHost } from "../features/skill-host/use-active-host.js";
 import { useSkillsList } from "../features/skills-library/use-skills-list.js";
@@ -8,6 +8,7 @@ import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
+import { sessionAutoScanRegistry } from "../features/scan/auto-scan-constants.js";
 
 type SkillStatus = "all" | "available" | "missing" | "unreadable" | "local_modified" | "external_symlink" | "unknown";
 type ProviderView = "all" | "shared_agents";
@@ -19,6 +20,19 @@ export function SkillsLibraryScreen(): React.JSX.Element {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<SkillStatus>("all");
   const [providerView, setProviderView] = useState<ProviderView>("all");
+
+  const autoScannedRef = useRef(false);
+  useEffect(() => {
+    if (data == null || activeHost == null || activeHost.status === "missing") return;
+    if (scanMutation.isPending || scanMutation.operationId != null) return;
+    if (data.lastScanAt != null) return; // already scanned at least once
+    const key = `auto-scan:host:${activeHost.hostId}`;
+    if (autoScannedRef.current || sessionAutoScanRegistry.has(key)) return;
+    autoScannedRef.current = true;
+    sessionAutoScanRegistry.add(key);
+    scanMutation.mutate(activeHost.hostId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, activeHost]);
 
   function handleScan(): void {
     if (activeHost == null) return;
@@ -191,10 +205,17 @@ export function SkillsLibraryScreen(): React.JSX.Element {
           </div>
         )}
 
-        {!isPending && !isError && data?.skills.length === 0 && (
+        {!isPending && !isError && data?.skills.length === 0 && data?.lastScanAt == null && (
+          <EmptyState
+            message="Not yet scanned"
+            description="Starting scan of your Skill Host Folder…"
+          />
+        )}
+
+        {!isPending && !isError && data?.skills.length === 0 && data?.lastScanAt != null && (
           <EmptyState
             message="No skills found"
-            description="Scan the host folder to discover skills."
+            description="The host folder scan ran but found no skills. Add skill folders to your Skill Host Folder and scan again."
           />
         )}
 

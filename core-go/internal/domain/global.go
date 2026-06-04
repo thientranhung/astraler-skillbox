@@ -10,6 +10,7 @@ const (
 	GlobalLocationStatusInvalidStructure GlobalLocationStatus = "invalid_structure"
 	GlobalLocationStatusEmpty            GlobalLocationStatus = "empty"
 	GlobalLocationStatusDisabled         GlobalLocationStatus = "disabled"
+	GlobalLocationStatusNoGlobalSkills   GlobalLocationStatus = "no_global_skills"
 )
 
 // GlobalInstallView backs the global.list query (read model).

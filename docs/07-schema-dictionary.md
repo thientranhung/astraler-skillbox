@@ -225,7 +225,7 @@ Purpose: stores provider global locations at the user/machine level.
 | `name` | text | yes | Display name for the global location, e.g. Claude Global or Generic Agents Global. |
 | `path` | text | yes | Absolute path to the provider global root/location. Nullable when the global location is not yet configured. |
 | `skills_path` | text | yes | Absolute path where the provider global level accepts skill/global entries if applicable. |
-| `status` | text | no | Global location state. Allowed: `active`, `not_configured`, `missing`, `unreadable`, `invalid_structure`, `empty`, `disabled`. |
+| `status` | text | no | Global location state. Allowed: `active`, `not_configured`, `missing`, `unreadable`, `invalid_structure`, `empty`, `disabled`, `no_global_skills`. |
 | `last_scanned_at` | datetime | yes | Most recent time the app scanned this global location. |
 | `created_at` | datetime | no | Timestamp when the row was created. |
 | `updated_at` | datetime | no | Timestamp of the most recent row update. |

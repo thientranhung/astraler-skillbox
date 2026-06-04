@@ -447,12 +447,13 @@ unreadable
 invalid_structure
 empty
 disabled
+no_global_skills
 ```
 
 Notes:
 
 - `path` is the absolute path to the provider global root or global convention
-  path. Nullable when `status = not_configured`.
+  path. Nullable when `status = not_configured` or `status = no_global_skills`.
 - `skills_path` is the absolute path where the provider global level accepts
   skill/global entries if applicable.
 - Global locations do not belong to any project.
