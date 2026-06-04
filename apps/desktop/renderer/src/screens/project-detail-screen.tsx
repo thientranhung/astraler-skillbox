@@ -14,9 +14,10 @@ import { useRemoveProviderPluginOverride } from "../features/provider-plugins/us
 import { ProjectStatusBadge } from "../features/projects/project-status-badge.js";
 import { AddSkillWizard } from "../features/projects/add-skill-wizard.js";
 import { useActiveHostSkills } from "../features/skills/use-active-host-skills.js";
+import { useGlobalList } from "../features/global-skills/use-global-list.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
-import type { ProjectGetEntry, ProjectGetProvider, PPLayerStatus, PPProjectEntry } from "@contracts/index.js";
+import type { ProjectGetEntry, ProjectGetProvider, PPLayerStatus, PPProjectEntry, GlobalListEntry } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
 const JSON_WRITE_PROVIDERS = new Set(["claude", "antigravity_cli", "codex"]);
@@ -196,6 +197,112 @@ function EntryRow({
         </button>
       </td>
     </tr>
+  );
+}
+
+const GLOBAL_ENTRY_STATUS_CONFIG: Record<GlobalListEntry["status"], { label: string; cls: string }> = {
+  current: { label: "Current", cls: "bg-green-100 text-green-800" },
+  outdated: { label: "Outdated", cls: "bg-yellow-100 text-yellow-700" },
+  missing: { label: "Missing", cls: "bg-red-100 text-red-800" },
+  broken_symlink: { label: "Broken link", cls: "bg-red-100 text-red-800" },
+  old_host: { label: "Old host", cls: "bg-yellow-100 text-yellow-700" },
+  external_symlink: { label: "External link", cls: "bg-yellow-100 text-yellow-700" },
+  conflict: { label: "Conflict", cls: "bg-red-100 text-red-800" },
+  needs_sync: { label: "Needs sync", cls: "bg-yellow-100 text-yellow-700" },
+  error: { label: "Needs attention", cls: "bg-red-100 text-red-800" },
+};
+
+const EFFECTIVE_GLOBAL_PROVIDER_STATUSES = new Set<ProjectGetProvider["detectionStatus"]>([
+  "detected",
+  "configured",
+]);
+
+function GlobalSkillsSection({ projectProviders }: { projectProviders: ProjectGetProvider[] }): React.JSX.Element {
+  const { data, isPending, isError, error } = useGlobalList();
+  const projectProviderKeys = new Set(
+    projectProviders
+      .filter((provider) => EFFECTIVE_GLOBAL_PROVIDER_STATUSES.has(provider.detectionStatus))
+      .map((provider) => provider.providerKey),
+  );
+
+  const activeLocations = (data?.locations ?? []).filter(
+    (loc) => projectProviderKeys.has(loc.providerKey) && loc.status === "active" && loc.entries.length > 0,
+  );
+
+  return (
+    <div>
+      <div className="mb-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          Global Skills
+        </h3>
+        <p className="mt-0.5 text-xs text-zinc-400">
+          Skills installed globally for each provider. Read-only — manage from Global Skills.
+        </p>
+      </div>
+
+      {isPending && (
+        <p className="text-xs text-zinc-400">Loading global skills…</p>
+      )}
+
+      {isError && (
+        <ErrorDisplay error={error} />
+      )}
+
+      {!isPending && !isError && activeLocations.length === 0 && (
+        <p className="text-xs text-zinc-400">No global skills found for this project's providers. Run a global scan to populate.</p>
+      )}
+
+      {!isPending && !isError && activeLocations.length > 0 && (
+        <div className="flex flex-col gap-4">
+          {activeLocations.map((location) => (
+            <div key={location.globalProviderLocationId} className="flex flex-col gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-700">
+                <ProviderIcon providerKey={location.providerKey} />
+                <span>{location.providerDisplayName}</span>
+                <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[11px] font-medium text-purple-700">
+                  global
+                </span>
+              </div>
+              <div className="overflow-x-auto rounded border border-zinc-200">
+                <table className="w-full text-left">
+                  <thead className="border-b border-zinc-200 bg-zinc-50">
+                    <tr>
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Name</th>
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Mode</th>
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Status</th>
+                      <th className="px-3 py-1.5 text-xs font-medium text-zinc-500">Path</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {location.entries.map((entry) => {
+                      const statusCfg = GLOBAL_ENTRY_STATUS_CONFIG[entry.status] ?? GLOBAL_ENTRY_STATUS_CONFIG.error;
+                      return (
+                        <tr key={entry.globalInstallId} className="border-b border-zinc-100 hover:bg-zinc-50">
+                          <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">{entry.skillName}</td>
+                          <td className="px-3 py-1.5 text-xs">
+                            <span className="inline-flex items-center rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-600">
+                              {entry.mode}
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 text-xs">
+                            <span className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium ${statusCfg.cls}`}>
+                              {statusCfg.label}
+                            </span>
+                          </td>
+                          <td className="max-w-sm px-3 py-1.5 text-xs">
+                            <PathCell value={entry.globalSkillPath} label="global skill path" />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -695,6 +802,9 @@ export function ProjectDetailScreen(): React.JSX.Element {
 
             {/* Provider Plugins */}
             <ProjectPluginSection projectId={validId} scanInFlight={isScanning} />
+
+            {/* Global Skills */}
+            <GlobalSkillsSection projectProviders={data.providers} />
 
             {/* Skill Entries */}
             <div>

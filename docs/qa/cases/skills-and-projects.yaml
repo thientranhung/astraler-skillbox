@@ -906,3 +906,79 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: allowed_read_only
+
+  - id: TC-PROJ-010
+    title: Project Detail effective-skills section lists global skills affecting project, distinct from project-installed skills
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Global Skills]
+    type: smoke
+    tags: [project, global-skills, effective-skills, provenance, cross-screen, release-full]
+    invariants: [INV-PROJECT-001, INV-INSTALL-001]
+    preconditions:
+      - App has a configured QA Skill Host Folder.
+      - A global scan has been run and at least one provider has active global skill entries.
+      - QA project has at least one project-installed skill entry.
+    steps:
+      - Open Project Detail for a QA project that has project-installed skills.
+      - Locate the Global Skills section.
+      - Inspect the Global Skills section entries and compare with the Skill Entries section.
+    expected_ui:
+      - A "Global Skills" section heading is visible in Project Detail.
+      - The Global Skills section lists global skill entries grouped by provider display name.
+      - Each global entry shows a "global" provenance badge.
+      - The Global Skills section entries are visually distinct from the Skill Entries section below.
+      - No install, remove, enable, or disable action buttons appear inside the Global Skills section.
+      - Global entries show Name, Mode, Status, and Path columns.
+    fail_criteria:
+      - Global Skills section is absent from Project Detail.
+      - Global entries appear mixed into the Skill Entries table without provenance distinction.
+      - Any mutation action (install from global, remove global, enable/disable) is clickable in the section.
+    verifier:
+      app_db:
+        - global_provider_locations rows with status=active and associated global_installs exist.
+        - installs rows exist for the QA project (via project_providers join).
+      evidence:
+        - Screenshot of Project Detail showing both Global Skills and Skill Entries sections with clear visual separation.
+        - DB query output for global_installs and installs (project installs).
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
+
+  - id: TC-PROJ-011
+    title: Global Skills list and Project Detail effective skills agree
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Global Skills]
+    type: cross-screen
+    tags: [project, global-skills, effective-skills, cross-screen, consistency, release-full]
+    invariants: [INV-PROJECT-001, INV-INSTALL-001]
+    preconditions:
+      - App has a configured QA Skill Host Folder.
+      - A global scan has been run producing at least one active global provider location with entries.
+    steps:
+      - Open Global Skills screen and record all active provider locations and their entry names.
+      - Navigate to Project Detail for a QA project.
+      - Inspect the Global Skills section.
+    expected_ui:
+      - Every active provider location entry visible on the Global Skills screen for a provider currently detected or configured in the project also appears in the Project Detail Global Skills section.
+      - Provider display names shown in Project Detail Global Skills match those shown on the Global Skills screen.
+      - Entry names shown in Project Detail Global Skills match those on the Global Skills screen for the same provider.
+      - Active global entries for providers missing or invalid in the project are not shown as affecting that project.
+    fail_criteria:
+      - A global skill entry visible on the Global Skills screen is absent from the Project Detail Global Skills section when the provider is detected or configured in that project and the location is active with entries.
+      - Provider display names differ between Global Skills screen and Project Detail Global Skills section.
+    cross_screen_checks:
+      - Global Skills screen active locations with entries match Project Detail Global Skills section locations for the project's detected or configured providers.
+    verifier:
+      app_db:
+        - global_provider_locations and global_installs DB query output matches both screens.
+      evidence:
+        - Screenshot of Global Skills screen showing active locations.
+        - Screenshot of Project Detail Global Skills section.
+        - DB query output for global_provider_locations and global_installs.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only

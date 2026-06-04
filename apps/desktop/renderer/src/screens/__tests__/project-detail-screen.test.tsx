@@ -37,6 +37,9 @@ vi.mock("../../features/provider-plugins/use-set-provider-plugin-enabled.js", ()
 vi.mock("../../features/provider-plugins/use-remove-provider-plugin-override.js", () => ({
   useRemoveProviderPluginOverride: vi.fn(),
 }));
+vi.mock("../../features/global-skills/use-global-list.js", () => ({
+  useGlobalList: vi.fn(),
+}));
 
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { ProjectDetailScreen } from "../project-detail-screen.js";
@@ -51,7 +54,8 @@ import { useActiveHostSkills } from "../../features/skills/use-active-host-skill
 import { useProviderPluginList } from "../../features/provider-plugins/use-provider-plugin-list.js";
 import { useSetProviderPluginEnabled } from "../../features/provider-plugins/use-set-provider-plugin-enabled.js";
 import { useRemoveProviderPluginOverride } from "../../features/provider-plugins/use-remove-provider-plugin-override.js";
-import type { ProjectGetResponse } from "@contracts/index.js";
+import { useGlobalList } from "../../features/global-skills/use-global-list.js";
+import type { ProjectGetResponse, GlobalListResponse } from "@contracts/index.js";
 
 const mockUseParams = useParams as ReturnType<typeof vi.fn>;
 const mockUseNavigate = useNavigate as ReturnType<typeof vi.fn>;
@@ -65,6 +69,7 @@ const mockUseActiveHostSkills = useActiveHostSkills as ReturnType<typeof vi.fn>;
 const mockUseProviderPluginList = useProviderPluginList as ReturnType<typeof vi.fn>;
 const mockUseSetProviderPluginEnabled = useSetProviderPluginEnabled as ReturnType<typeof vi.fn>;
 const mockUseRemoveProviderPluginOverride = useRemoveProviderPluginOverride as ReturnType<typeof vi.fn>;
+const mockUseGlobalList = useGlobalList as ReturnType<typeof vi.fn>;
 
 const projectDetail: ProjectGetResponse = {
   project: { id: 7, name: "demo", path: "/repo/demo", status: "active", lastScannedAt: null },
@@ -132,6 +137,7 @@ beforeEach(() => {
   mockUseProviderPluginList.mockReturnValue({ isPending: false, isError: false, data: null });
   mockUseSetProviderPluginEnabled.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
   mockUseRemoveProviderPluginOverride.mockReturnValue({ mutate: vi.fn(), operationId: null, isPending: false });
+  mockUseGlobalList.mockReturnValue({ data: null, isPending: false, isError: false, error: null });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -550,5 +556,212 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getByRole("columnheader", { name: "Version" })).toBeTruthy();
     expect(screen.getByText("2.0.0")).toBeTruthy();
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+const globalListWithEntries: GlobalListResponse = {
+  locations: [
+    {
+      globalProviderLocationId: 1,
+      providerKey: "generic_agents",
+      providerDisplayName: "Shared Agent Skills",
+      providerStatus: "supported",
+      path: "/Users/test/.agents",
+      skillsPath: "/Users/test/.agents/skills",
+      status: "active",
+      lastScannedAt: "2026-06-04T10:00:00Z",
+      entries: [
+        {
+          globalInstallId: 10,
+          skillName: "global-skill-a",
+          skillId: 201,
+          mode: "symlink",
+          status: "current",
+          globalSkillPath: "/Users/test/.agents/skills/global-skill-a",
+          sourceSkillPath: "/host/.agents/skills/global-skill-a",
+          symlinkTargetPath: "/host/.agents/skills/global-skill-a",
+        },
+      ],
+      warnings: [],
+    },
+    {
+      globalProviderLocationId: 2,
+      providerKey: "claude",
+      providerDisplayName: "Claude Code",
+      providerStatus: "supported",
+      path: "/Users/test/.claude",
+      skillsPath: "/Users/test/.claude/skills",
+      status: "empty",
+      lastScannedAt: "2026-06-04T10:00:00Z",
+      entries: [],
+      warnings: [],
+    },
+  ],
+};
+
+describe("ProjectDetailScreen GlobalSkillsSection", () => {
+  it("renders the Global Skills section heading", () => {
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText("Global Skills")).toBeTruthy();
+  });
+
+  it("shows empty message when global list data is null", () => {
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText(/No global skills found for this project's providers/i)).toBeTruthy();
+  });
+
+  it("shows loading state while global list is pending", () => {
+    mockUseGlobalList.mockReturnValue({ data: null, isPending: true, isError: false, error: null });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText(/Loading global skills/i)).toBeTruthy();
+    expect(screen.queryByText(/No global skills found/i)).toBeNull();
+  });
+
+  it("shows error state when global list fails", () => {
+    const err = new Error("global.list failed");
+    mockUseGlobalList.mockReturnValue({ data: null, isPending: false, isError: true, error: err });
+    render(<ProjectDetailScreen />);
+    expect(screen.queryByText(/No global skills found/i)).toBeNull();
+    expect(screen.queryByText(/Loading global skills/i)).toBeNull();
+  });
+
+  it("renders active location entries with provider display name and global badge", () => {
+    mockUseGlobalList.mockReturnValue({ data: globalListWithEntries, isPending: false, isError: false, error: null });
+    render(<ProjectDetailScreen />);
+    // "Shared Agent Skills" appears in both Providers section and Global Skills section
+    expect(screen.getAllByText("Shared Agent Skills").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("global-skill-a")).toBeTruthy();
+    // "global" badge (lowercase) is distinct from the "Global" plugin column header (uppercase)
+    expect(screen.getByText("global")).toBeTruthy();
+  });
+
+  it("skips locations that are not active or have no entries", () => {
+    mockUseGlobalList.mockReturnValue({ data: globalListWithEntries, isPending: false, isError: false, error: null });
+    render(<ProjectDetailScreen />);
+    // Claude Code location has status "empty" with 0 entries — must not appear
+    expect(screen.queryByText("Claude Code")).toBeNull();
+  });
+
+  it("skips global locations for providers that are not detected in this project", () => {
+    mockUseGlobalList.mockReturnValue({
+      data: {
+        locations: [
+          ...globalListWithEntries.locations,
+          {
+            globalProviderLocationId: 3,
+            providerKey: "codex",
+            providerDisplayName: "Codex",
+            providerStatus: "supported",
+            path: "/Users/test/.codex",
+            skillsPath: "/Users/test/.codex/skills",
+            status: "active",
+            lastScannedAt: "2026-06-04T10:00:00Z",
+            entries: [
+              {
+                globalInstallId: 30,
+                skillName: "codex-global-only",
+                skillId: 301,
+                mode: "symlink",
+                status: "current",
+                globalSkillPath: "/Users/test/.codex/skills/codex-global-only",
+                sourceSkillPath: "/host/.codex/skills/codex-global-only",
+                symlinkTargetPath: "/host/.codex/skills/codex-global-only",
+              },
+            ],
+            warnings: [],
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText("global-skill-a")).toBeTruthy();
+    expect(screen.queryByText("codex-global-only")).toBeNull();
+  });
+
+  it("excludes global locations for providers that are persisted with detectionStatus=missing", () => {
+    mockUseProjectDetail.mockReturnValue({
+      data: {
+        ...projectDetail,
+        providers: [
+          projectDetail.providers[0], // generic_agents: detected
+          {
+            ...projectDetail.providers[1], // claude: missing on disk
+            detectionStatus: "missing" as const,
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+    });
+    mockUseGlobalList.mockReturnValue({
+      data: {
+        locations: [
+          globalListWithEntries.locations[0], // generic_agents: active, has entries
+          {
+            globalProviderLocationId: 5,
+            providerKey: "claude",
+            providerDisplayName: "Claude Code",
+            providerStatus: "supported",
+            path: "/Users/test/.claude",
+            skillsPath: "/Users/test/.claude/skills",
+            status: "active",
+            lastScannedAt: "2026-06-04T10:00:00Z",
+            entries: [
+              {
+                globalInstallId: 50,
+                skillName: "claude-global-skill",
+                skillId: 501,
+                mode: "symlink",
+                status: "current",
+                globalSkillPath: "/Users/test/.claude/skills/claude-global-skill",
+                sourceSkillPath: "/host/.claude/skills/claude-global-skill",
+                symlinkTargetPath: "/host/.claude/skills/claude-global-skill",
+              },
+            ],
+            warnings: [],
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+    });
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText("global-skill-a")).toBeTruthy();
+    expect(screen.queryByText("claude-global-skill")).toBeNull();
+  });
+
+  it("shows Current status badge for current global entries", () => {
+    mockUseGlobalList.mockReturnValue({ data: globalListWithEntries, isPending: false, isError: false, error: null });
+    render(<ProjectDetailScreen />);
+    expect(screen.getAllByText("Current").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not render any action buttons in the Global Skills section", () => {
+    mockUseGlobalList.mockReturnValue({ data: globalListWithEntries, isPending: false, isError: false, error: null });
+    render(<ProjectDetailScreen />);
+    // Only copy-path buttons should appear; no install/remove/enable buttons for global entries
+    const allButtons = screen.getAllByRole("button");
+    const globalSectionButtons = allButtons.filter(
+      (b) =>
+        b.textContent?.toLowerCase().includes("install") === true ||
+        b.textContent?.toLowerCase().includes("remove global") === true ||
+        b.textContent?.toLowerCase().includes("enable") === true,
+    );
+    expect(globalSectionButtons.length).toBe(0);
+  });
+
+  it("Global Skills section is visually separate from Skill Entries section", () => {
+    render(<ProjectDetailScreen />);
+    const globalSkillsHeading = screen.getByText("Global Skills");
+    const skillEntriesHeading = screen.getByText("Skill Entries");
+    expect(globalSkillsHeading).toBeTruthy();
+    expect(skillEntriesHeading).toBeTruthy();
+    // Both headings are present and independent
+    expect(globalSkillsHeading).not.toBe(skillEntriesHeading);
   });
 });
