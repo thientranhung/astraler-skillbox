@@ -16,6 +16,7 @@
 | Role | Responsibility |
 |---|---|
 | **Implementer** | Brainstorm, spec, plan, implement, open PRs, merge after approval, update docs. |
+| **QA Lead** | Risk classification, QA strategy, test-case design, run-plan design, exploratory QA guidance, and regression-set selection. Does not implement product code or approve final implementation quality. |
 | **Reviewer** | Code/spec/security review and smoke testing. Verdict: approve / block / needs-discussion. **Does not edit production files.** |
 
 > Slice = a thin cross-layer cut (UI -> service -> data). A slice runs all the way from Spec to Docs/QA evidence.
@@ -127,14 +128,15 @@ choose likely paths, then search the targeted areas.
 1. **Brainstorm & scope**: output includes **Risk Classification** (table below).
 2. **Branch decision**: apply the Decision Rule and create a branch if needed, **before** Spec.
 3. **Spec**: design includes smoke scenarios.
-4. **Spec review**: Reviewer.
-5. **User approval**: hard gate for all work outside the tiny low-risk exception.
-6. **Implementation plan**.
-7. **Implement + docs**: code/tests/docs in the same slice; self-verify before opening a PR.
-8. **PR create**: if on a branch, push and create a PR. Do not combine create + merge.
-9. **Review + smoke/QA**: Reviewer reviews on the PR when a PR exists. Findings -> `BLOCK`/request changes + `file:line`; Implementer fixes and pushes; Reviewer re-reviews. Repeat until clean -> approve.
-10. **Merge**: Implementer merges after review/QA gates pass.
-11. **Post-merge verification**: for release, T0, filesystem, schema/RPC, or cross-layer changes, run the required delta or release QA on the merge commit before declaring clean GO.
+4. **QA plan**: QA Lead maps high-risk workflows to QA cases and regression scope when the slice changes user behavior, filesystem/database state, release behavior, provider behavior, or observability.
+5. **Spec review**: Reviewer.
+6. **User approval**: hard gate for all work outside the tiny low-risk exception.
+7. **Implementation plan**.
+8. **Implement + docs**: code/tests/docs in the same slice; self-verify before opening a PR.
+9. **PR create**: if on a branch, push and create a PR. Do not combine create + merge.
+10. **Review + smoke/QA**: Reviewer reviews on the PR when a PR exists. Findings -> `BLOCK`/request changes + `file:line`; Implementer fixes and pushes; Reviewer re-reviews. Repeat until clean -> approve.
+11. **Merge**: Implementer merges after review/QA gates pass.
+12. **Post-merge verification**: for release, T0, filesystem, schema/RPC, or cross-layer changes, run the required delta or release QA on the merge commit before declaring clean GO.
 
 Tiny low-risk work may compress phases: docs-only/test-only/small UI polish, no behavior change, no schema/RPC/provider/filesystem/security touch, <50 LOC, direct-to-main. In that case, the user request counts as approval, but the agent must still provide a short plan, self-verify, and record why branch/spec review/QA bank were skipped.
 
@@ -218,6 +220,10 @@ QA status semantics, evidence requirements, scope/defer rules, and owner waivers
 are defined in [`../qa/governance.md`](../qa/governance.md). Project governance
 decides when QA is required; QA governance decides how results are recorded and
 interpreted.
+
+When a dedicated QA Lead is active, QA mapping belongs to that role before
+implementation for high-risk slices. The Reviewer still verifies the final diff,
+QA evidence, and docs; QA Lead ownership does not replace independent review.
 
 ## Docs & ADR
 

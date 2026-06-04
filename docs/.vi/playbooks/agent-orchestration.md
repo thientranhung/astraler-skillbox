@@ -4,7 +4,7 @@
 
 ## TL;DR
 
-- **Tom** code, **Larry** review, **Orchestrator** chỉ điều phối (không quyết định kỹ thuật).
+- **Tom** code, **Quinn** dẫn QA, **Larry** review, **Orchestrator** chỉ điều phối (không quyết định kỹ thuật).
 - Plan dài / nhiều bước / cross-layer / hand-off cross-phase → **dùng `/goal`** để khoá context. Việc ngắn, scope rõ → message thường là đủ.
 - Phase chuẩn: Brainstorm → Branch? → Spec → Spec review → User approve → Plan → Implement → Review → Smoke → PR → Docs.
 - Branch + PR là **bắt buộc** khi có schema migration hoặc breaking change. Phần còn lại xem bảng.
@@ -14,11 +14,34 @@
 
 | Tên | tmux pane | Vai trò |
 |------|-----------|------|
-| **Tom** | `agent-tech-skillbox` | Senior dev. Brainstorm, spec, plan, implement. |
-| **Larry** | `agent-lead-skillbox` | Reviewer & QA. Code/spec/security review, smoke. **Không edit file**. |
+| **Tom** | `senior-dev-tom` | Senior dev. Brainstorm, spec, plan, implement. |
+| **Quinn** | `qa-lead-quinn` | QA Lead. Risk classification, QA strategy, test-case design, run-plan, exploratory QA guidance, regression selection. **Không implement product code.** |
+| **Larry** | `leader-larry` | Reviewer độc lập. Review code/spec/security/docs/QA và là final review gate. **Không edit file**. |
 | **Orchestrator** | (session này) | PM & coordinator. Quyết **ai** và **khi**, không quyết **gì** hay **làm sao**. |
 
 Orchestrator chỉ được sửa trực tiếp: playbook này, process docs, doc fix tí hon, hoặc khi user explicit cho phép.
+
+## Vai Trò QA Lead
+
+Quinn tồn tại để tách QA design khỏi implementation và final review. Dùng Quinn
+khi task cần severity triage, coverage planning, QA bank update, run-plan design,
+exploratory-test strategy, hoặc regression-set selection. Quinn không approve
+chất lượng implementation cuối cùng và không gộp phase sang coding.
+
+Larry vẫn là reviewer độc lập kể cả khi Quinn thiết kế QA plan. Với thay đổi có
+liên quan QA, flow chuẩn là:
+
+```text
+User feedback / bug report
+  -> Orchestrator triage thành slices
+  -> Quinn thiết kế QA coverage và regression set
+  -> Tom implement slice đã được duyệt và cập nhật docs/QA
+  -> Larry review diff/PR và QA evidence
+  -> Orchestrator điều phối fix hoặc merge
+```
+
+Không giao Larry vừa thiết kế QA plan vừa là reviewer duy nhất cho cùng slice,
+trừ khi user explicit chọn workflow rút gọn.
 
 ## `/goal` — công cụ cho việc dài
 

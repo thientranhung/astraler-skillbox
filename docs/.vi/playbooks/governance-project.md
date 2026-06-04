@@ -15,6 +15,7 @@
 | Vai trò | Trách nhiệm |
 |---------|-------------|
 | **Implementer** | Brainstorm, spec, plan, implement, mở PR, merge sau khi được approve, cập nhật docs. |
+| **QA Lead** | Risk classification, QA strategy, test-case design, run-plan design, exploratory QA guidance, và regression-set selection. Không implement product code hoặc approve chất lượng implementation cuối cùng. |
 | **Reviewer** | Code / spec / security review, smoke test. Verdict: approve / block / needs-discussion. **Không edit file production.** |
 
 > Slice = lát cắt mỏng cross-layer (UI → service → data). Một slice đi trọn từ Spec tới Docs/QA evidence.
@@ -126,13 +127,15 @@ path có khả năng đúng, rồi mới search trong vùng target.
 1. **Brainstorm & scope** — output kèm **Risk Classification** (bảng dưới).
 2. **Branch decision** — áp Decision Rule, tạo branch nếu cần, **trước** Spec.
 3. **Spec** — thiết kế kèm smoke scenarios.
-4. **Spec review** — Reviewer.
-5. **User approval** — gate cứng cho mọi work không thuộc tiny low-risk exception.
-6. **Implementation plan**.
-7. **Implement + docs** — code/test/docs trong cùng slice; self-verify trước khi mở PR.
-8. **PR create** — nếu đang trên branch, push rồi tạo PR; không gộp create + merge.
-9. **Review + smoke/QA** — Reviewer review trên PR khi có PR. Lỗi → `BLOCK`/request changes + `file:line`; Implementer fix + push → re-review. Lặp đến sạch → approve.
-10. **Merge** — Implementer merge sau khi review/QA gates pass.
+4. **QA plan** — QA Lead map workflow rủi ro cao sang QA cases và regression scope khi slice đổi user behavior, filesystem/database state, release behavior, provider behavior, hoặc observability.
+5. **Spec review** — Reviewer.
+6. **User approval** — gate cứng cho mọi work không thuộc tiny low-risk exception.
+7. **Implementation plan**.
+8. **Implement + docs** — code/test/docs trong cùng slice; self-verify trước khi mở PR.
+9. **PR create** — nếu đang trên branch, push rồi tạo PR; không gộp create + merge.
+10. **Review + smoke/QA** — Reviewer review trên PR khi có PR. Lỗi → `BLOCK`/request changes + `file:line`; Implementer fix + push → re-review. Lặp đến sạch → approve.
+11. **Merge** — Implementer merge sau khi review/QA gates pass.
+12. **Post-merge verification** — với release, T0, filesystem, schema/RPC, hoặc cross-layer changes, chạy delta/release QA cần thiết trên merge commit trước khi tuyên bố clean GO.
 
 Tiny low-risk work có thể nén phase: docs-only/test-only/UI polish nhỏ, không đổi behavior, không đụng schema/RPC/provider/filesystem/security, <50 LOC, direct-to-main. Khi đó user request được xem là approval, nhưng vẫn phải có short plan, self-verify, và ghi rõ vì sao skip branch/spec review/QA bank.
 
@@ -211,6 +214,10 @@ Concept đổi mà thiếu docs → verdict là `BLOCK`.
 | Bug fix | Thêm hoặc chọn regression case, rồi chạy các case liên quan. |
 | Release readiness | Chạy release QA theo [`../qa/README.md`](../../qa/README.md). |
 | Docs-only/test-only/tiny UI polish | Có thể skip QA bank nếu behavior không đổi; ghi rõ lý do. |
+
+Khi có dedicated QA Lead, QA mapping thuộc vai trò đó trước implementation cho
+slice rủi ro cao. Reviewer vẫn verify diff cuối, QA evidence, và docs; ownership
+của QA Lead không thay thế independent review.
 
 ## Docs & ADR
 

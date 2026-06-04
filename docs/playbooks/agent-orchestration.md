@@ -4,7 +4,7 @@
 
 ## TL;DR
 
-- **Tom** codes, **Larry** reviews, **Orchestrator** coordinates only (does not make technical decisions).
+- **Tom** codes, **Quinn** leads QA, **Larry** reviews, **Orchestrator** coordinates only (does not make technical decisions).
 - Long / multi-step / cross-layer plans or cross-phase handoffs -> use **`/goal`** to lock context. Short, clear work -> a normal message is enough.
 - Standard phase flow: Brainstorm -> Branch? -> Spec -> Spec review -> User approval -> Plan -> Implement -> Review -> Smoke -> PR -> Docs.
 - Branch + PR is **required** for schema migrations or breaking changes. Use the table for everything else.
@@ -14,11 +14,34 @@
 
 | Name | tmux pane | Role |
 |---|---|---|
-| **Tom** | `agent-tech-skillbox` | Senior dev. Brainstorm, spec, plan, implement. |
-| **Larry** | `agent-lead-skillbox` | Reviewer & QA. Code/spec/security review, smoke. **Does not edit files.** |
+| **Tom** | `senior-dev-tom` | Senior dev. Brainstorm, spec, plan, implement. |
+| **Quinn** | `qa-lead-quinn` | QA Lead. Risk classification, QA strategy, test-case design, run-plan, exploratory QA guidance, regression selection. **Does not implement product code.** |
+| **Larry** | `leader-larry` | Independent Reviewer. Code/spec/security/docs/QA review and final review gate. **Does not edit files.** |
 | **Orchestrator** | (this session) | PM & coordinator. Decides **who** and **when**, not **what** or **how**. |
 
 Orchestrator may edit directly only: this playbook, process docs, tiny doc fixes, or anything the user explicitly allows.
+
+## QA Lead Role
+
+Quinn exists to keep QA design independent from implementation and final review.
+Use Quinn when a task needs severity triage, coverage planning, QA bank updates,
+run-plan design, exploratory-test strategy, or regression-set selection. Quinn
+does not approve implementation quality and does not merge phases into coding.
+
+Larry remains the independent reviewer even when Quinn designs the QA plan. For
+QA-related changes, the normal flow is:
+
+```text
+User feedback / bug report
+  -> Orchestrator triages into slices
+  -> Quinn designs QA coverage and regression set
+  -> Tom implements the approved slice and updates docs/QA
+  -> Larry reviews the diff/PR and QA evidence
+  -> Orchestrator coordinates fixes or merge
+```
+
+Do not ask Larry to both design the QA plan and be the only reviewer for the same
+slice unless the user explicitly chooses a compressed workflow.
 
 ## `/goal` for Long Work
 
