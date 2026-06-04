@@ -1,0 +1,94 @@
+area: about
+cases:
+  - id: TC-ABOUT-001
+    title: About App Updates shows up-to-date state when on latest version
+    tier: T1
+    primary_screen: About
+    related_screens: []
+    type: smoke
+    tags: [about, app-update, up-to-date, release-full]
+    invariants: []
+    preconditions:
+      - App runs in dev Electron mode with network access.
+      - GitHub Releases for astraler-skillbox has a latest release matching the current app version.
+      - App version.go matches apps/desktop/package.json version.
+    steps:
+      - Open About screen.
+      - Wait for automatic check to complete, or click Check for Updates.
+      - Observe the App Updates section.
+    expected_ui:
+      - App Updates section header is clearly labeled "App Updates" (not "Updates" or "Plugin Updates").
+      - After check completes, status shows "You're up to date ✓".
+      - No "New version available!" or update link is shown.
+      - Current version is displayed correctly.
+    verifier:
+      evidence:
+        - Screenshot of About screen with up-to-date state.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-ABOUT-002
+    title: About app update surface is clearly distinct from plugin update surface
+    tier: T1
+    primary_screen: About
+    related_screens: [Global Plugins]
+    type: smoke
+    tags: [about, app-update, plugin-update, distinction, release-full]
+    invariants: []
+    preconditions:
+      - App runs in dev Electron mode.
+    steps:
+      - Open About screen.
+      - Note the section header and button label for app update.
+      - Open Global Plugins.
+      - Note the section header and button label for plugin update.
+      - Compare both surfaces.
+    expected_ui:
+      - About screen shows "App Updates" section header.
+      - About screen button says "Check for Updates" and is scoped to the app binary.
+      - Global Plugins shows a separate "Check Updates" button scoped to installed plugins.
+      - The two update surfaces use distinct labels and are not visually combined.
+      - No text in About implies it also checks plugin versions.
+    cross_screen_checks:
+      - Triggering app update check does not alter plugin update state shown in Global Plugins.
+    verifier:
+      evidence:
+        - Screenshot of About App Updates section.
+        - Screenshot of Global Plugins Check Updates button.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-ABOUT-003
+    title: About Check Updates handles network failure gracefully
+    tier: T1
+    primary_screen: About
+    related_screens: []
+    type: edge
+    tags: [about, app-update, network-failure, offline, release-full]
+    invariants: []
+    preconditions:
+      - App runs in dev Electron mode.
+      - Network can be blocked or the GitHub API URL can be made unreachable (e.g. offline mode, proxy block).
+    steps:
+      - Block outbound network or put machine offline.
+      - Open About screen.
+      - Wait for automatic check to attempt, or click Check for Updates.
+      - Observe the App Updates section.
+    expected_ui:
+      - App does not crash or hang.
+      - App remains fully usable (all navigation, settings, skills still work).
+      - After check fails, the error message is specific and user-readable (e.g. "No internet connection — could not reach GitHub.").
+      - Status does not show "You're up to date ✓" or "New version available!" when check failed.
+      - Check for Updates button re-enables after failure so the user can retry.
+    verifier:
+      evidence:
+        - Screenshot of About screen with specific network failure message.
+        - Confirm app navigation still works after the failed check.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
