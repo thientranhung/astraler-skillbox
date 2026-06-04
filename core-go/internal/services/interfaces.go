@@ -209,6 +209,12 @@ type RemoveInstallDeleter interface {
 	DeleteByID(ctx context.Context, installID int64) (int64, error)
 }
 
+// ProviderRegistryLister lists all provider definitions from the DB.
+// Subset of ProviderRegistryRepo used by GlobalSkillsService for registry-driven coverage.
+type ProviderRegistryLister interface {
+	ListAll(ctx context.Context) ([]domain.ProviderRegistryEntry, error)
+}
+
 // GlobalFilesystem provides the read-only filesystem operations needed by GlobalSkillsService.
 // filesystem.Gateway satisfies this interface.
 type GlobalFilesystem interface {

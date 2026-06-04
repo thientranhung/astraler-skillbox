@@ -141,7 +141,7 @@ cases:
       real_environment: forbidden
 
   - id: TC-PLUGIN-005
-    title: Plugin update checks are manual-trigger only
+    title: Plugin update checks are manual-trigger only and surface per-plugin results
     tier: T1
     primary_screen: Global Plugins
     related_screens: [About, Dashboard]
@@ -156,16 +156,54 @@ cases:
       - Open Global Plugins without clicking Check Updates.
       - Observe outbound network activity.
       - Click the explicit plugin Check Updates action if present and user approved network use.
+      - If plugins are present, inspect the plugin table for per-plugin result badges.
     expected_ui:
       - App remains usable offline.
       - Plugin update checks do not run before the explicit user action.
-      - Manual check shows a clear result or error.
+      - Manual check shows a per-plugin result or error badge (not just a single global pass/fail).
+      - A toast after check completion reflects per-plugin outcome (e.g. "X plugins could not be checked" when errors occur, not "All plugins up to date" when all checks failed).
+      - Plugin rows with update available show "↑ update" badge.
+      - Plugin rows where check failed show a specific error badge (e.g. "Check timed out", "Network error").
     cross_screen_checks:
-      - About app update behavior is not confused with plugin update behavior.
+      - About App Updates section is distinct from Global Plugins update check.
     verifier:
       evidence:
         - Network/log evidence before manual action.
-        - Screenshot of manual check result if executed.
+        - Screenshot of plugin table after check showing per-plugin result badges.
+        - Screenshot of toast showing accurate failure count when checks fail.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture_or_read_only
+      real_environment: allowed_read_only
+
+  - id: TC-PLUGIN-009
+    title: Plugin update check shows per-plugin progress and terminal states
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: []
+    type: edge
+    tags: [plugin, update-check, error-state, per-plugin, release-full]
+    invariants: [INV-SAFETY-001]
+    preconditions:
+      - App runs in QA dev Electron mode.
+      - At least one plugin is present in the plugin list.
+      - Network can be throttled or blocked to simulate failure/timeout.
+    steps:
+      - Open Global Plugins.
+      - Block or throttle outbound git access (e.g. use network proxy, firewall, or offline mode).
+      - Click Check Updates.
+      - Wait for the check to complete (should not take longer than ~35s).
+      - Inspect the plugin table and the toast notification.
+    expected_ui:
+      - Check completes within ~35s (batch deadline is 30s plus goroutine overhead).
+      - Per-plugin error badges appear for each plugin that could not be checked.
+      - Error badge label is specific (e.g. "Check timed out" for timeout, "Network error" for git failure).
+      - Toast does not say "All plugins up to date" when all checks failed.
+      - Toast message accurately reflects partial or total failure count.
+    verifier:
+      evidence:
+        - Screenshot of plugin table with per-plugin error badges.
+        - Screenshot of toast message.
     safety:
       destructive: false
       allowed_environment: qa_fixture_or_read_only
