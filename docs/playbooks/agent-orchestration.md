@@ -99,6 +99,20 @@ Copy from `docs/playbooks/templates/`:
 
 > Slice = thin cross-layer cut (UI -> service -> data). Compress phases for small slices, but **do not skip user approval at Spec**.
 
+## Workflow Engine Fallback
+
+Superpowers is the preferred workflow engine when available, but orchestration
+must not depend on any single tool. If a worker cannot use the matching
+Superpowers skill, the Orchestrator must require the same phase output manually:
+risk classification, spec or plan, owned files, verification commands, verdict,
+and evidence.
+
+Plans created under `docs/superpowers/plans/` are canonical workflow artifacts
+when they describe the implemented slice. Do not discard them as temporary
+cleanup merely because they are newly created or untracked. Before review, make
+sure the plan status is clear and any checklist reflects reality. Temporary
+handoff prompts still belong in `.scratch/`.
+
 ## Branch & PR Workflow
 
 ### Risk Classification (Tom closes at the end of brainstorm)

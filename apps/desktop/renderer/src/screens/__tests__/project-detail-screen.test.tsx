@@ -765,10 +765,35 @@ describe("ProjectDetailScreen GlobalSkillsSection", () => {
     expect(globalSkillsHeading).not.toBe(skillEntriesHeading);
   });
 
-  // TC-PROJ-009: no-provider project must show guidance, not an empty section, and must not create folders
-  it("shows guidance when no providers are detected", () => {
+  // TC-PROJ-009: project not yet scanned shows scan prompt, not folder-creation guidance
+  it("shows scan prompt when project has never been scanned (no providers, no lastScannedAt)", () => {
     mockUseProjectDetail.mockReturnValue({
-      data: { ...projectDetail, providers: [], entries: [] },
+      data: {
+        ...projectDetail,
+        project: { ...projectDetail.project, lastScannedAt: null },
+        providers: [],
+        entries: [],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText("Not yet scanned")).toBeTruthy();
+    expect(screen.queryByText("No provider folders detected")).toBeNull();
+    expect(screen.queryByText(/create a provider folder manually/i)).toBeNull();
+  });
+
+  // TC-PROJ-010: scanned project with no providers shows folder-creation guidance
+  it("shows folder-creation guidance when project has been scanned but no providers detected", () => {
+    mockUseProjectDetail.mockReturnValue({
+      data: {
+        ...projectDetail,
+        project: { ...projectDetail.project, lastScannedAt: "2026-06-05T10:00:00Z" },
+        providers: [],
+        entries: [],
+      },
       isPending: false,
       isError: false,
       error: null,
@@ -777,5 +802,6 @@ describe("ProjectDetailScreen GlobalSkillsSection", () => {
     render(<ProjectDetailScreen />);
     expect(screen.getByText("No provider folders detected")).toBeTruthy();
     expect(screen.getByText(/create a provider folder manually/i)).toBeTruthy();
+    expect(screen.queryByText("Not yet scanned")).toBeNull();
   });
 });

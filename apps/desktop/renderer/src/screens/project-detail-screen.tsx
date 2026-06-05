@@ -767,17 +767,26 @@ export function ProjectDetailScreen(): React.JSX.Element {
                 Providers
               </h3>
               {data.providers.length === 0 ? (
-                <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-3">
-                  <p className="text-sm font-medium text-zinc-700">No provider folders detected</p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    To make this project install-ready, create a provider folder manually inside the project, for example:
-                  </p>
-                  <ul className="mt-1.5 list-inside list-disc text-xs text-zinc-500">
-                    <li><code className="font-mono">.agents/skills/</code> — Shared Agent Skills</li>
-                    <li><code className="font-mono">.claude/skills/</code> — Claude Code</li>
-                  </ul>
-                  <p className="mt-1.5 text-xs text-zinc-400">After creating the folder, scan the project again to detect providers.</p>
-                </div>
+                data.project.lastScannedAt == null ? (
+                  <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-3">
+                    <p className="text-sm font-medium text-zinc-700">Not yet scanned</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Scan this project to detect provider folders and skill entries.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded border border-zinc-200 bg-zinc-50 px-3 py-3">
+                    <p className="text-sm font-medium text-zinc-700">No provider folders detected</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      To make this project install-ready, create a provider folder manually inside the project, for example:
+                    </p>
+                    <ul className="mt-1.5 list-inside list-disc text-xs text-zinc-500">
+                      <li><code className="font-mono">.agents/skills/</code> — Shared Agent Skills</li>
+                      <li><code className="font-mono">.claude/skills/</code> — Claude Code</li>
+                    </ul>
+                    <p className="mt-1.5 text-xs text-zinc-400">After creating the folder, scan the project again to detect providers.</p>
+                  </div>
+                )
               ) : (
                 <div className="overflow-x-auto rounded border border-zinc-200">
                   <table className="w-full text-left">

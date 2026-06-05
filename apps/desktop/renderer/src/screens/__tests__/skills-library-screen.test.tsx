@@ -144,4 +144,36 @@ describe("SkillsLibraryScreen", () => {
       params: { skillId: "1" },
     });
   });
+
+  it("shows 'Not yet scanned' when skills empty and lastScanAt is null", () => {
+    mockUseSkillsList.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: { ...baseData, skills: [], totals: { available: 0, missing: 0, unreadable: 0, local_modified: 0, unknown: 0 }, lastScanAt: null },
+    });
+
+    render(<SkillsLibraryScreen />);
+    expect(screen.getByText("Not yet scanned")).toBeTruthy();
+    expect(screen.queryByText("No skills found")).toBeNull();
+  });
+
+  it("shows 'No skills found' when skills empty and lastScanAt is set", () => {
+    mockUseSkillsList.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: { ...baseData, skills: [], totals: { available: 0, missing: 0, unreadable: 0, local_modified: 0, unknown: 0 }, lastScanAt: "2026-06-05T10:00:00Z" },
+    });
+
+    render(<SkillsLibraryScreen />);
+    expect(screen.getByText("No skills found")).toBeTruthy();
+    expect(screen.queryByText("Not yet scanned")).toBeNull();
+  });
+
+  it("does not show empty state messages when skills are present", () => {
+    mockUseSkillsList.mockReturnValue({ isPending: false, isError: false, data: baseData });
+
+    render(<SkillsLibraryScreen />);
+    expect(screen.queryByText("Not yet scanned")).toBeNull();
+    expect(screen.queryByText("No skills found")).toBeNull();
+  });
 });
