@@ -211,6 +211,27 @@ func TestScanProjectSkills_IgnoresDSStore(t *testing.T) {
 	}
 }
 
+func TestScanProjectSkills_IgnoresGitkeep(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".gitkeep"), []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "my-skill"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := ScanProjectSkills(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry (ignoring .gitkeep), got %d", len(entries))
+	}
+	if entries[0].Name != "my-skill" {
+		t.Fatalf("entry name: got %q want %q", entries[0].Name, "my-skill")
+	}
+}
+
 func TestScanProjectSkills_ValidSymlink(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "real-skill")

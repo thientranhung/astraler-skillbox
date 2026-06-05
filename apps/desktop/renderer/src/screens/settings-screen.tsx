@@ -62,7 +62,7 @@ function SlotCell({
       <span className="text-zinc-400">—</span>
     ) : (
       <span className={`font-mono text-xs ${data.source === "override" ? "text-blue-600" : "text-zinc-600"}`}>
-        {data.paths.join(", ")}
+        {data.paths.map((p) => displayPath(p)).join(", ")}
       </span>
     );
   return (
