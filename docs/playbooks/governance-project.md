@@ -64,7 +64,11 @@ Use lowercase kebab-case filenames. If the file is for handoff, its content shou
 
 ## Workflow Skills / Superpowers
 
-Governance does not depend on a specific workflow engine, but agents **must use available workflow skills** when the task matches a phase. If Superpowers is available, use it as the default workflow engine. If it is not available, the agent must reproduce the same outputs and gates with a normal prompt or the relevant playbook.
+Governance is tool-agnostic: the required outputs and gates matter more than
+the workflow engine that produced them. Agents **must use available workflow
+skills** when the task matches a phase. If Superpowers is available, use it as
+the default workflow engine. If it is not available, the agent must reproduce
+the same outputs and gates with a normal prompt or the relevant playbook.
 
 Minimum mapping:
 
@@ -78,6 +82,38 @@ Minimum mapping:
 | Verify before reporting done | `verification-before-completion` |
 
 Workflow skills may not bypass governance: user approval gates, ownership, docs/ADR, review, PR, QA, and `.scratch/` conventions still apply.
+
+### Workflow Output Contract
+
+Superpowers is preferred, but it is not a single point of failure. When a
+workflow skill is unavailable, mismatched to the current agent, or intentionally
+skipped for a compressed low-risk slice, the agent must still produce the same
+phase output:
+
+| Phase | Required output even without Superpowers |
+|---|---|
+| Brainstorm / scope | Risk classification, assumptions, open questions, negative scope. |
+| Spec / design | Concrete behavior, affected surfaces, smoke scenarios, docs/QA impact. |
+| Plan | Ordered tasks, owned files/modules, constraints, verification commands, stop condition. |
+| Implementation | Scoped commits/changes, tests near the affected layer, docs/QA updates when triggered. |
+| Review | Actual diff/PR inspection, file/line findings, explicit verdict. |
+| Verification | Commands run, pass/fail result, residual risk, evidence paths where applicable. |
+
+Do not mark a phase complete merely because a tool command ran. Mark it
+complete only when the expected artifact or verdict exists and is inspectable.
+
+### Plan Artifacts
+
+Implementation plans produced by workflow skills under `docs/superpowers/plans/`
+are governance artifacts, not scratch files. Include them in the PR when they
+describe the implemented slice. Before review, the plan must state its current
+status (`DONE`, `DONE_WITH_CONCERNS`, `BLOCKED`, or equivalent) and either tick
+completed checklist items or explain why any remaining unchecked item is out of
+scope.
+
+Use `.scratch/` for temporary handoffs, drafts, or context packs. Once a
+workflow plan becomes the implementation trace for a slice, keep it in the
+canonical plan location rather than deleting it as cleanup.
 
 When delegating to a subagent/worker, the prompt must be bounded and include at least:
 
