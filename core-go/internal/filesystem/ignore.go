@@ -1,5 +1,9 @@
 package filesystem
 
 func shouldIgnoreSkillEntryName(name string) bool {
-	return name == ".DS_Store"
+	switch name {
+	case ".DS_Store", ".gitkeep":
+		return true
+	}
+	return false
 }

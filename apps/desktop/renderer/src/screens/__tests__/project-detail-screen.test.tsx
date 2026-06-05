@@ -764,4 +764,18 @@ describe("ProjectDetailScreen GlobalSkillsSection", () => {
     // Both headings are present and independent
     expect(globalSkillsHeading).not.toBe(skillEntriesHeading);
   });
+
+  // TC-PROJ-009: no-provider project must show guidance, not an empty section, and must not create folders
+  it("shows guidance when no providers are detected", () => {
+    mockUseProjectDetail.mockReturnValue({
+      data: { ...projectDetail, providers: [], entries: [] },
+      isPending: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<ProjectDetailScreen />);
+    expect(screen.getByText("No provider folders detected")).toBeTruthy();
+    expect(screen.getByText(/create a provider folder manually/i)).toBeTruthy();
+  });
 });
