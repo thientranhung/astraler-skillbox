@@ -1,0 +1,72 @@
+run:
+  id: 2026-06-05-delta-v012-dogfooding-fixes
+  date: 2026-06-05
+  scope: delta
+  profile: delta
+  app_mode: dev-electron
+  target_version: 0.1.2+main-4800924d
+  operator: Codex + astraler-qa
+
+environment:
+  repo_root: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox
+  desktop_dir: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/apps/desktop
+  fixture_source: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/fixtures/qa
+  fixture_copy: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures
+  cdp_port: 49222
+  qa_home: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home
+  qa_db_path: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home/qa.db
+  qa_host: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/skill-host-a
+  qa_project: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/projects/generic-agents-project
+  real_environment_allowed: false
+
+selection:
+  include_tiers: [T0, T1, T2]
+  include_tags: [release-full, setup, host, global-skills, plugin, about, app-update, settings, display, project, diagnostics, privacy, provider, operation]
+  exclude_tags: [phase2]
+  case_ids:
+    - TC-PRIVACY-001
+    - TC-PRIVACY-002
+    - TC-PRIVACY-003
+    - TC-PRIVACY-005
+    - TC-FS-006
+    - TC-PROVIDER-004
+    - TC-PROVIDER-006
+    - TC-SKILL-007
+    - TC-A11Y-002
+    - TC-A11Y-005
+    - TC-SETUP-001
+    - TC-SETUP-005
+    - TC-SETUP-006
+    - TC-GLOBAL-001
+    - TC-GLOBAL-007
+    - TC-GLOBAL-008
+    - TC-PLUGIN-005
+    - TC-PLUGIN-009
+    - TC-PLUGIN-010
+    - TC-ABOUT-001
+    - TC-ABOUT-002
+    - TC-ABOUT-003
+    - TC-DIAG-001
+    - TC-SETTINGS-005
+    - TC-SETTINGS-006
+    - TC-DISPLAY-001
+    - TC-PROJ-001
+    - TC-PROJ-009
+    - TC-PROJ-010
+    - TC-PROJ-011
+
+gates:
+  fail_fast_on_t0: true
+  require_t0_evidence: true
+  plugin_real_toggle_requires_user_approval: true
+  mutate_source_fixtures: false
+  outbound_network_requires_user_approval: true
+  native_dialog_policy: use_osascript_or_mark_needs_human
+
+commands:
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home/qa.db HOME=/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home pnpm dev)"
+  cdp_health: "curl -s http://127.0.0.1:49222/json/version"
+  go_tests: "(cd core-go && go test ./...)"
+  desktop_typecheck: "(cd apps/desktop && pnpm typecheck)"
+  desktop_tests: "(cd apps/desktop && pnpm test)"
+  desktop_contracts: "(cd apps/desktop && pnpm check:contracts-drift)"

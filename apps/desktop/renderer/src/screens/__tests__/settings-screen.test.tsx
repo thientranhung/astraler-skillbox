@@ -326,6 +326,32 @@ describe("SettingsScreen", () => {
     expect(globalConfigIdx).toBeLessThan(projectSkillsIdx);
   });
 
+  // TC-DISPLAY-001: provider path cells must trim trailing slashes in display without mutating stored paths
+  it("trims trailing slash from provider path cells", () => {
+    mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
+    mockUseProviderList.mockReturnValue({
+      data: {
+        providers: [
+          makeProvider({
+            key: "antigravity_cli",
+            displayName: "Antigravity CLI",
+            iconKey: "antigravity",
+            hasGlobalLevel: true,
+            candidates: [
+              { relativePath: ".antigravity-cli", scope: "project" as const, purpose: "detect" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+              { relativePath: "~/.gemini/antigravity-cli/skills/", scope: "global" as const, purpose: "skills" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+              { relativePath: ".agents/skills", scope: "project" as const, purpose: "skills" as const, priority: 10, source: "builtin" as const, verificationStatus: "assumed" as const },
+            ],
+          }),
+        ],
+      },
+    });
+
+    render(<SettingsScreen />);
+    expect(screen.getByText("~/.gemini/antigravity-cli/skills")).not.toBeNull();
+    expect(screen.queryByText("~/.gemini/antigravity-cli/skills/")).toBeNull();
+  });
+
   // UX-007: database version not shown in Settings
   it("does not show Database Version in Settings", () => {
     mockUseAppSettings.mockReturnValue({ isPending: false, isError: false, data: baseSettings });
