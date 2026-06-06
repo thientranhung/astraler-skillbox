@@ -276,3 +276,38 @@ func TestScanHostInternal_FilesystemError(t *testing.T) {
 		t.Errorf("expected filesystem_error, got %v", err)
 	}
 }
+
+// TestScanHostInternal_ScanDelay_ContextCancellation verifies that when
+// SKILLBOX_SCAN_DELAY_MS is set, a cancelled context causes scanHostInternal
+// to return a context error before CommitScanResults is called.
+// The test uses a pre-cancelled context so it completes instantly.
+func TestScanHostInternal_ScanDelay_ContextCancellation(t *testing.T) {
+	t.Setenv("SKILLBOX_SCAN_DELAY_MS", "500")
+
+	hostRepo := newMockHostRepo()
+	scanWriter := &mockScanWriter{}
+	baseCtx := context.Background()
+	hostID, _, _ := hostRepo.UpsertAndActivate(baseCtx, "host", "/tmp/host", "/tmp/host/.agents/skills")
+
+	cancelledCtx, cancel := context.WithCancel(baseCtx)
+	cancel() // cancel before calling scanHostInternal
+
+	fs := &mockFS{
+		scanEntries: []filesystem.HostEntry{
+			{Name: "skill-a", RelativePath: "skill-a", AbsolutePath: "/tmp/host/.agents/skills/skill-a", IsDir: true},
+		},
+	}
+	svc := NewSkillHostService(hostRepo, newMockSettings(nil), fs, &mockRunner{}, scanWriter)
+	host, _ := hostRepo.GetByID(baseCtx, hostID)
+
+	_, err := svc.scanHostInternal(cancelledCtx, host, func(_ string, _, _ int, _ string) {})
+	if err == nil {
+		t.Fatal("expected context error, got nil")
+	}
+	if err != context.Canceled {
+		t.Errorf("expected context.Canceled, got %v", err)
+	}
+	if scanWriter.skills != nil {
+		t.Errorf("CommitScanResults must not run when context is cancelled; got %d skills committed", len(scanWriter.skills))
+	}
+}
