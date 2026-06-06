@@ -8,6 +8,7 @@ import (
 	"github.com/astraler/skillbox/core-go/internal/domain"
 	"github.com/astraler/skillbox/core-go/internal/filesystem"
 	"github.com/astraler/skillbox/core-go/internal/operations"
+	"github.com/astraler/skillbox/core-go/internal/testhooks"
 )
 
 // ChooseHostResult is returned by ChooseHost.
@@ -143,6 +144,17 @@ func (s *SkillHostService) scanHostInternal(ctx context.Context, host *domain.Sk
 		})
 		if w := warningForEntry(e, hostID); w != nil {
 			warnings = append(warnings, *w)
+		}
+	}
+
+	// Test/dev hook: SKILLBOX_SCAN_DELAY_MS holds the operation here so the UI
+	// in-progress state (spinner) can be observed by CDP QA. Unset by default;
+	// bounded to 5 s by testhooks.ScanDelayDuration.
+	if d := testhooks.ScanDelayDuration(); d > 0 {
+		select {
+		case <-time.After(d):
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		}
 	}
 

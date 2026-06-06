@@ -439,9 +439,15 @@ cases:
     preconditions:
       - App has a configured QA Skill Host Folder.
       - Can simulate each scan state via DB reset, empty folder, or error injection.
+      - "For scan-in-progress sub-state: launch dev Electron with SKILLBOX_SCAN_DELAY_MS=1000
+        (e.g. `SKILLBOX_SCAN_DELAY_MS=1000 pnpm dev` from apps/desktop). The Go core will
+        pause for 1 s after classifying entries and before committing results, giving the CDP
+        harness enough time to capture the spinner. Value is clamped to 5000 ms max; unset or
+        0 disables the delay entirely (unset default)."
     steps:
       - Observe Skills Library with no scan ever run (reset last_scanned_at to null).
-      - Observe Skills Library while scan is in progress.
+      - "Observe Skills Library while scan is in progress: trigger a host scan, then within the
+        delay window (requires SKILLBOX_SCAN_DELAY_MS=1000) capture the scanning indicator."
       - Observe Skills Library after scan with an empty host folder.
       - Observe Skills Library with a simulated scan-failed state if feasible.
     expected_ui:
