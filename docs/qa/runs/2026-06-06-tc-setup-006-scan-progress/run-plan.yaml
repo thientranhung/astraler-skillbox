@@ -1,0 +1,61 @@
+run:
+  id: 2026-06-06-tc-setup-006-scan-progress
+  date: 2026-06-06
+  scope: delta
+  profile: delta
+  app_mode: dev-electron
+  target_version: post-PR39-5339ff80
+  operator: agent (QA Lead Quinn)
+  focus: >
+    TC-SETUP-006 scan-in-progress sub-state only.
+    Prior result was NEEDS_HUMAN because auto-scan finished before CDP could capture.
+    PR #39 added SKILLBOX_SCAN_DELAY_MS hook - this run uses it to capture spinner.
+
+environment:
+  repo_root: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox
+  desktop_dir: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/apps/desktop
+  fixture_source: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/fixtures/qa
+  fixture_copy: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-06-tc-setup-006-scan-progress/qa-host
+  cdp_port: 49222
+  qa_home: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-06-tc-setup-006-scan-progress/qa-home
+  qa_db_path: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-06-tc-setup-006-scan-progress/qa-home/qa.db
+  qa_host: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-06-tc-setup-006-scan-progress/qa-host
+  real_environment_allowed: false
+  scan_delay_ms: 1000
+
+selection:
+  include_tiers: [T1]
+  include_tags: [scan-state, empty-state]
+  case_ids:
+    - TC-SETUP-006-scanning-substate
+
+gates:
+  fail_fast_on_t0: true
+  require_t0_evidence: true
+  plugin_real_toggle_requires_user_approval: true
+  mutate_source_fixtures: false
+  outbound_network_requires_user_approval: true
+  automated_gate:
+    - "core-go testhooks and services targeted tests"
+
+commands:
+  start_dev_app: >
+    cd apps/desktop &&
+    SKILLBOX_SCAN_DELAY_MS=1000
+    SKILLBOX_DB_PATH=<qa_db_path>
+    HOME=<qa_home>
+    GOCACHE=/Users/tranthien/Library/Caches/go-build
+    GOMODCACHE=/Users/tranthien/go/pkg/mod
+    GOPATH=/Users/tranthien/go
+    pnpm dev
+  cdp_health: "curl -s http://127.0.0.1:49222/json/version"
+  go_gate: "cd core-go && go test ./internal/testhooks/... ./internal/services/..."
+  seed_host: "window.core.invoke('host.choose', {path: '<qa_host>'})"
+  trigger_scan: "Click the manual Scan button from the Skills Library screen."
+
+rationale:
+  scanning_substate: >
+    With SKILLBOX_SCAN_DELAY_MS=1000 the Go sidecar pauses for 1 s after classifying
+    skill entries but before committing results to DB. During this window the UI must
+    show a scan-in-progress indicator (spinner). CDP can screenshot and snapshot the
+    DOM during this window. Host is seeded via CDP invoke (no native folder picker).

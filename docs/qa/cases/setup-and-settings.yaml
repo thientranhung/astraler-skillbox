@@ -444,10 +444,15 @@ cases:
         pause for 1 s after classifying entries and before committing results, giving the CDP
         harness enough time to capture the spinner. Value is clamped to 5000 ms max; unset or
         0 disables the delay entirely (unset default)."
+      - "Harness note: auto-scan may be session-gated. To capture scanning state reliably
+        in an already-open app session, prefer an explicit user-triggered scan action rather
+        than relying on auto-scan re-trigger after a DB reset."
     steps:
       - Observe Skills Library with no scan ever run (reset last_scanned_at to null).
-      - "Observe Skills Library while scan is in progress: trigger a host scan, then within the
-        delay window (requires SKILLBOX_SCAN_DELAY_MS=1000) capture the scanning indicator."
+      - "Observe Skills Library while scan is in progress: trigger an explicit scan action,
+        then within the delay window (requires SKILLBOX_SCAN_DELAY_MS=1000) capture the
+        scanning indicator. The Scan button label changes to 'Scanning...' (disabled) and a
+        'Scanning skills...' toast appears during the delay window."
       - Observe Skills Library after scan with an empty host folder.
       - Observe Skills Library with a simulated scan-failed state if feasible.
     expected_ui:
