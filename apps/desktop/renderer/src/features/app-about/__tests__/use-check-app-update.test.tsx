@@ -23,7 +23,7 @@ function makeWrapper() {
 beforeEach(() => vi.clearAllMocks());
 
 describe("useCheckAppUpdate", () => {
-  it("starts idle", () => {
+  it("starts idle and does NOT call checkAppUpdate on mount", () => {
     mockCheckAppUpdate.mockResolvedValue({
       currentVersion: "0.1.0",
       latestVersion: null,
@@ -34,6 +34,7 @@ describe("useCheckAppUpdate", () => {
     const { result } = renderHook(() => useCheckAppUpdate(), { wrapper: makeWrapper() });
     expect(result.current.status).toBe("idle");
     expect(result.current.isPending).toBe(false);
+    expect(mockCheckAppUpdate).not.toHaveBeenCalled();
   });
 
   it("returns up-to-date when versions match", async () => {

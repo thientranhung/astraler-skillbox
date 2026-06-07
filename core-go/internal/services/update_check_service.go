@@ -32,6 +32,10 @@ type UpdateCheckService struct {
 	claudeConfigDir string
 	// BatchDeadline overrides updateCheckBatchDeadline when non-zero; set in tests.
 	BatchDeadline time.Duration
+	// AppCheckURL overrides githubReleasesURL when non-empty; set in tests.
+	AppCheckURL string
+	// HTTPClient overrides http.DefaultClient when non-nil; set in tests.
+	HTTPClient *http.Client
 }
 
 func NewUpdateCheckService(
@@ -283,7 +287,16 @@ func (s *UpdateCheckService) CheckAppUpdate(ctx context.Context, currentVersion 
 	httpCtx, cancel := context.WithTimeout(ctx, appCheckHTTPTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(httpCtx, http.MethodGet, githubReleasesURL, nil)
+	checkURL := s.AppCheckURL
+	if checkURL == "" {
+		checkURL = githubReleasesURL
+	}
+	httpClient := s.HTTPClient
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
+	req, err := http.NewRequestWithContext(httpCtx, http.MethodGet, checkURL, nil)
 	if err != nil {
 		errStr := "network_error"
 		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
@@ -291,7 +304,7 @@ func (s *UpdateCheckService) CheckAppUpdate(ctx context.Context, currentVersion 
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "Skillbox/"+currentVersion)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		errStr := "network_error"
 		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
