@@ -133,7 +133,10 @@ export function registerIpcBridge(win: BrowserWindow): void {
       return { saved: true, filePath: saveResult.filePath };
     }
 
-    const result = await getGoClient().call(method, params);
+    // updateCheck.run can take up to about 38s (30s batch deadline + goroutine cleanup).
+    // Use a timeout long enough to always receive the per-plugin result payload.
+    const callOpts = method === "updateCheck.run" ? { timeoutMs: 45_000 } : undefined;
+    const result = await getGoClient().call(method, params, callOpts);
     return result;
   });
 
