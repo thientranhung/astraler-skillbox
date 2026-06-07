@@ -66,6 +66,49 @@ func TestAppCheckUpdateHandler_UpdateAvailable(t *testing.T) {
 	}
 }
 
+func TestAppCheckUpdateHandler_UpToDate(t *testing.T) {
+	// FB-004: when latest == current (v0.1.2), updateAvailable must be false.
+	latestVer := "0.1.2"
+	releaseURL := "https://github.com/thientranhung/astraler-skillbox/releases/tag/v0.1.2"
+
+	svc := &stubAppCheckUpdateSvc{
+		result: services.AppCheckUpdateResult{
+			LatestVersion:   &latestVer,
+			UpdateAvailable: false,
+			ReleaseURL:      &releaseURL,
+		},
+	}
+	h := rpchandlers.NewAppCheckUpdateHandler(svc, "0.1.2")
+	cli := startServer(t, handler.Map{"app.checkUpdate": h})
+
+	var raw json.RawMessage
+	if err := cli.CallResult(context.Background(), "app.checkUpdate", nil, &raw); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var resp struct {
+		CurrentVersion  string  `json:"currentVersion"`
+		LatestVersion   *string `json:"latestVersion"`
+		UpdateAvailable bool    `json:"updateAvailable"`
+		Error           *string `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.CurrentVersion != "0.1.2" {
+		t.Errorf("currentVersion: got %q, want %q", resp.CurrentVersion, "0.1.2")
+	}
+	if resp.LatestVersion == nil || *resp.LatestVersion != "0.1.2" {
+		t.Errorf("latestVersion: got %v", resp.LatestVersion)
+	}
+	if resp.UpdateAvailable {
+		t.Error("expected updateAvailable=false when current == latest")
+	}
+	if resp.Error != nil {
+		t.Errorf("expected error=null, got %q", *resp.Error)
+	}
+}
+
 func TestAppCheckUpdateHandler_ErrorSurfaced(t *testing.T) {
 	// app.checkUpdate is always-on (ADR-0002): failures surface in the error
 	// field, not as RPC errors. "network_error" is a valid runtime error path.

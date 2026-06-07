@@ -13,20 +13,18 @@ export function useRunUpdateCheck() {
   const [results, setResults] = useState<UpdateCheckPluginResult[]>([]);
   const lastRunRef = useRef<number>(0);
 
+  const isRateLimited = useCallback(() => {
+    return Date.now() - lastRunRef.current < RATE_LIMIT_MS;
+  }, []);
+
   const mutation = useMutation({
     mutationFn: async () => {
-      const now = Date.now();
-      // Larry-4: rate-limit — prevent re-trigger within 10s of last run.
-      if (now - lastRunRef.current < RATE_LIMIT_MS) {
-        return null;
-      }
       return methods.runUpdateCheck();
     },
     onMutate: () => {
       setStatus("running");
     },
     onSuccess: (data) => {
-      if (data === null) return; // rate-limited, no state change
       lastRunRef.current = Date.now();
       if (data.status === "git_not_found") {
         setStatus("git_not_found");
@@ -51,7 +49,9 @@ export function useRunUpdateCheck() {
           }
         } else {
           setStatus("ok");
-          if (updateCount > 0) {
+          if (plugins.length === 0) {
+            toast.info("No plugins to check - no update sources found");
+          } else if (updateCount > 0) {
             toast.success(`${updateCount} update${updateCount > 1 ? "s" : ""} available`);
           } else {
             toast.success("All plugins up to date");
@@ -68,12 +68,14 @@ export function useRunUpdateCheck() {
     },
   });
 
-  const isRateLimited = useCallback(() => {
-    return Date.now() - lastRunRef.current < RATE_LIMIT_MS;
-  }, []);
+  const run = useCallback(() => {
+    // Larry-4: rate-limit - prevent re-trigger within 10s of last run.
+    if (isRateLimited()) return;
+    mutation.mutate();
+  }, [isRateLimited, mutation]);
 
   return {
-    run: mutation.mutate,
+    run,
     isRunning: mutation.isPending,
     isRateLimited,
     status,
