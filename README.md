@@ -26,6 +26,45 @@ Skillbox helps users:
 - Manage multiple providers such as Claude, Codex, opencode, Antigravity CLI,
   and other agent providers.
 
+## Download and Open on macOS
+
+Download the latest macOS DMG from
+[GitHub Releases](https://github.com/thientranhung/astraler-skillbox/releases).
+
+Current public builds are macOS-only and are not yet Apple notarized. After
+copying `Astraler Skillbox.app` into `Applications`, macOS Gatekeeper may show
+that Apple cannot verify the app.
+
+To open the app:
+
+1. Click `Done` if macOS shows the verification warning. Do not choose
+   `Move to Trash`.
+2. Open `System Settings` -> `Privacy & Security`.
+3. In the Security section, click `Open Anyway` for `Astraler Skillbox`.
+4. Confirm `Open` when macOS asks again.
+
+You can also Control-click or right-click `Astraler Skillbox.app`, choose
+`Open`, then confirm `Open`. This Gatekeeper step is temporary until the release
+pipeline has Apple Developer ID signing and notarization credentials.
+
+## Screenshots
+
+### First Launch
+
+![Astraler Skillbox welcome screen](docs/assets/readme/welcome.png)
+
+### Skill Host Folder
+
+![Skill Host Folder library view](docs/assets/readme/host-skills.png)
+
+### Global Plugin Providers
+
+![Global plugin provider view](docs/assets/readme/global-plugins.png)
+
+### Project Provider Guidance
+
+![Project detail provider guidance](docs/assets/readme/project-detail-provider-tips.png)
+
 ## Core Model
 
 ```text
