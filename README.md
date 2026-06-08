@@ -8,10 +8,40 @@ Skillbox is not just for developers. Users can be content creators, researchers,
 marketers, operators, PMs, founders, analysts, or anyone who uses agent skills
 across multiple workflows.
 
+## Why Skillbox Exists
+
+Agent coding tools are converging on project-local skill folders. Providers such
+as Claude, Codex, Gemini/Antigravity, opencode, Amp, Pi, and similar tools may
+load skills from folders inside each project, commonly under conventions such as
+`.agents/skills`.
+
+That works well for one project. It gets messy when you have many.
+
+In real agentic coding work, projects multiply quickly and skills evolve even
+faster. A skill may start as an experiment, become useful, then be needed across
+five different repositories. Installing it globally can pollute projects that do
+not need it. Installing it project-by-project can create copies that drift apart.
+After a while, it becomes hard to answer basic questions:
+
+- Where is the latest version of this skill?
+- Which projects are using it?
+- Is this skill global, project-local, or both?
+- Did I update every project that depends on it?
+- Which provider folders exist in this workspace?
+- Which global skills and plugins are affecting this project?
+
+Astraler Skillbox solves this with one local **Skill Host Folder**. You keep the
+skills you use, study, install, or develop in that host folder, then link only
+the skills a project needs into that project. Update one skill in the host, and
+every linked project sees the update through symlink.
+
+The result is a UI-first distribution station for your agent skills: one source
+of truth, clear project/provider visibility, and no scattered manual copies.
+
 ## Positioning
 
 ```text
-Skillbox = local-first control center for agent skills
+Skillbox = local-first skill distribution station for the agentic coding era
 ```
 
 Skillbox helps users:
