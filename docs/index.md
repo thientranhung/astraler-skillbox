@@ -7,6 +7,11 @@ It gives you one Skill Host Folder as the source of truth, then distributes the
 right skills into the right projects through symlink. Update a skill once in the
 host folder, and every linked project receives it.
 
+![Astraler Skillbox host skills view](assets/readme/host-skills.png)
+
+[Get Started](getting-started.md){ .md-button .md-button--primary }
+[Read in Vietnamese](vi/index.md){ .md-button }
+
 ## The Short Story
 
 Agent coding providers increasingly load skills from project-local folders such
@@ -34,6 +39,7 @@ Project
 Start here:
 
 - [Why Skillbox](why-skillbox.md) explains the pain point and product thesis.
+- [Tiếng Việt](vi/index.md) is the Vietnamese public introduction.
 - [Getting Started](getting-started.md) walks through install, host setup, scan,
   project add, and symlink install.
 - [Core Concepts](core-concepts.md) defines Skill Host Folder, project skills,

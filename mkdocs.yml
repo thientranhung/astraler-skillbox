@@ -27,6 +27,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Tiếng Việt: vi/index.md
   - Why Skillbox: why-skillbox.md
   - Getting Started: getting-started.md
   - Core Concepts: core-concepts.md
