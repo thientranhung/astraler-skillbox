@@ -20,6 +20,22 @@ Install this skill globally or into this project?
 
 Both answers are useful, and both can become messy.
 
+```mermaid
+flowchart LR
+  Skill["One evolving skill"]
+  Global["Global install"]
+  CopyA["Project A copy"]
+  CopyB["Project B copy"]
+  CopyC["Project C copy"]
+  Drift["Version drift and unclear ownership"]
+  Pollution["Provider context pollution"]
+
+  Skill --> Global --> Pollution
+  Skill --> CopyA --> Drift
+  Skill --> CopyB --> Drift
+  Skill --> CopyC --> Drift
+```
+
 Global installs can affect projects that do not need the skill. Project installs
 can create many copies of the same skill. When that skill changes, every copied
 project becomes a place where drift can happen.
@@ -49,17 +65,16 @@ Each project receives only the skills it needs. Skillbox distributes those skill
 through symlink, so the project sees the skill while the source remains in one
 place.
 
-```text
-Skill Host Folder
-  .agents/skills/code-review
-        |
-        | symlink
-        v
-Project A
-  .agents/skills/code-review
+```mermaid
+flowchart LR
+  Host["Skill Host Folder<br/>.agents/skills/code-review"]
+  ProjectA["Project A<br/>.agents/skills/code-review"]
+  ProjectB["Project B<br/>.agents/skills/code-review"]
+  ProjectC["Project C<br/>.agents/skills/release-qa"]
 
-Project B
-  .agents/skills/code-review
+  Host -- symlink --> ProjectA
+  Host -- symlink --> ProjectB
+  Host -- selected skill only --> ProjectC
 ```
 
 Update the skill once in the host folder, and every linked project receives the
@@ -98,6 +113,8 @@ Skillbox is not only an installer. It is a visibility tool.
 
 It scans the host folder, project folders, global provider folders, and plugin
 settings so you can see the actual skill picture across your machine:
+
+![Astraler Skillbox Host Skills view](assets/readme/host-skills.png)
 
 - host skills available for distribution
 - project skills installed through symlink

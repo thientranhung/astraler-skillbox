@@ -23,6 +23,8 @@ You can also Control-click or right-click the app, choose `Open`, then confirm
 
 On first launch, Skillbox asks for a Skill Host Folder.
 
+![Astraler Skillbox welcome screen](assets/readme/welcome.png)
+
 This folder is the source of truth for your skills. A common shape is:
 
 ```text
@@ -41,6 +43,8 @@ developing in this host folder.
 
 Open `Host Skills` and scan the folder. Skillbox lists the skills it can
 distribute into projects.
+
+![Host Skills scan result](assets/readme/host-skills.png)
 
 If no skills appear, make sure the host contains `.agents/skills/<skill-name>`.
 
@@ -61,6 +65,21 @@ target-project/
 Some providers have their own conventions. Skillbox uses provider adapters to
 detect and display those paths.
 
+```mermaid
+flowchart TD
+  Project["Added project folder"]
+  Shared[".agents/skills"]
+  ProviderSpecific["Provider-specific paths"]
+  Facts["Detected provider facts"]
+  UI["Project detail view"]
+
+  Project --> Shared
+  Project --> ProviderSpecific
+  Shared --> Facts
+  ProviderSpecific --> Facts
+  Facts --> UI
+```
+
 ## 4. Install Skills Into the Project
 
 Open the project detail screen, click `Add Skill`, choose the skills the project
@@ -68,9 +87,14 @@ needs, and install them.
 
 Current stable installs use symlink:
 
-```text
-host/.agents/skills/my-skill
-  -> project/.agents/skills/my-skill
+```mermaid
+flowchart LR
+  Host["host/.agents/skills/my-skill"]
+  Project["project/.agents/skills/my-skill"]
+  Provider["Provider loads local project path"]
+
+  Host -- symlink --> Project
+  Project --> Provider
 ```
 
 The project keeps the provider-friendly local path, while the skill content stays
@@ -80,6 +104,20 @@ centralized in the host.
 
 Open `Global Skills` and `Global Plugins` to see what provider-level state is
 present on the machine.
+
+```mermaid
+flowchart LR
+  Host["Host Skills"]
+  Project["Project Skills"]
+  Global["Global Skills"]
+  Plugins["Global Plugins"]
+  Picture["Workspace skill picture"]
+
+  Host --> Picture
+  Project --> Picture
+  Global --> Picture
+  Plugins --> Picture
+```
 
 Skillbox separates host skills, project skills, global skills, and plugin config
 so you can see what is affecting a project without mixing everything into one

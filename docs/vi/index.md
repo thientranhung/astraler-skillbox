@@ -33,18 +33,36 @@ Project-local skill thì rõ ràng hơn, nhưng nếu copy vào từng dự án,
 lại có một bản riêng và rất dễ drift. Khi skill được sửa, bạn phải nhớ dự án nào
 đang dùng bản nào.
 
+```mermaid
+flowchart LR
+  Skill["Một skill đang phát triển"]
+  Global["Cài global"]
+  CopyA["Copy vào Project A"]
+  CopyB["Copy vào Project B"]
+  CopyC["Copy vào Project C"]
+  Drift["Drift phiên bản"]
+  Pollution["Ô nhiễm context global"]
+
+  Skill --> Global --> Pollution
+  Skill --> CopyA --> Drift
+  Skill --> CopyB --> Drift
+  Skill --> CopyC --> Drift
+```
+
 ## Ý tưởng trung tâm
 
 Skillbox tạo ra một trạm trung tâm:
 
-```text
-Skill Host Folder
-  .agents/skills/code-review
-        |
-        | symlink
-        v
-Project
-  .agents/skills/code-review
+```mermaid
+flowchart LR
+  Host["Skill Host Folder<br/>.agents/skills/code-review"]
+  ProjectA["Project A<br/>.agents/skills/code-review"]
+  ProjectB["Project B<br/>.agents/skills/code-review"]
+  ProjectC["Project C<br/>.agents/skills/release-qa"]
+
+  Host -- symlink --> ProjectA
+  Host -- symlink --> ProjectB
+  Host -- chọn skill cần dùng --> ProjectC
 ```
 
 Bạn nghiên cứu, cài đặt, hoặc phát triển skill ở Skill Host Folder. Khi dự án
@@ -57,6 +75,20 @@ nhật ngay. Không cần copy lại từng nơi.
 
 Skillbox không chỉ là công cụ cài skill. Nó giúp bạn thấy bức tranh skill trên
 máy của mình:
+
+```mermaid
+flowchart LR
+  Host["Host skills"]
+  Project["Project skills"]
+  Global["Global skills"]
+  Plugins["Global plugins"]
+  Picture["Bức tranh skill workspace"]
+
+  Host --> Picture
+  Project --> Picture
+  Global --> Picture
+  Plugins --> Picture
+```
 
 - Skill nào đang nằm trong host folder.
 - Project nào đang dùng skill nào.
