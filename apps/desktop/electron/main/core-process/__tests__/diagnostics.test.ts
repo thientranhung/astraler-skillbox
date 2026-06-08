@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildDiagnosticsText } from "../diagnostics.js";
 
 const baseOpts = {
-  appVersion: "0.1.2",
+  appVersion: "0.1.3",
   electronVersion: "33.0.0",
   chromeVersion: "130.0.0",
   nodeVersion: "22.0.0",
@@ -17,7 +17,7 @@ const baseOpts = {
 describe("buildDiagnosticsText", () => {
   it("includes app version and platform info", () => {
     const text = buildDiagnosticsText(baseOpts);
-    expect(text).toContain("App version: 0.1.2");
+    expect(text).toContain("App version: 0.1.3");
     expect(text).toContain("Platform: darwin arm64");
     expect(text).toContain("Electron: 33.0.0");
     expect(text).toContain("Node: 22.0.0");

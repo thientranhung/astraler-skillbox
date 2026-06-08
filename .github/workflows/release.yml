@@ -98,6 +98,8 @@ jobs:
             echo "Release ${{ github.ref_name }}"
             echo
             echo "macOS arm64 DMG build."
+            echo
+            echo "Note: this DMG is currently unsigned/not notarized. On macOS, if Gatekeeper blocks the app, open System Settings -> Privacy & Security and choose Open Anyway for Astraler Skillbox, or right-click the app and choose Open."
           } > /tmp/release-notes.md
           gh release create "${{ github.ref_name }}" \
             --title "Astraler Skillbox ${{ github.ref_name }}" \
