@@ -3,6 +3,7 @@ import { useIsMutating } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import type { ProjectGetProvider, ProjectGetEntry, SkillListSkill } from '@contracts/index.js';
 import { ProviderIcon } from '../../components/provider-icon.js';
+import { orderBySharedAgentsFirst, providerDisplayName } from '../../lib/provider-display.js';
 import { useInstallSkill } from './use-install-skill.js';
 import { useScanProject } from './use-scan-project.js';
 
@@ -53,11 +54,13 @@ export function AddSkillWizard({
 
   const installableProviders = useMemo(
     () =>
-      providers.filter(
-        (p) =>
-          INSTALLABLE_PROVIDER_KEYS.has(p.providerKey) &&
-          (p.providerStatus === 'supported' || p.providerStatus === 'experimental') &&
-          (p.detectionStatus === 'detected' || p.detectionStatus === 'configured'),
+      orderBySharedAgentsFirst(
+        providers.filter(
+          (p) =>
+            INSTALLABLE_PROVIDER_KEYS.has(p.providerKey) &&
+            (p.providerStatus === 'supported' || p.providerStatus === 'experimental') &&
+            (p.detectionStatus === 'detected' || p.detectionStatus === 'configured'),
+        ),
       ),
     [providers],
   );
@@ -124,7 +127,7 @@ export function AddSkillWizard({
         </div>
         <p className="mb-1 text-xs font-medium text-zinc-700">No provider is ready for install.</p>
         <p className="mb-4 text-xs text-zinc-500">
-          Create the provider skills folder in this project, then scan again. For Shared Agent Skills, create .agents/skills.
+          Create the provider skills folder in this project, then scan again. For Shared Agents, create .agents/skills.
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -177,7 +180,7 @@ export function AddSkillWizard({
             }`}
           >
             <ProviderIcon providerKey={p.providerKey} />
-            {p.displayName}
+            {providerDisplayName(p.providerKey, p.displayName)}
             {p.providerStatus === 'experimental' && (
               <span className="rounded bg-amber-100 px-1 py-0.5 text-xs font-medium text-amber-700">
                 experimental

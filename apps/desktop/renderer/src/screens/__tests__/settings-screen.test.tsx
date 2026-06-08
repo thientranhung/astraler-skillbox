@@ -67,7 +67,7 @@ const baseSettings = {
 
 const makeProvider = (overrides = {}) => ({
   key: "generic_agents",
-  displayName: "Shared Agent Skills",
+  displayName: "Shared Agents",
   providerType: "generic_agents",
   iconKey: "generic_agents",
   status: "supported" as const,
@@ -136,7 +136,7 @@ describe("SettingsScreen", () => {
     });
 
     render(<SettingsScreen />);
-    expect(screen.getByText("Shared Agent Skills")).not.toBeNull();
+    expect(screen.getByText("Shared Agents")).not.toBeNull();
     expect(screen.getByText("generic_agents")).not.toBeNull();
   });
 

@@ -9,6 +9,7 @@ import { useOpenProjectTerminal } from "./use-open-project-terminal.js";
 import { useRemoveProject } from "./use-remove-project.js";
 import { ProjectStatusBadge } from "./project-status-badge.js";
 import { ProjectProviderBadge } from "./project-provider-badge.js";
+import { orderBySharedAgentsKeyFirst, providerDisplayName } from "../../lib/provider-display.js";
 
 interface ProjectRowProps {
   project: ProjectListItem;
@@ -18,17 +19,18 @@ function ProjectPluginProviderStats({ project }: { project: ProjectListItem }): 
   if (!project.pluginProviders || project.pluginProviders.length === 0) {
     return <span className="text-xs text-zinc-400">—</span>;
   }
+  const pluginProviders = orderBySharedAgentsKeyFirst(project.pluginProviders);
   return (
     <div className="flex flex-col gap-0.5">
-      {project.pluginProviders.map((pp) => (
+      {pluginProviders.map((pp) => (
         <span
           key={pp.key}
           className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600 w-fit"
-          title={`${pp.displayName}: ${pp.enabledCount} enabled of ${pp.totalCount} plugin${pp.totalCount === 1 ? "" : "s"}`}
+          title={`${providerDisplayName(pp.key, pp.displayName)}: ${pp.enabledCount} enabled of ${pp.totalCount} plugin${pp.totalCount === 1 ? "" : "s"}`}
         >
           <ProviderIcon providerKey={pp.key} className="h-3 w-3 [&>svg]:h-3 [&>svg]:w-3" />
           <span className="font-mono text-[11px]">{pp.enabledCount}</span>
-          <span className="max-w-24 truncate">{pp.displayName}</span>
+          <span className="max-w-24 truncate">{providerDisplayName(pp.key, pp.displayName)}</span>
         </span>
       ))}
     </div>
@@ -39,18 +41,19 @@ function ProjectProviderSkillStats({ project }: { project: ProjectListItem }): R
   if (project.providers.length === 0) {
     return <span className="text-xs text-zinc-400">—</span>;
   }
+  const providers = orderBySharedAgentsKeyFirst(project.providers);
 
   return (
     <div className="flex flex-wrap gap-1">
-      {project.providers.map((provider) => (
+      {providers.map((provider) => (
         <span
           key={provider.key}
           className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
-          title={`${provider.displayName}: ${provider.entryCount} skill${provider.entryCount === 1 ? "" : "s"}`}
+          title={`${providerDisplayName(provider.key, provider.displayName)}: ${provider.entryCount} skill${provider.entryCount === 1 ? "" : "s"}`}
         >
           <ProviderIcon providerKey={provider.key} className="h-3 w-3 [&>svg]:h-3 [&>svg]:w-3" />
           <span className="font-mono text-[11px]">{provider.entryCount}</span>
-          <span className="max-w-24 truncate">{provider.displayName}</span>
+          <span className="max-w-24 truncate">{providerDisplayName(provider.key, provider.displayName)}</span>
         </span>
       ))}
     </div>
@@ -100,7 +103,7 @@ export function ProjectRow({ project }: ProjectRowProps): React.JSX.Element {
           {project.providers.length === 0 ? (
             <span className="text-xs text-zinc-400">—</span>
           ) : (
-            project.providers.map((p) => <ProjectProviderBadge key={p.key} provider={p} />)
+            orderBySharedAgentsKeyFirst(project.providers).map((p) => <ProjectProviderBadge key={p.key} provider={p} />)
           )}
         </div>
       </td>

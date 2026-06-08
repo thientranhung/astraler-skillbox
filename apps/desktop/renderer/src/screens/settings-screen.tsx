@@ -9,6 +9,7 @@ import { ProviderPathsEditor } from "../features/providers/provider-paths-editor
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { displayPath } from "../lib/display-path.js";
+import { providerDisplayName } from "../lib/provider-display.js";
 import type { ProviderListProvider } from "@contracts/index.js";
 
 type ProviderPathScope = "project" | "global";
@@ -154,7 +155,7 @@ function ProviderRow({ provider }: { provider: ProviderListProvider }): React.JS
         <td className="px-3 py-2">
           <div className="flex items-center gap-2">
             <ProviderIcon providerKey={provider.key} iconKey={provider.iconKey} />
-            <span className="font-medium text-zinc-800">{provider.displayName}</span>
+            <span className="font-medium text-zinc-800">{providerDisplayName(provider.key, provider.displayName)}</span>
             {hasOverride(provider) && (
               <span className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
                 Override

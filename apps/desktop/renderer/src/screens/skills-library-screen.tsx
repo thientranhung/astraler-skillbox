@@ -11,7 +11,6 @@ import { methods } from "../lib/core-client/methods.js";
 import { sessionAutoScanRegistry } from "../features/scan/auto-scan-constants.js";
 
 type SkillStatus = "all" | "available" | "missing" | "unreadable" | "local_modified" | "external_symlink" | "unknown";
-type ProviderView = "all" | "shared_agents";
 
 export function SkillsLibraryScreen(): React.JSX.Element {
   const activeHost = useActiveHost();
@@ -19,7 +18,6 @@ export function SkillsLibraryScreen(): React.JSX.Element {
   const scanMutation = useScanHost();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<SkillStatus>("all");
-  const [providerView, setProviderView] = useState<ProviderView>("all");
 
   const autoScannedRef = useRef(false);
   useEffect(() => {
@@ -52,7 +50,7 @@ export function SkillsLibraryScreen(): React.JSX.Element {
   const isScanning = scanMutation.operationId != null;
   const skills = data?.skills ?? [];
   const sharedAgentSkills = skills.filter((skill) => skill.relativePath.startsWith(".agents/skills/"));
-  const providerScopedSkills = providerView === "shared_agents" ? sharedAgentSkills : skills;
+  const providerScopedSkills = sharedAgentSkills;
 
   const filteredSkills = providerScopedSkills.filter((skill) => {
     const matchesSearch = search.trim() === "" || skill.name.toLowerCase().includes(search.toLowerCase());
@@ -140,26 +138,10 @@ export function SkillsLibraryScreen(): React.JSX.Element {
           <div className="flex gap-1">
             <button
               type="button"
-              onClick={() => setProviderView("all")}
-              className={`cursor-pointer rounded border px-2 py-1 text-xs font-medium ${
-                providerView === "all"
-                  ? "border-zinc-700 bg-zinc-900 text-white"
-                  : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-              }`}
-            >
-              All skills <span className="ml-1 opacity-70">{skills.length}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setProviderView("shared_agents")}
-              className={`inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs font-medium ${
-                providerView === "shared_agents"
-                  ? "border-zinc-700 bg-zinc-900 text-white"
-                  : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-              }`}
+              className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs font-medium text-white"
             >
               <ProviderIcon providerKey="generic_agents" />
-              Shared Agent Skills <span className="opacity-70">{sharedAgentSkills.length}</span>
+              Shared Agents <span className="opacity-70">{sharedAgentSkills.length}</span>
             </button>
           </div>
           <span className="text-xs text-zinc-400">

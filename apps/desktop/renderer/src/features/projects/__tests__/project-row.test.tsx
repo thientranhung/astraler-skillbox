@@ -61,7 +61,7 @@ const filledProject: ProjectListItem = {
   ...project,
   lastScannedAt: "2025-01-01T00:00:00.000Z",
   providers: [
-    { key: "generic_agents", displayName: "Shared Agent Skills", providerStatus: "supported", detectionStatus: "detected", entryCount: 2 },
+    { key: "generic_agents", displayName: "Shared Agents", providerStatus: "supported", detectionStatus: "detected", entryCount: 2 },
   ],
 };
 
@@ -149,7 +149,7 @@ describe("ProjectRow", () => {
               providers: [
                 {
                   key: "generic_agents",
-                  displayName: "Shared Agent Skills",
+                  displayName: "Shared Agents",
                   providerStatus: "supported",
                   detectionStatus: "detected",
                   entryCount: 2,
@@ -168,7 +168,7 @@ describe("ProjectRow", () => {
       </table>,
     );
 
-    expect(screen.getByTitle("Shared Agent Skills: 2 skills")).toBeTruthy();
+    expect(screen.getByTitle("Shared Agents: 2 skills")).toBeTruthy();
     expect(screen.getByTitle("Claude: 3 skills")).toBeTruthy();
     expect(screen.queryByText("5")).toBeNull();
   });

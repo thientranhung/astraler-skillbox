@@ -6,6 +6,7 @@ import { SkillStatusBadge } from "../features/skills-library/skill-status-badge.
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
+import { providerDisplayName } from "../lib/provider-display.js";
 import type { SkillGetProjectInstall } from "@contracts/index.js";
 
 const MODE_CLS: Record<SkillGetProjectInstall["mode"], string> = {
@@ -158,7 +159,7 @@ export function SkillDetailScreen(): React.JSX.Element {
                           <td className="px-3 py-1.5 text-xs text-zinc-600">
                             <span className="inline-flex items-center gap-1.5">
                               <ProviderIcon providerKey={p.providerKey} />
-                              {p.providerDisplayName}
+                              {providerDisplayName(p.providerKey, p.providerDisplayName)}
                             </span>
                           </td>
                           <td className="px-3 py-1.5 text-xs">

@@ -82,7 +82,7 @@ describe('AddSkillWizard', () => {
   // T1 — renders one tab per installable provider (not unsupported)
   it('T1: renders one tab per installable provider; unsupported provider not rendered', () => {
     const providers: ProjectGetProvider[] = [
-      mkProvider('generic_agents', 'Generic Agents'),
+      mkProvider('generic_agents', 'Shared Agents'),
       mkProvider('claude', 'Claude'),
       mkProvider('codex', 'Codex', 'unsupported', 'detected'),
     ];
@@ -99,7 +99,7 @@ describe('AddSkillWizard', () => {
     );
 
     // Use getAllByText to get past SVG <title> matches and verify tab buttons exist
-    const genericTabs = screen.getAllByText('Generic Agents');
+    const genericTabs = screen.getAllByText('Shared Agents');
     const claudeTabs = screen.getAllByText('Claude');
     expect(genericTabs.some((el) => el.closest('button') != null)).toBe(true);
     expect(claudeTabs.some((el) => el.closest('button') != null)).toBe(true);
@@ -110,7 +110,7 @@ describe('AddSkillWizard', () => {
 
   // T2 — active tab disables installed skills (status current)
   it('T2: active tab disables installed skills (status current)', () => {
-    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Generic Agents')];
+    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Shared Agents')];
     const skills: SkillListSkill[] = [
       mkSkill(1, 'Skill S1'),
       mkSkill(2, 'Skill S2'),
@@ -140,7 +140,7 @@ describe('AddSkillWizard', () => {
   // T3 — switching tab resets selected skills
   it('T3: switching tab resets selected skills', () => {
     const providers: ProjectGetProvider[] = [
-      mkProvider('generic_agents', 'Generic Agents'),
+      mkProvider('generic_agents', 'Shared Agents'),
       mkProvider('claude', 'Claude'),
     ];
     const skills: SkillListSkill[] = [mkSkill(1, 'Skill S1')];
@@ -184,7 +184,7 @@ describe('AddSkillWizard', () => {
     });
 
     const providers: ProjectGetProvider[] = [
-      mkProvider('generic_agents', 'Generic Agents'),
+      mkProvider('generic_agents', 'Shared Agents'),
       mkProvider('claude', 'Claude'),
     ];
     const s3 = mkSkill(3, 'Skill S3');
@@ -217,7 +217,7 @@ describe('AddSkillWizard', () => {
   // T5 — footer hint shows active skillsPath
   it('T5: footer hint shows active skillsPath', () => {
     const providers: ProjectGetProvider[] = [
-      mkProvider('generic_agents', 'Generic Agents', 'supported', 'detected', '/foo/bar/skills'),
+      mkProvider('generic_agents', 'Shared Agents', 'supported', 'detected', '/foo/bar/skills'),
     ];
 
     render(
@@ -236,7 +236,7 @@ describe('AddSkillWizard', () => {
   // T6 — experimental provider shows badge
   it('T6: experimental provider shows badge in tab strip', () => {
     const providers: ProjectGetProvider[] = [
-      mkProvider('generic_agents', 'Generic Agents', 'experimental', 'detected'),
+      mkProvider('generic_agents', 'Shared Agents', 'experimental', 'detected'),
     ];
 
     render(
@@ -279,7 +279,7 @@ describe('AddSkillWizard', () => {
 
   // T8 — single provider still renders tab strip (1 tab)
   it('T8: single provider renders exactly one tab', () => {
-    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Generic Agents')];
+    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Shared Agents')];
 
     render(
       <AddSkillWizard
@@ -292,7 +292,7 @@ describe('AddSkillWizard', () => {
     );
 
     // The tab button contains the displayName text
-    const tabs = screen.getAllByText('Generic Agents');
+    const tabs = screen.getAllByText('Shared Agents');
     expect(tabs.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -306,7 +306,7 @@ describe('AddSkillWizard', () => {
       reset: vi.fn(),
     });
 
-    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Generic Agents')];
+    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Shared Agents')];
     const skills: SkillListSkill[] = [mkSkill(1, 'Skill A')];
 
     render(
@@ -338,7 +338,7 @@ describe('AddSkillWizard', () => {
       reset: vi.fn(),
     });
 
-    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Generic Agents')];
+    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Shared Agents')];
     const skills: SkillListSkill[] = [mkSkill(1, 'Skill A')];
 
     render(
@@ -373,7 +373,7 @@ describe('AddSkillWizard', () => {
       reset: vi.fn(),
     });
 
-    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Generic Agents')];
+    const providers: ProjectGetProvider[] = [mkProvider('generic_agents', 'Shared Agents')];
 
     render(
       <AddSkillWizard
@@ -392,7 +392,7 @@ describe('AddSkillWizard', () => {
   // T11 — cross-provider isolation: skill installed at claude is tickable at generic
   it('T11: cross-provider isolation: skill installed at claude is tickable at generic', () => {
     const providers: ProjectGetProvider[] = [
-      mkProvider('generic_agents', 'Generic Agents'),
+      mkProvider('generic_agents', 'Shared Agents'),
       mkProvider('claude', 'Claude'),
     ];
     const skills: SkillListSkill[] = [mkSkill(1, 'Skill S1'), mkSkill(2, 'Skill S2'), mkSkill(3, 'Skill S3')];

@@ -251,7 +251,7 @@ cases:
         - "leave `.agents/skills` well-formed (the case mutates it live during steps)"
     steps:
       - Open Project Detail and run Scan Project so the provider is detected.
-      - Open Add Skill, select the Shared Agent Skills provider, and select one not-installed host skill.
+      - Open Add Skill, select the Shared Agents provider, and select one not-installed host skill.
       - Remove the `.agents/skills` directory from the run-local fixture outside the app.
       - Click Install and wait for the operation to reach a terminal state.
     expected_ui:
@@ -337,7 +337,7 @@ cases:
     tags: [provider, multi-provider, project-scan, path-facts, release-full]
     invariants: [INV-PROVIDER-001, INV-PROJECT-001, INV-DB-001]
     preconditions:
-      - QA project fixture contains Shared Agent Skills and Claude provider markers.
+      - QA project fixture contains Shared Agents and Claude provider markers.
       - Provider path settings use built-in defaults.
     data_setup:
       fixture_source: fixtures/qa/projects/project-multi-provider

@@ -27,7 +27,7 @@ const mockOpenPath = methods.openPath as ReturnType<typeof vi.fn>;
 const makeLocation = (overrides: Partial<GlobalListLocation> = {}): GlobalListLocation => ({
   globalProviderLocationId: 1,
   providerKey: "generic_agents",
-  providerDisplayName: "Generic Agents",
+  providerDisplayName: "Shared Agents",
   providerStatus: "active",
   path: "/Users/test/.agents",
   skillsPath: "/Users/test/.agents/skills",
@@ -70,7 +70,7 @@ describe("GlobalSkillsScreen", () => {
 
     render(<GlobalSkillsScreen />);
     // Provider name appears in both tab and location header
-    expect(screen.getAllByText("Generic Agents").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Shared Agents").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("active")).toBeTruthy();
   });
 
@@ -179,7 +179,7 @@ describe("GlobalSkillsScreen", () => {
   it("shows All tab with total entry count when locations are present", () => {
     const loc1 = makeLocation({
       providerKey: "generic_agents",
-      providerDisplayName: "Generic Agents",
+      providerDisplayName: "Shared Agents",
       entries: [
         { globalInstallId: 1, skillName: "skill-a", skillId: 1, mode: "symlink", status: "current", globalSkillPath: "/p/a", sourceSkillPath: null, symlinkTargetPath: null },
         { globalInstallId: 2, skillName: "skill-b", skillId: 2, mode: "symlink", status: "current", globalSkillPath: "/p/b", sourceSkillPath: null, symlinkTargetPath: null },
@@ -198,7 +198,7 @@ describe("GlobalSkillsScreen", () => {
     render(<GlobalSkillsScreen />);
     // "All" tab should exist and show total count 3
     expect(screen.getByRole("button", { name: /^All/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Generic Agents/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Shared Agents/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Claude/ })).toBeTruthy();
   });
 
@@ -206,7 +206,7 @@ describe("GlobalSkillsScreen", () => {
     const loc1 = makeLocation({
       globalProviderLocationId: 1,
       providerKey: "generic_agents",
-      providerDisplayName: "Generic Agents",
+      providerDisplayName: "Shared Agents",
       status: "active",
     });
     const loc2 = makeLocation({
@@ -231,7 +231,7 @@ describe("GlobalSkillsScreen", () => {
   it("provider tab with no entries shows count 0", () => {
     const loc = makeLocation({
       providerKey: "generic_agents",
-      providerDisplayName: "Generic Agents",
+      providerDisplayName: "Shared Agents",
       status: "no_global_skills",
       entries: [],
     });

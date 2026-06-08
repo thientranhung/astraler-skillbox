@@ -215,13 +215,13 @@ cases:
     steps:
       - Open Project Detail and run Scan Project.
       - Open Add Skill.
-      - Select the Shared Agent Skills provider tab.
+      - Select the Shared Agents provider tab.
       - Select one not-installed host skill.
       - Click Install.
       - Wait for the install operation to reach a terminal state.
       - Close the wizard and re-open Project Detail.
     expected_ui:
-      - Add Skill offers the Shared Agent Skills provider for the detected `.agents` marker.
+      - Add Skill offers the Shared Agents provider for the detected `.agents` marker.
       - Install remains visibly in progress only while the operation is running.
       - The wizard does not stay stuck in Installing after the operation reaches a terminal state.
       - A success message appears only after `.agents/skills` and the skill target exist.
@@ -698,6 +698,48 @@ cases:
       destructive: false
       allowed_environment: qa_fixture
       real_environment: forbidden
+
+  - id: TC-PROJ-012
+    title: Project Detail provider tabs prioritize Shared Agents without aggregate views
+    tier: T2
+    primary_screen: Project Detail
+    related_screens: [Skills Library]
+    type: regression
+    tags: [project, provider-tabs, shared-agents, skills-library, plugin, global-skills]
+    invariants: [INV-PROJECT-001, INV-PLUGIN-001, INV-GLOBAL-001]
+    preconditions:
+      - QA project fixture has at least `generic_agents` and one other provider detected.
+      - The same project has skill entries, global skill entries, and provider plugin facts for both providers.
+    data_setup:
+      fixture_source: fixtures/qa/projects/project-multi-provider
+      copy_to: runs/<run-id>/fixtures/projects/project-multi-provider
+      mutate_copy:
+        - keep `.agents/skills` and the second provider skills/config paths distinct
+    steps:
+      - Open Skills Library after a host scan.
+      - Open the multi-provider Project Detail screen.
+      - Inspect Skill Entries, Global Skills, and Provider Plugins tab bars.
+      - Click the non-Shared Agents provider tab in each tab bar.
+    expected_ui:
+      - Shared Agents is the default selected provider view.
+      - Provider tab bars do not show an "All" aggregate tab.
+      - Skill Entries, Global Skills, and Provider Plugins each show provider tabs with provider icons and counts.
+      - Clicking a provider tab shows only that provider's rows for the section.
+      - Provider Plugins appears after the skill-related Project Detail sections.
+      - The shared `.agents` provider label is "Shared Agents" and does not include "Skills".
+      - Skills Library focuses the Shared Agents provider view and does not show an "All skills" provider tab.
+    cross_screen_checks:
+      - Project Detail provider tab counts match the visible rows for each provider-specific section.
+      - Skills Library and Project Detail use the same "Shared Agents" label.
+    verifier:
+      evidence:
+        - Screenshot or DOM snapshot of Project Detail with Shared Agents selected.
+        - Screenshot or DOM snapshot after selecting the second provider tab.
+        - Screenshot or DOM snapshot of Skills Library provider view.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: allowed_read_only
 
   - id: TC-PROJ-008
     title: Project Detail reflects an external mutation only after explicit rescan

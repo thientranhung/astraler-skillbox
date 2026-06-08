@@ -77,7 +77,7 @@ const projectDetail: ProjectGetResponse = {
     {
       projectProviderId: 11,
       providerKey: "generic_agents",
-      displayName: "Shared Agent Skills",
+      displayName: "Shared Agents",
       providerStatus: "supported",
       detectionStatus: "detected",
       detectedPath: "/repo/demo/.agents",
@@ -154,6 +154,8 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getByText("Skillbox can manage this provider with the current feature set.")).toBeTruthy();
     expect(screen.getByText("Preview")).toBeTruthy();
     expect(screen.getByText("Linked to active host")).toBeTruthy();
+    const claudeTabs = screen.getAllByRole("button", { name: /Claude 1/i });
+    fireEvent.click(claudeTabs[claudeTabs.length - 1]);
     expect(screen.getByText("Broken link")).toBeTruthy();
   });
 
@@ -161,9 +163,12 @@ describe("ProjectDetailScreen UX clarity", () => {
     render(<ProjectDetailScreen />);
 
     expect(screen.getByText("current-skill")).toBeTruthy();
-    expect(screen.getByText("broken-skill")).toBeTruthy();
+    expect(screen.queryByText("broken-skill")).toBeNull();
+    expect(screen.queryByRole("button", { name: /All providers/i })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /Shared Agents 1/i }).length).toBeGreaterThanOrEqual(1);
 
-    fireEvent.click(screen.getByRole("button", { name: /Claude 1/i }));
+    const claudePluginTabs = screen.getAllByRole("button", { name: /Claude 1/i });
+    fireEvent.click(claudePluginTabs[claudePluginTabs.length - 1]);
 
     expect(screen.queryByText("current-skill")).toBeNull();
     expect(screen.getByText("broken-skill")).toBeTruthy();
@@ -187,7 +192,8 @@ describe("ProjectDetailScreen UX clarity", () => {
 
     rerender(<ProjectDetailScreen />);
     expect(screen.getByText("current-skill")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /All providers 1/i })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /Shared Agents 1/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: /All providers/i })).toBeNull();
   });
 
   it("shows project-relative skill paths directly and keeps copy actions for absolute paths", () => {
@@ -283,6 +289,59 @@ describe("ProjectDetailScreen UX clarity", () => {
     expect(screen.getByText("not configured")).toBeTruthy();
     expect(screen.getByText("dev-tools")).toBeTruthy();
     expect(screen.getByText("enabled")).toBeTruthy();
+  });
+
+  it("renders project plugin providers as tabs without an All aggregate", () => {
+    mockUseProviderPluginList.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: {
+        globals: [],
+        global: {
+          providerKey: "generic_agents",
+          userLayerPath: "/Users/test/.agents/config.json",
+          userLayerStatus: null,
+          lastScannedAt: null,
+          scanWarnings: [],
+          plugins: [],
+          marketplaces: [],
+          managedOutOfScope: false,
+        },
+        projects: [
+          {
+            projectId: 7,
+            providerKey: "claude",
+            layerStatuses: [
+              { layer: "project", scanStatus: "ok", filePath: "/repo/demo/.claude/settings.json", lastScannedAt: null, scanWarnings: [] },
+            ],
+            plugins: [{ pluginName: "claude-plugin", marketplaceName: "npm", effectiveStatus: "enabled", provenanceLayer: "user", layerBreakdown: [] }],
+            marketplaces: [],
+            managedOutOfScope: false,
+          },
+          {
+            projectId: 7,
+            providerKey: "generic_agents",
+            layerStatuses: [
+              { layer: "project", scanStatus: "ok", filePath: "/repo/demo/.agents/settings.json", lastScannedAt: null, scanWarnings: [] },
+            ],
+            plugins: [{ pluginName: "shared-plugin", marketplaceName: "local", effectiveStatus: "enabled", provenanceLayer: "user", layerBreakdown: [] }],
+            marketplaces: [],
+            managedOutOfScope: false,
+          },
+        ],
+      },
+    });
+
+    render(<ProjectDetailScreen />);
+    expect(screen.getAllByRole("button", { name: /Shared Agents 1/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: /^All/i })).toBeNull();
+    expect(screen.getByText("shared-plugin")).toBeTruthy();
+    expect(screen.queryByText("claude-plugin")).toBeNull();
+
+    const claudePluginTabs = screen.getAllByRole("button", { name: /Claude 1/i });
+    fireEvent.click(claudePluginTabs[claudePluginTabs.length - 1]);
+    expect(screen.queryByText("shared-plugin")).toBeNull();
+    expect(screen.getByText("claude-plugin")).toBeTruthy();
   });
 
   it("shows missing layer as 'not configured', not error language", () => {
@@ -564,7 +623,7 @@ const globalListWithEntries: GlobalListResponse = {
     {
       globalProviderLocationId: 1,
       providerKey: "generic_agents",
-      providerDisplayName: "Shared Agent Skills",
+      providerDisplayName: "Shared Agents",
       providerStatus: "supported",
       path: "/Users/test/.agents",
       skillsPath: "/Users/test/.agents/skills",
@@ -628,11 +687,56 @@ describe("ProjectDetailScreen GlobalSkillsSection", () => {
   it("renders active location entries with provider display name and global badge", () => {
     mockUseGlobalList.mockReturnValue({ data: globalListWithEntries, isPending: false, isError: false, error: null });
     render(<ProjectDetailScreen />);
-    // "Shared Agent Skills" appears in both Providers section and Global Skills section
-    expect(screen.getAllByText("Shared Agent Skills").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Shared Agents").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("global-skill-a")).toBeTruthy();
     // "global" badge (lowercase) is distinct from the "Global" plugin column header (uppercase)
     expect(screen.getByText("global")).toBeTruthy();
+  });
+
+  it("renders global skills providers as tabs without an All aggregate", () => {
+    mockUseGlobalList.mockReturnValue({
+      data: {
+        locations: [
+          globalListWithEntries.locations[0],
+          {
+            globalProviderLocationId: 6,
+            providerKey: "claude",
+            providerDisplayName: "Claude Code",
+            providerStatus: "supported",
+            path: "/Users/test/.claude",
+            skillsPath: "/Users/test/.claude/skills",
+            status: "active",
+            lastScannedAt: "2026-06-04T10:00:00Z",
+            entries: [
+              {
+                globalInstallId: 60,
+                skillName: "claude-global-skill",
+                skillId: 601,
+                mode: "symlink",
+                status: "current",
+                globalSkillPath: "/Users/test/.claude/skills/claude-global-skill",
+                sourceSkillPath: "/host/.claude/skills/claude-global-skill",
+                symlinkTargetPath: "/host/.claude/skills/claude-global-skill",
+              },
+            ],
+            warnings: [],
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<ProjectDetailScreen />);
+    expect(screen.queryByRole("button", { name: /^All/i })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /Shared Agents 1/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("global-skill-a")).toBeTruthy();
+    expect(screen.queryByText("claude-global-skill")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Claude Code 1/i }));
+    expect(screen.queryByText("global-skill-a")).toBeNull();
+    expect(screen.getByText("claude-global-skill")).toBeTruthy();
   });
 
   it("skips locations that are not active or have no entries", () => {

@@ -7,6 +7,7 @@ import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
 import { displayPath } from "../lib/display-path.js";
+import { providerDisplayName } from "../lib/provider-display.js";
 import type { GlobalListLocation, GlobalListEntry } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
@@ -109,7 +110,7 @@ export function GlobalSkillsScreen(): React.JSX.Element {
         const count = locations
           .filter((l) => l.providerKey === loc.providerKey)
           .reduce((sum, l) => sum + l.entries.length, 0);
-        tabs.push({ key: loc.providerKey, displayName: loc.providerDisplayName, count });
+        tabs.push({ key: loc.providerKey, displayName: providerDisplayName(loc.providerKey, loc.providerDisplayName), count });
       }
     }
     return tabs;
@@ -204,7 +205,7 @@ export function GlobalSkillsScreen(): React.JSX.Element {
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-900">
                       <ProviderIcon providerKey={loc.providerKey} />
-                      {loc.providerDisplayName}
+                      {providerDisplayName(loc.providerKey, loc.providerDisplayName)}
                     </span>
                     <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${statusBadgeClass(loc.status)}`}>
                       {statusLabel(loc.status)}

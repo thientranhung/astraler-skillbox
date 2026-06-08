@@ -8,6 +8,7 @@ import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { displayPath } from "../lib/display-path.js";
+import { providerShortLabel } from "../lib/provider-display.js";
 import type { PPGlobalView, PPGlobalEntry, UpdateCheckPluginResult } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
@@ -52,12 +53,7 @@ function updateCheckErrorLabel(error: string): string {
 }
 
 function providerLabel(providerKey: string): string {
-  switch (providerKey) {
-    case "claude": return "Claude";
-    case "codex": return "Codex";
-    case "antigravity_cli": return "Antigravity CLI";
-    default: return providerKey;
-  }
+  return providerKey === "antigravity_cli" ? "Antigravity CLI" : providerShortLabel(providerKey);
 }
 
 function PluginToggleButton({

@@ -53,8 +53,9 @@ const baseData = {
   skills: [
     makeSkill({ id: 1, name: "alpha-skill", status: "available" as const, projectsUsingCount: 3 }),
     makeSkill({ id: 2, name: "beta-skill", status: "missing" as const, projectsUsingCount: 0 }),
+    makeSkill({ id: 3, name: "claude-only", relativePath: ".claude/skills/claude-only", status: "available" as const, projectsUsingCount: 1 }),
   ],
-  totals: { available: 1, missing: 1, unreadable: 0, local_modified: 0, unknown: 0 },
+  totals: { available: 2, missing: 1, unreadable: 0, local_modified: 0, external_symlink: 0, unknown: 0 },
   lastScanAt: null,
   warnings: [],
 };
@@ -126,8 +127,9 @@ describe("SkillsLibraryScreen", () => {
     mockUseSkillsList.mockReturnValue({ isPending: false, isError: false, data: baseData });
 
     render(<SkillsLibraryScreen />);
-    expect(screen.getByRole("button", { name: /All skills 2/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Shared Agent Skills 2/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /All skills/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /Shared Agents 2/i })).toBeTruthy();
+    expect(screen.queryByText("claude-only")).toBeNull();
   });
 
   it("navigates to /skills/$skillId on row click", () => {
@@ -149,7 +151,7 @@ describe("SkillsLibraryScreen", () => {
     mockUseSkillsList.mockReturnValue({
       isPending: false,
       isError: false,
-      data: { ...baseData, skills: [], totals: { available: 0, missing: 0, unreadable: 0, local_modified: 0, unknown: 0 }, lastScanAt: null },
+      data: { ...baseData, skills: [], totals: { available: 0, missing: 0, unreadable: 0, local_modified: 0, external_symlink: 0, unknown: 0 }, lastScanAt: null },
     });
 
     render(<SkillsLibraryScreen />);
@@ -161,7 +163,7 @@ describe("SkillsLibraryScreen", () => {
     mockUseSkillsList.mockReturnValue({
       isPending: false,
       isError: false,
-      data: { ...baseData, skills: [], totals: { available: 0, missing: 0, unreadable: 0, local_modified: 0, unknown: 0 }, lastScanAt: "2026-06-05T10:00:00Z" },
+      data: { ...baseData, skills: [], totals: { available: 0, missing: 0, unreadable: 0, local_modified: 0, external_symlink: 0, unknown: 0 }, lastScanAt: "2026-06-05T10:00:00Z" },
     });
 
     render(<SkillsLibraryScreen />);

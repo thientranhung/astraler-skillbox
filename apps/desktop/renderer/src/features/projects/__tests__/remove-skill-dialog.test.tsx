@@ -8,7 +8,7 @@ afterEach(() => cleanup());
 
 const baseProps = {
   skillName: "documentation-writer",
-  providerDisplayName: "Shared Agent Skills",
+  providerDisplayName: "Shared Agents",
   path: "/repo/content-lab/.agents/skills/documentation-writer",
   isPending: false,
 };
@@ -26,7 +26,7 @@ describe("RemoveSkillDialog", () => {
   it("shows skill, provider, and exact path", () => {
     render(<RemoveSkillDialog {...baseProps} onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByText("documentation-writer")).toBeTruthy();
-    expect(screen.getByText(/Shared Agent Skills/)).toBeTruthy();
+    expect(screen.getByText(/Shared Agents/)).toBeTruthy();
     expect(screen.getByText(baseProps.path)).toBeTruthy();
     expect(screen.getByText(/not affected/i)).toBeTruthy();
   });

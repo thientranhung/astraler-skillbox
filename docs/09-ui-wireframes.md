@@ -17,9 +17,9 @@ technical architecture or visual design.
 
 ## Table Notation
 
-ASCII table examples use the abbreviation **Shared Agents** for the full user-facing label
-**Shared Agent Skills**. The full name appears in filters, selection dialogs,
-status labels, and confirmation steps where it is the primary information shown to the user.
+Use **Shared Agents** as the user-facing label for the shared `.agents`
+provider. Keep `generic_agents` as the internal stable provider key in code,
+contracts, database rows, and verifier output.
 
 ## Navigation Shell
 
@@ -228,7 +228,7 @@ Projects
 [Add Project] [Scan All]
 
 Filters
-  Provider: all / Shared Agent Skills / Claude / unsupported
+  Provider: Shared Agents / Claude / unsupported
   Status: all / active / missing / warnings
   Search: __________________
 
@@ -261,7 +261,7 @@ Path: /repo/content-lab
 Status: active
 
 Providers
-  [Shared Agent Skills] supported    .agents/skills     5 skills
+  [Shared Agents] supported    .agents/skills     5 skills
   [Claude]         experimental .claude/...        3 skills
 
 Actions
@@ -365,7 +365,7 @@ Flow screens:
 Add Skills                                                   [X]
 
 Tab strip (logo + displayName, hover shows full path):
-  [claude-icon] Claude | [agents-icon] Generic Agents
+  [claude-icon] Claude | [agents-icon] Shared Agents
 
 Skill list (scrollable, max-h 48):
   [ ] documentation-writer            docs/documentation-writer
@@ -588,7 +588,7 @@ Direct installs unaffected:
   project-e
 
 Global symlink installs updated immediately:
-  User Global (Shared Agent Skills)
+  User Global (Shared Agents)
 
 [Update Host Copy] [Cancel]
 ```

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, RefreshCw, FolderOpen, TerminalSquare, Trash2, AlertCircle, PlusCircle, Copy, Check } from "lucide-react";
 import { useProjectDetail } from "../features/projects/use-project-detail.js";
@@ -17,6 +17,7 @@ import { useActiveHostSkills } from "../features/skills/use-active-host-skills.j
 import { useGlobalList } from "../features/global-skills/use-global-list.js";
 import { ErrorDisplay } from "../components/error-display.js";
 import { ProviderIcon } from "../components/provider-icon.js";
+import { orderBySharedAgentsFirst, providerDisplayName, providerShortLabel } from "../lib/provider-display.js";
 import type { ProjectGetEntry, ProjectGetProvider, PPLayerStatus, PPProjectEntry, GlobalListEntry } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
@@ -57,6 +58,36 @@ function EntryStatusBadge({ status }: { status: ProjectGetEntry["status"] }): Re
   );
 }
 
+function ProviderTab({
+  providerKey,
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  providerKey: string;
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs font-medium ${
+        active
+          ? "border-zinc-700 bg-zinc-900 text-white"
+          : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+      }`}
+    >
+      <ProviderIcon providerKey={providerKey} />
+      {label}
+      <span className="opacity-70">{count}</span>
+    </button>
+  );
+}
+
 function ProviderRow({ provider }: { provider: ProjectGetProvider }): React.JSX.Element {
   const providerStatus = PROVIDER_STATUS_CONFIG[provider.providerStatus] ?? PROVIDER_STATUS_CONFIG.unsupported;
   return (
@@ -64,7 +95,7 @@ function ProviderRow({ provider }: { provider: ProjectGetProvider }): React.JSX.
       <td className="px-3 py-1.5 text-xs font-medium text-zinc-900">
         <span className="inline-flex items-center gap-1.5">
           <ProviderIcon providerKey={provider.providerKey} />
-          {provider.displayName}
+          {providerDisplayName(provider.providerKey, provider.displayName)}
         </span>
       </td>
       <td className="px-3 py-1.5 text-xs">
@@ -219,15 +250,44 @@ const EFFECTIVE_GLOBAL_PROVIDER_STATUSES = new Set<ProjectGetProvider["detection
 
 function GlobalSkillsSection({ projectProviders }: { projectProviders: ProjectGetProvider[] }): React.JSX.Element {
   const { data, isPending, isError, error } = useGlobalList();
-  const projectProviderKeys = new Set(
-    projectProviders
-      .filter((provider) => EFFECTIVE_GLOBAL_PROVIDER_STATUSES.has(provider.detectionStatus))
-      .map((provider) => provider.providerKey),
+  const [activeProviderKey, setActiveProviderKey] = useState<string | null>(null);
+  const projectProviderKeys = useMemo(
+    () => new Set(
+      projectProviders
+        .filter((provider) => EFFECTIVE_GLOBAL_PROVIDER_STATUSES.has(provider.detectionStatus))
+        .map((provider) => provider.providerKey),
+    ),
+    [projectProviders],
   );
 
-  const activeLocations = (data?.locations ?? []).filter(
-    (loc) => projectProviderKeys.has(loc.providerKey) && loc.status === "active" && loc.entries.length > 0,
+  const activeLocations = useMemo(
+    () => (data?.locations ?? []).filter(
+      (loc) => projectProviderKeys.has(loc.providerKey) && loc.status === "active" && loc.entries.length > 0,
+    ),
+    [data?.locations, projectProviderKeys],
   );
+  const providerTabs = useMemo(
+    () => orderBySharedAgentsFirst(activeLocations).map((location) => ({
+      key: location.providerKey,
+      displayName: providerDisplayName(location.providerKey, location.providerDisplayName),
+      count: location.entries.length,
+    })),
+    [activeLocations],
+  );
+  const visibleLocations =
+    activeProviderKey == null
+      ? []
+      : activeLocations.filter((location) => location.providerKey === activeProviderKey);
+
+  useEffect(() => {
+    if (providerTabs.length === 0) {
+      if (activeProviderKey != null) setActiveProviderKey(null);
+      return;
+    }
+    if (activeProviderKey == null || !providerTabs.some((tab) => tab.key === activeProviderKey)) {
+      setActiveProviderKey(providerTabs[0].key);
+    }
+  }, [activeProviderKey, providerTabs]);
 
   return (
     <div>
@@ -253,12 +313,24 @@ function GlobalSkillsSection({ projectProviders }: { projectProviders: ProjectGe
       )}
 
       {!isPending && !isError && activeLocations.length > 0 && (
-        <div className="flex flex-col gap-4">
-          {activeLocations.map((location) => (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-1">
+            {providerTabs.map((tab) => (
+              <ProviderTab
+                key={tab.key}
+                providerKey={tab.key}
+                label={tab.displayName}
+                count={tab.count}
+                active={activeProviderKey === tab.key}
+                onClick={() => setActiveProviderKey(tab.key)}
+              />
+            ))}
+          </div>
+          {visibleLocations.map((location) => (
             <div key={location.globalProviderLocationId} className="flex flex-col gap-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-700">
                 <ProviderIcon providerKey={location.providerKey} />
-                <span>{location.providerDisplayName}</span>
+                <span>{providerDisplayName(location.providerKey, location.providerDisplayName)}</span>
                 <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[11px] font-medium text-purple-700">
                   global
                 </span>
@@ -372,6 +444,7 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
   const { data, isPending, isError, error } = useProviderPluginList();
   const setEnabledMutation = useSetProviderPluginEnabled();
   const removeOverrideMutation = useRemoveProviderPluginOverride();
+  const [activeProviderKey, setActiveProviderKey] = useState<string | null>(null);
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
   const isRemovingOverride = removeOverrideMutation.isPending || removeOverrideMutation.operationId != null;
   const isOperationInFlight = isTogglingPlugin || isRemovingOverride || scanInFlight;
@@ -388,7 +461,24 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
     removeOverrideMutation.mutate({ providerKey, pluginName, marketplaceName, layer: "project", projectId });
   }
 
-  const projectViews = data?.projects.filter((p) => p.projectId === projectId) ?? [];
+  const projectViews = useMemo(
+    () => orderBySharedAgentsFirst(data?.projects.filter((p) => p.projectId === projectId) ?? []),
+    [data?.projects, projectId],
+  );
+  const visibleProjectViews =
+    activeProviderKey == null
+      ? []
+      : projectViews.filter((projectView) => projectView.providerKey === activeProviderKey);
+
+  useEffect(() => {
+    if (projectViews.length === 0) {
+      if (activeProviderKey != null) setActiveProviderKey(null);
+      return;
+    }
+    if (activeProviderKey == null || !projectViews.some((projectView) => projectView.providerKey === activeProviderKey)) {
+      setActiveProviderKey(projectViews[0].providerKey);
+    }
+  }, [activeProviderKey, projectViews]);
 
   return (
     <div>
@@ -411,12 +501,24 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
       )}
 
       {!isPending && !isError && projectViews.length > 0 && (
-        <div className="flex flex-col gap-5">
-          {projectViews.map((projectView) => (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-1">
+            {projectViews.map((projectView) => (
+              <ProviderTab
+                key={projectView.providerKey}
+                providerKey={projectView.providerKey}
+                label={providerShortLabel(projectView.providerKey)}
+                count={projectView.plugins.length}
+                active={activeProviderKey === projectView.providerKey}
+                onClick={() => setActiveProviderKey(projectView.providerKey)}
+              />
+            ))}
+          </div>
+          {visibleProjectViews.map((projectView) => (
             <div key={projectView.providerKey} className="flex flex-col gap-3">
               <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-700">
                 <ProviderIcon providerKey={projectView.providerKey} />
-                <span>{projectView.providerKey === "codex" ? "Codex" : projectView.providerKey === "claude" ? "Claude" : projectView.providerKey}</span>
+                <span>{providerShortLabel(projectView.providerKey)}</span>
               </div>
           {/* Layer statuses */}
           <div className="overflow-x-auto rounded border border-zinc-200">
@@ -612,24 +714,31 @@ export function ProjectDetailScreen(): React.JSX.Element {
   const [removeTarget, setRemoveTarget] = useState<ProjectGetEntry | null>(null);
   const activeHostSkills = useActiveHostSkills();
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [selectedProviderId, setSelectedProviderId] = useState<"all" | number>("all");
+  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
 
   const providerDisplayNameFor = (entry: ProjectGetEntry): string => {
     const match = data?.providers.find((p) => p.projectProviderId === entry.projectProviderId);
-    return match?.displayName ?? entry.providerKey;
+    return providerDisplayName(entry.providerKey, match?.displayName ?? entry.providerKey);
   };
 
+  const orderedProviders = useMemo(
+    () => orderBySharedAgentsFirst(data?.providers ?? []),
+    [data?.providers],
+  );
   const filteredEntries =
-    data == null || selectedProviderId === "all"
-      ? data?.entries ?? []
+    data == null || selectedProviderId == null
+      ? []
       : data.entries.filter((entry) => entry.projectProviderId === selectedProviderId);
 
   useEffect(() => {
-    if (selectedProviderId === "all" || data == null) return;
-    if (!data.providers.some((provider) => provider.projectProviderId === selectedProviderId)) {
-      setSelectedProviderId("all");
+    if (data == null || orderedProviders.length === 0) {
+      if (selectedProviderId != null) setSelectedProviderId(null);
+      return;
     }
-  }, [data, selectedProviderId, validId]);
+    if (selectedProviderId == null || !orderedProviders.some((provider) => provider.projectProviderId === selectedProviderId)) {
+      setSelectedProviderId(orderedProviders[0].projectProviderId);
+    }
+  }, [data, orderedProviders, selectedProviderId, validId]);
 
   const autoScannedRef = useRef(false);
   useEffect(() => {
@@ -781,7 +890,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
                       To make this project install-ready, create a provider folder manually inside the project, for example:
                     </p>
                     <ul className="mt-1.5 list-inside list-disc text-xs text-zinc-500">
-                      <li><code className="font-mono">.agents/skills/</code> — Shared Agent Skills</li>
+                      <li><code className="font-mono">.agents/skills/</code> — Shared Agents</li>
                       <li><code className="font-mono">.claude/skills/</code> — Claude Code</li>
                     </ul>
                     <p className="mt-1.5 text-xs text-zinc-400">After creating the folder, scan the project again to detect providers.</p>
@@ -800,7 +909,7 @@ export function ProjectDetailScreen(): React.JSX.Element {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.providers.map((p) => (
+                      {orderedProviders.map((p) => (
                         <ProviderRow key={p.projectProviderId} provider={p} />
                       ))}
                     </tbody>
@@ -808,12 +917,6 @@ export function ProjectDetailScreen(): React.JSX.Element {
                 </div>
               )}
             </div>
-
-            {/* Provider Plugins */}
-            <ProjectPluginSection projectId={validId} scanInFlight={isScanning} />
-
-            {/* Global Skills */}
-            <GlobalSkillsSection projectProviders={data.providers} />
 
             {/* Skill Entries */}
             <div>
@@ -827,33 +930,15 @@ export function ProjectDetailScreen(): React.JSX.Element {
               </h3>
               {data.providers.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProviderId("all")}
-                    className={`cursor-pointer rounded border px-2 py-1 text-xs font-medium ${
-                      selectedProviderId === "all"
-                        ? "border-zinc-700 bg-zinc-900 text-white"
-                        : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-                    }`}
-                  >
-                    All providers
-                    <span className="ml-1 opacity-70">{data.entries.length}</span>
-                  </button>
-                  {data.providers.map((provider) => (
-                    <button
+                  {orderedProviders.map((provider) => (
+                    <ProviderTab
                       key={provider.projectProviderId}
-                      type="button"
+                      providerKey={provider.providerKey}
+                      label={providerDisplayName(provider.providerKey, provider.displayName)}
+                      count={provider.entryCount}
+                      active={selectedProviderId === provider.projectProviderId}
                       onClick={() => setSelectedProviderId(provider.projectProviderId)}
-                      className={`inline-flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-xs font-medium ${
-                        selectedProviderId === provider.projectProviderId
-                          ? "border-zinc-700 bg-zinc-900 text-white"
-                          : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-                      }`}
-                    >
-                      <ProviderIcon providerKey={provider.providerKey} />
-                      {provider.displayName}
-                      <span className="opacity-70">{provider.entryCount}</span>
-                    </button>
+                    />
                   ))}
                 </div>
               )}
@@ -895,6 +980,12 @@ export function ProjectDetailScreen(): React.JSX.Element {
                 </div>
               )}
             </div>
+
+            {/* Global Skills */}
+            <GlobalSkillsSection projectProviders={data.providers} />
+
+            {/* Provider Plugins */}
+            <ProjectPluginSection projectId={validId} scanInFlight={isScanning} />
           </div>
         )}
       </div>
