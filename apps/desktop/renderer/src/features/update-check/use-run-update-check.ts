@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { methods } from "../../lib/core-client/methods.js";
@@ -11,11 +11,17 @@ export type UpdateCheckStatus = "idle" | "running" | "ok" | "partial_error" | "a
 export function useRunUpdateCheck() {
   const [status, setStatus] = useState<UpdateCheckStatus>("idle");
   const [results, setResults] = useState<UpdateCheckPluginResult[]>([]);
-  const lastRunRef = useRef<number>(0);
+  // rateLimited is state (not a ref) so that expiry triggers a re-render and re-enables the button.
+  const [rateLimited, setRateLimited] = useState(false);
+  const rateLimitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isRateLimited = useCallback(() => {
-    return Date.now() - lastRunRef.current < RATE_LIMIT_MS;
+  useEffect(() => {
+    return () => {
+      if (rateLimitTimerRef.current != null) clearTimeout(rateLimitTimerRef.current);
+    };
   }, []);
+
+  const isRateLimited = useCallback(() => rateLimited, [rateLimited]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -25,7 +31,10 @@ export function useRunUpdateCheck() {
       setStatus("running");
     },
     onSuccess: (data) => {
-      lastRunRef.current = Date.now();
+      // Start rate-limit window; the state update after RATE_LIMIT_MS re-renders the button.
+      if (rateLimitTimerRef.current != null) clearTimeout(rateLimitTimerRef.current);
+      setRateLimited(true);
+      rateLimitTimerRef.current = setTimeout(() => setRateLimited(false), RATE_LIMIT_MS);
       if (data.status === "git_not_found") {
         setStatus("git_not_found");
         toast.error("git is required for update checks. Please install git.");

@@ -401,6 +401,59 @@ func TestCheckAppUpdate_ParseError(t *testing.T) {
 	}
 }
 
+// TestCheckAppUpdate_LatestNotFound_TagFallback_UpToDate verifies F-001 / TC-ABOUT-001:
+// GitHub /releases/latest returns 404 (no "latest" designation on the repo), but the
+// current version's tag release exists at /releases/tags/v0.1.2.
+// Expected: no error, updateAvailable=false, latestVersion=currentVersion.
+func TestCheckAppUpdate_LatestNotFound_TagFallback_UpToDate(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/releases/latest" {
+			http.NotFound(w, r)
+			return
+		}
+		// Tag path: /releases/tags/v0.1.2
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, `{"tag_name":"v0.1.2","html_url":"https://github.com/example/releases/tag/v0.1.2"}`)
+	}))
+	defer srv.Close()
+
+	svc := newAppCheckSvc(t, srv)
+	result, err := svc.CheckAppUpdate(context.Background(), "0.1.2")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Error != nil {
+		t.Errorf("expected no error, got %q", *result.Error)
+	}
+	if result.UpdateAvailable {
+		t.Error("expected updateAvailable=false: current version has a published tag release")
+	}
+	if result.LatestVersion == nil || *result.LatestVersion != "0.1.2" {
+		t.Errorf("latestVersion: got %v, want 0.1.2", result.LatestVersion)
+	}
+	if result.ReleaseURL == nil || *result.ReleaseURL == "" {
+		t.Error("releaseUrl should be present from tag fallback response")
+	}
+}
+
+// TestCheckAppUpdate_LatestNotFound_TagAlsoNotFound verifies that when both
+// /releases/latest and the tag fallback return 404, we still return no_releases.
+func TestCheckAppUpdate_LatestNotFound_TagAlsoNotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	svc := newAppCheckSvc(t, srv)
+	result, err := svc.CheckAppUpdate(context.Background(), "0.1.2")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Error == nil || *result.Error != "no_releases" {
+		t.Errorf("error: got %v, want no_releases", result.Error)
+	}
+}
+
 // TestCheckAppUpdate_NetworkError verifies that a closed server -> error="network_error".
 func TestCheckAppUpdate_NetworkError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))

@@ -169,4 +169,42 @@ describe("useRunUpdateCheck", () => {
     expect(mockRunUpdateCheck.mock.calls.length).toBe(callsBefore);
     expect(result.current.status).toBe("ok");
   });
+
+  it("re-enables in place after RATE_LIMIT_MS following no-update-sources terminal response (TC-PLUGIN-005 regression)", async () => {
+    // Regression guard: the Check Updates button must re-enable after the rate-limit window
+    // without the user navigating away. Previously isRateLimited was ref-based and never
+    // triggered a re-render after the timer expired, leaving the button permanently disabled.
+    //
+    // We spy on the 10 000ms setTimeout to capture its callback so we can fire it
+    // synchronously inside act(), avoiding fake-timer / waitFor polling conflicts.
+    let capturedExpiryCb: (() => void) | null = null;
+    const origSetTimeout = globalThis.setTimeout;
+    vi.spyOn(globalThis, "setTimeout").mockImplementation((fn: any, ms?: number, ...rest: any[]) => {
+      if (ms === 10_000 && typeof fn === "function") {
+        capturedExpiryCb = () => fn(...rest);
+        return 999_999 as unknown as ReturnType<typeof setTimeout>;
+      }
+      return origSetTimeout(fn, ms, ...rest) as ReturnType<typeof setTimeout>;
+    });
+
+    try {
+      mockRunUpdateCheck.mockResolvedValue({ status: "ok", plugins: [] });
+      const { result } = renderHook(() => useRunUpdateCheck(), { wrapper: makeWrapper() });
+
+      await act(async () => { result.current.run(); });
+      await waitFor(() => expect(result.current.status).toBe("ok"));
+
+      // After terminal response, button must be rate-limited (disabled).
+      expect(result.current.isRateLimited()).toBe(true);
+      expect(capturedExpiryCb).not.toBeNull();
+
+      // Simulate timer expiry - triggers setRateLimited(false), re-render, and button re-enable.
+      await act(async () => { capturedExpiryCb!(); });
+
+      // Rate limit expired - button re-enables in place, no navigation needed.
+      expect(result.current.isRateLimited()).toBe(false);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
 });

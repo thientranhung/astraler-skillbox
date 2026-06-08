@@ -32,7 +32,7 @@ type UpdateCheckService struct {
 	claudeConfigDir string
 	// BatchDeadline overrides updateCheckBatchDeadline when non-zero; set in tests.
 	BatchDeadline time.Duration
-	// AppCheckURL overrides githubReleasesURL when non-empty; set in tests.
+	// AppCheckURL overrides githubAPIBase when non-empty; set in tests.
 	AppCheckURL string
 	// HTTPClient overrides http.DefaultClient when non-nil; set in tests.
 	HTTPClient *http.Client
@@ -267,7 +267,9 @@ func ClaudeConfigDirFromHomeDir() string {
 }
 
 const (
-	githubReleasesURL  = "https://api.github.com/repos/thientranhung/astraler-skillbox/releases/latest"
+	// githubAPIBase is the base URL for GitHub release API calls.
+	// AppCheckURL overrides this entire base in tests.
+	githubAPIBase     = "https://api.github.com/repos/thientranhung/astraler-skillbox"
 	appCheckHTTPTimeout = 8 * time.Second
 	appCheckBodyLimit  = 64 * 1024
 )
@@ -282,48 +284,68 @@ type AppCheckUpdateResult struct {
 }
 
 // CheckAppUpdate fetches the latest GitHub release and compares it with currentVersion.
-// Always runs — no opt-in gate. App version check is standard behavior.
+// Always runs - no opt-in gate. App version check is standard behavior.
+//
+// When /releases/latest returns 404 (GitHub only serves it when a release is explicitly
+// marked "latest"), we fall back to /releases/tags/v{currentVersion}. If that tag exists
+// the user is already on a published release and is considered up-to-date.
 func (s *UpdateCheckService) CheckAppUpdate(ctx context.Context, currentVersion string) (AppCheckUpdateResult, error) {
 	httpCtx, cancel := context.WithTimeout(ctx, appCheckHTTPTimeout)
 	defer cancel()
 
-	checkURL := s.AppCheckURL
-	if checkURL == "" {
-		checkURL = githubReleasesURL
+	apiBase := s.AppCheckURL
+	if apiBase == "" {
+		apiBase = githubAPIBase
 	}
 	httpClient := s.HTTPClient
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 
-	req, err := http.NewRequestWithContext(httpCtx, http.MethodGet, checkURL, nil)
+	result := s.fetchGitHubRelease(httpCtx, httpClient, apiBase+"/releases/latest", currentVersion)
+	if result.Error == nil || *result.Error != "no_releases" {
+		return result, nil
+	}
+
+	// Tag fallback: try the current version's tag release directly.
+	tagResult := s.fetchGitHubRelease(httpCtx, httpClient, apiBase+"/releases/tags/v"+currentVersion, currentVersion)
+	if tagResult.Error == nil {
+		tagResult.UpdateAvailable = false
+		return tagResult, nil
+	}
+	return result, nil
+}
+
+// fetchGitHubRelease performs a single GitHub release API GET and parses the result.
+func (s *UpdateCheckService) fetchGitHubRelease(ctx context.Context, client *http.Client, url, currentVersion string) AppCheckUpdateResult {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		errStr := "network_error"
-		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "Skillbox/"+currentVersion)
 
-	resp, err := httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		errStr := "network_error"
-		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
 		errStr := "no_releases"
-		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}
 	}
 	if resp.StatusCode != http.StatusOK {
 		errStr := "http_error"
-		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, appCheckBodyLimit))
 	if err != nil {
 		errStr := "network_error"
-		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}
 	}
 
 	var release struct {
@@ -332,7 +354,7 @@ func (s *UpdateCheckService) CheckAppUpdate(ctx context.Context, currentVersion 
 	}
 	if err := json.Unmarshal(body, &release); err != nil {
 		errStr := "parse_error"
-		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}, nil
+		return AppCheckUpdateResult{CurrentVersion: currentVersion, Error: &errStr}
 	}
 
 	latestVersion := strings.TrimPrefix(release.TagName, "v")
@@ -344,5 +366,5 @@ func (s *UpdateCheckService) CheckAppUpdate(ctx context.Context, currentVersion 
 		LatestVersion:   &latestVersion,
 		UpdateAvailable: updateAvailable,
 		ReleaseURL:      &releaseURL,
-	}, nil
+	}
 }
