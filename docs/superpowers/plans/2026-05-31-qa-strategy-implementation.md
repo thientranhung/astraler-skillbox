@@ -267,8 +267,8 @@ echo "SANDBOX ready: HOME=$HOME DB=$SKILLBOX_DB_PATH"
 
 Theo spec §5 (path tuyệt đối):
 ```bash
-mkdir -p "/Users/tranthien/Documents/0.GLOBAL/host-skills-test"           # trống → test "thiếu .agents/skills"
-mkdir -p "/Users/tranthien/Documents/1.DATA/project-test-astraler-skillbox" # trống → test "no provider detected"
+mkdir -p "<global-documents>/host-skills-test"           # trống → test "thiếu .agents/skills"
+mkdir -p "<project-documents>/project-test-astraler-skillbox" # trống → test "no provider detected"
 ```
 
 - [ ] **Step 4: Viết `scripts/qa-sandbox/prove-isolation.sh` (CHỨNG MINH)**

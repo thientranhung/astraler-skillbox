@@ -312,7 +312,7 @@ Apply this exact, scoped substitution in `RELEASE.md`, `SMOKE.md`, and `SCAFFOLD
 Run (scoped to the three files; `-` after `Skillbox` ensures `.app` references are never touched):
 
 ```bash
-cd /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox
+cd <repo>
 for f in RELEASE.md SMOKE.md SCAFFOLD.md; do
   perl -0pi -e 's/Astraler\\ Skillbox-/astraler-skillbox-/g; s/Astraler Skillbox-/astraler-skillbox-/g' "$f"
 done
@@ -325,7 +325,7 @@ After this, paths like `ls "apps/desktop/dist/astraler-skillbox-0.1.0-arm64.dmg"
 Run:
 
 ```bash
-cd /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox
+cd <repo>
 echo "--- should be EMPTY (no old dmg basename) ---"
 grep -n "Astraler Skillbox-\|Astraler\\\\ Skillbox-" RELEASE.md SMOKE.md SCAFFOLD.md || echo "clean"
 echo "--- .app references must still be present/intact ---"

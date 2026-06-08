@@ -37,3 +37,4 @@ docs/qa/runs/**/Library/Caches/
 docs/qa/runs/**/Library/Application Support/go/telemetry/
 docs/qa/runs/**/go/pkg/mod/
 docs/qa/runs/**/evidence/*.pid
+.codex/

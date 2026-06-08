@@ -8,15 +8,15 @@ run:
   operator: Codex + astraler-qa
 
 environment:
-  repo_root: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox
-  desktop_dir: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/apps/desktop
-  fixture_source: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/fixtures/qa
-  fixture_copy: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/fixtures
+  repo_root: <repo>
+  desktop_dir: <repo>/apps/desktop
+  fixture_source: <repo>/fixtures/qa
+  fixture_copy: <repo>/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/fixtures
   cdp_port: 49222
-  qa_home: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/qa-home
-  qa_db_path: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/qa-home/qa.db
-  qa_host: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/fixtures/host
-  qa_project: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/fixtures/projects/no-provider-project
+  qa_home: <repo>/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/qa-home
+  qa_db_path: <repo>/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/qa-home/qa.db
+  qa_host: <repo>/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/fixtures/host
+  qa_project: <repo>/docs/qa/runs/2026-06-05-post-merge-pr38-provider-truth-scan-ux/fixtures/projects/no-provider-project
   real_environment_allowed: false
 
 selection:

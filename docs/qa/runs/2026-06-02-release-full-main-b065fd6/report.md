@@ -346,10 +346,10 @@ Append one result object per case to `results.jsonl` during execution.
 
 ## Environment
 
-- QA home: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/qa-home`
-- QA DB: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/qa-home/qa.db`
-- Fixture copy: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/fixtures`
-- Evidence: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-02-release-full-main-b065fd6/evidence`
+- QA home: `<repo>/docs/qa/runs/2026-06-02-release-full-main-b065fd6/qa-home`
+- QA DB: `<repo>/docs/qa/runs/2026-06-02-release-full-main-b065fd6/qa-home/qa.db`
+- Fixture copy: `<repo>/docs/qa/runs/2026-06-02-release-full-main-b065fd6/fixtures`
+- Evidence: `<repo>/docs/qa/runs/2026-06-02-release-full-main-b065fd6/evidence`
 - CDP port: `49222`
 - Real environment allowed: `false`
 

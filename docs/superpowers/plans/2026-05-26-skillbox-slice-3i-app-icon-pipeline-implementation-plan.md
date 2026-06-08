@@ -454,7 +454,7 @@ apps/desktop/build/.gen/
 
 - [ ] **Step 4: Verify the artifacts are untracked/ignored**
 
-Run: `cd /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox && git check-ignore apps/desktop/build/icon.icns apps/desktop/build/.gen/icon.iconset/icon_16x16.png`
+Run: `cd <repo> && git check-ignore apps/desktop/build/icon.icns apps/desktop/build/.gen/icon.iconset/icon_16x16.png`
 Expected: both paths echoed back (i.e. ignored).
 
 Run: `git status --porcelain -- apps/desktop/build`
@@ -1146,7 +1146,7 @@ pnpm release:mac:icon-verify "dist/mac-arm64/Astraler Skillbox.app"  # confirm t
 
 - [ ] **Step 4: Verify the doc renders / no broken fences**
 
-Run: `cd /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox && grep -n "release:mac:icon-verify\|generate:icon\|D8" RELEASE.md`
+Run: `cd <repo> && grep -n "release:mac:icon-verify\|generate:icon\|D8" RELEASE.md`
 Expected: matches in §1, §3, and §7 as added above.
 
 - [ ] **Step 5: PM checkpoint (commit)** — *checkpoint only.*
@@ -1212,7 +1212,7 @@ Expected: app boots from the mounted DMG, Go core ready, clean detach; `exit=0`.
 
 - [ ] **Step 10: Leak checks + whitespace hygiene**
 
-Run: `cd /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox && git diff --check`
+Run: `cd <repo> && git diff --check`
 Expected: no whitespace errors.
 
 Run: `git status --porcelain -- apps/desktop/build`
@@ -1223,7 +1223,7 @@ Expected: both paths echoed (ignored).
 
 - [ ] **Step 11: Confirm `release:mac:full` composition is unchanged**
 
-Run: `cd /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox && git diff -- apps/desktop/scripts/release-mac-full.mjs apps/desktop/scripts/release-mac-full.lib.mjs`
+Run: `cd <repo> && git diff -- apps/desktop/scripts/release-mac-full.mjs apps/desktop/scripts/release-mac-full.lib.mjs`
 Expected: **empty diff** (this slice must not modify the full-release composition).
 
 - [ ] **Step 12: Final PM checkpoint** — *checkpoint only; do not run `git add`/`git commit`.* Confirm with PM, then a single integration commit (or the per-task commits above) at PM discretion.

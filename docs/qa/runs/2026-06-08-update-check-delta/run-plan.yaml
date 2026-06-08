@@ -9,15 +9,15 @@ run:
   operator: qa-lead-quinn
 
 environment:
-  repo_root: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox
-  desktop_dir: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/apps/desktop
-  fixture_source: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/fixtures/qa
-  fixture_copy: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-08-update-check-delta/fixtures
+  repo_root: <repo>
+  desktop_dir: <repo>/apps/desktop
+  fixture_source: <repo>/fixtures/qa
+  fixture_copy: <repo>/docs/qa/runs/2026-06-08-update-check-delta/fixtures
   cdp_port: 49222
-  qa_home: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-08-update-check-delta/qa-home
-  qa_db_path: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-08-update-check-delta/qa-home/qa.db
-  qa_host: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-08-update-check-delta/qa-host
-  qa_project: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-08-update-check-delta/qa-project
+  qa_home: <repo>/docs/qa/runs/2026-06-08-update-check-delta/qa-home
+  qa_db_path: <repo>/docs/qa/runs/2026-06-08-update-check-delta/qa-home/qa.db
+  qa_host: <repo>/docs/qa/runs/2026-06-08-update-check-delta/qa-host
+  qa_project: <repo>/docs/qa/runs/2026-06-08-update-check-delta/qa-project
   real_environment_allowed: false
 
 selection:
@@ -52,10 +52,10 @@ commands:
     desktop_focused: "(cd apps/desktop && pnpm test --run renderer/src/features/app-about/__tests__/use-check-app-update.test.tsx renderer/src/screens/__tests__/about-screen.test.tsx renderer/src/features/update-check/__tests__/use-run-update-check.test.tsx electron/main/core-process/__tests__/json-rpc-client.test.ts)"
     desktop_typecheck: "(cd apps/desktop && pnpm typecheck)"
     diff_check: "git diff --check"
-  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-08-update-check-delta/qa-home/qa.db HOME=/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-08-update-check-delta/qa-home pnpm dev)"
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=<repo>/docs/qa/runs/2026-06-08-update-check-delta/qa-home/qa.db HOME=<repo>/docs/qa/runs/2026-06-08-update-check-delta/qa-home pnpm dev)"
   cdp_health: "curl -s http://127.0.0.1:49222/json/version"
   cdp_attach: "agent-browser connect 49222"
-  db_update_cache_query: "sqlite3 /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-08-update-check-delta/qa-home/qa.db \"SELECT provider_key, plugin_name, marketplace_name, checked_at, error FROM plugin_update_check_cache ORDER BY checked_at;\""
+  db_update_cache_query: "sqlite3 <repo>/docs/qa/runs/2026-06-08-update-check-delta/qa-home/qa.db \"SELECT provider_key, plugin_name, marketplace_name, checked_at, error FROM plugin_update_check_cache ORDER BY checked_at;\""
   network_observation: "Use lsof/nettop/tcpdump or app logs to prove no non-local outbound network before manual update actions; record command and output in evidence."
 
 notes:

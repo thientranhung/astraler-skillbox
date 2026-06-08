@@ -81,10 +81,10 @@ None for the three current-scope delta product fixes after rerun.
 
 ## Environment
 
-- QA home: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home`
-- QA DB: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home/qa.db`
-- QA host: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/skill-host-a`
-- QA project: `/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/projects/generic-agents-project`
+- QA home: `<repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home`
+- QA DB: `<repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home/qa.db`
+- QA host: `<repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/skill-host-a`
+- QA project: `<repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/projects/generic-agents-project`
 - CDP port: 49222
 
 ## Follow-Up

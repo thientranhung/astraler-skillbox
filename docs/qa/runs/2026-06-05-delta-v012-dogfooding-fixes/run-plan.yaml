@@ -8,15 +8,15 @@ run:
   operator: Codex + astraler-qa
 
 environment:
-  repo_root: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox
-  desktop_dir: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/apps/desktop
-  fixture_source: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/fixtures/qa
-  fixture_copy: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures
+  repo_root: <repo>
+  desktop_dir: <repo>/apps/desktop
+  fixture_source: <repo>/fixtures/qa
+  fixture_copy: <repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures
   cdp_port: 49222
-  qa_home: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home
-  qa_db_path: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home/qa.db
-  qa_host: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/skill-host-a
-  qa_project: /Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/projects/generic-agents-project
+  qa_home: <repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home
+  qa_db_path: <repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home/qa.db
+  qa_host: <repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/skill-host-a
+  qa_project: <repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/fixtures/projects/generic-agents-project
   real_environment_allowed: false
 
 selection:
@@ -64,7 +64,7 @@ gates:
   native_dialog_policy: use_osascript_or_mark_needs_human
 
 commands:
-  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home/qa.db HOME=/Users/tranthien/Documents/2.DEV/2.PRIVATE/astraler-skillbox/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home pnpm dev)"
+  start_dev_app: "(cd apps/desktop && SKILLBOX_DB_PATH=<repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home/qa.db HOME=<repo>/docs/qa/runs/2026-06-05-delta-v012-dogfooding-fixes/qa-home pnpm dev)"
   cdp_health: "curl -s http://127.0.0.1:49222/json/version"
   go_tests: "(cd core-go && go test ./...)"
   desktop_typecheck: "(cd apps/desktop && pnpm typecheck)"

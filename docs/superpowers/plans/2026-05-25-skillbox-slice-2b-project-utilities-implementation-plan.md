@@ -87,7 +87,7 @@ Do not stage unrelated untracked files such as `CLAUDE.md`.
 - [ ] Run `(cd core-go && go test ./...)`.
 - [ ] Run `(cd apps/desktop && pnpm check:contracts-drift && pnpm typecheck && pnpm test && pnpm build)`.
 - [ ] Run `git diff --check`.
-- [ ] Manual smoke with host `/Users/tranthien/Documents/0.GLOBAL/my-agent-skills`: add project, scan, open folder from list, open folder from detail, remove project from list, re-add same path, remove from detail, confirm files still exist on disk.
+- [ ] Manual smoke with host `<global-documents>/my-agent-skills`: add project, scan, open folder from list, open folder from detail, remove project from list, re-add same path, remove from detail, confirm files still exist on disk.
 - [ ] Ask reviewer to review the Slice 2B commits and smoke results.
 
 ## Self-Check

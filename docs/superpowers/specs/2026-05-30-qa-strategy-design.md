@@ -53,8 +53,8 @@ Phát hiện then chốt từ research: **LLM tự làm oracle là không đáng
 
 - **DB throwaway:** env `SKILLBOX_DB_PATH=<fake-home>/qa.db` (`core-go/cmd/skillbox-core/main.go:138`).
 - **Fake `$HOME`:** `os.UserHomeDir()` tôn trọng `$HOME` (`filesystem/gateway.go:76`); core spawn kế thừa env cha (`electron/main/core-process/manager.ts:41`). Fake-home chứa `.claude/ .codex/ .antigravity-cli/` giả (fixtures) → cô lập plugin + global + update-check. `~/.claude` thật không bị chạm.
-- **Host Folder test:** `/Users/tranthien/Documents/0.GLOBAL/host-skills-test` (trống → test luôn "thiếu `.agents/skills`").
-- **Project test:** `/Users/tranthien/Documents/1.DATA/project-test-astraler-skillbox` (trống → test "no provider detected").
+- **Host Folder test:** `<global-documents>/host-skills-test` (trống → test luôn "thiếu `.agents/skills`").
+- **Project test:** `<project-documents>/project-test-astraler-skillbox` (trống → test "no provider detected").
 
 **2-track:**
 | Track | Mục đích | Build | CDP |

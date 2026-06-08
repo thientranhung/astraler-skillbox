@@ -8,7 +8,7 @@ Skillbox must show how each LLM or agent provider organizes skills at both globa
 
 Skillbox manages three related concepts:
 
-- Skill Host: the user's source library, for example `/Users/tranthien/Documents/0.GLOBAL/my-agent-skills`.
+- Skill Host: the user's source library, for example `<global-documents>/my-agent-skills`.
 - Provider global scope: where a provider loads user-level skills, for example `~/.claude/skills`.
 - Provider project scope: where a provider loads project-level skills, for example `<project>/.claude/skills`.
 

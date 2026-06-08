@@ -90,14 +90,6 @@ pipeline has Apple Developer ID signing and notarization credentials.
 
 ![Skill Host Folder library view](docs/assets/readme/host-skills.png)
 
-### Global Plugin Providers
-
-![Global plugin provider view](docs/assets/readme/global-plugins.png)
-
-### Project Provider Guidance
-
-![Project detail provider guidance](docs/assets/readme/project-detail-provider-tips.png)
-
 ## Core Model
 
 ```text
