@@ -1,0 +1,63 @@
+site_name: Astraler Skillbox
+site_description: Local-first skill distribution station for the agentic coding era.
+site_url: https://thientranhung.github.io/astraler-skillbox/
+repo_url: https://github.com/thientranhung/astraler-skillbox
+repo_name: thientranhung/astraler-skillbox
+exclude_docs: |
+  .vi/**
+  archive/**
+  qa/runs/**
+  superpowers/**
+  playbooks/**
+  decisions/README.md
+  decisions/template.md
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - toc.follow
+  palette:
+    - scheme: default
+      primary: black
+      accent: blue
+
+nav:
+  - Home: index.md
+  - Why Skillbox: why-skillbox.md
+  - Getting Started: getting-started.md
+  - Core Concepts: core-concepts.md
+  - Screenshots: screenshots.md
+  - Product:
+      - Product Brief: 01-product-brief.md
+      - Product Notes: 02-product-notes.md
+      - Information Architecture: 03-information-architecture.md
+      - User Flows: 04-user-flows.md
+      - Edge Cases and UX States: 05-edge-cases-and-ux-states.md
+  - Engineering:
+      - Context Map: context-map.md
+      - Technical Architecture: 10-technical-architecture.md
+      - Tech Stack and Scaffold Decisions: 11-tech-stack-and-scaffold-decisions.md
+      - Implementation Patterns: 12-implementation-patterns.md
+      - Provider Model: 08-provider-model.md
+      - Data Model: 06-data-model.md
+      - Schema Dictionary: 07-schema-dictionary.md
+  - QA:
+      - QA Bank: qa/README.md
+      - QA Governance: qa/governance.md
+      - QA Methodology: qa/methodology.md
+  - Decisions:
+      - ADR Index: decisions/index.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true

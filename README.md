@@ -44,6 +44,9 @@ of truth, clear project/provider visibility, and no scattered manual copies.
 Skillbox = local-first skill distribution station for the agentic coding era
 ```
 
+Read the full product story and user journey in the
+[Skillbox documentation](docs/index.md).
+
 Skillbox helps users:
 
 - Manage a Skill Host Folder as the source of truth for skills on the machine.

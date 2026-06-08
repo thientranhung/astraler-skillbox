@@ -1,4 +1,46 @@
-# Astraler Skillbox Docs Index
+# Astraler Skillbox
+
+Astraler Skillbox is a local-first skill distribution station for the agentic
+coding era.
+
+It gives you one Skill Host Folder as the source of truth, then distributes the
+right skills into the right projects through symlink. Update a skill once in the
+host folder, and every linked project receives it.
+
+## The Short Story
+
+Agent coding providers increasingly load skills from project-local folders such
+as `.agents/skills`. That works until you have many projects, many providers,
+and many fast-changing skills.
+
+Global installs can pollute projects that do not need a skill. Project-by-project
+installs can create copies that drift apart. After a while, it becomes hard to
+know which project uses which skill, which copy is current, and which global
+provider state is affecting a workspace.
+
+Skillbox solves that by putting skill content in one host folder and using the
+UI to link selected skills into selected projects.
+
+```text
+Skill Host Folder
+  .agents/skills/my-skill
+        |
+        | symlink
+        v
+Project
+  .agents/skills/my-skill
+```
+
+Start here:
+
+- [Why Skillbox](why-skillbox.md) explains the pain point and product thesis.
+- [Getting Started](getting-started.md) walks through install, host setup, scan,
+  project add, and symlink install.
+- [Core Concepts](core-concepts.md) defines Skill Host Folder, project skills,
+  global skills, providers, plugins, and symlink installs.
+- [Screenshots](screenshots.md) shows the current app surface.
+
+## Contributor Docs Index
 
 Read these documents in order to understand the project from product direction
 to app structure.
@@ -104,19 +146,10 @@ before a broad repository search or when starting in a fresh agent context.
 Repo-native QA bank: YAML test cases, cross-screen invariants, run templates,
 and evidence/report conventions for agent-driven Electron smoke and release QA.
 
-[superpowers/specs/2026-05-26-provider-registry-settings-design.md](superpowers/specs/2026-05-26-provider-registry-settings-design.md)
-
-Spec for Provider Registry Settings: Settings becomes the source of truth for
-declaring built-in provider enablement and path candidates for both global and
-project skill scopes.
-
 ## Archive
 
-Review/brainstorm history from the pre-implementation phase (May 2026). Kept to
-trace the reasoning behind architectural decisions; not current workflow.
-
-- [archive/review-prompts/](archive/review-prompts/) — prompts used to run cross-reviews of data model, provider model, global skills layer, tech stack & scaffold.
-- [archive/review-results/](archive/review-results/) — review + brainstorm results (technical architecture, transport decision, tech stack scaffold) incorporated into the numbered docs.
+Review/brainstorm history from the pre-implementation phase is kept in the repo
+under `docs/archive/`, but is excluded from the public MkDocs site.
 
 ## Suggested Reading Flow
 
@@ -153,4 +186,3 @@ README.md
 - Technical architecture: [10-technical-architecture.md](10-technical-architecture.md)
 - Tech stack and scaffold decisions: [11-tech-stack-and-scaffold-decisions.md](11-tech-stack-and-scaffold-decisions.md)
 - Implementation patterns: [12-implementation-patterns.md](12-implementation-patterns.md)
-- Provider Registry Settings design: [superpowers/specs/2026-05-26-provider-registry-settings-design.md](superpowers/specs/2026-05-26-provider-registry-settings-design.md)

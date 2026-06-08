@@ -6,11 +6,18 @@ Agent skills are becoming an important part of workflows with AI agents. Users
 are increasingly experimenting with many skills, many projects, and many agent
 providers such as Claude, Codex, opencode, Antigravity CLI, etc.
 
+Agent coding providers are also converging around project-local skill folders.
+Many providers can load skills from project folders such as `.agents/skills`,
+while skill installers increasingly ask whether a skill should be installed
+globally or into the current project.
+
 Managing skills is currently fragmented:
 
 - Skills live in many different places.
 - Global skills and project-level skills are easily confused.
 - Each project needs its own set of skills.
+- Global installs can pollute projects that do not need a skill.
+- Project-by-project installs can create copied skills that drift apart.
 - Each provider has its own conventions for folder, path, naming, or format.
 - Not only developers use skills, so CLI-only is not enough.
 - Updating skills is inconvenient when multiple projects share the same skill.
@@ -62,6 +69,9 @@ skill management.
 - Each project needs its own set of skills.
 - Global skills and project-level skills are easily confused, causing context
   noise and overlapping behavior.
+- A globally installed skill may affect projects that do not need it.
+- Installing the same skill separately into many projects creates duplicate
+  copies and update drift.
 - Users have difficulty seeing which skills/config exist at the provider global
   level.
 - Many agent providers have different conventions for folder, path, naming.

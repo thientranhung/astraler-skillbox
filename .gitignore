@@ -7,6 +7,7 @@ out/
 *.db-wal
 core-go/skillbox-core
 apps/desktop/dist/
+site/
 apps/desktop/resources/core/
 apps/desktop/build/icon.icns
 apps/desktop/build/.gen/
