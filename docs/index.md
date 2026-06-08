@@ -10,7 +10,6 @@ host folder, and every linked project receives it.
 ![Astraler Skillbox host skills view](assets/readme/host-skills.png)
 
 [Get Started](getting-started.md){ .md-button .md-button--primary }
-[Read in Vietnamese](vi/index.md){ .md-button }
 
 ## The Short Story
 
@@ -39,7 +38,6 @@ Project
 Start here:
 
 - [Why Skillbox](why-skillbox.md) explains the pain point and product thesis.
-- [Tiếng Việt](vi/index.md) is the Vietnamese public introduction.
 - [Getting Started](getting-started.md) walks through install, host setup, scan,
   project add, and symlink install.
 - [Core Concepts](core-concepts.md) defines Skill Host Folder, project skills,
