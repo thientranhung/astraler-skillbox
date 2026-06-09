@@ -289,7 +289,7 @@ Provider Plugins — Claude
     user     ok              ~/.claude/settings.json                 5/27/2026
 
   Plugin              Marketplace              Version   Project          User         Effective
-  superpowers          claude-plugins-official   1.0.0     —  (not set)    [enabled]    enabled
+  superpowers          claude-plugins-official   1.0.0     [+ No override] [enabled]    enabled
   my-plugin            custom                   —         [disabled]       [enabled]    disabled
   other-plugin         official                 unknown   [enabled]        [disabled]   enabled
 ```
@@ -299,8 +299,9 @@ Plugin column rules:
 - Version column: read-only, shows installed version from `installed_plugins.json` for the
   winning provenance layer. Claude only (Phase 1). Column hidden when all rows have null version.
   `—` rendered when version is null or unavailable. `"unknown"` displayed as-is (valid literal).
-- Project column: 3-state cycle toggle (not set → enabled → disabled → not set).
-  "not set" means no override at project layer — user layer value takes effect.
+- Project column: 3-state cycle toggle (No override → enabled → disabled → No override).
+  "No override" means no project-layer override exists and the user/global layer
+  value takes effect. Render it as an explicit control, not as a bare dash.
 - User column: 2-state toggle (enabled/disabled). Visually dimmed when project
   layer has a value (project overrides user).
 - Effective column: read-only, shows resolved status after layer precedence.

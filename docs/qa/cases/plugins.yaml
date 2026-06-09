@@ -90,6 +90,7 @@ cases:
       - Return to Project Detail.
     expected_ui:
       - Project Detail shows user, project, and effective plugin columns or equivalent state.
+      - Project cells without an override show an explicit "No override" control, not a bare dash that looks non-interactive.
       - Override state is understandable and not collapsed into a misleading global-only state.
       - Global Plugins shows only global/user layer state, not project override as if it were global.
     cross_screen_checks:

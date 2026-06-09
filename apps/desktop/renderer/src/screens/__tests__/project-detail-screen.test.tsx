@@ -482,7 +482,7 @@ describe("ProjectDetailScreen UX clarity", () => {
     });
   });
 
-  it("clicking project-layer not-set button calls setEnabled with enabled=true", () => {
+  it("clicking project-layer no-override control calls setEnabled with enabled=true", () => {
     const mutateFn = vi.fn();
     mockUseSetProviderPluginEnabled.mockReturnValue({ mutate: mutateFn, operationId: null, isPending: false });
     mockUseProviderPluginList.mockReturnValue({
@@ -492,7 +492,10 @@ describe("ProjectDetailScreen UX clarity", () => {
       ]),
     });
     render(<ProjectDetailScreen />);
-    fireEvent.click(screen.getByRole("button", { name: "—" }));
+    expect(screen.queryByRole("button", { name: "—" })).toBeNull();
+    const noOverrideButton = screen.getByRole("button", { name: "Enable project override" });
+    expect(noOverrideButton.textContent).toContain("No override");
+    fireEvent.click(noOverrideButton);
     expect(mutateFn).toHaveBeenCalledWith({
       providerKey: "claude",
       pluginName: "my-plugin",

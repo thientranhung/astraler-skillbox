@@ -436,7 +436,7 @@ function projectStateLabel(state: ProjectLayerState): string {
   switch (state) {
     case "enabled": return "enabled";
     case "disabled": return "disabled";
-    case "not-set": return "—";
+    case "not-set": return "No override";
   }
 }
 
@@ -618,19 +618,25 @@ function ProjectPluginSection({ projectId, scanInFlight }: { projectId: number; 
                                   }
                                 }}
                                 disabled={isOperationInFlight}
+                                aria-label={
+                                  projState === "not-set"
+                                    ? "Enable project override"
+                                    : undefined
+                                }
                                 title={
                                   projState === "not-set"
-                                    ? "Click to enable at project level"
+                                    ? "Enable project override"
                                     : projState === "enabled"
                                       ? "Click to disable at project level"
                                       : "Click to clear project override"
                                 }
-                                className={`cursor-pointer rounded px-1.5 py-0.5 font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
+                                className={`inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
                                   projState === "not-set"
-                                    ? "text-zinc-400 hover:bg-zinc-100"
+                                    ? "border border-dashed border-zinc-300 bg-white text-zinc-500 hover:border-zinc-400 hover:bg-zinc-50 hover:text-zinc-700"
                                     : projectStateBadgeClass(projState) + " hover:opacity-80"
                                 }`}
                               >
+                                {projState === "not-set" && <PlusCircle size={12} />}
                                 {projectStateLabel(projState)}
                               </button>
                             )}
