@@ -14,7 +14,7 @@ cases:
       - App version.go matches apps/desktop/package.json version.
     steps:
       - Open About screen.
-      - Wait for automatic check to complete, or click Check for Updates.
+      - Click Check for Updates.
       - Observe the App Updates section.
     expected_ui:
       - App Updates section header is clearly labeled "App Updates" (not "Updates" or "Plugin Updates").
@@ -122,7 +122,7 @@ cases:
     steps:
       - Block outbound network or put machine offline.
       - Open About screen.
-      - Wait for automatic check to attempt, or click Check for Updates.
+      - Click Check for Updates.
       - Observe the App Updates section.
     expected_ui:
       - App does not crash or hang.

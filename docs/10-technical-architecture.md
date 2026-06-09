@@ -64,8 +64,8 @@ Meaning:
 - Domain Services hold shared business logic.
 - Data Access Layer reads/writes SQLite.
 - Filesystem Gateway consolidates all file/folder/symlink/copy operations.
-- Provider Adapters understand conventions for Claude, Generic Agents, Codex,
-  etc.
+- Provider Adapters understand conventions for Claude, Shared Agents
+  (`generic_agents`), Codex, etc.
 - External Sources handle GitHub, Vercel skills, local import.
 
 ## Runtime Processes
@@ -294,7 +294,7 @@ Command:
   providerPlugin.removeOverride(input)
   updateCheck.run()
   app.resetAll()        -- truncate user data tables + reset settings to defaults
-  app.checkUpdate()     -- query GitHub Releases API for latest app version (always-on)
+  app.checkUpdate()     -- manual About action; no opt-in gate
 ```
 
 Queries should have no side effects. Commands may create `operations` records,
@@ -612,13 +612,15 @@ View models:
 
 ```text
 DashboardView
-SkillsLibraryView
+HostSkillsView (renderer code may still expose this as SkillsLibraryView)
 SkillDetailView
 ProjectsView
 ProjectDetailView
 GlobalSkillsView
-UpdatesView
+GlobalPluginsView
+Future skill-source update view
 SettingsView
+AboutView
 ```
 
 Each view model should include:
@@ -726,8 +728,9 @@ Phase 1:
 - Add project and scan project providers.
 - Project install via symlink (current stable path).
 - Global Skills scan/visibility/remediation surface.
-- Fetch/update source metadata for GitHub/Vercel/local where supported.
-- Updates impact preview.
+- Global Plugins scan/toggle/update-check surface.
+- Skill source fetch/update and related impact previews are deferred from the
+  current shipped UI.
 
 ## Architecture Decisions To Confirm
 

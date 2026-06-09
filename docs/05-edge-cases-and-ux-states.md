@@ -49,8 +49,9 @@ Situation:
 
 UI should:
 
-- Display an empty state in Skills Library.
-- Offer an `Add / Import Skill` action.
+- Display an empty state in Host Skills.
+- Offer `Open Skill Host Folder` in the current UI. Add/import remains
+  deferred.
 
 ### Skill Host Folder Has No Read/Write Permission
 
@@ -344,11 +345,11 @@ UI should:
 
 Situation:
 
-- Fetch cannot reach the network.
+- A future upstream skill fetch/update action cannot reach the network.
 
 UI should:
 
-- Display a global fetch warning.
+- Display a scoped fetch warning in the relevant future update surface.
 - Keep the last known update state.
 - Allow retry when the network comes back.
 
@@ -360,7 +361,7 @@ Situation:
 
 UI should:
 
-- Display the skill in Updates.
+- Display the skill in the relevant future update surface.
 - Display affected projects and install modes.
 
 ### Upstream Has No Update

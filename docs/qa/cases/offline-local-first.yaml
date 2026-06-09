@@ -91,7 +91,7 @@ cases:
     title: Offline mode preserves core local workflows
     tier: T1
     primary_screen: Dashboard
-    related_screens: [Skills Library, Projects, Settings]
+    related_screens: [Host Skills, Projects, Settings]
     type: smoke
     tags: [privacy, offline, local-first, release-full]
     invariants: [INV-PRIVACY-001, INV-HOST-001, INV-PROJECT-001]

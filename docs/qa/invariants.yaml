@@ -2,7 +2,7 @@ version: 1
 invariants:
   - id: INV-HOST-001
     title: Skill Host Folder is the source of truth for host skills
-    applies_to: [Setup, Settings, Skills Library, Project Detail]
+    applies_to: [Setup, Settings, Host Skills, Project Detail]
     rule: >
       A host skill shown in the UI must correspond to a skill folder under the
       configured Skill Host Folder. Project operations must not delete or modify
@@ -18,7 +18,7 @@ invariants:
 
   - id: INV-INSTALL-001
     title: Installed skill state agrees between UI, DB, and filesystem
-    applies_to: [Skills Library, Skill Detail, Project Detail, Dashboard]
+    applies_to: [Host Skills, Skill Detail, Project Detail, Dashboard]
     rule: >
       If a skill is shown as installed, the install record and filesystem target
       must represent the same mode and target. If filesystem write fails, the UI
@@ -26,7 +26,7 @@ invariants:
 
   - id: INV-INSTALL-002
     title: Remove/switch operations preserve the host skill source
-    applies_to: [Project Detail, Skills Library]
+    applies_to: [Project Detail, Host Skills]
     rule: >
       Removing a project install or switching install mode may change only the
       project/provider target and the related metadata. The host skill folder

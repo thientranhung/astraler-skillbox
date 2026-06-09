@@ -15,7 +15,7 @@ Examples:
 - Codex
 - opencode
 - Antigravity CLI
-- Generic `.agents`
+- Shared Agents (`generic_agents`)
 - Custom/unsupported provider
 
 A project may have multiple providers at the same time. For example, a project
@@ -336,7 +336,8 @@ install mode is reserved and has no UI/RPC support in the current release.
 Current assumptions:
 
 - Claude has its own convention and needs its own adapter.
-- Generic `.agents` is a shared convention for multiple providers.
+- Shared Agents is the user-facing label for the shared `.agents` convention.
+  Keep `generic_agents` as the stable provider key and provider type.
 - Codex, opencode, Antigravity CLI may start with generic `.agents` if a
   distinct adapter is not yet needed.
 - When a provider convention changes, the adapter layer is the place to update,
@@ -344,11 +345,11 @@ Current assumptions:
 
 ## Suggested Initial Provider Definitions
 
-### Generic Agents
+### Shared Agents
 
 ```text
 key = generic_agents
-display_name = Generic Agents
+display_name = Shared Agents
 provider_type = generic_agents
 icon_key = agents
 status = supported
@@ -583,11 +584,12 @@ unknown  (declared but the layer containing the declaration has scan_status != o
 
 The UI allows users to operate on plugin state at two scopes:
 
-- **User layer (Global Plugins screen)**: 2-state toggle. Enable / Disable
-  globally. Writes to `~/.claude/settings.json` (or equivalent) at user scope.
-- **Project layer (Project Detail screen)**: 3-state cycle. Inherit (no
+- **User layer (Global Plugins screen)**: 2-state toggle. Enable / Disable at
+  the global/user layer. Writes to `~/.claude/settings.json` (or equivalent) at
+  user scope.
+- **Project layer (Project Detail screen)**: 3-state cycle. No override (no
   declaration at project layer, falls through to user) → Enable (force enable at
-  project) → Disable (force disable at project) → Inherit. "Inherit" is
+  project) → Disable (force disable at project) → No override. "No override" is
   implemented by removing the entry from the project's `.claude/settings.json`.
 
 The local layer (`settings.local.json`) is scan-only in Phase 1; Skillbox does
@@ -640,7 +642,7 @@ migration 000021).
 A plugin scan operation:
 
 ```text
-Trigger (manual or auto after opening project / Global Plugins screen)
+Trigger (manual scan action, or an explicit app-initiated scan for a specific screen)
   -> For each provider with plugin support:
        -> Resolve settings file path for the layer being scanned
             (user: from ~/.<provider>/settings.json,

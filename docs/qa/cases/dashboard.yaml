@@ -4,7 +4,7 @@ cases:
     title: Dashboard summary agrees with project, skill, install, and warning records
     tier: T1
     primary_screen: Dashboard
-    related_screens: [Projects, Skills Library, Global Skills, Global Plugins]
+    related_screens: [Projects, Host Skills, Global Skills, Global Plugins]
     type: smoke
     tags: [dashboard, counts, cross-screen, release-full]
     invariants: [INV-HOST-001, INV-PROJECT-001, INV-INSTALL-001, INV-GLOBAL-001, INV-PLUGIN-001]
@@ -14,7 +14,7 @@ cases:
     steps:
       - Open Dashboard.
       - Record host path, skill count, project count, warning count, install mode counts, and global/plugin entry points.
-      - Open Projects, Skills Library, Global Skills, and Global Plugins.
+      - Open Projects, Host Skills, Global Skills, and Global Plugins.
       - Return to Dashboard.
     expected_ui:
       - Dashboard cards remain visible and clickable.
@@ -22,14 +22,14 @@ cases:
       - Warning count matches visible warning states across affected screens.
     cross_screen_checks:
       - Project count matches Projects list.
-      - Host skill count matches Skills Library.
+      - Host skill count matches Host Skills.
       - Install mode totals match Project Detail observed entries.
     verifier:
       app_db:
         - Count projects, skills for active host, active installs, and unresolved warnings.
       evidence:
         - Dashboard screenshot.
-        - Screenshots of Projects and Skills Library totals.
+        - Screenshots of Projects and Host Skills totals.
         - DB count query output.
     safety:
       destructive: false
@@ -106,7 +106,7 @@ cases:
     title: Dashboard navigation targets remain usable after repeated scans
     tier: T2
     primary_screen: Dashboard
-    related_screens: [Projects, Skills Library, Global Skills, Global Plugins]
+    related_screens: [Projects, Host Skills, Global Skills, Global Plugins]
     type: smoke
     tags: [dashboard, navigation, repeated-use, release-full]
     invariants: [INV-OPERATION-001]

@@ -92,7 +92,7 @@ cases:
     title: Unknown route or stale detail route recovers without blank screen
     tier: T2
     primary_screen: App Shell
-    related_screens: [Projects, Skills Library]
+    related_screens: [Projects, Host Skills]
     type: edge
     tags: [error-state, routing, blank-screen, release-full]
     invariants: [INV-DB-001]

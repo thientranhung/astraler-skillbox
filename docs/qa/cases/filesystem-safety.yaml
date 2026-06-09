@@ -4,7 +4,7 @@ cases:
     title: Install rejects host skill path that escapes the active host folder
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Skills Library]
+    related_screens: [Host Skills]
     type: adversarial
     tags: [filesystem, path-escape, install, data-integrity, release-full]
     invariants: [INV-HOST-001, INV-INSTALL-001, INV-SAFETY-001]
@@ -35,7 +35,7 @@ cases:
     title: Remove refuses symlink that no longer points inside the active host
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Skills Library]
+    related_screens: [Host Skills]
     type: adversarial
     tags: [filesystem, remove, symlink, path-escape, data-integrity, release-full]
     invariants: [INV-INSTALL-002, INV-SAFETY-001]
@@ -97,7 +97,7 @@ cases:
   - id: TC-FS-004
     title: Unreadable host skills folder is reported without deleting metadata
     tier: T1
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Dashboard, Settings]
     type: edge
     tags: [filesystem, unreadable, host, warning, release-full]
@@ -106,7 +106,7 @@ cases:
       - QA host skills folder permissions are changed to unreadable in the run copy.
     steps:
       - Launch app or rescan host.
-      - Open Dashboard, Settings, and Skills Library.
+      - Open Dashboard, Settings, and Host Skills.
     expected_ui:
       - Host is labeled unreadable or warning state.
       - Previously scanned skills are not shown as current without warning.
@@ -128,7 +128,7 @@ cases:
   - id: TC-FS-005
     title: Host scan ignores non-skill files and invalid folders safely
     tier: T2
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Dashboard]
     type: edge
     tags: [filesystem, host-scan, invalid-skill, release-full]
@@ -137,7 +137,7 @@ cases:
       - QA host contains files, dotfiles, and folders without SKILL.md.
     steps:
       - Run host scan.
-      - Inspect Skills Library.
+      - Inspect Host Skills.
     expected_ui:
       - Valid skills are listed.
       - Invalid entries are ignored or shown with a warning according to current product vocabulary.
@@ -148,7 +148,7 @@ cases:
       filesystem:
         - Invalid fixture entries exist.
       evidence:
-        - Skills Library screenshot.
+        - Host Skills screenshot.
         - DB skills query.
         - Host fixture listing.
     safety:

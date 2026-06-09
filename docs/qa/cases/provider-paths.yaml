@@ -374,7 +374,7 @@ cases:
     title: Provider disabled after install hides current state without deleting install records
     tier: T1
     primary_screen: Settings
-    related_screens: [Project Detail, Skills Library]
+    related_screens: [Project Detail, Host Skills]
     type: edge
     tags: [provider, disable, install, data-integrity, release-full]
     invariants: [INV-PROVIDER-001, INV-INSTALL-001, INV-SAFETY-001]
@@ -389,7 +389,7 @@ cases:
     steps:
       - Open Settings.
       - Disable the provider with the existing install.
-      - Open Project Detail and Skills Library.
+      - Open Project Detail and Host Skills.
       - Re-enable the provider and rescan the project.
     expected_ui:
       - Disabled state is clear in Settings.
@@ -397,7 +397,7 @@ cases:
       - The provider folder and install target are not deleted.
       - Re-enabled provider can rescan and recover the install state.
     cross_screen_checks:
-      - Settings, Project Detail, and Skills Library agree before disable, during disable, and after re-enable.
+      - Settings, Project Detail, and Host Skills agree before disable, during disable, and after re-enable.
     verifier:
       app_db:
         - Provider enabled state changes only for the selected provider.

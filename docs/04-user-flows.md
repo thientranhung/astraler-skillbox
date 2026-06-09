@@ -151,15 +151,19 @@ Result:
 - Skill appears in the project provider folder.
 - Database records the project, provider, skill, install mode, and source path.
 
-## 6. Fetch Skill Updates
+## 6. Deferred: Fetch Skill Updates
 
 Goal: check upstream to find out which skills have new versions.
+
+Status: deferred from the current shipped UI. There is no standalone Updates
+route and no Fetch All button in the current renderer. Keep this flow as product
+intent for future source-integration work.
 
 Flow:
 
 ```text
-User opens Updates or Skills Library
-  -> User selects Fetch or Fetch All
+User opens a future Host Skills / Skill Detail update surface
+  -> User starts a future upstream fetch action
   -> Skillbox reads the source metadata of the skill
   -> Skillbox checks GitHub or Vercel skills
   -> Skillbox saves fetch results to the database
@@ -171,14 +175,16 @@ Result:
 - User knows which skills have new versions.
 - UI can display affected projects for each skill.
 
-## 7. Update Skill Host Folder
+## 7. Deferred: Update Skill Host Folder
 
 Goal: update the skill copy in the Skill Host Folder from upstream.
+
+Status: deferred from the current shipped UI.
 
 Flow:
 
 ```text
-User opens Updates or Skill Detail
+User opens a future Host Skills / Skill Detail update surface
   -> User selects Update skill
   -> Skillbox displays affected projects
   -> User confirms the update
@@ -213,24 +219,27 @@ Result:
 - Skill is no longer installed in that project/provider.
 - The original skill in the Skill Host Folder is unaffected.
 
-## 11. Add Skill To Skill Host Folder
+## 11. Deferred: Add Skill To Skill Host Folder
 
 Goal: bring a new skill into the source of truth.
+
+Status: deferred from the current shipped UI. Host Skills can scan and open the
+Skill Host Folder, but it does not currently include an add/import workflow.
 
 Flow:
 
 ```text
-User opens Skills Library
+User opens a future Host Skills import surface
   -> User selects Add / Import Skill
   -> User selects source: GitHub, Vercel skills, local/manual
   -> Skillbox imports the skill into the Skill Host Folder
   -> Skillbox saves the source metadata to the database
-  -> Skillbox rescans the Skills Library
+  -> Skillbox rescans Host Skills
 ```
 
 Result:
 
-- New skill appears in the Skills Library.
+- New skill appears in Host Skills.
 - Skill can be installed to projects via symlink.
 
 ## 12. Change Skill Host Folder
@@ -286,9 +295,7 @@ Flow:
 ```text
 User opens About screen (sidebar → About)
   -> Sees the current app version
-  -> App automatically calls the GitHub Releases API (api.github.com) when the
-     screen opens (always-on, no gate)
-  -> User may click "Check for Updates" to check again manually
+  -> User may click "Check for Updates"
      -> Compares the latest tag with the current version
      -> If a new version exists: displays a download link to the GitHub Release
      -> If up-to-date: displays "You're up to date"
@@ -298,9 +305,9 @@ User opens About screen (sidebar → About)
 Result:
 
 - User knows the running version and can check for new versions when needed.
-- App-update check is always-on (ADR-0002); plugin update-check is
-  manual-trigger-only (user must click "Check Updates"). App remains 100% usable
-  offline.
+- App-update check is manual-triggered from About. Plugin update-check is also
+  manual-trigger-only (user must click "Check Updates" in Global Plugins). App
+  remains 100% usable offline.
 
 ## 15. Reset All Data
 

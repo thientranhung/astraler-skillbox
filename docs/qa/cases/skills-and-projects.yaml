@@ -123,26 +123,26 @@ cases:
       real_environment: forbidden
 
   - id: TC-SKILL-001
-    title: Skills Library scan shows host skills accurately
+    title: Host Skills scan shows host skills accurately
     tier: T1
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Dashboard, Skill Detail]
     type: smoke
-    tags: [skills-library, host, scan, cross-screen, release-full]
+    tags: [host-skills, host, scan, cross-screen, release-full]
     invariants: [INV-HOST-001]
     preconditions:
       - QA Skill Host Folder contains at least two valid skill folders.
     steps:
-      - Open Skills Library.
+      - Open Host Skills.
       - Run Scan Skill Host Folder.
       - Open one Skill Detail.
       - Return to Dashboard.
     expected_ui:
-      - Skills Library shows the expected host skills.
+      - Host Skills shows the expected host skills.
       - Skill Detail path/name/provider metadata matches the selected skill.
-      - Dashboard host skill count matches Skills Library.
+      - Dashboard host skill count matches Host Skills.
     cross_screen_checks:
-      - Dashboard and Skills Library agree on host skill count.
+      - Dashboard and Host Skills agree on host skill count.
       - Skill Detail matches the selected row.
     verifier:
       app_db:
@@ -150,7 +150,7 @@ cases:
       filesystem:
         - Listed skills exist under the configured QA host folder.
       evidence:
-        - Screenshot of Skills Library and Skill Detail.
+        - Screenshot of Host Skills and Skill Detail.
         - DB query output for skills.
     safety:
       destructive: false
@@ -161,7 +161,7 @@ cases:
     title: Add Skill Wizard installs selected host skill by symlink
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Skills Library, Skill Detail, Dashboard]
+    related_screens: [Host Skills, Skill Detail, Dashboard]
     type: critical
     tags: [skill, add-skill, install, symlink, data-integrity, release-full]
     invariants: [INV-INSTALL-001, INV-HOST-001]
@@ -175,15 +175,15 @@ cases:
       - Select one not-installed skill.
       - Choose or accept symlink mode.
       - Click Install.
-      - Open Skills Library and Skill Detail for the installed skill.
+      - Open Host Skills and Skill Detail for the installed skill.
     expected_ui:
       - Add Skill shows provider tabs for detected providers.
       - Already installed skills, if any, are disabled and labeled Installed.
       - Install success is shown only after the filesystem write succeeds.
       - Project Detail shows the skill as installed with mode symlink.
-      - Skills Library or Skill Detail reflects the project install state.
+      - Host Skills or Skill Detail reflects the project install state.
     cross_screen_checks:
-      - Project Detail, Skills Library, Skill Detail, and Dashboard agree on installed state/counts where displayed.
+      - Project Detail, Host Skills, Skill Detail, and Dashboard agree on installed state/counts where displayed.
     verifier:
       app_db:
         - Active install record exists for the project, provider, skill, and symlink mode.
@@ -204,7 +204,7 @@ cases:
     title: Shared Agent install creates missing skills folder without hanging
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Add Skill Wizard, Skills Library]
+    related_screens: [Add Skill Wizard, Host Skills]
     type: critical
     tags: [skill, add-skill, install, provider, missing-folder, operation-state, symlink, release-full]
     invariants: [INV-INSTALL-001, INV-OPERATION-001, INV-DB-001, INV-SAFETY-001]
@@ -227,7 +227,7 @@ cases:
       - A success message appears only after `.agents/skills` and the skill target exist.
       - Project Detail shows the installed skill with mode symlink.
     cross_screen_checks:
-      - Project Detail and Skills Library agree on the installed state.
+      - Project Detail and Host Skills agree on the installed state.
     verifier:
       app_db:
         - Active install record exists for the project, provider, skill, and symlink mode.
@@ -250,7 +250,7 @@ cases:
     title: Remove installed skill deletes project target without deleting host skill
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Skills Library, Skill Detail, Dashboard]
+    related_screens: [Host Skills, Skill Detail, Dashboard]
     type: critical
     tags: [skill, remove, symlink, data-integrity, destructive, release-full]
     invariants: [INV-INSTALL-001, INV-INSTALL-002, INV-HOST-001]
@@ -260,14 +260,14 @@ cases:
       - Open Project Detail.
       - Click Remove for the installed skill.
       - Confirm removal.
-      - Open Skills Library or Skill Detail for the same skill.
+      - Open Host Skills or Skill Detail for the same skill.
     expected_ui:
       - Project Detail no longer shows the skill as installed for that provider.
-      - Skills Library or Skill Detail no longer marks this project as installed.
+      - Host Skills or Skill Detail no longer marks this project as installed.
       - UI does not show success if filesystem removal failed.
     cross_screen_checks:
       - Dashboard installed totals update if displayed.
-      - Project Detail and Skills Library agree on installed state.
+      - Project Detail and Host Skills agree on installed state.
     verifier:
       app_db:
         - Active install record is removed or marked removed according to current schema.
@@ -287,7 +287,7 @@ cases:
     title: Switch install mode replaces only the project target
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Skills Library, Skill Detail]
+    related_screens: [Host Skills, Skill Detail]
     type: critical
     tags: [skill, switch-mode, symlink, copy, data-integrity, phase2]
     phase: phase2
@@ -306,7 +306,7 @@ cases:
       - UI does not show both modes as active.
       - Errors are visible if the target cannot be safely replaced.
     cross_screen_checks:
-      - Skills Library or Skill Detail agrees with Project Detail on mode/status.
+      - Host Skills or Skill Detail agrees with Project Detail on mode/status.
     verifier:
       app_db:
         - Install record mode matches the selected mode.
@@ -327,7 +327,7 @@ cases:
     title: Copy-mode install writes the skill into the project target and records mode=copy
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Add Skill Wizard, Skills Library, Dashboard]
+    related_screens: [Add Skill Wizard, Host Skills, Dashboard]
     type: critical
     tags: [skill, add-skill, install, copy, rsync-copy, data-integrity, phase2]
     phase: phase2
@@ -347,14 +347,14 @@ cases:
       - Select one not-installed QA host skill.
       - Choose Copy (rsync) mode.
       - Click Install and wait for the operation to reach a terminal state.
-      - Open Skills Library and Dashboard.
+      - Open Host Skills and Dashboard.
     expected_ui:
       - Install remains in progress only while the operation is running.
       - Success is shown only after the project target folder exists.
       - Project Detail shows the skill installed with Copy (rsync) mode, not symlink mode.
-      - Skills Library and Dashboard counts agree with the Project Detail state.
+      - Host Skills and Dashboard counts agree with the Project Detail state.
     cross_screen_checks:
-      - Project Detail, Skills Library, and Dashboard agree on the installed state and mode.
+      - Project Detail, Host Skills, and Dashboard agree on the installed state and mode.
     verifier:
       app_db:
         - Active install record exists for the project, provider, skill, and `install_mode = rsync_copy`.
@@ -377,7 +377,7 @@ cases:
     title: Switch from symlink to copy and back replaces only the target while host stays intact
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Skills Library, Skill Detail, Dashboard]
+    related_screens: [Host Skills, Skill Detail, Dashboard]
     type: critical
     tags: [skill, switch-mode, symlink, copy, rsync-copy, data-integrity, phase2]
     phase: phase2
@@ -397,14 +397,14 @@ cases:
       - Wait for the switch operation to reach a terminal state.
       - Verify the row shows Copy (rsync).
       - Switch the same skill back to symlink.
-      - Open Skills Library, Skill Detail, and Dashboard.
+      - Open Host Skills, Skill Detail, and Dashboard.
     expected_ui:
       - Each switch reaches one terminal state and never leaves the row stuck switching.
       - Mode label changes to Copy (rsync) after the first switch and symlink after the second switch.
       - UI never shows both modes active for the same project/provider/skill target.
       - Errors, if any, are visible and do not show a false success state.
     cross_screen_checks:
-      - Project Detail, Skills Library, Skill Detail, and Dashboard agree on the final symlink install state and counts.
+      - Project Detail, Host Skills, Skill Detail, and Dashboard agree on the final symlink install state and counts.
     verifier:
       app_db:
         - After the first switch, the active install row has `install_mode = rsync_copy`.
@@ -496,10 +496,10 @@ cases:
   - id: TC-SKILL-008
     title: Skill with missing or malformed SKILL.md is listed as invalid and not usable
     tier: T1
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Add Skill Wizard]
     type: edge
-    tags: [skills-library, invalid-skill, malformed-frontmatter, validation, release-full]
+    tags: [host-skills, invalid-skill, malformed-frontmatter, validation, release-full]
     invariants: [INV-HOST-001, INV-SAFETY-001]
     preconditions:
       - QA run uses the malformed host fixture as the active Skill Host Folder.
@@ -509,7 +509,7 @@ cases:
       mutate_copy:
         - keep one skill folder without `SKILL.md` and one with malformed frontmatter
     steps:
-      - Open Skills Library.
+      - Open Host Skills.
       - Run Skill Host Folder scan.
       - Open Add Skill for a QA project.
     expected_ui:
@@ -523,7 +523,7 @@ cases:
       filesystem:
         - Malformed fixture folders are unchanged by scan.
       evidence:
-        - Skills Library screenshot after scan.
+        - Host Skills screenshot after scan.
         - Add Skill Wizard screenshot or DOM snapshot.
         - DB query output for skill rows/warnings.
         - Filesystem listing for malformed entries.
@@ -535,10 +535,10 @@ cases:
   - id: TC-SKILL-009
     title: Duplicate skill names across host are disambiguated without collision in install
     tier: T1
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Add Skill Wizard, Project Detail]
     type: edge
-    tags: [skills-library, duplicate-name, install, data-integrity, release-full]
+    tags: [host-skills, duplicate-name, install, data-integrity, release-full]
     invariants: [INV-HOST-001, INV-INSTALL-001, INV-DB-001]
     preconditions:
       - QA run uses the duplicate-name host fixture as the active Skill Host Folder.
@@ -549,7 +549,7 @@ cases:
       mutate_copy:
         - keep two distinct skill folders with the same frontmatter `name`
     steps:
-      - Open Skills Library and scan the duplicate-name host.
+      - Open Host Skills and scan the duplicate-name host.
       - Open Add Skill for the QA project.
       - Install one of the duplicate-name entries.
       - Open Project Detail.
@@ -558,7 +558,7 @@ cases:
       - Installing one duplicate does not mark the other duplicate as installed.
       - Project Detail shows only the selected source path as installed.
     cross_screen_checks:
-      - Skills Library, Add Skill Wizard, and Project Detail agree on which duplicate source was installed.
+      - Host Skills, Add Skill Wizard, and Project Detail agree on which duplicate source was installed.
     verifier:
       app_db:
         - Skill rows for duplicate folders have distinct IDs/source paths.
@@ -567,7 +567,7 @@ cases:
         - Project target points to or contains only the selected duplicate source.
         - Both duplicate source folders remain intact.
       evidence:
-        - Skills Library duplicate rows screenshot.
+        - Host Skills duplicate rows screenshot.
         - Project Detail screenshot after install.
         - DB query output for skill IDs/source paths and install row.
         - "`readlink`/`stat` output for the project target."
@@ -703,9 +703,9 @@ cases:
     title: Project Detail provider tabs prioritize Shared Agents without aggregate views
     tier: T2
     primary_screen: Project Detail
-    related_screens: [Skills Library]
+    related_screens: [Host Skills]
     type: regression
-    tags: [project, provider-tabs, shared-agents, skills-library, plugin, global-skills]
+    tags: [project, provider-tabs, shared-agents, host-skills, plugin, global-skills]
     invariants: [INV-PROJECT-001, INV-PLUGIN-001, INV-GLOBAL-001]
     preconditions:
       - QA project fixture has at least `generic_agents` and one other provider detected.
@@ -716,7 +716,7 @@ cases:
       mutate_copy:
         - keep `.agents/skills` and the second provider skills/config paths distinct
     steps:
-      - Open Skills Library after a host scan.
+      - Open Host Skills after a host scan.
       - Open the multi-provider Project Detail screen.
       - Inspect Skill Entries, Global Skills, and Provider Plugins tab bars.
       - Click the non-Shared Agents provider tab in each tab bar.
@@ -727,15 +727,15 @@ cases:
       - Clicking a provider tab shows only that provider's rows for the section.
       - Provider Plugins appears after the skill-related Project Detail sections.
       - The shared `.agents` provider label is "Shared Agents" and does not include "Skills".
-      - Skills Library focuses the Shared Agents provider view and does not show an "All skills" provider tab.
+      - Host Skills focuses the Shared Agents provider view and does not show an "All skills" provider tab.
     cross_screen_checks:
       - Project Detail provider tab counts match the visible rows for each provider-specific section.
-      - Skills Library and Project Detail use the same "Shared Agents" label.
+      - Host Skills and Project Detail use the same "Shared Agents" label.
     verifier:
       evidence:
         - Screenshot or DOM snapshot of Project Detail with Shared Agents selected.
         - Screenshot or DOM snapshot after selecting the second provider tab.
-        - Screenshot or DOM snapshot of Skills Library provider view.
+        - Screenshot or DOM snapshot of Host Skills provider view.
     safety:
       destructive: false
       allowed_environment: qa_fixture
@@ -787,7 +787,7 @@ cases:
     title: Remove when the project target was already deleted on disk reconciles to removed
     tier: T1
     primary_screen: Project Detail
-    related_screens: [Skills Library, Dashboard]
+    related_screens: [Host Skills, Dashboard]
     type: edge
     tags: [skill, remove, missing-target, external-mutation, data-integrity, release-full]
     invariants: [INV-INSTALL-001, INV-DB-001]
@@ -803,13 +803,13 @@ cases:
       - Open Project Detail and confirm the install is listed.
       - Delete the project install target outside the app.
       - Click Remove for that install.
-      - Open Skills Library and Dashboard.
+      - Open Host Skills and Dashboard.
     expected_ui:
       - Remove reaches a terminal state and does not stay stuck because the target was already absent.
       - Project Detail no longer shows the install as active.
       - A warning or reconciliation message is visible if the product reports already-missing target.
     cross_screen_checks:
-      - Skills Library and Dashboard agree that the install is no longer active.
+      - Host Skills and Dashboard agree that the install is no longer active.
     verifier:
       app_db:
         - Active install row is removed or marked removed/missing according to contract.
@@ -830,7 +830,7 @@ cases:
     title: Re-install a previously removed skill produces a clean active record
     tier: T1
     primary_screen: Project Detail
-    related_screens: [Add Skill Wizard, Skills Library]
+    related_screens: [Add Skill Wizard, Host Skills]
     type: smoke
     tags: [skill, reinstall, remove, install, data-integrity, release-full]
     invariants: [INV-INSTALL-001, INV-DB-001]
@@ -845,13 +845,13 @@ cases:
       - Install one host skill.
       - Remove the installed skill.
       - Re-open Add Skill and install the same host skill again.
-      - Open Project Detail and Skills Library.
+      - Open Project Detail and Host Skills.
     expected_ui:
       - Re-install is available after remove.
       - Final Project Detail shows one active install for the skill.
       - UI does not resurrect stale removed metadata as a second active install.
     cross_screen_checks:
-      - Project Detail and Skills Library agree on the final active install.
+      - Project Detail and Host Skills agree on the final active install.
     verifier:
       app_db:
         - Exactly one active install row exists for the project/provider/skill after re-install.

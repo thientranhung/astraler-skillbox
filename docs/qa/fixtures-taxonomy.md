@@ -85,7 +85,7 @@ The release-full T1 expansion adds these tracked templates:
 | Template | Purpose |
 |---|---|
 | `fixtures/qa/host-topologies` | Empty host, file-as-host, malformed skill metadata, and duplicate skill names. |
-| `fixtures/qa/projects/project-multi-provider` | Project containing Shared Agent Skills and Claude provider markers for independent provider-fact cases. |
+| `fixtures/qa/projects/project-multi-provider` | Project containing Shared Agents and Claude provider markers for independent provider-fact cases. |
 | `fixtures/qa/projects/project-plugin-override` | Project plugin state that intentionally disagrees with global plugin state. |
 | `fixtures/qa/global/skills-malformed` | Recipes for malformed global skills path variants. |
 | `fixtures/qa/global/plugin-settings-missing` | Missing provider settings file recipe for no-plugin scans. |

@@ -4,7 +4,7 @@ cases:
     title: Release QA database has no orphaned references after core workflows
     tier: T0
     primary_screen: Dashboard
-    related_screens: [Projects, Skills Library, Global Plugins]
+    related_screens: [Projects, Host Skills, Global Plugins]
     type: critical
     tags: [db, integrity, foreign-keys, release-full]
     invariants: [INV-DB-001]
@@ -126,7 +126,7 @@ cases:
     title: Foreign-key and count consistency holds after a full add install remove reset cycle
     tier: T0
     primary_screen: Dashboard
-    related_screens: [Setup, Projects, Project Detail, Skills Library, Settings]
+    related_screens: [Setup, Projects, Project Detail, Host Skills, Settings]
     type: critical
     tags: [db, integrity, foreign-keys, lifecycle, reset, install, remove, release-full]
     invariants: [INV-DB-001, INV-INSTALL-001, INV-PROJECT-001, INV-SAFETY-001]
@@ -152,7 +152,7 @@ cases:
       - After reset, metadata-backed screens show an empty or setup state with no stale project, skill, install, or plugin counts.
       - No screen shows contradictory counts after the lifecycle.
     cross_screen_checks:
-      - Dashboard, Projects, Project Detail, Skills Library, and Settings agree after install, after remove, and after reset.
+      - Dashboard, Projects, Project Detail, Host Skills, and Settings agree after install, after remove, and after reset.
     verifier:
       app_db:
         - "`PRAGMA foreign_key_check` returns no rows after install, after remove, and after reset."

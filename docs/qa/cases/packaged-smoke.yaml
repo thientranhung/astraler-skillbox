@@ -144,7 +144,7 @@ cases:
       - Poll operation state out of band until the install operation is queued or running.
       - Quit or terminate the packaged app while the install operation is still queued or running.
       - Relaunch the same packaged app with the same smoke app data.
-      - Open Dashboard, Project Detail, and Skills Library.
+      - Open Dashboard, Project Detail, and Host Skills.
     expected_ui:
       - Packaged relaunch does not show the interrupted operation as running forever.
       - Interrupted operation is terminal failed/cancelled/stale or completed only if DB and filesystem prove success.

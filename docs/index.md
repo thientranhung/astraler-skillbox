@@ -109,9 +109,10 @@ install target resolution, and provider UI state.
 
 [09-ui-wireframes.md](09-ui-wireframes.md)
 
-Read to understand text wireframes for Dashboard, Skills Library, Projects,
-Project Detail, Add Skill flow, Updates, Settings, empty states, warnings,
-confirmations, and impact previews.
+Read to understand text wireframes for Dashboard, Host Skills, Global Skills,
+Global Plugins, Projects, Project Detail, Add Skill flow, Settings, empty
+states, warnings, confirmations, impact previews, and deferred skill-source
+update surfaces.
 
 ## 10. Technical Architecture
 

@@ -65,7 +65,7 @@ cases:
     title: Crash during operation recovers without stale success state
     tier: T0
     primary_screen: Dashboard
-    related_screens: [Projects, Skills Library]
+    related_screens: [Projects, Host Skills]
     type: critical
     tags: [recovery, crash, operation, data-integrity, release-full]
     invariants: [INV-OPERATION-001, INV-DB-001]
@@ -99,7 +99,7 @@ cases:
     title: App restart preserves completed scan metadata and warnings
     tier: T1
     primary_screen: Dashboard
-    related_screens: [Projects, Skills Library, Global Plugins]
+    related_screens: [Projects, Host Skills, Global Plugins]
     type: smoke
     tags: [restart, persistence, warning, release-full]
     invariants: [INV-DB-001, INV-PROJECT-001, INV-PLUGIN-001]
@@ -108,7 +108,7 @@ cases:
     steps:
       - Quit app normally.
       - Relaunch with the same QA DB and QA HOME.
-      - Open Dashboard, Projects, Skills Library, and Global Plugins.
+      - Open Dashboard, Projects, Host Skills, and Global Plugins.
     expected_ui:
       - Completed scan timestamps remain visible.
       - Warning state persists until resolved by a later scan/action.

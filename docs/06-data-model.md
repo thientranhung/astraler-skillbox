@@ -627,7 +627,8 @@ not_fetchable
 
 Notes:
 
-- This table allows the Updates view to display the most recent fetch history.
+- This table allows future skill-source update surfaces to display the most
+  recent fetch history.
 - `source_id` is the primary FK. Skill context is inferred via `skills.source_id`.
 - If the implementation needs fast queries by skill, a helper denormalized
   `skill_id` may be added, but it should not be treated as an independent FK.
@@ -1223,7 +1224,7 @@ fetch_results
 warnings
 ```
 
-### Skills Library
+### Host Skills
 
 Needs:
 
@@ -1300,11 +1301,11 @@ skills
 warnings
 ```
 
-### Updates
+### Deferred Skill Source Updates
 
 Needs:
 
-- Skills with update available.
+- Future source-update surfaces with skills that have updates available.
 - Host/upstream version or commit from latest fetch result.
 - Affected projects and install modes.
 - Affected global installs and install modes.
@@ -1381,7 +1382,7 @@ Writes:
 - `operations`
 - `warnings` if conflict or filesystem error occurs
 
-### Fetch Skill Updates
+### Deferred: Fetch Skill Updates
 
 Writes:
 
@@ -1390,7 +1391,7 @@ Writes:
 - `skill_sources.last_fetch_status`
 - `warnings` for fetch failures
 
-### Update Skill Host Folder
+### Deferred: Update Skill Host Folder
 
 Writes:
 

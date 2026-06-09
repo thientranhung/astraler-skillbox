@@ -4,7 +4,7 @@ cases:
     title: Primary navigation is keyboard reachable and screen-reader named
     tier: T2
     primary_screen: Dashboard
-    related_screens: [Skills Library, Global Skills, Global Plugins, Projects, Settings, About]
+    related_screens: [Host Skills, Global Skills, Global Plugins, Projects, Settings, About]
     type: smoke
     tags: [accessibility, keyboard, navigation, release-full]
     invariants: [INV-SAFETY-001]

@@ -146,6 +146,6 @@ Doc typo only / add test without behavior change / internal refactor with unchan
 
 ## References
 
-- [docs/decisions/README.md](../decisions/README.md) - ADR overview
-- [docs/decisions/template.md](../decisions/template.md) - ADR template
+- [docs/decisions/index.md](../decisions/index.md) - ADR overview
+- `docs/decisions/template.md` - ADR template in the repository
 - [docs/playbooks/agent-orchestration.md](agent-orchestration.md) - Tom/Larry/Orchestrator roles and phase gates

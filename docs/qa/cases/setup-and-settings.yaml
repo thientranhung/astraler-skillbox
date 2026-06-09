@@ -4,7 +4,7 @@ cases:
     title: First launch chooses Skill Host Folder and auto-scans on first open
     tier: T1
     primary_screen: Setup
-    related_screens: [Dashboard, Skills Library, Settings]
+    related_screens: [Dashboard, Host Skills, Settings]
     type: smoke
     tags: [setup, host, onboarding, auto-scan, cross-screen, release-full]
     invariants: [INV-HOST-001]
@@ -14,17 +14,17 @@ cases:
     steps:
       - Launch the app with no existing app settings.
       - Choose the QA Skill Host Folder.
-      - Observe navigation to Skills Library.
+      - Observe navigation to Host Skills.
       - Wait for auto-scan to complete or confirm scan starts automatically.
       - Open Settings.
     expected_ui:
       - Setup screen no longer blocks the app.
-      - Skills Library shows a scanning indicator or discovered skills without requiring a manual scan trigger.
+      - Host Skills shows a scanning indicator or discovered skills without requiring a manual scan trigger.
       - Dashboard is reachable.
       - Settings shows the selected Skill Host Folder path.
     cross_screen_checks:
       - Dashboard and Settings agree on the configured host path or host warning.
-      - Skills Library state matches the actual host folder contents after scan.
+      - Host Skills state matches the actual host folder contents after scan.
     verifier:
       app_db:
         - App settings contain the selected Skill Host Folder path.
@@ -33,7 +33,7 @@ cases:
         - QA host folder still exists.
         - If the app creates `.agents/skills`, it is created only under the QA host folder.
       evidence:
-        - Screenshot of Skills Library immediately after host selection showing scan indicator or results.
+        - Screenshot of Host Skills immediately after host selection showing scan indicator or results.
         - Screenshot of Settings after setup.
         - DB query output for app settings and skill_host_folders.last_scanned_at.
         - "`find` or `ls` output for the QA host folder."
@@ -46,7 +46,7 @@ cases:
     title: Missing Skill Host Folder shows warnings without crashing
     tier: T1
     primary_screen: Dashboard
-    related_screens: [Settings, Skills Library]
+    related_screens: [Settings, Host Skills]
     type: edge
     tags: [setup, host, missing-path, warning, release-full]
     invariants: [INV-HOST-001]
@@ -57,14 +57,14 @@ cases:
       - Launch the app.
       - Open Dashboard.
       - Open Settings.
-      - Open Skills Library.
+      - Open Host Skills.
     expected_ui:
       - App does not crash.
       - Dashboard or Settings shows a clear missing host warning.
-      - Skills Library does not show stale skills as current without a warning.
+      - Host Skills does not show stale skills as current without a warning.
       - User has a visible path recovery action.
     cross_screen_checks:
-      - Dashboard, Settings, and Skills Library agree that the host is missing.
+      - Dashboard, Settings, and Host Skills agree that the host is missing.
     verifier:
       filesystem:
         - Configured host path is absent.
@@ -80,7 +80,7 @@ cases:
     title: Change Skill Host Folder via Host Skills updates source of truth without relinking silently
     tier: T1
     primary_screen: Host Skills
-    related_screens: [Settings, Dashboard, Skills Library, Project Detail]
+    related_screens: [Settings, Dashboard, Host Skills, Project Detail]
     type: smoke
     tags: [settings, host, change-host, cross-screen, release-full]
     invariants: [INV-HOST-001, INV-INSTALL-001]
@@ -93,16 +93,16 @@ cases:
       - Navigate to Host Skills via the link or sidebar.
       - Change Skill Host Folder to folder B from Host Skills.
       - Open Dashboard.
-      - Open Skills Library.
+      - Open Host Skills.
       - Open a project with an existing install from folder A, if present.
       - Return to Settings.
     expected_ui:
       - Settings shows folder B as the current host (read-only, no Change button).
-      - Skills Library shows skills from folder B, not stale folder A contents.
+      - Host Skills shows skills from folder B, not stale folder A contents.
       - Existing symlinks to folder A are not silently rewritten without user action.
       - Any old-host state is visible as a warning or distinct status.
     cross_screen_checks:
-      - Dashboard and Skills Library agree on the new host scan state.
+      - Dashboard and Host Skills agree on the new host scan state.
       - Project Detail does not claim old-host symlinks are current under folder B.
       - Settings shows the updated host path without a Change button.
     verifier:
@@ -176,7 +176,7 @@ cases:
     title: Reset All Data clears Skillbox metadata without deleting real skill folders
     tier: T0
     primary_screen: Settings
-    related_screens: [Setup, Dashboard, Skills Library, Projects, Global Plugins]
+    related_screens: [Setup, Dashboard, Host Skills, Projects, Global Plugins]
     type: critical
     tags: [settings, reset, data-integrity, destructive, release-full]
     invariants: [INV-HOST-001, INV-SAFETY-001]
@@ -189,13 +189,13 @@ cases:
       - Trigger Reset All Data from Danger Zone.
       - Confirm the destructive prompt.
       - Observe the app after reset.
-      - Reopen Dashboard, Skills Library, Projects, and Global Plugins.
+      - Reopen Dashboard, Host Skills, Projects, and Global Plugins.
     expected_ui:
       - App returns to first-run or unconfigured state.
       - Projects and plugin scan data are gone from the UI.
       - No success state claims that filesystem sources were deleted.
     cross_screen_checks:
-      - Dashboard, Projects, Skills Library, and Settings agree on the reset state.
+      - Dashboard, Projects, Host Skills, and Settings agree on the reset state.
     verifier:
       app_db:
         - Projects, skills, scan history, installs, and plugin scan tables are empty or reset.
@@ -217,7 +217,7 @@ cases:
     title: Re-point host folder while project installs exist keeps install records consistent
     tier: T0
     primary_screen: Settings
-    related_screens: [Skills Library, Project Detail, Dashboard]
+    related_screens: [Host Skills, Project Detail, Dashboard]
     type: critical
     tags: [setup, settings, host, change-host, install, data-integrity, release-full]
     invariants: [INV-HOST-001, INV-INSTALL-001, INV-DB-001, INV-SAFETY-001]
@@ -234,15 +234,15 @@ cases:
       - Open Settings.
       - Change the Skill Host Folder from host A to host B.
       - Run Skill Host Folder scan if it does not happen automatically.
-      - Open Skills Library, Project Detail for the installed project, and Dashboard.
+      - Open Host Skills, Project Detail for the installed project, and Dashboard.
     expected_ui:
       - Settings shows host B as the current Skill Host Folder.
-      - Skills Library lists host B skills and does not show host A skills as current host skills.
+      - Host Skills lists host B skills and does not show host A skills as current host skills.
       - Project Detail does not silently rewrite the existing install target from host A to host B.
       - Existing host-A install state is shown as old-host, missing-host, or warning according to the product contract.
       - Dashboard counts remain coherent and do not double-count the same install.
     cross_screen_checks:
-      - Settings, Skills Library, Project Detail, and Dashboard agree on the active host and install state.
+      - Settings, Host Skills, Project Detail, and Dashboard agree on the active host and install state.
     verifier:
       app_db:
         - App settings contain host B as the active Skill Host Folder.
@@ -253,7 +253,7 @@ cases:
         - Existing project target still points to host A unless the user explicitly performed a relink/switch action.
         - No files are written outside the run-local release-cycle fixture.
       evidence:
-        - Settings, Skills Library, and Project Detail screenshots after re-point.
+        - Settings, Host Skills, and Project Detail screenshots after re-point.
         - DB query output for app settings, installs, and install counts.
         - "`readlink`/`stat` output for the existing project target and both host folders."
     safety:
@@ -265,7 +265,7 @@ cases:
     title: Host folder pointed at a file or nonexistent path is rejected and prior host is retained
     tier: T1
     primary_screen: Settings
-    related_screens: [Setup, Skills Library]
+    related_screens: [Setup, Host Skills]
     type: edge
     tags: [setup, settings, host, validation, missing-path, release-full]
     invariants: [INV-HOST-001, INV-SAFETY-001]
@@ -281,11 +281,11 @@ cases:
       - Open Settings.
       - Attempt to change Skill Host Folder to the run-local file path.
       - Attempt to change Skill Host Folder to the run-local nonexistent path.
-      - Open Skills Library.
+      - Open Host Skills.
     expected_ui:
       - Each invalid path attempt shows a clear validation error or warning.
       - Settings continues to show the prior valid Skill Host Folder.
-      - Skills Library still reflects the prior valid host, not the rejected path.
+      - Host Skills still reflects the prior valid host, not the rejected path.
     verifier:
       app_db:
         - App settings retain the prior valid Skill Host Folder path.
@@ -305,7 +305,7 @@ cases:
     title: Re-point host to an empty folder shows zero host skills without dropping install metadata
     tier: T1
     primary_screen: Settings
-    related_screens: [Skills Library, Project Detail, Dashboard]
+    related_screens: [Host Skills, Project Detail, Dashboard]
     type: edge
     tags: [settings, host, empty-host, install, data-integrity, release-full]
     invariants: [INV-HOST-001, INV-INSTALL-001, INV-DB-001]
@@ -328,14 +328,14 @@ cases:
       - Open Settings.
       - Change Skill Host Folder to the empty host fixture.
       - Run host scan if needed.
-      - Open Skills Library, Project Detail for the project with prior install metadata, and Dashboard.
+      - Open Host Skills, Project Detail for the project with prior install metadata, and Dashboard.
     expected_ui:
-      - Skills Library shows zero current host skills for the empty host.
+      - Host Skills shows zero current host skills for the empty host.
       - Prior project install metadata is not silently deleted.
       - Old-host or missing-source state is visible where prior installs are shown.
       - Dashboard counts remain coherent and do not double-count old and empty host state.
     cross_screen_checks:
-      - Settings, Skills Library, Project Detail, and Dashboard agree on the empty active host.
+      - Settings, Host Skills, Project Detail, and Dashboard agree on the empty active host.
     verifier:
       app_db:
         - App settings point to the empty host.
@@ -347,7 +347,7 @@ cases:
         - No files are written outside the run-local release-cycle and empty-host fixtures.
       evidence:
         - Screenshot or DB query proving the seeded install before re-point.
-        - Settings, Skills Library, and Project Detail screenshots.
+        - Settings, Host Skills, and Project Detail screenshots.
         - DB query output for settings, skills, and installs.
         - "`find` output for the empty host and prior install target."
     safety:
@@ -402,7 +402,7 @@ cases:
   - id: TC-SETUP-005
     title: Choosing a Skill Host Folder triggers auto-scan or explicit scan prompt
     tier: T1
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Setup, Dashboard]
     type: smoke
     tags: [setup, host, auto-scan, release-full]
@@ -412,16 +412,16 @@ cases:
       - QA host folder exists with at least one skill directory.
     steps:
       - Choose the QA Skill Host Folder via Setup.
-      - Observe the Skills Library immediately after selection.
+      - Observe the Host Skills immediately after selection.
     expected_ui:
-      - Skills Library either shows a scanning indicator immediately or already shows discovered skills.
+      - Host Skills either shows a scanning indicator immediately or already shows discovered skills.
       - User is not required to manually trigger a scan to see initial host content.
       - No "not scanned" permanent empty state is shown if skills exist.
     verifier:
       app_db:
         - skill_host_folders.last_scanned_at is set after the first host selection without a manual scan action.
       evidence:
-        - Screenshot of Skills Library immediately after host selection.
+        - Screenshot of Host Skills immediately after host selection.
         - DB query output for skill_host_folders.last_scanned_at.
     safety:
       destructive: false
@@ -431,7 +431,7 @@ cases:
   - id: TC-SETUP-006
     title: Host Skills empty states distinguish not-scanned, scanning, no-skills-found, and scan-failed
     tier: T1
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Dashboard]
     type: edge
     tags: [setup, host, empty-state, scan-state, release-full]
@@ -448,13 +448,13 @@ cases:
         in an already-open app session, prefer an explicit user-triggered scan action rather
         than relying on auto-scan re-trigger after a DB reset."
     steps:
-      - Observe Skills Library with no scan ever run (reset last_scanned_at to null).
-      - "Observe Skills Library while scan is in progress: trigger an explicit scan action,
+      - Observe Host Skills with no scan ever run (reset last_scanned_at to null).
+      - "Observe Host Skills while scan is in progress: trigger an explicit scan action,
         then within the delay window (requires SKILLBOX_SCAN_DELAY_MS=1000) capture the
         scanning indicator. The Scan button label changes to 'Scanning...' (disabled) and a
         'Scanning skills...' toast appears during the delay window."
-      - Observe Skills Library after scan with an empty host folder.
-      - Observe Skills Library with a simulated scan-failed state if feasible.
+      - Observe Host Skills after scan with an empty host folder.
+      - Observe Host Skills with a simulated scan-failed state if feasible.
     expected_ui:
       - Not-yet-scanned state shows "Not yet scanned" or equivalent guidance, not a generic empty state.
       - Scan-in-progress state shows a scanning indicator (spinner or progress text).

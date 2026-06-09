@@ -8,7 +8,7 @@ exclude_docs: |
   archive/**
   qa/runs/**
   superpowers/**
-  playbooks/**
+  playbooks/templates/**
   decisions/README.md
   decisions/template.md
 
@@ -37,6 +37,7 @@ nav:
       - Information Architecture: 03-information-architecture.md
       - User Flows: 04-user-flows.md
       - Edge Cases and UX States: 05-edge-cases-and-ux-states.md
+      - UI Wireframes: 09-ui-wireframes.md
   - Engineering:
       - Context Map: context-map.md
       - Technical Architecture: 10-technical-architecture.md
@@ -49,6 +50,13 @@ nav:
       - QA Bank: qa/README.md
       - QA Governance: qa/governance.md
       - QA Methodology: qa/methodology.md
+      - QA Schema: qa/schema.md
+      - Fixtures Taxonomy: qa/fixtures-taxonomy.md
+  - Contributor Operations:
+      - Project Governance: playbooks/governance-project.md
+      - Documentation Playbook: playbooks/documentation.md
+      - Agent Orchestration: playbooks/agent-orchestration.md
+      - Agent Browser Smoke: playbooks/agent-browser-smoke.md
   - Decisions:
       - ADR Index: decisions/index.md
 

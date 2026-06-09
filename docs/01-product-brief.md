@@ -42,7 +42,8 @@ Skillbox manages:
 - Providers: Claude, Codex, opencode, Antigravity CLI, and other providers.
 - Installs: which skills are installed into which project/provider, and by what
   mode.
-- Updates: fetch upstream to find out which skills have new versions.
+- Deferred Updates: future upstream fetch/update support for skills with source
+  metadata.
 
 ## Target Users
 
@@ -89,7 +90,7 @@ skill management.
   mixed with the Skill Host Folder or project-level installs.
 - The app uses SQLite from the start to store management metadata.
 - Skill sources prioritize GitHub and Vercel skills.
-- There is a Fetch button to check for upstream updates.
+- Upstream skill fetch/update controls are deferred from the current shipped UI.
 - Detailed health checks are not the current focus.
 - Users need to understand technical concepts such as symlink, provider, and
   Skill Host Folder.
@@ -145,9 +146,11 @@ Current assumptions:
 - Nevertheless, the adapter layer must exist from the start to avoid being locked
   into a single convention.
 
-## Updates
+## Deferred Updates
 
-Skillbox has a Fetch button to check for upstream updates.
+Skillbox keeps the product concept of checking upstream sources for new skill
+versions, but the current shipped UI does not include a standalone Updates
+screen or Fetch All control.
 
 Priority skill sources:
 

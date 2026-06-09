@@ -34,7 +34,7 @@ existing case IDs; **Gaps → candidates** = proposed new cases.
   | TC-SETUP-004 | Host folder pointed at a file or non-existent path is rejected, prior host retained | T1 | host-is-file |
   | TC-SETTINGS-003 | Re-point host to an empty folder shows zero host skills without dropping install metadata | T1 | empty-host |
 
-## 2. Skills Library
+## 2. Host Skills
 
 - **State model.** Host skill entry: `absent → scanned → {valid | invalid | not-a-skill}`; list ↔ detail must agree.
 - **Matrix dims.** Skill folder shapes: valid / missing SKILL.md / malformed frontmatter / nested / duplicate name / non-skill file. List↔Detail↔FS consistency.
@@ -184,7 +184,7 @@ existing case IDs; **Gaps → candidates** = proposed new cases.
 | Surface | New | of which T0 |
 |---|---|---|
 | Setup / Skill Host | 3 | 1 |
-| Skills Library | 3 | 0 |
+| Host Skills | 3 | 0 |
 | Projects | 3 | 0 |
 | Project Detail | 2 | 0 |
 | Project providers | 2 | 0 |

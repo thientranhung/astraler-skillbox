@@ -94,14 +94,15 @@ Bring the change from upstream into the Skill Host Folder.
 
 ```text
 Dashboard
-Skills Library
+Host Skills
 Global Skills
 Global Plugins
 Projects
 Project Detail
 Skill Detail
-Updates
 Settings
+About
+Setup / Startup Error
 ```
 
 Sidebar navigation order: Dashboard → Host Skills → Global Skills → Global
@@ -119,9 +120,11 @@ Dashboard displays an overview:
 - Projects using symlink.
 - Basic warnings such as host missing, broken path, provider path missing.
 
-## Skills Library
+## Host Skills
 
-Skills Library is where skills in the Skill Host Folder are managed.
+Host Skills is where skills in the Skill Host Folder are viewed and managed.
+The route is `/skills` and the renderer component is still named
+`SkillsLibraryScreen`, but the user-facing navigation label is **Host Skills**.
 
 Displays:
 
@@ -134,10 +137,16 @@ Displays:
 
 Actions:
 
-- Add/import skill to host.
-- Fetch update.
 - Open skill folder.
 - View skill detail.
+- Scan the active Skill Host Folder.
+
+Scope:
+
+- The screen focuses the Shared Agents host (`.agents/skills`) and does not show
+  an aggregate "All skills" provider tab.
+- Add/import and upstream skill fetch/update workflows are deferred from the
+  current shipped UI.
 
 ## Global Skills
 
@@ -146,6 +155,8 @@ are viewed.
 
 Displays:
 
+- Provider-specific tabs with provider icons/counts. Shared Agents is selected
+  first when available; there is no aggregate "All" tab.
 - Provider.
 - Global location path.
 - Skill/global entry name.
@@ -158,14 +169,13 @@ Actions:
 
 - Scan global locations.
 - Open global provider folder.
-- Remove global entry if the user confirms.
-- Relink or sync if the entry is managed by Skillbox.
-- Adopt/import later if this feature is supported.
 
 Phase 1 scope:
 
 - Global Skills is a scan, visibility, and remediation surface.
 - No Install Skill To Global Location flow yet.
+- Global entry remove/relink/adopt actions are deferred from the current shipped
+  UI.
 - Add Skill flow only targets project providers.
 
 ## Global Plugins
@@ -177,6 +187,8 @@ File: `apps/desktop/renderer/src/screens/plugins-screen.tsx`.
 
 Displays (grouped by provider):
 
+- Provider-specific tabs with provider icons/counts. Shared Agents is selected
+  first when available; there is no aggregate "All" tab.
 - Settings file path being scanned by Skillbox (e.g. `~/.claude/settings.json`).
 - Layer scan status: ok, not configured, unreadable, malformed, too large,
   symlink, path escape.
@@ -186,8 +198,9 @@ Displays (grouped by provider):
 Actions:
 
 - Rescan user-layer settings file for a provider.
-- Toggle enable/disable globally for a plugin (only for providers with write
-  support: Claude, Codex, Antigravity CLI).
+- Check installed plugin sources for updates (manual trigger only).
+- Toggle enable/disable at the global/user layer for a plugin (only for
+  providers with write support: Claude, Codex, Antigravity CLI).
 
 Phase 1 scope:
 
@@ -235,6 +248,10 @@ Displays:
   (user + project scope); Codex reads from cache dir
   `~/.codex/plugins/cache/` (cache is global, applies to both user layer and
   project layer); Antigravity CLI has no version source → displays `—`.
+- Provider Plugins section uses provider-specific tabs with icons/counts. Shared
+  Agents is selected first when available; there is no aggregate "All" tab.
+- In the Provider Plugins table, Project cells without a project-layer plugin
+  override render as an explicit `No override` control, not a bare dash.
 
 Actions:
 
@@ -284,23 +301,11 @@ Actions:
 - Open folder.
 - Show affected projects.
 
-## Updates
+## Deferred: Skill Source Updates
 
-Updates is the central screen for checking and handling updates.
-
-Displays:
-
-- Fetch All button.
-- List of skills with new versions.
-- Current version.
-- Latest version.
-- Affected projects.
-- Project install modes.
-
-Actions:
-
-- Update skill in host.
-- View affected projects.
+There is no standalone Updates route in the current app. Upstream skill
+fetch/update workflows remain a product concept but are not part of the shipped
+screen set.
 
 ## Settings
 
@@ -327,7 +332,8 @@ Displays:
   - When a new version is available: displays `latestVersion` and a "View
     release" link to GitHub Releases.
 
-`app.checkUpdate` calls the GitHub Releases API, always-on (no gate) — auto-checks
-when the About screen is opened (ADR-0002).
+`app.checkUpdate` calls the GitHub Releases API only when the user clicks "Check
+for Updates". There is no opt-in gate, but there is also no automatic check when
+the About screen opens.
 
 <!-- DOC-VERIFIED: about-screen, use-check-app-update, method-allowlist app.checkUpdate -->

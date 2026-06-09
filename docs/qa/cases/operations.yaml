@@ -3,7 +3,7 @@ cases:
   - id: TC-OPS-001
     title: Host scan operation cannot duplicate for the same host target
     tier: T1
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Dashboard]
     type: edge
     tags: [operation, host-scan, duplicate, release-full]
@@ -11,7 +11,7 @@ cases:
     preconditions:
       - QA host folder contains enough fixture entries for scan progress to be observable.
     steps:
-      - Open Skills Library.
+      - Open Host Skills.
       - Trigger Scan Skill Host Folder.
       - Immediately trigger scan again if the UI permits.
       - Wait for terminal state.
@@ -63,7 +63,7 @@ cases:
   - id: TC-OPS-003
     title: Cancel long-running scan returns UI to a safe retry state
     tier: T1
-    primary_screen: Skills Library
+    primary_screen: Host Skills
     related_screens: [Dashboard]
     type: edge
     tags: [operation, cancel, retry, release-full]
@@ -93,7 +93,7 @@ cases:
     title: Stale running operations are marked failed after app restart
     tier: T0
     primary_screen: Dashboard
-    related_screens: [Projects, Skills Library]
+    related_screens: [Projects, Host Skills]
     type: critical
     tags: [operation, restart, stale-state, data-integrity, release-full]
     invariants: [INV-OPERATION-001, INV-DB-001]
@@ -101,7 +101,7 @@ cases:
       - QA DB contains a synthetic queued/running operation from a prior crash, or the app is killed during a fixture operation.
     steps:
       - Launch app with the QA DB.
-      - Open Dashboard, Projects, and Skills Library.
+      - Open Dashboard, Projects, and Host Skills.
       - Inspect operation state.
     expected_ui:
       - App does not remain stuck in a prior running state.
@@ -206,7 +206,7 @@ cases:
     title: App restart during a running install resolves to a terminal state with consistent DB and filesystem
     tier: T0
     primary_screen: Project Detail
-    related_screens: [Dashboard, Skills Library]
+    related_screens: [Dashboard, Host Skills]
     type: critical
     tags: [operation, restart, crash, install, recovery, data-integrity, phase2]
     phase: phase2
@@ -227,14 +227,14 @@ cases:
       - Poll operation state out of band until the install operation is queued or running.
       - Terminate the app process while the install operation is still queued or running.
       - Relaunch with the same QA DB and QA HOME.
-      - Open Dashboard, Project Detail, and Skills Library.
+      - Open Dashboard, Project Detail, and Host Skills.
     expected_ui:
       - Relaunched app does not show the interrupted install as running forever.
       - Interrupted operation is shown as failed, cancelled, stale, or retryable according to the product contract.
       - A success state is shown only if the filesystem target and DB install record both prove completion.
       - User can retry or cleanly remove any partial state.
     cross_screen_checks:
-      - Dashboard, Project Detail, and Skills Library agree on whether the skill is installed after restart.
+      - Dashboard, Project Detail, and Host Skills agree on whether the skill is installed after restart.
     verifier:
       app_db:
         - No operation for the interrupted install remains queued or running after relaunch recovery.

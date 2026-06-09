@@ -222,7 +222,7 @@ Purpose: stores provider global locations at the user/machine level.
 |---|---|---:|---|
 | `id` | integer | no | Primary key. |
 | `provider_definition_id` | integer | no | FK to `provider_definitions.id`. |
-| `name` | text | yes | Display name for the global location, e.g. Claude Global or Generic Agents Global. |
+| `name` | text | yes | Display name for the global location, e.g. Claude Global or Shared Agents Global. |
 | `path` | text | yes | Absolute path to the provider global root/location. Nullable when the global location is not yet configured. |
 | `skills_path` | text | yes | Absolute path where the provider global level accepts skill/global entries if applicable. |
 | `status` | text | no | Global location state. Allowed: `active`, `not_configured`, `missing`, `unreadable`, `invalid_structure`, `empty`, `disabled`, `no_global_skills`. |

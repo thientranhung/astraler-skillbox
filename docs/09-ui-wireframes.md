@@ -30,11 +30,12 @@ Proposed layout:
 │ Skillbox                                      Global Actions │
 ├───────────────┬─────────────────────────────────────────────┤
 │ Dashboard     │                                             │
-│ Skills        │ Main content                                │
+│ Host Skills   │ Main content                                │
 │ Global Skills │                                             │
+│ Global Plugins│                                             │
 │ Projects      │                                             │
-│ Updates       │                                             │
 │ Settings      │                                             │
+│ About         │                                             │
 └───────────────┴─────────────────────────────────────────────┘
 ```
 
@@ -46,11 +47,11 @@ Sidebar items (actual nav order):
 - Global Plugins
 - Projects
 - Settings
+- About
 
 Global actions:
 
 - Scan
-- Fetch
 - Open Skill Host Folder
 
 ## Dashboard
@@ -96,19 +97,18 @@ Primary actions:
 - Choose Skill Host Folder.
 - Scan Skill Host Folder.
 - Add Project.
-- Fetch All.
 - Scan Global.
 
-## Skills Library
+## Host Skills
 
 Purpose: manage skills in the Skill Host Folder.
 
 Wireframe:
 
 ```text
-Skills Library
+Host Skills
 
-[Add / Import Skill] [Fetch All] [Open Skill Host Folder]
+[Scan Host] [Open Skill Host Folder]
 
 Filters
   Source: all / GitHub / Vercel / Local / Manual
@@ -125,8 +125,6 @@ Table
 Row actions:
 
 - View detail.
-- Fetch.
-- Update host copy.
 - Open folder.
 - Show projects using this skill.
 
@@ -134,8 +132,15 @@ Empty state:
 
 ```text
 No skills in Skill Host Folder.
-[Add / Import Skill]
+[Open Skill Host Folder]
 ```
+
+Rules:
+
+- The current screen focuses the Shared Agents host (`.agents/skills`) and does
+  not show an aggregate "All skills" provider tab.
+- Add/import and upstream fetch/update controls are deferred from the current
+  shipped UI.
 
 ## Skill Detail
 
@@ -383,44 +388,11 @@ Rules:
 - Unsupported/disabled providers do not appear as tabs.
 - Dialog covers full viewport (fixed overlay, z-50).
 
-## Updates
+## Deferred: Skill Source Updates
 
-Purpose: check and handle upstream updates.
-
-Wireframe:
-
-```text
-Updates
-
-[Fetch All]
-
-Available Updates
-  Skill                 Current      Latest       Affected Projects
-  adr-helper            a1b2c3       d4e5f6       7
-  research-writer       v1.2         v1.3         2
-
-Affected Projects: adr-helper
-  Project       Provider        Mode        Result after host update
-  project-a     Shared Agents   symlink     updates immediately
-  project-c     Claude          direct      unaffected
-
-Affected Global Installs
-  Location              Provider        Mode        Result after host update
-  User Global           Shared Agents   symlink     updates immediately
-
-Actions
-  [Update Host Copy]
-```
-
-Fetch states:
-
-- Fetch running.
-- Up to date.
-- Update available.
-- Auth required.
-- Network error.
-- Not fetchable.
-- Needs review because local modified.
+There is no standalone Updates screen in the current app. Future upstream skill
+source fetch/update flows should live in Host Skills or Skill Detail unless a
+new screen is explicitly designed.
 
 ## Settings
 
@@ -597,6 +569,7 @@ Global symlink installs updated immediately:
   `installs`, `warnings`, and `fetch_results`.
 - Project Detail should be scoped by `project_providers`.
 - Global Skills should be scoped by `global_provider_locations`.
-- Updates view should use latest `fetch_results` per `source_id`.
+- Future skill-source update surfaces should use latest `fetch_results` per
+  `source_id`.
 - Warnings should use `action_key` for quick actions.
 - Operations should drive loading/progress state.

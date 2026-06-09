@@ -433,13 +433,15 @@ Examples:
 
 ```text
 DashboardView
-SkillsLibraryView
+HostSkillsView (renderer code may still expose this as SkillsLibraryView)
 SkillDetailView
 ProjectsView
 ProjectDetailView
 GlobalSkillsView
-UpdatesView
+GlobalPluginsView
+FutureSkillSourceUpdateView
 SettingsView
+AboutView
 ```
 
 ## 13. UI Component Composition

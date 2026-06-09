@@ -417,11 +417,11 @@ real table screen needs sorting/filtering.
 Why:
 
 - Skillbox has many table screens:
-  - Skills Library
+  - Host Skills
   - Global Skills
   - Projects
   - Project Detail installs
-  - Updates affected projects/global installs
+  - Future skill-source update affected projects/global installs
 - Sort/filter/selection will be common.
 
 Risks:
