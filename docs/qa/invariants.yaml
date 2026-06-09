@@ -36,9 +36,12 @@ invariants:
     title: Plugin version and enabled state are consistent across plugin views
     applies_to: [Global Plugins, Project Detail, Dashboard]
     rule: >
-      A plugin version or enabled/disabled state shown on Global Plugins must
-      match the effective provider/plugin state shown on project-scoped views for
-      the same provider and layer, unless the UI explicitly labels an override.
+      A plugin enabled/disabled state shown on Global Plugins must reflect only
+      the global/user layer record for that provider/plugin. For the same
+      provider/plugin, Global Plugins must match Project Detail's Global column,
+      not Project Detail's Project or Effective columns. Project Detail's
+      Effective column must be a clearly derived result of the visible layer
+      facts.
 
   - id: INV-SAFETY-001
     title: Destructive QA never touches real user data without approval

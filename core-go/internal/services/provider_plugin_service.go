@@ -35,13 +35,13 @@ type pluginRemoverFn func(filePath, allowedDir, pluginName, marketplaceName stri
 
 // ProviderPluginService handles scanning and listing provider plugin declarations.
 type ProviderPluginService struct {
-	repo         *repositories.ProviderPluginRepo
-	pdRepo       pluginDefRepo
-	projRepo     pluginProjectRepo
-	registry     providerRegistrySvc
-	runner       OperationRunner
-	pluginWriter pluginWriterFn
-	tomlWriter   pluginWriterFn
+	repo          *repositories.ProviderPluginRepo
+	pdRepo        pluginDefRepo
+	projRepo      pluginProjectRepo
+	registry      providerRegistrySvc
+	runner        OperationRunner
+	pluginWriter  pluginWriterFn
+	tomlWriter    pluginWriterFn
 	pluginRemover pluginRemoverFn
 	tomlRemover   pluginRemoverFn
 }
@@ -1025,45 +1025,69 @@ func resolveEffectivePlugin(
 ) domain.PluginEffectiveEntry {
 	var breakdown []domain.PluginLayerBreakdown
 
-	checkLayer := func(sc *domain.PluginLayerScan, layer domain.PluginSettingsLayer) (done bool, entry domain.PluginEffectiveEntry) {
+	type layerResult struct {
+		blocked bool
+		decl    *domain.PluginDeclaration
+		version *string
+	}
+
+	checkLayer := func(sc *domain.PluginLayerScan, layer domain.PluginSettingsLayer) layerResult {
 		if sc == nil {
-			return false, domain.PluginEffectiveEntry{}
+			return layerResult{}
 		}
 		// Missing file = no entries at this layer; continue to next layer.
 		if sc.ScanStatus == domain.PluginLayerScanMissing {
 			breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: sc.ScanStatus})
-			return false, domain.PluginEffectiveEntry{}
+			return layerResult{}
 		}
 		// Any other non-ok status (malformed, unreadable, too_large, symlink, path_escape) blocks inheritance.
 		if sc.ScanStatus != domain.PluginLayerScanOK {
 			breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: sc.ScanStatus})
-			return true, domain.PluginEffectiveEntry{
+			return layerResult{blocked: true}
+		}
+		if decl := findPluginDecl(entryMap[sc.ID], pluginName, marketplaceName); decl != nil {
+			breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: domain.PluginLayerScanOK, Declaration: decl})
+			return layerResult{decl: decl, version: findPluginVersion(entryMap[sc.ID], pluginName, marketplaceName)}
+		}
+		breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: domain.PluginLayerScanOK})
+		return layerResult{}
+	}
+
+	var effective *domain.PluginEffectiveStatus
+	var provenance *domain.PluginSettingsLayer
+	var version *string
+	for _, layer := range []struct {
+		sc    *domain.PluginLayerScan
+		layer domain.PluginSettingsLayer
+	}{
+		{localScan, domain.PluginLayerLocal},
+		{projectScan, domain.PluginLayerProject},
+		{userScan, domain.PluginLayerUser},
+	} {
+		result := checkLayer(layer.sc, layer.layer)
+		if result.blocked && effective == nil {
+			return domain.PluginEffectiveEntry{
 				PluginName: pluginName, MarketplaceName: marketplaceName,
 				EffectiveStatus: domain.PluginEffectiveUnknown, LayerBreakdown: breakdown,
 			}
 		}
-		if decl := findPluginDecl(entryMap[sc.ID], pluginName, marketplaceName); decl != nil {
-			breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: domain.PluginLayerScanOK, Declaration: decl})
-			prov := layer
-			return true, domain.PluginEffectiveEntry{
-				PluginName: pluginName, MarketplaceName: marketplaceName,
-				EffectiveStatus: declToEffective(*decl),
-				ProvenanceLayer: &prov, LayerBreakdown: breakdown,
-				Version: findPluginVersion(entryMap[sc.ID], pluginName, marketplaceName),
-			}
+		if effective == nil && result.decl != nil {
+			status := declToEffective(*result.decl)
+			effective = &status
+			prov := layer.layer
+			provenance = &prov
+			version = result.version
 		}
-		breakdown = append(breakdown, domain.PluginLayerBreakdown{Layer: layer, ScanStatus: domain.PluginLayerScanOK})
-		return false, domain.PluginEffectiveEntry{}
 	}
 
-	if done, result := checkLayer(localScan, domain.PluginLayerLocal); done {
-		return result
-	}
-	if done, result := checkLayer(projectScan, domain.PluginLayerProject); done {
-		return result
-	}
-	if done, result := checkLayer(userScan, domain.PluginLayerUser); done {
-		return result
+	if effective != nil {
+		return domain.PluginEffectiveEntry{
+			PluginName: pluginName, MarketplaceName: marketplaceName,
+			EffectiveStatus: *effective,
+			ProvenanceLayer: provenance,
+			LayerBreakdown:  breakdown,
+			Version:         version,
+		}
 	}
 
 	return domain.PluginEffectiveEntry{
