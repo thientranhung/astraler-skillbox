@@ -52,6 +52,7 @@ nav:
       - QA Methodology: qa/methodology.md
       - QA Schema: qa/schema.md
       - Fixtures Taxonomy: qa/fixtures-taxonomy.md
+      - Screen Taxonomy: qa/screen-taxonomy.md
   - Contributor Operations:
       - Project Governance: playbooks/governance-project.md
       - Documentation Playbook: playbooks/documentation.md

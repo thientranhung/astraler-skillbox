@@ -102,6 +102,34 @@ phase output:
 Do not mark a phase complete merely because a tool command ran. Mark it
 complete only when the expected artifact or verdict exists and is inspectable.
 
+## Harness Learning Loop
+
+Operational lessons become durable rules only through a reviewed promotion path.
+Do not let one agent silently rewrite governance because one task felt awkward.
+
+Use this loop after orchestration failures, repeated review drift, missed QA
+selection, stuck tmux handoffs, or confusing phase boundaries:
+
+```text
+incident or near miss
+  -> write candidate lesson in .scratch/YYYY-MM-DD-harness-retro.md
+  -> classify: one-off | recurring | high-risk
+  -> one-off: keep as scratch/run context only
+  -> recurring or high-risk: promote the smallest rule to a playbook or ADR
+  -> Larry reviews process changes; Quinn reviews QA-bank/selection changes
+```
+
+Promotion rules:
+
+- Prefer updating an existing playbook section before adding a new document.
+- Add an ADR for material process/workflow decisions.
+- Keep historical QA runs and old ADRs unchanged; append new policy instead of
+  rewriting evidence.
+- Keep task/feature/release closing checklists outside this project-level
+  governance core. Add them only to the phase-specific playbook that needs them.
+- Do not write to global agent memory from the repo unless the user explicitly
+  asks. Repo-native lessons live in `.scratch/`, playbooks, ADRs, or QA docs.
+
 ### Plan Artifacts
 
 Implementation plans produced by workflow skills under `docs/superpowers/plans/`
@@ -260,6 +288,21 @@ interpreted.
 When a dedicated QA Lead is active, QA mapping belongs to that role before
 implementation for high-risk slices. The Reviewer still verifies the final diff,
 QA evidence, and docs; QA Lead ownership does not replace independent review.
+
+### Review Routing Matrix
+
+| Change | Required review |
+|---|---|
+| Governance, playbook, hook, or workflow rule | Larry |
+| QA cases, tags, profiles, schema, taxonomy, or run-selection policy | Quinn + Larry |
+| tmux/orchestration helper script | Larry, plus script smoke evidence |
+| `/goal` template or handoff policy | Larry |
+| Documentation source-of-truth map or MkDocs publishing | Larry |
+| Release, artifact, filesystem, DB, provider, or security behavior | Larry + impacted QA per the scope table |
+
+For screen label or QA tag changes, read
+[`../qa/screen-taxonomy.md`](../qa/screen-taxonomy.md) before editing and ask
+Quinn to review selection impact.
 
 ## Docs & ADR
 

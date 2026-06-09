@@ -159,6 +159,21 @@ Verify: TUI is running (not a shell), input area is empty, and no stale text rem
 
 Clear stale input -> send prompt -> send Enter **separately** to submit -> capture again to confirm it entered the transcript and the receiver started processing. The first Enter may only confirm multi-line input; a second Enter is often required. If the prompt remains in the input area, send Enter again and recapture before walking away.
 
+Preferred helper for routine handoffs:
+
+```sh
+scripts/harness/agent-send.sh leader-larry "REVIEW ONLY. Target: current diff..."
+scripts/harness/agent-status.sh leader-larry
+```
+
+Use the helper when sending normal text prompts to Tom, Quinn, or Larry. It
+refuses to send when queued input is already present, clears the input line,
+pastes through a tmux buffer, sends Enter, retries once when the new prompt is
+still visible in the input line, and prints a fresh capture for confirmation.
+Use manual tmux keystrokes only when recovering from queued input, selection
+prompts, broken TUIs, or runtime-specific behavior that the helper cannot safely
+classify.
+
 ### Selection Prompt = Dangerous
 
 If capture shows the agent at `Enter to select · ↑/↓ to navigate · Esc to cancel`:
@@ -204,6 +219,17 @@ echo "EXIT=$exit_reason after ~$((iters*5))s"; tmux capture-pane -t <pane> -p | 
   - `window_elapsed` -> still busy -> note progress and launch a new window (repeat up to N times).
 - **Hard wall-clock budget:** set a total cap (for example 6 windows ~= 18 minutes for a large task). If still busy at budget, capture pane, decide whether real progress is happening (tokens/spinner changed), and if it appears stuck -> `C-c` + inspect. Do not leave it running forever.
 - Pattern `… \([0-9]+[smh]` matches Claude Code spinner; other runtimes may need adaptation. The stuck-state grep is also TUI-specific.
+
+For quick spot checks, use:
+
+```sh
+scripts/harness/agent-status.sh leader-larry
+```
+
+The script returns a coarse status (`busy`, `queued_input`,
+`selection_prompt`, `needs_attention`, `shell_or_leak`, or `idle_or_waiting`)
+plus a recent pane capture. It is a checkpoint aid, not a replacement for
+reading the transcript.
 
 ### Audit
 

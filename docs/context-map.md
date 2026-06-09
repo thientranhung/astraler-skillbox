@@ -15,7 +15,8 @@ for common agent tasks; it does not replace the deeper docs.
 | Process, review, PR, QA routing | `docs/playbooks/governance-project.md` |
 | Documentation source-of-truth map | `docs/playbooks/documentation.md` |
 | Agent/tmux handoff operations | `docs/playbooks/agent-orchestration.md` |
-| QA policy and run mechanics | `docs/qa/governance.md`, `docs/qa/README.md` |
+| tmux helper scripts | `scripts/harness/agent-send.sh`, `scripts/harness/agent-status.sh` |
+| QA policy, taxonomy, and run mechanics | `docs/qa/governance.md`, `docs/qa/screen-taxonomy.md`, `docs/qa/README.md` |
 | Architecture decisions | `docs/decisions/index.md` |
 
 ## Code Map
@@ -38,6 +39,7 @@ for common agent tasks; it does not replace the deeper docs.
 | Go RPC transport | `core-go/internal/rpc/` |
 | SQLite migrations | `core-go/migrations/` |
 | Provider/filesystem fixtures | `fixtures/` |
+| Agent harness scripts | `scripts/harness/` |
 
 ## Contract And Boundary Checks
 
@@ -55,6 +57,7 @@ for common agent tasks; it does not replace the deeper docs.
 | Need | Start here |
 |---|---|
 | Select cases by feature or risk | `docs/qa/cases/`, `docs/qa/invariants.yaml` |
+| Check screen labels, routes, and QA tags | `docs/qa/screen-taxonomy.md` |
 | Release profile | `docs/qa/profiles/release-full.yaml` |
 | Create a run | `docs/qa/run-plan-template.yaml`, `docs/qa/report-template.md` |
 | Preserve run results | `docs/qa/runs/<run-id>/run-plan.yaml`, `results.jsonl`, `report.md` |
