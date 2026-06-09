@@ -4,7 +4,7 @@
  */
 
 /**
- * Contract for providerPlugin.setEnabled JSON-RPC method. Enables or disables a provider plugin at the specified layer by writing to the provider's settings file, then rescans the layer. Only layer=user is supported in this slice.
+ * Contract for providerPlugin.setEnabled JSON-RPC method. Enables or disables a provider plugin at the specified layer by writing to the provider's settings file. User-layer writes rescan global/user facts; project-layer writes rescan the layers needed to resolve Project Detail effective state.
  */
 export type ProviderPluginSetEnabledMethod = ProviderPluginSetEnabledRequest | ProviderPluginSetEnabledResponse;
 
@@ -13,7 +13,7 @@ export type ProviderPluginSetEnabledMethod = ProviderPluginSetEnabledRequest | P
  */
 export interface ProviderPluginSetEnabledRequest {
   /**
-   * Provider key (e.g. claude, antigravity_cli). Codex returns validation_error.
+   * Provider key (e.g. claude, antigravity_cli, codex).
    */
   providerKey: string;
   /**

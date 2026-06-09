@@ -120,7 +120,7 @@ func (s *ProviderPluginService) ScanProject(ctx context.Context, projectID int64
 	target := operations.Target{Type: "provider_plugin_project", ID: projectID}
 	opID, err := s.runner.Start(ctx, target, domain.OperationTypeScan,
 		func(opCtx context.Context, progress operations.ProgressFn) (any, error) {
-			return nil, s.scanProjectInternal(opCtx, project, defs, progress)
+			return nil, s.scanProjectEffectiveLayersInternal(opCtx, project, defs, progress)
 		})
 	if err != nil {
 		if _, ok := err.(*domain.AppError); ok {
@@ -131,10 +131,15 @@ func (s *ProviderPluginService) ScanProject(ctx context.Context, projectID int64
 	return opID, nil
 }
 
-// ScanProjectLayers scans the project + local settings layers for all plugin-capable
-// providers and commits the results. Unlike ScanProject, it runs within the caller's
-// operation context and does NOT start its own operation — used by ProjectService so a
-// single project.scan covers skills and plugins together.
+// ScanProjectLayers scans the user/global, project, and local settings layers for
+// all plugin-capable providers and commits the results. Unlike ScanProject, it runs
+// within the caller's operation context and does NOT start its own operation — used
+// by ProjectService so a single project.scan covers skills and plugins together.
+//
+// Project Detail resolves effective plugins from both user/global and project-local
+// layers, so a project scan must refresh the user/global plugin facts too. Otherwise
+// newly installed global plugins stay invisible until the user manually opens Global
+// Plugins and runs a separate scan.
 //
 // It uses pluginProviderDefsAllowMissing (not the strict pluginProviderDefs): zero
 // plugin-capable providers is a legitimate no-op, not an error. The strict variant returns
@@ -152,7 +157,7 @@ func (s *ProviderPluginService) ScanProjectLayers(
 	if len(defs) == 0 {
 		return nil // no plugin-capable providers configured — nothing to scan
 	}
-	return s.scanProjectInternal(ctx, project, defs, progress)
+	return s.scanProjectEffectiveLayersInternal(ctx, project, defs, progress)
 }
 
 // List returns the current global plugin view and per-project plugin views from persisted scan data.
@@ -408,7 +413,7 @@ func (s *ProviderPluginService) setPluginEnabledProjectInternal(
 	}
 	progress("writing_plugin_setting", 1, 1, def.Provider.Key)
 
-	return s.scanProjectInternal(ctx, project, []pluginProviderDef{def}, progress)
+	return s.scanProjectEffectiveLayersInternal(ctx, project, []pluginProviderDef{def}, progress)
 }
 
 // RemoveOverride removes a plugin's declaration from a project-layer settings file,
@@ -514,7 +519,7 @@ func (s *ProviderPluginService) removeOverrideProjectInternal(
 	}
 	progress("removing_plugin_override", 1, 1, def.Provider.Key)
 
-	return s.scanProjectInternal(ctx, project, []pluginProviderDef{def}, progress)
+	return s.scanProjectEffectiveLayersInternal(ctx, project, []pluginProviderDef{def}, progress)
 }
 
 // confinedPath reports whether filePath is strictly inside allowedDir.
@@ -782,6 +787,13 @@ func (s *ProviderPluginService) scanGlobalInternal(ctx context.Context, defs []p
 		progress("scanning_user_layer", i+1, total, def.Provider.Key)
 	}
 	return nil
+}
+
+func (s *ProviderPluginService) scanProjectEffectiveLayersInternal(ctx context.Context, project *domain.Project, defs []pluginProviderDef, progress operations.ProgressFn) error {
+	if err := s.scanGlobalInternal(ctx, defs, progress); err != nil {
+		return err
+	}
+	return s.scanProjectInternal(ctx, project, defs, progress)
 }
 
 // applyVersionMap sets Version on each entry from the lookup map keyed by "pluginName@marketplaceName".

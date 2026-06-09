@@ -324,6 +324,66 @@ cases:
       allowed_environment: qa_fixture
       real_environment: forbidden
 
+  - id: TC-PLUGIN-012
+    title: Project scan refreshes global plugin facts before resolving effective plugins
+    tier: T1
+    primary_screen: Project Detail
+    related_screens: [Global Plugins, Projects]
+    type: regression
+    tags: [plugin, project-detail, project-scan, global-plugins, stale-state, regression, release-full]
+    invariants: [INV-PLUGIN-001, INV-DB-001]
+    preconditions:
+      - QA fixture has a provider global/user plugin settings file that can be changed between scans.
+      - QA project uses the same provider and has no project override for the newly added global plugin.
+      - Previous persisted global/user plugin scan is absent or intentionally stale.
+    data_setup:
+      fixture_sources:
+        - fixtures/qa/global-plugin
+        - fixtures/qa/projects/project-plugin-override
+      copy_to:
+        global_plugin_home: runs/<run-id>/fixtures/global-plugin
+        project_plugin_override: runs/<run-id>/fixtures/projects/project-plugin-override
+      mutate_copy:
+        - add one new enabled plugin to the copied global/user plugin settings after any stale baseline scan
+        - ensure the copied project settings file has no explicit entry for that new plugin
+        - do not run Global Plugins scan after mutating the global/user fixture
+    steps:
+      - Configure QA HOME to the copied global plugin fixture.
+      - Add or open the project-plugin-override QA project.
+      - If needed, create a stale baseline by scanning before the new global plugin is added.
+      - Add the new global/user plugin declaration in the run-local fixture.
+      - Open Project Detail for the QA project.
+      - Click the Project Detail Scan action only.
+      - Inspect the Provider Plugins table for the provider.
+      - Open Global Plugins only after the Project Detail check, as a cross-check rather than as setup.
+    expected_ui:
+      - Project Detail shows the newly added global plugin immediately after Project Detail Scan.
+      - The plugin's Global column reflects the raw global/user fixture value.
+      - The plugin's Project column shows explicit No override.
+      - The plugin's Effective column is enabled and derived from the global/user layer.
+      - The user is not required to visit Global Plugins or run Scan Global before Project Detail becomes current.
+    cross_screen_checks:
+      - After the Project Detail Scan, Global Plugins shows the same user/global fact without requiring a separate scan.
+      - Project Detail and Global Plugins agree on the plugin's global/user state and version metadata where available.
+    verifier:
+      app_db:
+        - A fresh user/global plugin layer scan is committed by the Project Detail Scan operation.
+        - A fresh project plugin layer scan is committed by the same Project Detail Scan operation.
+        - The new plugin entry exists in the user/global layer and is absent from the project layer.
+        - Effective project state resolves to enabled from the user/global layer.
+      filesystem:
+        - Raw run-local global/user settings fixture contains the new plugin declaration.
+        - Raw run-local project settings fixture does not contain the new plugin declaration.
+      evidence:
+        - Screenshot of Project Detail Provider Plugins after Project Detail Scan, before any Global Plugins scan.
+        - Screenshot of Global Plugins after the Project Detail check.
+        - DB query output for user/global and project plugin layer scans, including timestamps and entries.
+        - Redacted raw fixture snippets or checksums.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
   - id: TC-PLUGIN-007
     title: Missing provider settings file shows no-plugins state without inventing versions
     tier: T1

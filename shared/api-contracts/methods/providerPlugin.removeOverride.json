@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ProviderPluginRemoveOverrideMethod",
-  "description": "Contract for providerPlugin.removeOverride JSON-RPC method. Removes a project-layer plugin override from the provider's settings file, then rescans the project layer.",
+  "description": "Contract for providerPlugin.removeOverride JSON-RPC method. Removes a project-layer plugin override from the provider's settings file, then rescans the layers needed to resolve Project Detail effective state.",
   "oneOf": [
     { "$ref": "#/definitions/ProviderPluginRemoveOverrideRequest" },
     { "$ref": "#/definitions/ProviderPluginRemoveOverrideResponse" }

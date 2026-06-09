@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ProviderPluginSetEnabledMethod",
-  "description": "Contract for providerPlugin.setEnabled JSON-RPC method. Enables or disables a provider plugin at the specified layer by writing to the provider's settings file, then rescans the layer. Only layer=user is supported in this slice.",
+  "description": "Contract for providerPlugin.setEnabled JSON-RPC method. Enables or disables a provider plugin at the specified layer by writing to the provider's settings file. User-layer writes rescan global/user facts; project-layer writes rescan the layers needed to resolve Project Detail effective state.",
   "oneOf": [
     { "$ref": "#/definitions/ProviderPluginSetEnabledRequest" },
     { "$ref": "#/definitions/ProviderPluginSetEnabledResponse" }
@@ -14,7 +14,7 @@
       "properties": {
         "providerKey": {
           "type": "string",
-          "description": "Provider key (e.g. claude, antigravity_cli). Codex returns validation_error."
+          "description": "Provider key (e.g. claude, antigravity_cli, codex)."
         },
         "pluginName": {
           "type": "string",

@@ -821,6 +821,83 @@ func TestScanProjectLayers_NoPluginProviders_IsNoOp(t *testing.T) {
 	}
 }
 
+func TestScanProjectLayers_RefreshesGlobalLayerForProjectEffectiveView(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	db, err := repositories.OpenDatabase(dbPath)
+	if err != nil {
+		t.Fatalf("OpenDatabase: %v", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+
+	var claudeDefID int64
+	if err := db.QueryRowContext(ctx, `SELECT id FROM provider_definitions WHERE key = 'claude'`).Scan(&claudeDefID); err != nil {
+		t.Fatalf("query claude def: %v", err)
+	}
+
+	projectDir := t.TempDir()
+	res, err := db.ExecContext(ctx, `INSERT INTO projects (name, path, status) VALUES ('plugin-proj', ?, 'active')`, projectDir)
+	if err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+	projectID, _ := res.LastInsertId()
+
+	globalDir := t.TempDir()
+	globalSettingsPath := filepath.Join(globalDir, "settings.json")
+	if err := os.WriteFile(globalSettingsPath, []byte(`{"enabledPlugins":{"new-global@qa-market":true}}`), 0o644); err != nil {
+		t.Fatalf("write global settings: %v", err)
+	}
+
+	pluginRepo := repositories.NewProviderPluginRepo(db)
+	registry := &mockProviderRegistrySvc{entries: []domain.ProviderRegistryEntry{
+		{
+			Definition: domain.ProviderDefinition{ID: claudeDefID, Key: "claude"},
+			Candidates: []domain.ProviderPathCandidate{
+				{Scope: "global", Purpose: "config", RelativePath: globalSettingsPath, Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".claude/settings.json", Priority: 10},
+				{Scope: "project", Purpose: "config", RelativePath: ".claude/settings.local.json", Priority: 5},
+			},
+		},
+	}}
+	project := &domain.Project{ID: projectID, Path: projectDir}
+	svc := NewProviderPluginService(pluginRepo, &mockPluginDefRepo{}, &mockPluginProjectRepo{project: project}, registry, makeSyncRunner())
+
+	if err := svc.ScanProjectLayers(ctx, project, func(string, int, int, string) {}); err != nil {
+		t.Fatalf("ScanProjectLayers: %v", err)
+	}
+
+	globals, projects, err := svc.ListAll(ctx)
+	if err != nil {
+		t.Fatalf("ListAll: %v", err)
+	}
+	if len(globals) != 1 {
+		t.Fatalf("global views: got %d want 1", len(globals))
+	}
+	if len(globals[0].Plugins) != 1 || globals[0].Plugins[0].PluginName != "new-global" {
+		t.Fatalf("global plugins: got %+v, want new-global", globals[0].Plugins)
+	}
+	if len(projects) != 1 {
+		t.Fatalf("project views: got %d want 1", len(projects))
+	}
+	if len(projects[0].Plugins) != 1 {
+		t.Fatalf("project plugins: got %d want 1", len(projects[0].Plugins))
+	}
+	got := projects[0].Plugins[0]
+	if got.PluginName != "new-global" || got.MarketplaceName != "qa-market" {
+		t.Fatalf("project plugin key: got %s@%s", got.PluginName, got.MarketplaceName)
+	}
+	if got.EffectiveStatus != domain.PluginEffectiveEnabled {
+		t.Fatalf("effective status: got %s want enabled", got.EffectiveStatus)
+	}
+	if got.ProvenanceLayer == nil || *got.ProvenanceLayer != domain.PluginLayerUser {
+		t.Fatalf("provenance layer: got %v want user", got.ProvenanceLayer)
+	}
+	if len(projects[0].LayerScans) != 3 {
+		t.Fatalf("layer scans: got %d want 3 (local, project, user)", len(projects[0].LayerScans))
+	}
+}
+
 func TestAggregatePluginCounts_SumsEnabledAndTotalAcrossProviders(t *testing.T) {
 	enabled := domain.PluginEffectiveEnabled
 	disabled := domain.PluginEffectiveDisabled
