@@ -97,11 +97,16 @@ cases:
       - Effective state in Project Detail derives from the displayed user/project layer facts.
       - Global Plugins user state matches Project Detail user column for the same plugin.
     verifier:
+      app_db:
+        - Global/user layer plugin facts match the raw user settings fixture for the plugins under test.
+        - Project layer plugin facts match the raw project settings fixture for the plugins under test.
+        - Project Detail effective state is derived from the stored layer facts, not from a stale or collapsed display value.
       filesystem:
         - User settings fixture and project settings fixture contain the expected differing states.
       evidence:
         - Screenshot of Project Detail plugin section.
         - Screenshot of Global Plugins row.
+        - DB query output for global/user and project plugin layer facts.
         - Fixture settings snippets with sensitive values redacted.
     safety:
       destructive: false
@@ -231,6 +236,7 @@ cases:
       mutate_copy:
         - use `runs/<run-id>/fixtures/global-plugin` as QA HOME for this case
         - keep project plugin settings with a different enabled/version state than the QA global fixture
+        - include both override directions across target plugins when possible: global enabled/project disabled and global disabled/project enabled
     steps:
       - Configure QA HOME to the copied global plugin fixture.
       - Add or open the project-plugin-override QA project.
@@ -247,6 +253,7 @@ cases:
     verifier:
       app_db:
         - Plugin facts are stored separately by global/user and project layer.
+        - Global/user layer enabled state is queried separately from project layer enabled state.
         - Effective project state matches the project override where applicable.
       filesystem:
         - Global and project settings fixture files remain unchanged.
@@ -255,6 +262,63 @@ cases:
         - Global Plugins screenshot.
         - DB query output for plugin layer facts.
         - Fixture settings snippets or checksums.
+    safety:
+      destructive: false
+      allowed_environment: qa_fixture
+      real_environment: forbidden
+
+  - id: TC-PLUGIN-011
+    title: Project plugin layer columns match source truth across global and project scopes
+    tier: T1
+    primary_screen: Global Plugins
+    related_screens: [Project Detail]
+    type: regression
+    tags: [plugin, global-plugins, project-detail, cross-screen, layer-state, regression, release-full]
+    invariants: [INV-PLUGIN-001, INV-DB-001]
+    preconditions:
+      - QA fixture has provider plugin settings at global/user and project layers.
+      - At least two target plugins have explicit global/user enabled values.
+      - At least one target plugin has a project override that differs from global/user state.
+    data_setup:
+      fixture_sources:
+        - fixtures/qa/global-plugin
+        - fixtures/qa/projects/project-plugin-override
+      copy_to:
+        global_plugin_home: runs/<run-id>/fixtures/global-plugin
+        project_plugin_override: runs/<run-id>/fixtures/projects/project-plugin-override
+      mutate_copy:
+        - set one target plugin to global/user enabled with no project override
+        - set one target plugin to global/user enabled with project disabled override
+        - set one target plugin to global/user disabled with project enabled override
+        - preserve raw fixture snippets or checksums for each target plugin
+    steps:
+      - Configure QA HOME to the copied global plugin fixture.
+      - Add or open the project-plugin-override QA project.
+      - Run Global Plugins scan.
+      - Run project plugin scan if needed.
+      - Read raw global/user and project settings values for each target plugin.
+      - Compare Global Plugins rows with Project Detail Provider Plugins rows for the same provider/plugins.
+    expected_ui:
+      - Global Plugins enabled state equals the raw global/user layer value for each target plugin.
+      - Project Detail Global column equals the raw global/user layer value for each target plugin.
+      - Project Detail Project column equals the raw project layer value or shows explicit No override.
+      - Project Detail Effective column is derived from the visible Project and Global columns.
+      - Project overrides never make Global Plugins or Project Detail Global column display the effective state as if it were global/user state.
+    cross_screen_checks:
+      - Global Plugins enabled state matches Project Detail Global column for the same provider/plugin.
+      - Project Detail Effective column differs from Global column only when Project column clearly shows an override.
+    verifier:
+      app_db:
+        - Query global/user plugin layer facts for target plugins and compare to Global Plugins plus Project Detail Global column.
+        - Query project plugin layer facts for target plugins and compare to Project Detail Project column.
+        - Verify effective project state is derived from layer facts and does not overwrite either source layer.
+      filesystem:
+        - Raw global/user settings fixture and project settings fixture contain the expected explicit plugin declarations.
+      evidence:
+        - Screenshot of Global Plugins with target plugin rows visible.
+        - Screenshot of Project Detail Provider Plugins with Project, Global, and Effective columns visible.
+        - DB query output for global/user and project plugin layer facts.
+        - Redacted raw settings snippets or checksums for the target plugins.
     safety:
       destructive: false
       allowed_environment: qa_fixture

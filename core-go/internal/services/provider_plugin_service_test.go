@@ -255,6 +255,66 @@ func TestResolveEffectivePlugin_FallsThrough_LocalAbsent_ProjectEnabled(t *testi
 	}
 }
 
+func TestResolveEffectivePlugin_ProjectOverrideKeepsUserLayerBreakdown(t *testing.T) {
+	local := okScan(1, domain.PluginLayerLocal, ptr64(10))
+	project := okScan(2, domain.PluginLayerProject, ptr64(10))
+	user := okScan(3, domain.PluginLayerUser, nil)
+
+	entryMap := map[int64][]domain.PluginEntry{
+		1: {},
+		2: {makeEntry(2, "plugin-a", "npm", true)}, // project: enabled override wins
+		3: {makeEntry(3, "plugin-a", "npm", true)}, // user/global: enabled must remain visible
+	}
+
+	result := resolveEffectivePlugin("plugin-a", "npm", local, project, user, entryMap)
+	if result.EffectiveStatus != domain.PluginEffectiveEnabled {
+		t.Errorf("expected enabled (project), got %s", result.EffectiveStatus)
+	}
+	if result.ProvenanceLayer == nil || *result.ProvenanceLayer != domain.PluginLayerProject {
+		t.Errorf("expected provenance=project, got %v", result.ProvenanceLayer)
+	}
+	if len(result.LayerBreakdown) != 3 {
+		t.Fatalf("breakdown count: got %d want 3", len(result.LayerBreakdown))
+	}
+	userLayer := result.LayerBreakdown[2]
+	if userLayer.Layer != domain.PluginLayerUser {
+		t.Fatalf("breakdown[2].layer: got %s want user", userLayer.Layer)
+	}
+	if userLayer.Declaration == nil || *userLayer.Declaration != domain.PluginDeclarationEnabled {
+		t.Fatalf("user/global declaration: got %v want enabled", userLayer.Declaration)
+	}
+}
+
+func TestResolveEffectivePlugin_ProjectOverrideWinsWhenUserLayerMalformed(t *testing.T) {
+	local := okScan(1, domain.PluginLayerLocal, ptr64(10))
+	project := okScan(2, domain.PluginLayerProject, ptr64(10))
+	user := badScan(3, domain.PluginLayerUser, domain.PluginLayerScanMalformed, nil)
+
+	entryMap := map[int64][]domain.PluginEntry{
+		1: {},
+		2: {makeEntry(2, "plugin-a", "npm", true)},
+		3: {},
+	}
+
+	result := resolveEffectivePlugin("plugin-a", "npm", local, project, user, entryMap)
+	if result.EffectiveStatus != domain.PluginEffectiveEnabled {
+		t.Errorf("expected project override to remain enabled, got %s", result.EffectiveStatus)
+	}
+	if result.ProvenanceLayer == nil || *result.ProvenanceLayer != domain.PluginLayerProject {
+		t.Errorf("expected provenance=project, got %v", result.ProvenanceLayer)
+	}
+	if len(result.LayerBreakdown) != 3 {
+		t.Fatalf("breakdown count: got %d want 3", len(result.LayerBreakdown))
+	}
+	userLayer := result.LayerBreakdown[2]
+	if userLayer.Layer != domain.PluginLayerUser {
+		t.Fatalf("breakdown[2].layer: got %s want user", userLayer.Layer)
+	}
+	if userLayer.ScanStatus != domain.PluginLayerScanMalformed {
+		t.Fatalf("user/global scan status: got %s want malformed", userLayer.ScanStatus)
+	}
+}
+
 func TestResolveEffectivePlugin_LayerBreakdownPopulated(t *testing.T) {
 	local := okScan(1, domain.PluginLayerLocal, ptr64(10))
 	project := okScan(2, domain.PluginLayerProject, ptr64(10))
