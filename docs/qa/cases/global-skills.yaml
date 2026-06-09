@@ -253,7 +253,7 @@ cases:
       real_environment: allowed_read_only
 
   - id: TC-GLOBAL-008
-    title: Global Skills provider tabs show counts and empty states
+    title: Global Skills provider tabs prioritize Shared Agents without aggregate views
     tier: T2
     primary_screen: Global Skills
     related_screens: []
@@ -261,18 +261,19 @@ cases:
     tags: [global-skills, provider-tabs, counts, empty-state, release-full]
     invariants: [INV-GLOBAL-001]
     preconditions:
-      - App has scanned global skills with at least two providers (one with skills, one without).
+      - App has scanned global skills with at least two providers, including Shared Agents (one with skills, one without).
     steps:
       - Open Global Skills.
       - Run global scan if not yet scanned.
       - Inspect the provider tab bar.
       - Click each provider tab.
     expected_ui:
-      - An "All" tab is visible with the total skill entry count.
+      - Shared Agents is the default selected provider view.
+      - No "All" aggregate tab is visible.
       - Each provider has its own tab showing its skill entry count (may be 0).
+      - Provider tabs show provider icons.
       - Clicking a provider tab shows only that provider's location section.
       - A provider with 0 entries shows a clear empty state message in its tab view.
-      - Clicking "All" restores all provider locations.
     verifier:
       evidence:
         - Screenshot of Global Skills tab bar with all provider tabs and counts.

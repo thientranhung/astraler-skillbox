@@ -176,7 +176,7 @@ describe("GlobalSkillsScreen", () => {
   });
 
   // UX-005: provider tabs
-  it("shows All tab with total entry count when locations are present", () => {
+  it("shows per-provider tabs without an All aggregate when locations are present", () => {
     const loc1 = makeLocation({
       providerKey: "generic_agents",
       providerDisplayName: "Shared Agents",
@@ -196,10 +196,12 @@ describe("GlobalSkillsScreen", () => {
     mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc1, loc2] } });
 
     render(<GlobalSkillsScreen />);
-    // "All" tab should exist and show total count 3
-    expect(screen.getByRole("button", { name: /^All/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^All/ })).toBeNull();
     expect(screen.getByRole("button", { name: /Shared Agents/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Claude/ })).toBeTruthy();
+    expect(screen.getByText("skill-a")).toBeTruthy();
+    expect(screen.getByText("skill-b")).toBeTruthy();
+    expect(screen.queryByText("skill-c")).toBeNull();
   });
 
   it("clicking a provider tab shows only that provider's location", () => {
@@ -218,8 +220,8 @@ describe("GlobalSkillsScreen", () => {
     mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc1, loc2] } });
 
     render(<GlobalSkillsScreen />);
-    // Initially both provider sections visible (status badge appears once per location section)
-    expect(screen.getAllByText("active")).toHaveLength(2);
+    // Shared Agents is selected first; no aggregate view is shown.
+    expect(screen.getAllByText("active")).toHaveLength(1);
     // Click Claude tab — the tab button label contains "Claude"
     const claudeTab = screen.getAllByRole("button", { name: /Claude/ })[0];
     fireEvent.click(claudeTab);
@@ -238,9 +240,9 @@ describe("GlobalSkillsScreen", () => {
     mockUseGlobalList.mockReturnValue({ isPending: false, isError: false, data: { locations: [loc] } });
 
     render(<GlobalSkillsScreen />);
-    // All tab shows 0
-    const allTab = screen.getByRole("button", { name: /^All/ });
-    expect(allTab.textContent).toMatch(/0/);
+    const sharedTab = screen.getByRole("button", { name: /Shared Agents/ });
+    expect(sharedTab.textContent).toMatch(/0/);
+    expect(screen.queryByRole("button", { name: /^All/ })).toBeNull();
   });
 
   // UX-006: path display trims trailing slash

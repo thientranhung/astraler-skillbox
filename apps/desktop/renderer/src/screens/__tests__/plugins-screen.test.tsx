@@ -96,7 +96,8 @@ describe("PluginsScreen", () => {
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [], global, projects: [] } });
     render(<PluginsScreen />);
     expect(screen.getByText("legacy-plugin")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^All/ }).textContent).toContain("1");
+    expect(screen.getByRole("button", { name: /Claude/ }).textContent).toContain("1");
+    expect(screen.queryByRole("button", { name: /^All/ })).toBeNull();
   });
 
   it("shows 'not configured' for missing status — not error language", () => {
@@ -170,6 +171,7 @@ describe("PluginsScreen", () => {
     render(<PluginsScreen />);
     expect(screen.getAllByText("Claude").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Codex").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: /Codex/ }));
     expect(screen.getByText("/Users/test/.codex/config.toml")).toBeTruthy();
     expect(screen.getByText("github")).toBeTruthy();
   });
@@ -350,7 +352,12 @@ describe("PluginsScreen", () => {
   });
 
   // UX-005: provider tabs
-  it("shows All tab and per-provider tabs when globals are present", () => {
+  it("shows per-provider tabs without an All aggregate when globals are present", () => {
+    const sharedAgents = makeGlobal({
+      providerKey: "generic_agents",
+      userLayerStatus: "ok",
+      plugins: [{ pluginName: "shared-plugin", marketplaceName: "npm", status: "enabled" }],
+    });
     const claude = makeGlobal({
       providerKey: "claude",
       userLayerStatus: "ok",
@@ -364,11 +371,15 @@ describe("PluginsScreen", () => {
         { pluginName: "p3", marketplaceName: "npm", status: "enabled" },
       ],
     });
-    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [claude, codex], global: claude, projects: [] } });
+    mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [claude, codex, sharedAgents], global: claude, projects: [] } });
     render(<PluginsScreen />);
-    expect(screen.getByRole("button", { name: /^All/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^All/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Shared Agents/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Claude/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Codex/ })).toBeTruthy();
+    expect(screen.getByText("shared-plugin")).toBeTruthy();
+    expect(screen.queryByText("p1")).toBeNull();
+    expect(screen.queryByText("p2")).toBeNull();
   });
 
   it("clicking a provider tab shows only that provider's plugins", () => {
@@ -384,21 +395,21 @@ describe("PluginsScreen", () => {
     });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [claude, codex], global: claude, projects: [] } });
     render(<PluginsScreen />);
-    // Both visible initially
-    expect(screen.getByText("claude-plugin")).toBeTruthy();
-    expect(screen.getByText("codex-plugin")).toBeTruthy();
-    // Click Claude tab
-    fireEvent.click(screen.getByRole("button", { name: /Claude/ }));
+    // First provider is selected by default; no aggregate view is shown.
     expect(screen.getByText("claude-plugin")).toBeTruthy();
     expect(screen.queryByText("codex-plugin")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Codex/ }));
+    expect(screen.queryByText("claude-plugin")).toBeNull();
+    expect(screen.getByText("codex-plugin")).toBeTruthy();
   });
 
   it("provider tab count shows 0 when provider has no plugins", () => {
     const claude = makeGlobal({ providerKey: "claude", userLayerStatus: "ok", plugins: [] });
     mockUseList.mockReturnValue({ isPending: false, isError: false, data: { globals: [claude], global: claude, projects: [] } });
     render(<PluginsScreen />);
-    const allTab = screen.getByRole("button", { name: /^All/ });
-    expect(allTab.textContent).toMatch(/0/);
+    const claudeTab = screen.getByRole("button", { name: /Claude/ });
+    expect(claudeTab.textContent).toMatch(/0/);
+    expect(screen.queryByRole("button", { name: /^All/ })).toBeNull();
   });
 
   // UX-006: userLayerPath with trailing slash is trimmed

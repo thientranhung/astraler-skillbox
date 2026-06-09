@@ -186,16 +186,16 @@ Global Skills
 
 [Scan Global] [Open Selected Folder]
 
+[Shared Agents] [Claude]
+
 Global Locations
   Provider        Path                   Status          Entries
   Shared Agents   ~/.agents/skills       active          4
-  Claude          ~/.claude/...          not configured  0
 
 Global Entries
   Provider        Skill/Entry             Mode        Status             Actions
   Shared Agents   research-writer         direct      current            [Open]
   Shared Agents   adr-helper              symlink     current            [Relink] [Remove]
-  Claude          old-command             symlink     broken symlink     [Relink] [Remove]
 ```
 
 Warnings:
@@ -209,6 +209,8 @@ Warnings:
 Rules:
 
 - Global entries are never merged with project installs.
+- Provider tabs are provider-specific only; do not show an aggregate "All" tab.
+- The Shared Agents provider is selected first when available.
 - Global direct entries are shown as unmanaged/direct.
 - Removing a global entry never removes the Skill Host Folder source.
 - Global/project overlap is informational unless provider behavior makes it
@@ -327,24 +329,19 @@ Wireframe:
 ```text
 Provider Plugins                                    [Scan Global]
 
-── Claude ──────────────────────────────────────────
-  Path: ~/.claude/settings.json   Status: ok   Last scan: 2026-05-29 15:02
+[Shared Agents] [Claude] [Codex]
+
+── Shared Agents ───────────────────────────────────
+  Path: ~/.agents/plugins.json   Status: ok   Last scan: 2026-05-29 15:02
 
   Plugin              Marketplace              Version    Status    Action
-  claude-md-mgmt      claude-plugins-official  1.0.0      enabled   [Disable]
-  frontend-design     claude-plugins-official  unknown    enabled   [Disable]
-  my-plugin           custom                   —          disabled  [Enable]
-
-── Codex ────────────────────────────────────────────
-  Path: ~/.codex/config.toml   Status: ok
-
-  Plugin              Marketplace              Status    Action
-  github              openai-curated           enabled   [Disable]
-  (Version column hidden when all entries have no version)
+  shared-tools        local                    1.0.0      enabled   [Disable]
 ```
 
 Version column rules:
 
+- Provider tabs are provider-specific only; do not show an aggregate "All" tab.
+- The Shared Agents provider is selected first when available.
 - Version column appears only when at least one plugin in that provider section
   has a non-null version. Column hidden for providers where version is
   unavailable (Codex, Antigravity CLI in Phase 1).

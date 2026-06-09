@@ -8,7 +8,7 @@ import { ErrorDisplay } from "../components/error-display.js";
 import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { displayPath } from "../lib/display-path.js";
-import { providerShortLabel } from "../lib/provider-display.js";
+import { orderBySharedAgentsFirst, providerShortLabel } from "../lib/provider-display.js";
 import type { PPGlobalView, PPGlobalEntry, UpdateCheckPluginResult } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
@@ -225,11 +225,13 @@ function GlobalPluginView({
 }
 
 function ProviderTab({
+  providerKey,
   label,
   count,
   active,
   onClick,
 }: {
+  providerKey: string;
   label: string;
   count: number;
   active: boolean;
@@ -244,7 +246,10 @@ function ProviderTab({
           : "border-transparent text-zinc-500 hover:text-zinc-700"
       }`}
     >
-      {label}
+      <span className="inline-flex items-center gap-1.5">
+        <ProviderIcon providerKey={providerKey} />
+        {label}
+      </span>
       <span
         className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] ${
           active ? "bg-zinc-200 text-zinc-700" : "bg-zinc-100 text-zinc-500"
@@ -261,7 +266,7 @@ export function PluginsScreen(): React.JSX.Element {
   const scanMutation = useScanProviderPluginsGlobal();
   const setEnabledMutation = useSetProviderPluginEnabled();
   const updateCheck = useRunUpdateCheck();
-  const [activeProvider, setActiveProvider] = useState<string>("all");
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const isScanning = scanMutation.operationId != null || scanMutation.isPending;
   const isTogglingPlugin = setEnabledMutation.isPending || setEnabledMutation.operationId != null;
 
@@ -276,7 +281,7 @@ export function PluginsScreen(): React.JSX.Element {
 
   const allGlobals = useMemo(() => {
     if (data == null) return [];
-    return data.globals.length > 0 ? data.globals : [data.global];
+    return orderBySharedAgentsFirst(data.globals.length > 0 ? data.globals : [data.global]);
   }, [data]);
 
   const providerTabs = useMemo(() => {
@@ -287,14 +292,17 @@ export function PluginsScreen(): React.JSX.Element {
     }));
   }, [allGlobals]);
 
-  const totalCount = useMemo(
-    () => allGlobals.reduce((sum, g) => sum + g.plugins.length, 0),
-    [allGlobals],
-  );
+  const selectedProvider = providerTabs.some((tab) => tab.key === activeProvider)
+    ? activeProvider
+    : (providerTabs[0]?.key ?? null);
 
   const visibleGlobals = useMemo(() => {
-    return activeProvider === "all" ? allGlobals : allGlobals.filter((g) => g.providerKey === activeProvider);
-  }, [allGlobals, activeProvider]);
+    return selectedProvider == null ? allGlobals : allGlobals.filter((g) => g.providerKey === selectedProvider);
+  }, [allGlobals, selectedProvider]);
+
+  useEffect(() => {
+    if (selectedProvider !== activeProvider) setActiveProvider(selectedProvider);
+  }, [activeProvider, selectedProvider]);
 
   const autoScannedRef = useRef(false);
   const oldestScannedAt = (() => {
@@ -356,18 +364,13 @@ export function PluginsScreen(): React.JSX.Element {
       {/* Provider tabs */}
       {!isPending && !isError && allGlobals.length > 0 && (
         <div className="flex border-b border-zinc-200 px-4 pt-2">
-          <ProviderTab
-            label="All"
-            count={totalCount}
-            active={activeProvider === "all"}
-            onClick={() => setActiveProvider("all")}
-          />
           {providerTabs.map((tab) => (
             <ProviderTab
               key={tab.key}
+              providerKey={tab.key}
               label={tab.displayName}
               count={tab.count}
-              active={activeProvider === tab.key}
+              active={selectedProvider === tab.key}
               onClick={() => setActiveProvider(tab.key)}
             />
           ))}

@@ -7,7 +7,7 @@ import { EmptyState } from "../components/empty-state.js";
 import { ProviderIcon } from "../components/provider-icon.js";
 import { methods } from "../lib/core-client/methods.js";
 import { displayPath } from "../lib/display-path.js";
-import { providerDisplayName } from "../lib/provider-display.js";
+import { orderBySharedAgentsKeyFirst, providerDisplayName } from "../lib/provider-display.js";
 import type { GlobalListLocation, GlobalListEntry } from "@contracts/index.js";
 import { sessionAutoScanRegistry, isDataStale } from "../features/scan/auto-scan-constants.js";
 
@@ -41,11 +41,13 @@ function entryStatusBadgeClass(status: GlobalListEntry["status"]): string {
 }
 
 function ProviderTab({
+  providerKey,
   label,
   count,
   active,
   onClick,
 }: {
+  providerKey: string;
   label: string;
   count: number;
   active: boolean;
@@ -60,7 +62,10 @@ function ProviderTab({
           : "border-transparent text-zinc-500 hover:text-zinc-700"
       }`}
     >
-      {label}
+      <span className="inline-flex items-center gap-1.5">
+        <ProviderIcon providerKey={providerKey} />
+        {label}
+      </span>
       <span
         className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] ${
           active ? "bg-zinc-200 text-zinc-700" : "bg-zinc-100 text-zinc-500"
@@ -75,7 +80,7 @@ function ProviderTab({
 export function GlobalSkillsScreen(): React.JSX.Element {
   const { data, isPending, isError, error } = useGlobalList();
   const scanMutation = useScanGlobal();
-  const [activeProvider, setActiveProvider] = useState<string>("all");
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
 
   const isScanning = scanMutation.operationId != null;
   const locations = data?.locations ?? [];
@@ -113,15 +118,20 @@ export function GlobalSkillsScreen(): React.JSX.Element {
         tabs.push({ key: loc.providerKey, displayName: providerDisplayName(loc.providerKey, loc.providerDisplayName), count });
       }
     }
-    return tabs;
+    return orderBySharedAgentsKeyFirst(tabs);
   }, [locations]);
 
-  const totalCount = locations.reduce((sum, l) => sum + l.entries.length, 0);
+  const selectedProvider = providerTabs.some((tab) => tab.key === activeProvider)
+    ? activeProvider
+    : (providerTabs[0]?.key ?? null);
 
-  const visibleLocations =
-    activeProvider === "all"
-      ? locations
-      : locations.filter((l) => l.providerKey === activeProvider);
+  useEffect(() => {
+    if (selectedProvider !== activeProvider) setActiveProvider(selectedProvider);
+  }, [activeProvider, selectedProvider]);
+
+  const visibleLocations = selectedProvider == null
+    ? locations
+    : locations.filter((l) => l.providerKey === selectedProvider);
 
   function handleOpenFolder(path: string): void {
     void methods.openPath(path);
@@ -150,18 +160,13 @@ export function GlobalSkillsScreen(): React.JSX.Element {
       {/* Provider tabs */}
       {!isPending && !isError && locations.length > 0 && (
         <div className="flex border-b border-zinc-200 px-4 pt-2">
-          <ProviderTab
-            label="All"
-            count={totalCount}
-            active={activeProvider === "all"}
-            onClick={() => setActiveProvider("all")}
-          />
           {providerTabs.map((tab) => (
             <ProviderTab
               key={tab.key}
+              providerKey={tab.key}
               label={tab.displayName}
               count={tab.count}
-              active={activeProvider === tab.key}
+              active={selectedProvider === tab.key}
               onClick={() => setActiveProvider(tab.key)}
             />
           ))}
