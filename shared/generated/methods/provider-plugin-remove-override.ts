@@ -4,7 +4,7 @@
  */
 
 /**
- * Contract for providerPlugin.removeOverride JSON-RPC method. Removes a project-layer plugin override from the provider's settings file, then rescans the project layer.
+ * Contract for providerPlugin.removeOverride JSON-RPC method. Removes a project-layer plugin override from the provider's settings file, then rescans the layers needed to resolve Project Detail effective state.
  */
 export type ProviderPluginRemoveOverrideMethod =
   | ProviderPluginRemoveOverrideRequest
