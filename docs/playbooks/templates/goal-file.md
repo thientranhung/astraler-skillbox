@@ -7,6 +7,7 @@ Origin: the user's original `/goal` template (Obsidian References).
 Adapted for this repo's Tom/Larry phase-gated workflow.
 
 Read anatomy + when/anti-patterns in docs/playbooks/agent-orchestration.md, section `/goal`.
+Do not use /goal for tiny fixes, exploratory reading, review comments, or tasks without clear success criteria.
 -->
 
 /goal [THE FINAL OUTCOME: what "done" looks like in one line]
@@ -51,6 +52,7 @@ You are **Tom** (or **Larry**). Phase = <Brainstorm | Spec | Plan | Implement | 
 8. STAY ON SCOPE. If you find off-spec work, note it and do not expand scope. Tell Orchestrator if critical.
 9. IF BLOCKED. Log the specific blocker, continue all parallelizable branches, and do not idle.
 10. CHECK SUCCESS BEFORE STOPPING. Re-read SUCCESS CRITERIA and confirm every line is met; if not, fix before reporting done.
+11. CAPTURE HARNESS LESSONS. If an operational failure recurs, note a candidate lesson for `.scratch/YYYY-MM-DD-harness-retro.md`; do not rewrite governance directly.
 
 -- QUALITY BAR --
 
@@ -68,4 +70,5 @@ You are **Tom** (or **Larry**). Phase = <Brainstorm | Spec | Plan | Implement | 
 - [PROOF] Diff / log output / screenshot / scenario result.
 - [LOG] Decisions made, trade-offs chosen, important context.
 - [WARN] Known limitations, follow-up tasks, deferred scope.
+- [LEARN] Candidate harness lesson, or `none`.
 - [STOP] Next phase + assignee (for example "Larry reviews spec next").

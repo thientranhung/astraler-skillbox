@@ -28,7 +28,7 @@ Keep docs synchronized with code. Read this when:
 | **Implementation patterns** | code structure | `docs/12-implementation-patterns.md` | pattern is applied in >=2 places |
 | **Architecture boundary** | code + ADR | **ADR** + `docs/10-technical-architecture.md` | boundary, contract, or IPC changes |
 | **Tech stack / core dependency** | `package.json`, `go.mod`, scaffold | **ADR** + `docs/11-tech-stack-and-scaffold-decisions.md` | major runtime/framework changes |
-| **Process / workflow / hook** | scripts, hooks, playbook | **ADR** + relevant playbook | review rule, branch model, or hook changes |
+| **Process / workflow / hook** | scripts, hooks, harness scripts, playbook | **ADR** + relevant playbook | review rule, branch model, tmux helper, learning-loop, or hook changes |
 
 ## Gap-Find Procedure
 
@@ -149,3 +149,4 @@ Doc typo only / add test without behavior change / internal refactor with unchan
 - [docs/decisions/index.md](../decisions/index.md) - ADR overview
 - `docs/decisions/template.md` - ADR template in the repository
 - [docs/playbooks/agent-orchestration.md](agent-orchestration.md) - Tom/Larry/Orchestrator roles and phase gates
+- [docs/decisions/0005-operational-harness-learning-loop.md](../decisions/0005-operational-harness-learning-loop.md) - operational harness learning loop

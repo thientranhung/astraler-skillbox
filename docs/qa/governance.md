@@ -138,12 +138,17 @@ When execution finds ambiguity, unsafe setup, missing evidence, or missing
 coverage, update the QA bank instead of encoding that lesson only in a run
 report.
 
+For screen labels, screen-related tags, routes, or component names, update
+[`screen-taxonomy.md`](screen-taxonomy.md) first and use it as the source of
+truth for case fields and run-plan tag selection.
+
 Update the smallest canonical surface:
 
 - `cases/` for executable behavior and expected results;
 - `invariants.yaml` for safety and consistency rules that recur;
 - `schema.md` for result/run-plan metadata;
 - `profiles/` for selection policy;
+- `screen-taxonomy.md` for screen labels, routes, components, and QA tag slugs;
 - this file for durable QA operating rules.
 - `runs/<run-id>/run-plan.yaml`, `results.jsonl`, and `report.md` for durable run
   summaries when a run should be preserved in git.

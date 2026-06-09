@@ -1,7 +1,8 @@
 <!--
 Template: inline /goal (send through tmux, < 500 characters).
 Use for: small follow-up in the same phase, single-edit <= 50 LOC, very clear scope.
-Use goal-file.md when context is long, many files are involved, or the handoff crosses phases.
+Use goal-file.md when context is long, many files are involved, the handoff crosses phases, or you need a learning-loop note.
+Do not use /goal for exploratory reading, review comments, or tasks without clear success criteria.
 
 Origin: the user's original `/goal` template (Obsidian References).
 Read anatomy in docs/playbooks/agent-orchestration.md, section `/goal`.
@@ -23,4 +24,4 @@ Success:
 
 Rules: PLAN FIRST; RESPECT PHASE GATE; SELF-VERIFY; NO PLACEHOLDERS; STOP when <condition>.
 
-Deliverable: [OK] criteria; [FILE] paths; [RUN] cmd; [PROOF] evidence; [STOP] next phase.
+Deliverable: [OK] criteria; [FILE] paths; [RUN] cmd; [PROOF] evidence; [LEARN] candidate lesson or none; [STOP] next phase.
